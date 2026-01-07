@@ -16,14 +16,14 @@ cross-env NODE_ENV=development babel "electron-app/**/*.js" \
     --out-dir ../output/cncjs/electron-app
 popd
 
+# Build server
 babel -d output/cncjs/server src/server
-i18next-scanner --config i18next-scanner.server.config.js \"src/server/**/*.{html,js,jsx}\" \"!src/server/i18n/**\" \"!**/node_modules/**\"
+i18next-scanner --config i18next-scanner.server.config.js "src/server/**/*.{html,js,jsx}" "!src/server/i18n/**" "!**/node_modules/**"
 
-cross-env NODE_ENV=development webpack-cli --config webpack.config.development.js
-i18next-scanner --config i18next-scanner.app.config.js \"src/app-legacy/**/*.{html,js,jsx}\" \"!src/app-legacy/i18n/**\" \"!**/node_modules/**\"
+# Build new frontend with Vite
+cd src/app && npm run build:dev && cd ../..
 
 mkdir -p output/cncjs/app
 mkdir -p output/cncjs/server
 
-cp -af src/app-legacy/{favicon.ico,i18n,images,assets} output/cncjs/app/
 cp -af src/server/{i18n,views} output/cncjs/server/
