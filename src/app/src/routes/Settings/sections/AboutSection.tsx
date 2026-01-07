@@ -14,7 +14,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
     <SettingsSection 
       id="about" 
       title="About"
-      description="Information about CNCjs"
+      description="Information about AxioCNC"
       isLast
     >
       <div className="space-y-6">
@@ -22,7 +22,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
         <div className="flex items-center justify-between p-4 rounded-lg bg-card border">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-lg">CNCjs</span>
+              <span className="font-semibold text-lg">AxioCNC</span>
               <Badge variant="secondary">{version}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -39,7 +39,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
         {/* Links */}
         <div className="grid gap-3">
           <a
-            href="https://github.com/cncjs/cncjs"
+            href="https://github.com/rsteckler/axiocnc"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors group"
@@ -57,7 +57,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
           </a>
 
           <a
-            href="https://cnc.js.org/"
+            href="https://github.com/rsteckler/axiocnc#readme"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors group"
@@ -75,7 +75,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
           </a>
 
           <a
-            href="https://opencollective.com/cncjs"
+            href="https://github.com/sponsors/rsteckler"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors group"
@@ -85,7 +85,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
               <div>
                 <p className="font-medium">Support the Project</p>
                 <p className="text-sm text-muted-foreground">
-                  Help fund development via Open Collective
+                  Help fund development via GitHub Sponsors
                 </p>
               </div>
             </div>
@@ -96,9 +96,9 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
         {/* License */}
         <div className="pt-4 border-t">
           <p className="text-sm text-muted-foreground text-center">
-            CNCjs is open source software licensed under the{' '}
+            AxioCNC is open source software licensed under the{' '}
             <a
-              href="https://github.com/cncjs/cncjs/blob/master/LICENSE"
+              href="https://github.com/rsteckler/axiocnc/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
@@ -111,4 +111,3 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
     </SettingsSection>
   )
 }
-

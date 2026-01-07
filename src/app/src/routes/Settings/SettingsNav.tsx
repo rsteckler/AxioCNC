@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Palette, Gamepad2, Box, Users, Terminal, Zap, Info } from 'lucide-react'
+import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route } from 'lucide-react'
 
 export interface SettingsSection {
   id: string
@@ -10,9 +10,13 @@ export interface SettingsSection {
 export const settingsSections: SettingsSection[] = [
   { id: 'general', label: 'General', icon: <Settings className="w-4 h-4" /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
+  { id: 'connection', label: 'Connection', icon: <Plug className="w-4 h-4" /> },
   { id: 'machine', label: 'Machine', icon: <Box className="w-4 h-4" /> },
+  { id: 'zeroing-methods', label: 'Zeroing Methods', icon: <Target className="w-4 h-4" /> },
+  { id: 'zeroing-strategies', label: 'Zeroing Strategies', icon: <Route className="w-4 h-4" /> },
+  { id: 'camera', label: 'Camera', icon: <Camera className="w-4 h-4" /> },
   { id: 'joystick', label: 'Joystick', icon: <Gamepad2 className="w-4 h-4" /> },
-  { id: 'user-accounts', label: 'User Accounts', icon: <Users className="w-4 h-4" /> },
+  { id: 'macros', label: 'Macros', icon: <Code className="w-4 h-4" /> },
   { id: 'commands', label: 'Commands', icon: <Terminal className="w-4 h-4" /> },
   { id: 'events', label: 'Events', icon: <Zap className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },

@@ -1,12 +1,31 @@
 export { GeneralSection } from './GeneralSection'
+export type { WatchFolder, WatchFolderType, GoogleDriveStatus } from './GeneralSection'
 export { AppearanceSection } from './AppearanceSection'
-export type { Theme, AccentColor } from './AppearanceSection'
+export type { Theme, AccentColor, CustomTheme } from './AppearanceSection'
 export { MachineSection } from './MachineSection'
 export type { MachineConfig } from './MachineSection'
+export { ConnectionSection } from './ConnectionSection'
+export type { ConnectionConfig } from './ConnectionSection'
+export { CameraSection } from './CameraSection'
+export type { CameraConfig, MediaSourceType } from './CameraSection'
+export { ZeroingMethodsSection } from './ZeroingMethodsSection'
+export type { 
+  ZeroingMethod, 
+  ZeroingMethodType, 
+  ZeroingAxes,
+  ZeroingMethodsConfig,
+  BitSetterConfig,
+  BitZeroConfig,
+  TouchPlateConfig,
+  ManualConfig,
+  CustomMethodConfig,
+} from './ZeroingMethodsSection'
+export { ZeroingStrategiesSection } from './ZeroingStrategiesSection'
+export type { ZeroingStrategiesConfig, ZeroingScenario, StrategyOption } from './ZeroingStrategiesSection'
 export { JoystickSection } from './JoystickSection'
 export type { JoystickConfig, CncAction, AnalogAxis, AnalogMapping } from './JoystickSection'
-export { UserAccountsSection } from './UserAccountsSection'
-export type { UserAccount } from './UserAccountsSection'
+export { MacrosSection } from './MacrosSection'
+export type { Macro } from './MacrosSection'
 export { CommandsSection } from './CommandsSection'
 export type { Command } from './CommandsSection'
 export { EventsSection } from './EventsSection'

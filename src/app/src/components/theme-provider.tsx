@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import { useGetThemeQuery, useGetSettingsQuery, useSetSettingsMutation } from "@/services/api"
+import type { ThemeCSSVariables } from "@/services/api"
 
 type Theme = "dark" | "light" | "system"
 type AccentColor = "orange" | "blue" | "green" | "purple" | "red" | "zinc"
@@ -13,21 +15,25 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme
   accentColor: AccentColor
+  customThemeId: string | null
   setTheme: (theme: Theme) => void
   setAccentColor: (color: AccentColor) => void
+  setCustomTheme: (themeId: string | null) => void
 }
 
 const initialState: ThemeProviderState = {
   theme: "system",
   accentColor: "orange",
+  customThemeId: null,
   setTheme: () => null,
   setAccentColor: () => null,
+  setCustomTheme: () => null,
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
-// CSS variable values for each accent color
-const ACCENT_CSS_VALUES: Record<AccentColor, { light: Record<string, string>; dark: Record<string, string> }> = {
+// CSS variable values for each accent color (used when no custom theme is active)
+const ACCENT_CSS_VALUES: Record<AccentColor, { light: ThemeCSSVariables; dark: ThemeCSSVariables }> = {
   orange: {
     light: {
       '--primary': '24 95% 53%',
@@ -126,82 +132,191 @@ const ACCENT_CSS_VALUES: Record<AccentColor, { light: Record<string, string>; da
   },
 }
 
+// Apply CSS variables to the document root
+const applyCSSVariables = (vars: ThemeCSSVariables) => {
+  const root = window.document.documentElement
+  Object.entries(vars).forEach(([key, value]) => {
+    if (value) {
+      root.style.setProperty(key, value)
+    }
+  })
+}
+
+// Clear all inline CSS variables from the root element
+// This ensures custom theme variables don't persist when switching back to default
+const clearInlineCSSVariables = () => {
+  const root = window.document.documentElement
+  root.style.cssText = ''
+}
+
+
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   defaultAccent = "orange",
-  storageKey = "cncjs-ui-theme",
+  storageKey = "axiocnc-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
+  // Track if we've initialized from the settings API
+  const hasInitialized = useRef(false)
+
+  // Local state for immediate UI updates (falls back to localStorage for initial render)
+  const [theme, setThemeState] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
-  const [accentColor, setAccentColor] = useState<AccentColor>(
+  const [accentColor, setAccentColorState] = useState<AccentColor>(
     () => (localStorage.getItem(`${storageKey}-accent`) as AccentColor) || defaultAccent
   )
+  const [customThemeId, setCustomThemeIdState] = useState<string | null>(
+    () => localStorage.getItem(`${storageKey}-custom`) || null
+  )
 
-  // Apply theme class
+  // Settings API hooks
+  const { data: settings } = useGetSettingsQuery()
+  const [setSettings] = useSetSettingsMutation()
+
+  // Initialize state from settings API (once loaded)
+  useEffect(() => {
+    if (settings?.appearance && !hasInitialized.current) {
+      hasInitialized.current = true
+      
+      const { theme: apiTheme, accentColor: apiAccent, customThemeId: apiCustomTheme } = settings.appearance
+      
+      // Update local state from API (if different from current values)
+      if (apiTheme && apiTheme !== theme) {
+        setThemeState(apiTheme)
+        localStorage.setItem(storageKey, apiTheme)
+      }
+      if (apiAccent && apiAccent !== accentColor) {
+        setAccentColorState(apiAccent)
+        localStorage.setItem(`${storageKey}-accent`, apiAccent)
+      }
+      if (apiCustomTheme !== customThemeId) {
+        setCustomThemeIdState(apiCustomTheme)
+        if (apiCustomTheme) {
+          localStorage.setItem(`${storageKey}-custom`, apiCustomTheme)
+        } else {
+          localStorage.removeItem(`${storageKey}-custom`)
+        }
+      }
+    }
+  }, [settings, storageKey, theme, accentColor, customThemeId])
+
+  // Fetch custom theme data when a custom theme is selected
+  const { data: customThemeData } = useGetThemeQuery(customThemeId!, {
+    skip: !customThemeId,
+  })
+
+  // Apply theme class (light/dark)
   useEffect(() => {
     const root = window.document.documentElement
-
     root.classList.remove("light", "dark")
 
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
-
       root.classList.add(systemTheme)
     } else {
       root.classList.add(theme)
     }
   }, [theme])
 
-  // Apply accent color CSS variables
+  // Track previous custom theme to detect when switching away from it
+  const prevCustomThemeId = useRef<string | null>(customThemeId)
+  
+  // Apply theme CSS variables
   useEffect(() => {
+    // Determine actual color mode from the DOM (after theme class is applied)
     const root = window.document.documentElement
-    const isDark = root.classList.contains('dark')
-    const colorMode = isDark ? 'dark' : 'light'
-    const cssVars = ACCENT_CSS_VALUES[accentColor][colorMode]
+    const colorMode = root.classList.contains('dark') ? 'dark' : 'light'
 
-    Object.entries(cssVars).forEach(([key, value]) => {
-      root.style.setProperty(key, value)
-    })
-  }, [accentColor, theme])
+    // If we just switched FROM a custom theme TO default, clear all inline styles first
+    if (prevCustomThemeId.current && !customThemeId) {
+      clearInlineCSSVariables()
+    }
+    prevCustomThemeId.current = customThemeId
 
-  // Re-apply accent colors when theme changes (light/dark switch)
+    if (customThemeId && customThemeData) {
+      // Apply custom theme CSS variables
+      const themeVars = customThemeData[colorMode]
+      if (themeVars) {
+        applyCSSVariables(themeVars)
+      }
+    } else {
+      // Apply accent color CSS variables
+      const cssVars = ACCENT_CSS_VALUES[accentColor][colorMode]
+      applyCSSVariables(cssVars)
+    }
+  }, [theme, accentColor, customThemeId, customThemeData])
+
+  // Re-apply CSS variables when theme mode changes (observer for class changes)
   useEffect(() => {
+    const root = document.documentElement
+    
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === 'class') {
-          const root = window.document.documentElement
-          const isDark = root.classList.contains('dark')
-          const colorMode = isDark ? 'dark' : 'light'
-          const cssVars = ACCENT_CSS_VALUES[accentColor][colorMode]
+          const colorMode = root.classList.contains('dark') ? 'dark' : 'light'
 
-          Object.entries(cssVars).forEach(([key, value]) => {
-            root.style.setProperty(key, value)
-          })
+          if (customThemeId && customThemeData) {
+            const themeVars = customThemeData[colorMode]
+            if (themeVars) {
+              applyCSSVariables(themeVars)
+            }
+          } else {
+            const cssVars = ACCENT_CSS_VALUES[accentColor][colorMode]
+            applyCSSVariables(cssVars)
+          }
         }
       })
     })
 
-    observer.observe(document.documentElement, { attributes: true })
+    observer.observe(root, { attributes: true })
     return () => observer.disconnect()
-  }, [accentColor])
+  }, [accentColor, customThemeId, customThemeData])
+
+  const setTheme = useCallback((newTheme: Theme) => {
+    // Update localStorage for immediate persistence
+    localStorage.setItem(storageKey, newTheme)
+    setThemeState(newTheme)
+    // Save to settings API
+    setSettings({ appearance: { theme: newTheme } })
+  }, [storageKey, setSettings])
+
+  const setAccentColor = useCallback((color: AccentColor) => {
+    // Update localStorage for immediate persistence
+    localStorage.setItem(`${storageKey}-accent`, color)
+    setAccentColorState(color)
+    // Save to settings API
+    setSettings({ appearance: { accentColor: color } })
+  }, [storageKey, setSettings])
+
+  const setCustomTheme = useCallback((themeId: string | null) => {
+    // Update localStorage for immediate persistence
+    if (themeId) {
+      localStorage.setItem(`${storageKey}-custom`, themeId)
+    } else {
+      localStorage.removeItem(`${storageKey}-custom`)
+      // When clearing custom theme, clear all inline styles first, then re-apply accent color
+      clearInlineCSSVariables()
+      const root = document.documentElement
+      const colorMode = root.classList.contains('dark') ? 'dark' : 'light'
+      const cssVars = ACCENT_CSS_VALUES[accentColor][colorMode]
+      applyCSSVariables(cssVars)
+    }
+    setCustomThemeIdState(themeId)
+    // Save to settings API
+    setSettings({ appearance: { customThemeId: themeId } })
+  }, [storageKey, accentColor, setSettings])
 
   const value = {
     theme,
     accentColor,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
-    },
-    setAccentColor: (color: AccentColor) => {
-      localStorage.setItem(`${storageKey}-accent`, color)
-      setAccentColor(color)
-    },
+    customThemeId,
+    setTheme,
+    setAccentColor,
+    setCustomTheme,
   }
 
   return (

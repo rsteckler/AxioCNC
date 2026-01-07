@@ -50,7 +50,7 @@ export function SettingsField({
 
   if (horizontal) {
     return (
-      <div className="flex items-center justify-between py-3">
+      <div className="flex items-center justify-between py-1">
         <div className="space-y-0.5">
           {labelContent}
           {description && (
@@ -63,12 +63,12 @@ export function SettingsField({
   }
 
   return (
-    <div className="space-y-2 py-3">
+    <div className="space-y-1 py-1">
       {labelContent}
       {description && (
         <p className="text-sm text-muted-foreground">{description}</p>
       )}
-      <div className="pt-1">{children}</div>
+      <div>{children}</div>
     </div>
   )
 }

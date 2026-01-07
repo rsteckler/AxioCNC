@@ -26,7 +26,7 @@ export function SettingsSection({
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
-      <div className="space-y-6">
+      <div className="space-y-2">
         {children}
       </div>
       {!isLast && <Separator className="mt-10 mb-8" />}

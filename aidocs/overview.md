@@ -45,7 +45,7 @@ src/
 
 ## Feature Parity Reference
 
-See [`docs/frontend-features.md`](./docs/frontend-features.md) for a comprehensive enumeration of all legacy frontend features that need to be implemented in the new frontend. This document serves as the checklist for achieving feature parity.
+See [`docs/frontend-features.md`](../docs/frontend-features.md) for a comprehensive enumeration of all legacy frontend features that need to be implemented in the new frontend. This document serves as the checklist for achieving feature parity.
 
 ## Development
 
@@ -98,6 +98,6 @@ cd src/app && npm run build
 
 ## Related Documentation
 
-- [`docs/frontend-features.md`](./docs/frontend-features.md) - Complete feature enumeration
-- [`dev_prefs.md`](./dev_prefs.md) - Development preferences and decisions
+- [`docs/frontend-features.md`](../docs/frontend-features.md) - Complete feature enumeration
+- [`aidocs/dev_prefs.md`](./dev_prefs.md) - Development preferences and decisions
 

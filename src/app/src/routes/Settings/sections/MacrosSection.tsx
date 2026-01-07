@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -33,51 +32,49 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, Terminal } from 'lucide-react'
+import { Plus, Code, Pencil, Trash2 } from 'lucide-react'
 
-export interface Command {
+export interface Macro {
   id: string
-  title: string
-  commands: string
-  enabled: boolean
+  name: string
+  description?: string
+  content: string
   mtime?: number
 }
 
-interface CommandsSectionProps {
-  commands: Command[]
-  onAdd: (command: Omit<Command, 'id' | 'mtime'>) => void
-  onEdit: (command: Command) => void
+interface MacrosSectionProps {
+  macros: Macro[]
+  onAdd: (macro: Omit<Macro, 'id' | 'mtime'>) => void
+  onEdit: (macro: Macro) => void
   onDelete: (id: string) => void
-  onToggleEnabled: (id: string, enabled: boolean) => void
 }
 
-export function CommandsSection({
-  commands,
+export function MacrosSection({
+  macros,
   onAdd,
   onEdit,
   onDelete,
-  onToggleEnabled,
-}: CommandsSectionProps) {
+}: MacrosSectionProps) {
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [editingCommand, setEditingCommand] = useState<Command | null>(null)
+  const [editingMacro, setEditingMacro] = useState<Macro | null>(null)
   
   // Form state
-  const [formTitle, setFormTitle] = useState('')
-  const [formCommands, setFormCommands] = useState('')
-  const [formEnabled, setFormEnabled] = useState(true)
+  const [formName, setFormName] = useState('')
+  const [formDescription, setFormDescription] = useState('')
+  const [formContent, setFormContent] = useState('')
 
   const resetForm = () => {
-    setFormTitle('')
-    setFormCommands('')
-    setFormEnabled(true)
+    setFormName('')
+    setFormDescription('')
+    setFormContent('')
   }
 
   const handleAdd = () => {
-    if (formTitle.trim() && formCommands.trim()) {
+    if (formName.trim() && formContent.trim()) {
       onAdd({
-        title: formTitle.trim(),
-        commands: formCommands.trim(),
-        enabled: formEnabled,
+        name: formName.trim(),
+        description: formDescription.trim() || undefined,
+        content: formContent.trim(),
       })
       resetForm()
       setIsAddOpen(false)
@@ -85,27 +82,26 @@ export function CommandsSection({
   }
 
   const handleEdit = () => {
-    if (editingCommand && formTitle.trim() && formCommands.trim()) {
+    if (editingMacro && formName.trim() && formContent.trim()) {
       onEdit({
-        ...editingCommand,
-        title: formTitle.trim(),
-        commands: formCommands.trim(),
-        enabled: formEnabled,
+        ...editingMacro,
+        name: formName.trim(),
+        description: formDescription.trim() || undefined,
+        content: formContent.trim(),
       })
       resetForm()
-      setEditingCommand(null)
+      setEditingMacro(null)
     }
   }
 
-  const openEditDialog = (command: Command) => {
-    setFormTitle(command.title)
-    setFormCommands(command.commands)
-    setFormEnabled(command.enabled)
-    setEditingCommand(command)
+  const openEditDialog = (macro: Macro) => {
+    setFormName(macro.name)
+    setFormDescription(macro.description || '')
+    setFormContent(macro.content)
+    setEditingMacro(macro)
   }
 
-  const formatDate = (timestamp?: number) => {
-    if (!timestamp) return '–'
+  const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'short',
@@ -113,17 +109,17 @@ export function CommandsSection({
     })
   }
 
-  const truncateCommands = (cmds: string, maxLines = 3) => {
-    const lines = cmds.split('\n')
-    if (lines.length <= maxLines) return cmds
+  const truncateContent = (content: string, maxLines = 3) => {
+    const lines = content.split('\n')
+    if (lines.length <= maxLines) return content
     return lines.slice(0, maxLines).join('\n') + '\n...'
   }
 
   return (
     <SettingsSection
-      id="commands"
-      title="Commands"
-      description="Create custom command shortcuts for quick access"
+      id="macros"
+      title="Macros"
+      description="Create reusable G-code sequences for common operations"
     >
       <div className="space-y-4">
         {/* Add Button */}
@@ -135,33 +131,42 @@ export function CommandsSection({
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                Add Command
+                Add Macro
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Command</DialogTitle>
+                <DialogTitle>Add Macro</DialogTitle>
                 <DialogDescription>
-                  Create a custom command shortcut that will appear in the command panel.
+                  Create a new macro with G-code commands.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="command-title">Title</Label>
+                  <Label htmlFor="macro-name">Name</Label>
                   <Input
-                    id="command-title"
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g., Zero All Axes"
+                    id="macro-name"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="e.g., Home All Axes"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="command-content">G-code Commands</Label>
+                  <Label htmlFor="macro-description">Description</Label>
+                  <Input
+                    id="macro-description"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder="Optional description of what this macro does"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="macro-content">G-code Commands</Label>
                   <Textarea
-                    id="command-content"
-                    value={formCommands}
-                    onChange={(e) => setFormCommands(e.target.value)}
-                    placeholder="G10 L20 P1 X0 Y0 Z0"
+                    id="macro-content"
+                    value={formContent}
+                    onChange={(e) => setFormContent(e.target.value)}
+                    placeholder="$H&#10;G0 X0 Y0 Z0"
                     rows={5}
                     className="font-mono text-sm"
                   />
@@ -169,21 +174,13 @@ export function CommandsSection({
                     Enter one command per line. Commands will be sent in sequence.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="command-enabled"
-                    checked={formEnabled}
-                    onCheckedChange={setFormEnabled}
-                  />
-                  <Label htmlFor="command-enabled">Enabled</Label>
-                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAdd} disabled={!formTitle.trim() || !formCommands.trim()}>
-                  Add Command
+                <Button onClick={handleAdd} disabled={!formName.trim() || !formContent.trim()}>
+                  Add Macro
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -195,46 +192,44 @@ export function CommandsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">Enabled</TableHead>
-                <TableHead className="w-40">Title</TableHead>
+                <TableHead className="w-40">Name</TableHead>
                 <TableHead>Commands</TableHead>
                 <TableHead className="w-28">Modified</TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {commands.length === 0 ? (
+              {macros.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    <Terminal className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No custom commands configured</p>
-                    <p className="text-xs mt-1">Add commands to create quick shortcuts for common operations</p>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <Code className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No macros configured</p>
+                    <p className="text-xs mt-1">Add macros to quickly run common G-code sequences</p>
                   </TableCell>
                 </TableRow>
               ) : (
-                commands.map((command) => (
-                  <TableRow key={command.id}>
+                macros.map((macro) => (
+                  <TableRow key={macro.id}>
                     <TableCell>
-                      <Switch
-                        checked={command.enabled}
-                        onCheckedChange={(checked) => onToggleEnabled(command.id, checked)}
-                      />
+                      <div className="font-medium">{macro.name}</div>
+                      {macro.description && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{macro.description}</div>
+                      )}
                     </TableCell>
-                    <TableCell className="font-medium">{command.title}</TableCell>
                     <TableCell>
                       <pre className="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-1 rounded max-w-md overflow-hidden">
-                        {truncateCommands(command.commands)}
+                        {truncateContent(macro.content)}
                       </pre>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(command.mtime)}
+                      {macro.mtime ? formatDate(macro.mtime) : '—'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {/* Edit Dialog */}
-                        <Dialog open={editingCommand?.id === command.id} onOpenChange={(open) => {
+                        <Dialog open={editingMacro?.id === macro.id} onOpenChange={(open) => {
                           if (!open) {
-                            setEditingCommand(null)
+                            setEditingMacro(null)
                             resetForm()
                           }
                         }}>
@@ -243,75 +238,81 @@ export function CommandsSection({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() => openEditDialog(command)}
+                              onClick={() => openEditDialog(macro)}
                             >
                               <Pencil className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Edit Command</DialogTitle>
+                              <DialogTitle>Edit Macro</DialogTitle>
                               <DialogDescription>
-                                Modify the command title or G-code commands.
+                                Modify the macro name or G-code commands.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="space-y-2">
-                                <Label htmlFor="edit-command-title">Title</Label>
+                                <Label htmlFor="edit-macro-name">Name</Label>
                                 <Input
-                                  id="edit-command-title"
-                                  value={formTitle}
-                                  onChange={(e) => setFormTitle(e.target.value)}
-                                  placeholder="e.g., Zero All Axes"
+                                  id="edit-macro-name"
+                                  value={formName}
+                                  onChange={(e) => setFormName(e.target.value)}
+                                  placeholder="e.g., Home All Axes"
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="edit-command-content">G-code Commands</Label>
+                                <Label htmlFor="edit-macro-description">Description</Label>
+                                <Input
+                                  id="edit-macro-description"
+                                  value={formDescription}
+                                  onChange={(e) => setFormDescription(e.target.value)}
+                                  placeholder="Optional description"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-macro-content">G-code Commands</Label>
                                 <Textarea
-                                  id="edit-command-content"
-                                  value={formCommands}
-                                  onChange={(e) => setFormCommands(e.target.value)}
+                                  id="edit-macro-content"
+                                  value={formContent}
+                                  onChange={(e) => setFormContent(e.target.value)}
                                   rows={5}
                                   className="font-mono text-sm"
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  id="edit-command-enabled"
-                                  checked={formEnabled}
-                                  onCheckedChange={setFormEnabled}
-                                />
-                                <Label htmlFor="edit-command-enabled">Enabled</Label>
-                              </div>
                             </div>
                             <DialogFooter>
-                              <Button variant="outline" onClick={() => setEditingCommand(null)}>
+                              <Button variant="outline" onClick={() => setEditingMacro(null)}>
                                 Cancel
                               </Button>
-                              <Button onClick={handleEdit} disabled={!formTitle.trim() || !formCommands.trim()}>
+                              <Button onClick={handleEdit} disabled={!formName.trim() || !formContent.trim()}>
                                 Save Changes
                               </Button>
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
 
+                        {/* Delete confirmation */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Command?</AlertDialogTitle>
+                              <AlertDialogTitle>Delete Macro?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete "{command.title}"? This action cannot be undone.
+                                Are you sure you want to delete "{macro.name}"? This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => onDelete(command.id)}
+                              <AlertDialogAction
+                                onClick={() => onDelete(macro.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete

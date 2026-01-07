@@ -1,7 +1,17 @@
+import { useState } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -10,6 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,9 +90,14 @@ const EVENT_LABELS: Record<EventType, string> = {
   'macro:load': 'Load Macro',
 }
 
+const EVENT_OPTIONS = Object.entries(EVENT_LABELS).map(([value, label]) => ({
+  value: value as EventType,
+  label,
+}))
+
 interface EventsSectionProps {
   events: EventHandler[]
-  onAdd: () => void
+  onAdd: (event: Omit<EventHandler, 'id' | 'mtime'>) => void
   onEdit: (event: EventHandler) => void
   onDelete: (id: string) => void
   onToggleEnabled: (id: string, enabled: boolean) => void
@@ -86,6 +110,57 @@ export function EventsSection({
   onDelete,
   onToggleEnabled,
 }: EventsSectionProps) {
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<EventHandler | null>(null)
+  
+  // Form state
+  const [formEvent, setFormEvent] = useState<EventType>('startup')
+  const [formTrigger, setFormTrigger] = useState<TriggerType>('gcode')
+  const [formCommands, setFormCommands] = useState('')
+  const [formEnabled, setFormEnabled] = useState(true)
+
+  const resetForm = () => {
+    setFormEvent('startup')
+    setFormTrigger('gcode')
+    setFormCommands('')
+    setFormEnabled(true)
+  }
+
+  const handleAdd = () => {
+    if (formCommands.trim()) {
+      onAdd({
+        event: formEvent,
+        trigger: formTrigger,
+        commands: formCommands.trim(),
+        enabled: formEnabled,
+      })
+      resetForm()
+      setIsAddOpen(false)
+    }
+  }
+
+  const handleEdit = () => {
+    if (editingEvent && formCommands.trim()) {
+      onEdit({
+        ...editingEvent,
+        event: formEvent,
+        trigger: formTrigger,
+        commands: formCommands.trim(),
+        enabled: formEnabled,
+      })
+      resetForm()
+      setEditingEvent(null)
+    }
+  }
+
+  const openEditDialog = (event: EventHandler) => {
+    setFormEvent(event.event)
+    setFormTrigger(event.trigger)
+    setFormCommands(event.commands)
+    setFormEnabled(event.enabled)
+    setEditingEvent(event)
+  }
+
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '–'
     return new Date(timestamp).toLocaleDateString(undefined, {
@@ -110,10 +185,100 @@ export function EventsSection({
       <div className="space-y-4">
         {/* Add Button */}
         <div className="flex justify-between items-center">
-          <Button onClick={onAdd} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add Event Handler
-          </Button>
+          <Dialog open={isAddOpen} onOpenChange={(open) => {
+            setIsAddOpen(open)
+            if (!open) resetForm()
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Event Handler
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Event Handler</DialogTitle>
+                <DialogDescription>
+                  Create a handler that runs commands when a specific event occurs.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="event-type">Event</Label>
+                  <Select value={formEvent} onValueChange={(v) => setFormEvent(v as EventType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Trigger Type</Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="trigger"
+                        checked={formTrigger === 'gcode'}
+                        onChange={() => setFormTrigger('gcode')}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">G-code Commands</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="trigger"
+                        checked={formTrigger === 'system'}
+                        onChange={() => setFormTrigger('system')}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">System Command</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formTrigger === 'gcode' 
+                      ? 'Commands will be sent to the CNC controller'
+                      : 'Commands will be executed as shell commands on the server'
+                    }
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="event-commands">Commands</Label>
+                  <Textarea
+                    id="event-commands"
+                    value={formCommands}
+                    onChange={(e) => setFormCommands(e.target.value)}
+                    placeholder={formTrigger === 'gcode' ? 'M3 S1000' : '/path/to/script.sh'}
+                    rows={4}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="event-enabled"
+                    checked={formEnabled}
+                    onCheckedChange={setFormEnabled}
+                  />
+                  <Label htmlFor="event-enabled">Enabled</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAdd} disabled={!formCommands.trim()}>
+                  Add Handler
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Table */}
@@ -165,14 +330,101 @@ export function EventsSection({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => onEdit(event)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        {/* Edit Dialog */}
+                        <Dialog open={editingEvent?.id === event.id} onOpenChange={(open) => {
+                          if (!open) {
+                            setEditingEvent(null)
+                            resetForm()
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEditDialog(event)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Edit Event Handler</DialogTitle>
+                              <DialogDescription>
+                                Modify the event handler settings.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-event-type">Event</Label>
+                                <Select value={formEvent} onValueChange={(v) => setFormEvent(v as EventType)}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {EVENT_OPTIONS.map((opt) => (
+                                      <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Trigger Type</Label>
+                                <div className="flex gap-4">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="edit-trigger"
+                                      checked={formTrigger === 'gcode'}
+                                      onChange={() => setFormTrigger('gcode')}
+                                      className="w-4 h-4"
+                                    />
+                                    <span className="text-sm">G-code Commands</span>
+                                  </label>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="edit-trigger"
+                                      checked={formTrigger === 'system'}
+                                      onChange={() => setFormTrigger('system')}
+                                      className="w-4 h-4"
+                                    />
+                                    <span className="text-sm">System Command</span>
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-event-commands">Commands</Label>
+                                <Textarea
+                                  id="edit-event-commands"
+                                  value={formCommands}
+                                  onChange={(e) => setFormCommands(e.target.value)}
+                                  rows={4}
+                                  className="font-mono text-sm"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id="edit-event-enabled"
+                                  checked={formEnabled}
+                                  onCheckedChange={setFormEnabled}
+                                />
+                                <Label htmlFor="edit-event-enabled">Enabled</Label>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setEditingEvent(null)}>
+                                Cancel
+                              </Button>
+                              <Button onClick={handleEdit} disabled={!formCommands.trim()}>
+                                Save Changes
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -188,7 +440,10 @@ export function EventsSection({
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => onDelete(event.id)}>
+                              <AlertDialogAction 
+                                onClick={() => onDelete(event.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -206,4 +461,3 @@ export function EventsSection({
     </SettingsSection>
   )
 }
-

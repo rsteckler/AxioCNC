@@ -16,6 +16,9 @@ cross-env NODE_ENV=development babel "electron-app/**/*.js" \
     --out-dir ../output/cncjs/electron-app
 popd
 
+# Build shared modules
+babel -d output/cncjs/shared src/shared
+
 # Build server
 babel -d output/cncjs/server src/server
 i18next-scanner --config i18next-scanner.server.config.js "src/server/**/*.{html,js,jsx}" "!src/server/i18n/**" "!**/node_modules/**"
