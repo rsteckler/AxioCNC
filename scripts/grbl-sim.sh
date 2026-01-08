@@ -10,7 +10,15 @@ LOGDIR="${GRBL_SIM_DIR}/logs"
 RESPONSE_LOG="${LOGDIR}/grbl-console.log"
 
 # Change to project root
-cd "$(dirname "$0")/.."
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Make GRBL_SIM_DIR absolute if it's relative
+if [[ "$GRBL_SIM_DIR" != /* ]]; then
+    GRBL_SIM_DIR="${PROJECT_ROOT}/${GRBL_SIM_DIR}"
+fi
+LOGDIR="${GRBL_SIM_DIR}/logs"
+RESPONSE_LOG="${LOGDIR}/grbl-console.log"
 
 # Check if grbl_sim.exe exists
 GRBLSIM="${GRBL_SIM_DIR}/grbl_sim.exe"
@@ -23,8 +31,9 @@ if [ ! -e "$GRBLSIM" ]; then
     exit 1
 fi
 
-# Create logs directory
+# Create logs directory and ensure it's writable
 mkdir -p "$LOGDIR"
+chmod 755 "$LOGDIR" 2>/dev/null || sudo chmod 755 "$LOGDIR"
 
 # Cleanup function
 cleanup() {
@@ -59,8 +68,16 @@ echo "🔌 Fake serial port: $FAKETTY"
 echo ""
 
 # Start socat with grbl-sim using -g option for logging
+# Run from the grbl-sim directory, use relative path for log file
 cd "$GRBL_SIM_DIR"
-sudo socat PTY,raw,link="$FAKETTY",echo=0 "EXEC:'./grbl_sim.exe -n -g $RESPONSE_LOG -s step.out -b block.out',pty,raw,echo=0" &
+
+# Ensure logs directory exists in the grbl-sim directory
+mkdir -p "./logs"
+chmod 755 "./logs" 2>/dev/null || sudo chmod 755 "./logs"
+
+# Start socat - run from the grbl-sim directory
+# Use bash -c to ensure we're in the right directory when sudo runs
+sudo bash -c "cd '${GRBL_SIM_DIR}' && exec socat PTY,raw,link='${FAKETTY}',echo=0 'EXEC:./grbl_sim.exe -n -g ./logs/grbl-console.log -s step.out -b block.out',pty,raw,echo=0" &
 SOCAT_PID=$!
 
 # Wait for setup
