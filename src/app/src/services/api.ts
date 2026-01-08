@@ -269,7 +269,13 @@ export const api = createApi({
     // Version
     // ==========================================================================
 
-    // Get version info
+    // Get current version
+    getCurrentVersion: builder.query<{ version: string }, void>({
+      query: () => '/version/current',
+      providesTags: ['Version'],
+    }),
+
+    // Get latest version from npm
     getVersion: builder.query<VersionInfo, void>({
       query: () => '/version/latest',
       providesTags: ['Version'],
@@ -577,6 +583,7 @@ export const {
   useBrowseDirectoryQuery,
   useLazyBrowseDirectoryQuery,
   // Other
+  useGetCurrentVersionQuery,
   useGetVersionQuery,
   useSignInMutation,
 } = api

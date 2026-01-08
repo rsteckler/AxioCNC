@@ -20,8 +20,11 @@ import {
   useGetWatchFoldersQuery,
   useCreateWatchFolderMutation,
   useDeleteWatchFolderMutation,
+  useGetCurrentVersionQuery,
+  useGetVersionQuery,
   type PartialSettings,
 } from '@/services/api'
+import { socketService } from '@/services/socket'
 import { useTheme } from '@/components/theme-provider'
 import { SettingsNav, settingsSections } from './SettingsNav'
 import { 
@@ -55,8 +58,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Check, Loader2 } from 'lucide-react'
 
-// App version - in a real app this would come from package.json or API
-const APP_VERSION = '2.0.0-beta'
 
 // =============================================================================
 // DEFAULT CONFIGURATIONS
@@ -67,6 +68,7 @@ const APP_VERSION = '2.0.0-beta'
 const DEFAULT_CONNECTION_CONFIG: ConnectionConfig = {
   port: '',                    // User must select
   baudRate: 115200,            // Standard for GRBL controllers
+  controllerType: 'Grbl',      // Default controller type
   setDTR: true,                // Most controllers expect DTR high
   setRTS: true,                // Most controllers expect RTS high
   rtscts: false,               // Hardware flow control rarely used
@@ -238,6 +240,10 @@ export default function Settings() {
   const { data: watchFoldersData, isLoading: isLoadingWatchFolders } = useGetWatchFoldersQuery()
   const [createWatchFolder] = useCreateWatchFolderMutation()
   const [deleteWatchFolder] = useDeleteWatchFolderMutation()
+  
+  // Version API
+  const { data: currentVersionData } = useGetCurrentVersionQuery()
+  const { data: latestVersionData } = useGetVersionQuery()
   
   // Derive commands/events/macros/watchFolders from API data
   const commands: Command[] = commandsData?.records ?? []
@@ -555,13 +561,42 @@ export default function Settings() {
   }, [debouncedSave])
 
   const handleRefreshPorts = useCallback(() => {
-    // In a real app, this would call the API to get available serial ports
-    // For now, mock some common ports
-    setDetectedPorts([
-      { path: '/dev/ttyUSB0', manufacturer: 'Arduino' },
-      { path: '/dev/ttyACM0', manufacturer: 'Arduino' },
-      { path: '/dev/ttyS0' },
-    ])
+    // Ensure socket is connected
+    if (!socketService.isConnected()) {
+      const connected = socketService.connect()
+      if (!connected) {
+        console.error('Failed to connect socket for port listing')
+        return
+      }
+    }
+    
+    const socket = socketService.getSocket()
+    if (!socket) {
+      console.error('Socket not available for port listing')
+      return
+    }
+    
+    // Set a timeout for port list (5 seconds)
+    const listTimeout = setTimeout(() => {
+      socketService.off('serialport:list', handlePortList)
+      console.warn('Port list request timed out')
+    }, 5000)
+    
+    // Listen for port list response
+    const handlePortList = (...args: unknown[]) => {
+      const ports = args[0] as Array<{ port: string; manufacturer?: string; inuse?: boolean }>
+      clearTimeout(listTimeout)
+      setDetectedPorts(ports.map(p => ({
+        path: p.port,  // Backend uses 'port' key, frontend expects 'path'
+        manufacturer: p.manufacturer
+      })))
+      socketService.off('serialport:list', handlePortList)
+    }
+    
+    socketService.on('serialport:list', handlePortList)
+    
+    // Request port list
+    socket.emit('list')
   }, [])
   
   // Auto-refresh ports on mount
@@ -570,24 +605,71 @@ export default function Settings() {
   }, [handleRefreshPorts])
 
   const handleTestConnection = useCallback(async (): Promise<{ success: boolean; message?: string }> => {
-    // TODO: Implement actual connection test via API
-    // This would open the port, send a probe command, and check for response
-    // For now, simulate a connection test
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Simulate success/failure based on whether a port is selected
-    if (connectionConfig.port) {
-      // 80% chance of success for demo
-      const success = Math.random() > 0.2
-      return {
-        success,
-        message: success 
-          ? `Connected to ${connectionConfig.port} at ${connectionConfig.baudRate} baud`
-          : 'No response from controller. Check port and baud rate settings.'
-      }
+    if (!connectionConfig.port) {
+      return { success: false, message: 'No port selected' }
     }
-    return { success: false, message: 'No port selected' }
-  }, [connectionConfig.port, connectionConfig.baudRate])
+    
+    // Ensure socket is connected
+    if (!socketService.isConnected()) {
+      socketService.connect()
+    }
+    
+    const socket = socketService.getSocket()
+    if (!socket) {
+      return { success: false, message: 'Socket connection not available. Please refresh the page.' }
+    }
+    
+    const { port, baudRate, controllerType } = connectionConfig
+    
+    // Test connection by attempting to open the port
+    return new Promise((resolve) => {
+      // Set a timeout for the test (5 seconds)
+      const testTimeout = setTimeout(() => {
+        resolve({ 
+          success: false, 
+          message: 'Connection test timed out. The port may be in use or the device may not be responding.' 
+        })
+      }, 5000)
+      
+      // Listen for port open confirmation
+      const handlePortOpen = (...args: unknown[]) => {
+        const data = args[0] as { port: string }
+        if (data.port === port) {
+          clearTimeout(testTimeout)
+          socketService.off('serialport:open', handlePortOpen)
+          
+          // Immediately close the test connection
+          socket.emit('close', port, () => {
+            resolve({ 
+              success: true, 
+              message: `Successfully connected to ${port} at ${baudRate} baud (${controllerType || 'Grbl'})` 
+            })
+          })
+        }
+      }
+      
+      socketService.on('serialport:open', handlePortOpen)
+      
+      // Attempt to open the port
+      socket.emit('open', port, {
+        baudrate: baudRate,
+        controllerType: controllerType || 'Grbl'
+      }, (err: Error | null) => {
+        if (err) {
+          clearTimeout(testTimeout)
+          socketService.off('serialport:open', handlePortOpen)
+          const errorMessage = err.message || (typeof err === 'string' ? err : 'Connection failed')
+          resolve({ 
+            success: false, 
+            message: `Connection failed: ${errorMessage}. Check that the port is available and the machine is powered on.` 
+          })
+        }
+        // If no error in callback, the port might already be open or will open soon
+        // Wait for serialport:open event (or timeout) to confirm
+        // If port is already open, we might get the event immediately
+      })
+    })
+  }, [connectionConfig])
 
   // Machine config handler
   const handleMachineConfigChange = useCallback((changes: Partial<MachineConfig>) => {
@@ -911,7 +993,8 @@ export default function Settings() {
             />
 
             <AboutSection
-              version={APP_VERSION}
+              version={currentVersionData?.version ?? 'Unknown'}
+              latestVersion={latestVersionData?.latest}
             />
           </main>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Switch } from '@/components/ui/switch'
@@ -18,6 +18,7 @@ const BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 250000, 500000, 1
 export interface ConnectionConfig {
   port: string
   baudRate: number
+  controllerType?: string
   setDTR: boolean
   setRTS: boolean
   rtscts: boolean
@@ -48,6 +49,54 @@ export function ConnectionSection({
 }: ConnectionSectionProps) {
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [testMessage, setTestMessage] = useState<string>('')
+  
+  // Track connection settings that affect the test (port, baudRate, controllerType, serial line settings)
+  const prevConnectionSettings = useRef<{
+    port: string
+    baudRate: number
+    controllerType?: string
+    setDTR: boolean
+    setRTS: boolean
+    rtscts: boolean
+  }>({
+    port: config.port,
+    baudRate: config.baudRate,
+    controllerType: config.controllerType,
+    setDTR: config.setDTR,
+    setRTS: config.setRTS,
+    rtscts: config.rtscts,
+  })
+  
+  // Reset test status when connection settings change
+  useEffect(() => {
+    const current = {
+      port: config.port,
+      baudRate: config.baudRate,
+      controllerType: config.controllerType,
+      setDTR: config.setDTR,
+      setRTS: config.setRTS,
+      rtscts: config.rtscts,
+    }
+    
+    const prev = prevConnectionSettings.current
+    
+    // Check if any connection-affecting settings changed
+    if (
+      current.port !== prev.port ||
+      current.baudRate !== prev.baudRate ||
+      current.controllerType !== prev.controllerType ||
+      current.setDTR !== prev.setDTR ||
+      current.setRTS !== prev.setRTS ||
+      current.rtscts !== prev.rtscts
+    ) {
+      // Only reset if we had a test result (not if we're idle or testing)
+      if (testStatus === 'success' || testStatus === 'error') {
+        setTestStatus('idle')
+        setTestMessage('')
+      }
+      prevConnectionSettings.current = current
+    }
+  }, [config.port, config.baudRate, config.controllerType, config.setDTR, config.setRTS, config.rtscts, testStatus])
 
   const handleTestConnection = async () => {
     if (!onTestConnection || !config.port) return
@@ -59,20 +108,11 @@ export function ConnectionSection({
       const result = await onTestConnection()
       setTestStatus(result.success ? 'success' : 'error')
       setTestMessage(result.message || (result.success ? 'Connection successful!' : 'Connection failed'))
-      
-      // Reset status after 5 seconds
-      setTimeout(() => {
-        setTestStatus('idle')
-        setTestMessage('')
-      }, 5000)
+      // Don't auto-reset - let it persist until settings change
     } catch (err) {
       setTestStatus('error')
       setTestMessage(err instanceof Error ? err.message : 'Connection test failed')
-      
-      setTimeout(() => {
-        setTestStatus('idle')
-        setTestMessage('')
-      }, 5000)
+      // Don't auto-reset - let it persist until settings change
     }
   }
 
@@ -90,12 +130,29 @@ export function ConnectionSection({
         <div className="flex gap-2">
           <Select
             value={config.port || 'none'}
-            onValueChange={(value) => onConfigChange({ 
-              port: value === 'none' ? '' : value 
-            })}
+            onValueChange={(value) => {
+              if (value === 'none') {
+                onConfigChange({ port: '' })
+              } else {
+                onConfigChange({ port: value })
+              }
+            }}
           >
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select port..." />
+              <SelectValue placeholder="Select port...">
+                {config.port ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm">{config.port}</span>
+                    {detectedPorts.find(p => p.path === config.port)?.manufacturer && (
+                      <span className="text-xs text-muted-foreground">
+                        ({detectedPorts.find(p => p.path === config.port)?.manufacturer})
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  'None selected'
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">

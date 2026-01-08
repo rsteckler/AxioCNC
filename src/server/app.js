@@ -87,7 +87,8 @@ const appMain = () => {
     app.set('view engine', settings.view.defaultExtension); // The default engine extension to use when omitted
     app.set('views', [
       path.resolve(__dirname, '../app'),
-      path.resolve(__dirname, 'views')
+      path.resolve(__dirname, 'views'),
+      path.resolve(__dirname, '../..') // Project root for index.hbs
     ]); // The view directory path
 
     log.debug('app.settings: %j', app.settings);
@@ -253,6 +254,7 @@ const appMain = () => {
 
   { // Register API routes with authorized access
     // Version
+    app.get(urljoin(settings.route, 'api/version/current'), api.version.getCurrentVersion);
     app.get(urljoin(settings.route, 'api/version/latest'), api.version.getLatestVersion);
 
     // System Settings (Zod-validated)
@@ -358,6 +360,39 @@ const appMain = () => {
       loading: t('loading')
     };
   }));
+
+  // SPA catch-all route: serve index.hbs for all client-side routes
+  // This allows React Router to handle routing on the client side
+  app.get('*', (req, res, next) => {
+    // Skip API routes - let them fall through to 404 if not found
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    
+    // Skip static file requests (js, css, images, etc.) - let them fall through to 404 if not found
+    if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json)$/i)) {
+      return next();
+    }
+    
+    // Skip Socket.IO requests
+    if (req.path.startsWith('/socket.io/')) {
+      return next();
+    }
+    
+    // Serve index.hbs for all other routes (client-side routes) using renderPage helper
+    renderPage('index.hbs', (req, res) => {
+      const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
+      const lng = req.language;
+      const t = req.t;
+
+      return {
+        webroot: webroot,
+        lang: lng,
+        title: `${t('title')} ${settings.version}`,
+        loading: t('loading')
+      };
+    })(req, res, next);
+  });
 
   { // Error handling
     app.use(errlog());
