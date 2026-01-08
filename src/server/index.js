@@ -16,6 +16,7 @@ import size from 'lodash/size';
 import trimEnd from 'lodash/trimEnd';
 import uniqWith from 'lodash/uniqWith';
 import webappengine from 'webappengine';
+import pkg from '../package.json';
 import settings from './config/settings';
 import app from './app';
 import cncengine from './services/cncengine';
@@ -238,6 +239,11 @@ const createServer = (options, callback) => {
 
       const address = server.address().address;
       const port = server.address().port;
+
+      // Display version on startup
+      log.info('='.repeat(60));
+      log.info(chalk.cyan(`NextCNC Server v${pkg.version}`));
+      log.info('='.repeat(60));
 
       callback && callback(null, {
         address,
