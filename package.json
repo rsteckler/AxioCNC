@@ -56,6 +56,7 @@
     "start-electron": "electron ./dist/cncjs/main",
     "start-prod": "yarn build-prod && NODE_ENV=production ./bin/cncjs",
     "grbl-sim": "bash scripts/grbl-sim.sh",
+    "grbl-sim:kill": "bash scripts/grbl-sim-kill.sh",
     "dev": "yarn run build-dev && concurrently --names \"start-app-dev,start-server-dev\" \"yarn run start-app-dev\" \"yarn run start-server-dev\"",
     "win-dev": "powershell -ExecutionPolicy Bypass -File scripts/build-dev.ps1 && concurrently --names \"start-app-dev,start-server-dev\" \"npm run start-app-dev\" \"npm run start-server-dev\"",
     "start-app-dev": "cd src/app && npm run dev",
