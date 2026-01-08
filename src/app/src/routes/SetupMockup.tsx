@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
@@ -27,10 +27,11 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { 
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  Home, Play, Pause, Square, Upload, 
+  Home, Play, Pause, Square, Upload, Unlock, 
   Crosshair, RotateCcw, RotateCw, Maximize2, GripVertical,
   Zap, Terminal, Wrench, Target, FileCode, Library,
-  Circle, Move, Pencil, Navigation, Bell, AlertCircle, X
+  Circle, Move, Pencil, Navigation, Bell, AlertCircle, X,
+  ArrowDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -638,20 +639,241 @@ function JogPanel() {
   )
 }
 
-function VisualizerPanel() {
+// Console line interface
+interface ConsoleLine {
+  id: string
+  type: 'cmd' | 'ok' | 'error' | 'info' | 'alarm' | 'status'
+  timestamp: Date
+  message: string
+  raw?: string
+}
+
+// Parse console messages from backend
+function parseConsoleMessage(
+  message: string,
+  direction: 'read' | 'write'
+): ConsoleLine {
+  const trimmed = message.trim()
+  const timestamp = new Date()
+  const id = `${timestamp.getTime()}-${Math.random()}`
+
+  // Commands sent TO Grbl
+  if (direction === 'write') {
+    // Check for reset character (Ctrl+X = \x18 = \u0018)
+    if (message === '\x18' || message === '\u0018' || trimmed === '\x18' || trimmed === '\u0018') {
+      return {
+        id,
+        type: 'cmd',
+        timestamp,
+        message: 'Reset',
+        raw: message
+      }
+    }
+    
+    return {
+      id,
+      type: 'cmd',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Messages FROM Grbl
+  // Status reports: <Idle,MPos:...>
+  if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+    return {
+      id,
+      type: 'status',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Errors: error:5 or error:5 (message)
+  if (trimmed.startsWith('error:')) {
+    return {
+      id,
+      type: 'error',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Alarms: ALARM:1 or ALARM:1 (message)
+  if (trimmed.startsWith('ALARM:')) {
+    return {
+      id,
+      type: 'alarm',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // OK responses
+  if (trimmed === 'ok') {
+    return {
+      id,
+      type: 'ok',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Settings: $0=10
+  if (trimmed.match(/^\$\d+=/)) {
+    return {
+      id,
+      type: 'info',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Parser state: [G0 G54 G17...]
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return {
+      id,
+      type: 'info',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // G-code lines: > G0 X0 Y0 (ln=123)
+  if (trimmed.startsWith('> ')) {
+    return {
+      id,
+      type: 'cmd',
+      timestamp,
+      message: trimmed,
+      raw: trimmed
+    }
+  }
+
+  // Default: info
+  return {
+    id,
+    type: 'info',
+    timestamp,
+    message: trimmed,
+    raw: trimmed
+  }
+}
+
+function VisualizerPanel({ 
+  isConnected, 
+  connectedPort 
+}: { 
+  isConnected: boolean
+  connectedPort: string | null
+}) {
   const [tab, setTab] = useState<'3d' | 'console'>('3d')
+  const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([])
+  const [commandInput, setCommandInput] = useState('')
+  const [autoScroll, setAutoScroll] = useState(true)
+  const consoleContainerRef = useRef<HTMLDivElement>(null)
+  const scrollToBottom = useCallback(() => {
+    if (!consoleContainerRef.current) return
+    
+    // Find the OverlayScrollbars viewport element within the container
+    const viewport = consoleContainerRef.current.querySelector('[data-overlayscrollbars-viewport]') as HTMLElement
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight
+      return
+    }
+    
+    // Fallback: try to find any scrollable element
+    const scrollable = consoleContainerRef.current.querySelector('.os-viewport') as HTMLElement
+    if (scrollable) {
+      scrollable.scrollTop = scrollable.scrollHeight
+    }
+  }, [])
   
-  const mockConsoleLines = [
-    { type: 'info', time: '10:23:45', msg: 'Grbl 1.1h [\'$\' for help]' },
-    { type: 'info', time: '10:23:45', msg: '[MSG:\'$H\'|\'$X\' to unlock]' },
-    { type: 'cmd', time: '10:23:52', msg: '> $X' },
-    { type: 'ok', time: '10:23:52', msg: 'ok' },
-    { type: 'cmd', time: '10:24:01', msg: '> G28' },
-    { type: 'ok', time: '10:24:15', msg: 'ok' },
-    { type: 'cmd', time: '10:25:33', msg: '> G0 X0 Y0' },
-    { type: 'ok', time: '10:25:34', msg: 'ok' },
-    { type: 'info', time: '10:26:00', msg: '[MSG:Pgm End]' },
-  ]
+  const MAX_LINES = 1000
+  
+  // Auto-scroll to bottom when new lines are added (only if auto-scroll is enabled)
+  useEffect(() => {
+    if (autoScroll && consoleLines.length > 0) {
+      // Use requestAnimationFrame for immediate attempt, then setTimeout for delayed attempt
+      // This handles cases where OverlayScrollbars hasn't initialized yet
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+      
+      const timeoutId = setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [consoleLines, autoScroll, scrollToBottom])
+  
+  // Limit console history to prevent memory issues
+  useEffect(() => {
+    setConsoleLines(prev => {
+      if (prev.length > MAX_LINES) {
+        return prev.slice(-MAX_LINES)
+      }
+      return prev
+    })
+  }, [consoleLines.length])
+  
+  // Listen to Socket.IO events for console messages
+  useEffect(() => {
+    if (!isConnected || !connectedPort) {
+      // Clear console when disconnected
+      setConsoleLines([])
+      return
+    }
+
+    const socket = socketService.getSocket()
+    if (!socket) return
+
+    // Listen for messages FROM Grbl
+    const handleSerialRead = (message: string) => {
+      const line = parseConsoleMessage(message, 'read')
+      setConsoleLines(prev => [...prev, line])
+    }
+
+    // Listen for messages TO Grbl
+    const handleSerialWrite = (data: string) => {
+      const line = parseConsoleMessage(data, 'write')
+      setConsoleLines(prev => [...prev, line])
+    }
+
+    socket.on('serialport:read', handleSerialRead)
+    socket.on('serialport:write', handleSerialWrite)
+
+    return () => {
+      socket.off('serialport:read', handleSerialRead)
+      socket.off('serialport:write', handleSerialWrite)
+    }
+  }, [isConnected, connectedPort])
+  
+  // Handle command input
+  const handleSendCommand = useCallback(() => {
+    if (!commandInput.trim() || !isConnected || !connectedPort) return
+
+    // Send via Socket.IO
+    socketService.getSocket()?.emit('writeln', connectedPort, commandInput.trim())
+    
+    // Clear input
+    setCommandInput('')
+  }, [commandInput, isConnected, connectedPort])
+  
+  // Handle Enter key
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSendCommand()
+    }
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -701,31 +923,75 @@ function VisualizerPanel() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col bg-zinc-950">
-          <div className="flex-1 p-2 font-mono text-xs overflow-auto">
-            {mockConsoleLines.map((line, i) => (
-              <div key={i} className="py-0.5">
-                <span className="text-zinc-500">{line.time}</span>
-                <span className={`ml-2 ${
-                  line.type === 'cmd' ? 'text-blue-400' :
-                  line.type === 'ok' ? 'text-green-400' :
-                  line.type === 'error' ? 'text-red-400' :
-                  'text-zinc-300'
-                }`}>
-                  {line.msg}
-                </span>
-              </div>
-            ))}
+        <div ref={consoleContainerRef} className="flex-1 flex flex-col bg-zinc-950 min-h-0 relative">
+          <OverlayScrollbarsComponent 
+            className="flex-1 min-h-0"
+            options={{ 
+              scrollbars: { autoHide: 'scroll', autoHideDelay: 400 },
+              overflow: { x: 'hidden', y: 'scroll' }
+            }}
+          >
+            <div className="p-2 font-mono text-xs">
+              {consoleLines.length === 0 ? (
+                <div className="text-zinc-500 text-center py-8">
+                  {isConnected 
+                    ? 'Console ready. Messages will appear here...'
+                    : 'Not connected. Connect to a serial port to see console messages.'}
+                </div>
+              ) : (
+                consoleLines.map((line) => (
+                  <div key={line.id} className="py-0.5">
+                    <span className="text-zinc-500">
+                      {line.timestamp.toLocaleTimeString()}
+                    </span>
+                    <span className={`ml-2 ${
+                      line.type === 'cmd' ? 'text-blue-400' :
+                      line.type === 'ok' ? 'text-green-400' :
+                      line.type === 'error' ? 'text-red-400' :
+                      line.type === 'alarm' ? 'text-orange-400' :
+                      line.type === 'status' ? 'text-cyan-400' :
+                      'text-zinc-300'
+                    }`}>
+                      {line.message}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </OverlayScrollbarsComponent>
+          {/* Auto-scroll toggle button */}
+          <div className="absolute bottom-14 right-2 z-10">
+            <Button
+              size="sm"
+              variant={autoScroll ? "default" : "outline"}
+              className="h-7 w-7 p-0"
+              onClick={() => setAutoScroll(!autoScroll)}
+              title={autoScroll ? "Auto-scroll enabled" : "Auto-scroll disabled"}
+            >
+              <ArrowDown className={`w-4 h-4 ${autoScroll ? '' : 'opacity-50'}`} />
+            </Button>
           </div>
           {/* Command input */}
           <div className="border-t border-zinc-800 p-2 flex items-center gap-2">
             <span className="text-blue-400 font-mono text-sm leading-none">&gt;</span>
             <input 
               type="text"
+              value={commandInput}
+              onChange={(e) => setCommandInput(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder="Enter command..."
-              className="flex-1 bg-transparent text-zinc-100 font-mono text-sm outline-none placeholder:text-zinc-600 leading-none"
+              disabled={!isConnected}
+              className="flex-1 bg-transparent text-zinc-100 font-mono text-sm outline-none placeholder:text-zinc-600 leading-none disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <Button size="sm" variant="secondary" className="h-7 text-xs">Send</Button>
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              className="h-7 text-xs"
+              onClick={handleSendCommand}
+              disabled={!commandInput.trim() || !isConnected}
+            >
+              Send
+            </Button>
           </div>
         </div>
       )}
@@ -1360,6 +1626,15 @@ export default function SetupMockup() {
     socketService.getSocket()?.emit('command', connectedPort, 'reset')
   }, [isConnected, connectedPort])
   
+  // Handle Unlock button (clears alarms)
+  const handleUnlock = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot unlock: not connected')
+      return
+    }
+    socketService.getSocket()?.emit('command', connectedPort, 'unlock')
+  }, [isConnected, connectedPort])
+  
   // Listen for connection events and errors
   useEffect(() => {
     const handleSerialPortOpen = (...args: unknown[]) => {
@@ -1527,6 +1802,9 @@ export default function SetupMockup() {
         <Button variant="outline" size="sm" onClick={handleHome} disabled={!isConnected}>
           <Home className="w-4 h-4 mr-1" /> Home
         </Button>
+        <Button variant="outline" size="sm" onClick={handleUnlock} disabled={!isConnected}>
+          <Unlock className="w-4 h-4 mr-1" /> Unlock
+        </Button>
         <Button variant="outline" size="sm" onClick={handleReset} disabled={!isConnected}>
           <RotateCcw className="w-4 h-4 mr-1" /> Reset
         </Button>
@@ -1582,7 +1860,7 @@ export default function SetupMockup() {
         <div className="w-2/3 flex flex-col gap-2 min-h-0">
           {/* Visualizer - 75% height */}
           <div className="flex-[3] min-h-0 bg-card rounded-lg border border-border overflow-hidden shadow-sm">
-            <VisualizerPanel />
+            <VisualizerPanel isConnected={isConnected} connectedPort={connectedPort} />
           </div>
           {/* Tools - 25% height */}
           <div className="flex-1 min-h-0 bg-card rounded-lg border border-border overflow-hidden shadow-sm">
