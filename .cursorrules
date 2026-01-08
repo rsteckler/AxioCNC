@@ -49,6 +49,8 @@ cd src/app && npm run build        # Production build
 
 **Never run Android/Gradle builds** — User handles all compilation in Android Studio.
 
+**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `npm run dev`, `yarn start-server-dev`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
+
 ---
 
 ## Code Conventions
