@@ -576,7 +576,7 @@ function MethodEditDialog({
             <SettingsField label="Axes" description="Which axes this method zeros">
               <Select
                 value={editedMethod.axes}
-                onValueChange={(value: ZeroingAxes) => setEditedMethod({ ...editedMethod, axes: value })}
+                onValueChange={(value: ZeroingAxes) => setEditedMethod({ ...editedMethod, axes: value } as ZeroingMethod)}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />

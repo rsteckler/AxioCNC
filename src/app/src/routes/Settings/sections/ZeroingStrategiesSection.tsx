@@ -96,7 +96,6 @@ function StrategySelect({
   value,
   methods,
   onChange,
-  scenario,
 }: {
   value: StrategyOption
   methods: ZeroingMethod[]

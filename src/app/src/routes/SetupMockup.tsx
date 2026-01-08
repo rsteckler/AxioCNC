@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
+import { socketService } from '@/services/socket'
+import { useGetSettingsQuery } from '@/services/api'
 import {
   DndContext,
   closestCenter,
@@ -25,9 +28,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { 
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
   Home, Play, Pause, Square, Upload, 
-  Crosshair, RotateCcw, Maximize2, GripVertical,
+  Crosshair, RotateCcw, RotateCw, Maximize2, GripVertical,
   Zap, Terminal, Wrench, Target, FileCode, Library,
-  Circle, Move, Pencil, Navigation
+  Circle, Move, Pencil, Navigation, Bell, AlertCircle, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -799,6 +802,75 @@ function CommandsPanel() {
   )
 }
 
+function SpindlePanel() {
+  const [isOn, setIsOn] = useState(false)
+  const [speedIndex, setSpeedIndex] = useState(2) // Default to 1000 RPM
+  const [direction, setDirection] = useState<'cw' | 'ccw'>('cw')
+  
+  const speeds = [0, 500, 1000, 1500, 2000, 2500, 3000]
+  const speed = speeds[speedIndex]
+
+  return (
+    <div className="p-3 space-y-3">
+      {/* On/Off toggle */}
+      <Button 
+        className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
+        variant={isOn ? 'default' : 'outline'}
+        onClick={() => setIsOn(!isOn)}
+      >
+        <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
+        {isOn ? 'Stop Spindle' : 'Start Spindle'}
+      </Button>
+      
+      {/* Speed control */}
+      <div className="space-y-2">
+        <div className="text-xs text-muted-foreground flex justify-between">
+          <span>Speed (RPM)</span>
+          <span className="font-mono font-medium">{speed} RPM</span>
+        </div>
+        <Slider 
+          value={[speedIndex]} 
+          onValueChange={(v) => setSpeedIndex(v[0])}
+          max={speeds.length - 1} 
+          step={1}
+          disabled={!isOn}
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+          <span>0</span>
+          <span>500</span>
+          <span>1k</span>
+          <span>1.5k</span>
+          <span>2k</span>
+          <span>2.5k</span>
+          <span>3k</span>
+        </div>
+      </div>
+      
+      {/* Direction toggle */}
+      <div className="flex gap-2">
+        <Button
+          variant={direction === 'cw' ? 'default' : 'outline'}
+          className="flex-1"
+          onClick={() => setDirection('cw')}
+          disabled={!isOn}
+        >
+          <RotateCw className="w-4 h-4 mr-1" />
+          CW
+        </Button>
+        <Button
+          variant={direction === 'ccw' ? 'default' : 'outline'}
+          className="flex-1"
+          onClick={() => setDirection('ccw')}
+          disabled={!isOn}
+        >
+          <RotateCcw className="w-4 h-4 mr-1" />
+          CCW
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function FilePanel() {
   return (
     <div className="p-3 space-y-3">
@@ -1024,6 +1096,7 @@ const panelConfig: Record<string, {
   macros: { title: 'Macros', icon: Zap, component: MacrosPanel },
   commands: { title: 'Commands', icon: Terminal, component: CommandsPanel },
   file: { title: 'File', icon: FileCode, component: FilePanel },
+  spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
 }
 
 // Sortable Panel Component
@@ -1117,14 +1190,220 @@ function DragOverlayPanel({ id, isCollapsed }: { id: string; isCollapsed: boolea
 }
 
 export default function SetupMockup() {
+  const navigate = useNavigate()
+  
   // Panel order - just an array of IDs
-  const [panelOrder, setPanelOrder] = useState(['dro', 'jog', 'rapid', 'probe', 'file', 'macros', 'commands'])
+  const [panelOrder, setPanelOrder] = useState(['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'commands'])
   
   // Track which panels are collapsed
   const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>({})
   
   // Track active drag item
   const [activeId, setActiveId] = useState<string | null>(null)
+  
+  // Connection state
+  const [isConnected, setIsConnected] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [connectedPort, setConnectedPort] = useState<string | null>(null)
+  
+  // Notifications state
+  const [notifications, setNotifications] = useState<Array<{
+    id: string
+    type: 'error' | 'warning' | 'info'
+    title: string
+    message: string
+    timestamp: Date
+    read: boolean
+  }>>([])
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  
+  // Get connection settings from API
+  const { data: settings } = useGetSettingsQuery()
+  
+  // Show error notification
+  const showErrorNotification = useCallback((title: string, message: string) => {
+    const notification = {
+      id: Date.now().toString(),
+      type: 'error' as const,
+      title,
+      message,
+      timestamp: new Date(),
+      read: false
+    }
+    setNotifications(prev => [notification, ...prev])
+    setNotificationsOpen(true)
+  }, [])
+  
+  // Handle Connect/Disconnect
+  const handleConnect = useCallback(() => {
+    // Prevent double-clicking while connecting
+    if (isConnecting) {
+      return
+    }
+    
+    // Check if settings are loaded
+    if (!settings) {
+      showErrorNotification('Settings Not Loaded', 'Please wait for settings to load, or check your connection to the server')
+      return
+    }
+    
+    // Check if port is configured
+    if (!settings.connection?.port) {
+      showErrorNotification('No Port Configured', 'Please configure a serial port in Settings before connecting')
+      return
+    }
+    
+    // Validate connection settings
+    const { port, baudRate, controllerType } = settings.connection
+    
+    if (!port || port.trim() === '') {
+      showErrorNotification('Invalid Port', 'Serial port is empty. Please configure a valid port in Settings')
+      return
+    }
+    
+    if (!baudRate || baudRate <= 0) {
+      showErrorNotification('Invalid Baud Rate', `Baud rate must be greater than 0. Current: ${baudRate}`)
+      return
+    }
+    
+    if (isConnected && connectedPort) {
+      // Disconnect
+      const socket = socketService.getSocket()
+      if (!socket) {
+        showErrorNotification('Socket Not Available', 'Socket connection is not available. Please refresh the page.')
+        return
+      }
+      
+      socket.emit('close', connectedPort, (err: Error | null) => {
+        if (err) {
+          console.error('Disconnect error:', err)
+          const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to disconnect from machine')
+          showErrorNotification('Disconnect Failed', errorMessage)
+        } else {
+          setIsConnected(false)
+          setConnectedPort(null)
+        }
+      })
+    } else {
+      // Connect
+      setIsConnecting(true)
+      
+      // Set a timeout for connection attempts (10 seconds)
+      const connectionTimeout = setTimeout(() => {
+        setIsConnecting(false)
+        showErrorNotification('Connection Timeout', 'Connection attempt timed out. Please check that the port is available and the machine is powered on.')
+      }, 10000)
+      
+      // Ensure socket is connected first
+      let socket = socketService.getSocket()
+      if (!socket || !socketService.isConnected()) {
+        socket = socketService.connect()
+        if (!socket) {
+          clearTimeout(connectionTimeout)
+          setIsConnecting(false)
+          showErrorNotification('Socket Connection Failed', 'Failed to establish socket connection. Please check your authentication and try again.')
+          return
+        }
+      }
+      
+      // Wait a moment for socket to be ready if it was just connected
+      const attemptConnection = () => {
+        socket = socketService.getSocket()
+        if (!socket) {
+          clearTimeout(connectionTimeout)
+          setIsConnecting(false)
+          showErrorNotification('Socket Not Ready', 'Socket connection is not ready. Please try again.')
+          return
+        }
+        
+        socket.emit('open', port, {
+          baudrate: baudRate,
+          controllerType: controllerType || 'Grbl'
+        }, (err: Error | null) => {
+          clearTimeout(connectionTimeout)
+          setIsConnecting(false)
+          if (err) {
+            console.error('Connection error:', err)
+            const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to connect to machine')
+            showErrorNotification('Connection Failed', errorMessage)
+          } else {
+            setIsConnected(true)
+            setConnectedPort(port)
+          }
+        })
+      }
+      
+      // If socket was just connected, give it a moment to initialize
+      if (!socketService.isConnected()) {
+        setTimeout(attemptConnection, 100)
+      } else {
+        attemptConnection()
+      }
+    }
+  }, [settings, isConnected, isConnecting, connectedPort, showErrorNotification])
+  
+  // Handle Home button
+  const handleHome = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot home: not connected')
+      return
+    }
+    socketService.getSocket()?.emit('command', connectedPort, 'homing')
+  }, [isConnected, connectedPort])
+  
+  // Handle Reset button
+  const handleReset = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot reset: not connected')
+      return
+    }
+    socketService.getSocket()?.emit('command', connectedPort, 'reset')
+  }, [isConnected, connectedPort])
+  
+  // Listen for connection events and errors
+  useEffect(() => {
+    const handleSerialPortOpen = (...args: unknown[]) => {
+      const data = args[0] as { port: string }
+      setIsConnected(true)
+      setConnectedPort(data.port)
+      setIsConnecting(false)
+    }
+    
+    const handleSerialPortClose = () => {
+      setIsConnected(false)
+      setConnectedPort(null)
+      setIsConnecting(false)
+    }
+    
+    const handleSocketError = (error: unknown) => {
+      console.error('Socket error:', error)
+      setIsConnecting(false)
+      const errorMessage = error instanceof Error ? error.message : 'Socket connection error occurred'
+      showErrorNotification('Socket Error', errorMessage)
+    }
+    
+    const handleSocketDisconnect = (reason: unknown) => {
+      console.log('Socket disconnected:', reason)
+      if (isConnected) {
+        setIsConnected(false)
+        setConnectedPort(null)
+        const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
+        showErrorNotification('Connection Lost', `Socket disconnected: ${reasonStr}`)
+      }
+    }
+    
+    socketService.on('serialport:open', handleSerialPortOpen)
+    socketService.on('serialport:close', handleSerialPortClose)
+    socketService.on('error', handleSocketError)
+    socketService.on('disconnect', handleSocketDisconnect)
+    
+    return () => {
+      socketService.off('serialport:open', handleSerialPortOpen)
+      socketService.off('serialport:close', handleSerialPortClose)
+      socketService.off('error', handleSocketError)
+      socketService.off('disconnect', handleSocketDisconnect)
+    }
+  }, [isConnected, showErrorNotification])
   
   // Drag sensors
   const sensors = useSensors(
@@ -1188,16 +1467,47 @@ export default function SetupMockup() {
           <Button variant="default" size="sm">Setup</Button>
           <Button variant="ghost" size="sm">Monitor</Button>
           <Button variant="ghost" size="sm">Stats</Button>
-          <Button variant="ghost" size="sm">Settings</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
         </div>
         
         {/* Spacer */}
         <div className="flex-1" />
         
-        {/* Connection status */}
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-sm text-muted-foreground">/dev/ttyUSB0</span>
+        {/* Connection status & control */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-zinc-500'}`} />
+            <span className="text-sm text-muted-foreground">
+              {isConnected ? connectedPort : 'Not connected'}
+            </span>
+          </div>
+          <Button 
+            variant={isConnected ? "secondary" : "outline"} 
+            size="sm" 
+            className="h-8"
+            onClick={handleConnect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Connect'}
+          </Button>
+          {/* Notifications button */}
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={() => setNotificationsOpen(true)}
+            >
+              <Bell className="w-4 h-4" />
+            </Button>
+            {notifications.filter(n => !n.read).length > 0 && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                <span className="text-[10px] font-bold text-white">
+                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Emergency Stop - always visible */}
@@ -1214,10 +1524,10 @@ export default function SetupMockup() {
       {/* Setup control bar - screen-specific controls */}
       <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
         <span className="text-sm text-muted-foreground mr-2">Machine:</span>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleHome} disabled={!isConnected}>
           <Home className="w-4 h-4 mr-1" /> Home
         </Button>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleReset} disabled={!isConnected}>
           <RotateCcw className="w-4 h-4 mr-1" /> Reset
         </Button>
         
@@ -1280,6 +1590,88 @@ export default function SetupMockup() {
           </div>
         </div>
       </main>
+      
+      {/* Notifications Modal */}
+      <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Notifications & Errors</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-2 mt-4">
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No notifications
+              </div>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-lg border ${
+                    notification.type === 'error'
+                      ? 'border-red-500/50 bg-red-500/10'
+                      : notification.type === 'warning'
+                      ? 'border-yellow-500/50 bg-yellow-500/10'
+                      : 'border-border bg-muted/30'
+                  } ${!notification.read ? 'opacity-100' : 'opacity-60'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      {notification.type === 'error' ? (
+                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <Bell className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{notification.title}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {notification.message}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {notification.timestamp.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setNotifications(prev =>
+                          prev.map(n =>
+                            n.id === notification.id ? { ...n, read: true } : n
+                          )
+                        )
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setNotifications([])
+              }}
+            >
+              Clear All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+              }}
+            >
+              Mark All Read
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
