@@ -1467,10 +1467,30 @@ export default function SetupMockup() {
   // Track active drag item
   const [activeId, setActiveId] = useState<string | null>(null)
   
+  // Machine status type
+  type MachineStatus = 
+    | 'not_connected'
+    | 'connected_pre_home'
+    | 'connected_post_home'
+    | 'alarm'
+    | 'running'
+    | 'error'
+  
   // Connection state
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [connectedPort, setConnectedPort] = useState<string | null>(null)
+  const [machineStatus, setMachineStatus] = useState<MachineStatus>('not_connected')
+  const [isFlashing, setIsFlashing] = useState(false)
+  const [isHomed, setIsHomed] = useState(false)
+  const [isJobRunning, setIsJobRunning] = useState(false)
+  const [homingInProgress, setHomingInProgress] = useState(false)
+  
+  // Refs to track state in event handlers to avoid stale closures
+  const isConnectedRef = useRef(isConnected)
+  isConnectedRef.current = isConnected
+  const homingInProgressRef = useRef(homingInProgress)
+  homingInProgressRef.current = homingInProgress
   
   // Notifications state
   const [notifications, setNotifications] = useState<Array<{
@@ -1548,6 +1568,9 @@ export default function SetupMockup() {
         } else {
           setIsConnected(false)
           setConnectedPort(null)
+          setMachineStatus('not_connected')
+          setIsHomed(false)
+          setIsJobRunning(false)
         }
       })
     } else {
@@ -1595,6 +1618,8 @@ export default function SetupMockup() {
           } else {
             setIsConnected(true)
             setConnectedPort(port)
+            setMachineStatus('connected_pre_home')
+            setIsHomed(false) // Reset homing state on new connection
           }
         })
       }
@@ -1608,32 +1633,86 @@ export default function SetupMockup() {
     }
   }, [settings, isConnected, isConnecting, connectedPort, showErrorNotification])
   
-  // Handle Home button
+  // Flash status when action attempted while disconnected
+  const flashStatus = useCallback(() => {
+    if (isConnected) return
+    
+    // Flash 3 times using a toggle pattern
+    let flashCount = 0
+    const flashInterval = setInterval(() => {
+      setIsFlashing(prev => !prev)
+      flashCount++
+      if (flashCount >= 6) {
+        clearInterval(flashInterval)
+        setIsFlashing(false)
+      }
+    }, 200) // 200ms per flash cycle
+  }, [isConnected])
+  
+  // Handle Home button - transitions to post-home after successful homing
   const handleHome = useCallback(() => {
     if (!isConnected || !connectedPort) {
       console.warn('Cannot home: not connected')
+      flashStatus()
       return
     }
+    setHomingInProgress(true)
+    homingInProgressRef.current = true
     socketService.getSocket()?.emit('command', connectedPort, 'homing')
-  }, [isConnected, connectedPort])
+    // Note: actual transition to post-home happens when we receive homing completion from controller
+  }, [isConnected, connectedPort, flashStatus])
   
-  // Handle Reset button
+  // Handle Reset button - goes to pre-home state
   const handleReset = useCallback(() => {
     if (!isConnected || !connectedPort) {
       console.warn('Cannot reset: not connected')
+      flashStatus()
       return
     }
     socketService.getSocket()?.emit('command', connectedPort, 'reset')
-  }, [isConnected, connectedPort])
+    setMachineStatus('connected_pre_home')
+    setIsHomed(false) // Reset homing state after reset
+    setHomingInProgress(false)
+    homingInProgressRef.current = false
+    setIsJobRunning(false)
+  }, [isConnected, connectedPort, flashStatus])
   
-  // Handle Unlock button (clears alarms)
+  // Handle Unlock button (clears alarms) - goes to pre-home state after unlock
   const handleUnlock = useCallback(() => {
     if (!isConnected || !connectedPort) {
       console.warn('Cannot unlock: not connected')
+      flashStatus()
       return
     }
     socketService.getSocket()?.emit('command', connectedPort, 'unlock')
-  }, [isConnected, connectedPort])
+    // After unlock, transition to pre-home (position might not be trusted)
+    setMachineStatus('connected_pre_home')
+    setIsHomed(false)
+    setHomingInProgress(false)
+    homingInProgressRef.current = false
+  }, [isConnected, connectedPort, flashStatus])
+  
+  // Handle E-Stop button (emergency stop - force stop all motion)
+  const handleEStop = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot E-Stop: not connected')
+      flashStatus()
+      return
+    }
+    // Send gcode:stop command with force: true
+    // This will send feedhold (!) if running, then reset (Ctrl-X) after delay
+    socketService.getSocket()?.emit('command', connectedPort, 'gcode:stop', { force: true })
+    // E-Stop should stop any running job
+    setIsJobRunning(false)
+    // Status will be updated by controller state handler after reset
+  }, [isConnected, connectedPort, flashStatus])
+  
+  // Handler for jog commands (called from JogPanel)
+  const handleJogAction = useCallback(() => {
+    if (!isConnected) {
+      flashStatus()
+    }
+  }, [isConnected, flashStatus])
   
   // Listen for connection events and errors
   useEffect(() => {
@@ -1642,19 +1721,116 @@ export default function SetupMockup() {
       setIsConnected(true)
       setConnectedPort(data.port)
       setIsConnecting(false)
+      setMachineStatus('connected_pre_home')
+      setIsHomed(false)
+      setHomingInProgress(false)
+      homingInProgressRef.current = false
+      setIsJobRunning(false)
     }
     
     const handleSerialPortClose = () => {
       setIsConnected(false)
       setConnectedPort(null)
       setIsConnecting(false)
+      setMachineStatus('not_connected')
+      setIsHomed(false)
+      setHomingInProgress(false)
+      homingInProgressRef.current = false
+      setIsJobRunning(false)
     }
     
     const handleSocketError = (error: unknown) => {
       console.error('Socket error:', error)
       setIsConnecting(false)
+      setMachineStatus('error')
       const errorMessage = error instanceof Error ? error.message : 'Socket connection error occurred'
       showErrorNotification('Socket Error', errorMessage)
+    }
+    
+    // Listen for controller state changes to detect alarm, running, and homing states
+    const handleControllerState = (...args: unknown[]) => {
+      // Backend sends: controller:state(GRBL, state)
+      // State structure: { status: { activeState: 'Idle'|'Run'|'Alarm'|... }, parserstate: {...} }
+      const controllerType = args[0] as string
+      const state = args[1] as { 
+        status?: {
+          activeState?: string
+          mpos?: { x?: string; y?: string; z?: string }
+          wpos?: { x?: string; y?: string; z?: string }
+        }
+        parserstate?: unknown
+      }
+      
+      // Only update status if we're actually connected
+      if (!isConnectedRef.current) return
+      
+      // Extract activeState from nested structure
+      const activeState = state.status?.activeState || ''
+      const isAlarm = activeState === 'Alarm'
+      const isRunning = activeState === 'Run'
+      const isHoming = activeState === 'Home'
+      const isIdle = activeState === 'Idle'
+      
+      // Priority: Alarm > Running (from workflow) > Idle (post-home) > Idle (pre-home)
+      // Note: Running state is handled by workflow:state, not controller:state
+      // Don't override running status unless we get an alarm
+      if (isAlarm) {
+        setMachineStatus('alarm')
+        setIsJobRunning(false)
+      } else if (!isJobRunning) {
+        // Only update status if workflow is not running
+        // Workflow running state takes priority over controller idle state
+        if (isIdle && isHomed) {
+          // Idle after homing = post-home ready
+          setMachineStatus('connected_post_home')
+        } else if (isHoming) {
+          // Homing in progress - stay in pre-home until complete
+          setMachineStatus('connected_pre_home')
+        } else if (isIdle && !isHomed) {
+          // Idle but not homed = pre-home
+          setMachineStatus('connected_pre_home')
+        }
+      }
+      
+      // Check if homing completed - when we transition from 'Home' state to 'Idle'
+      // This indicates homing cycle completed successfully
+      if (isIdle && !isHoming && homingInProgressRef.current && !isHomed && isConnectedRef.current) {
+        // Homing was in progress and now we're idle - homing completed
+        setIsHomed(true)
+        setHomingInProgress(false)
+        homingInProgressRef.current = false
+        setMachineStatus('connected_post_home')
+      } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomed) {
+        // Reset homing progress flag if we're idle without homing active
+        setHomingInProgress(false)
+      }
+    }
+    
+    // Listen for workflow state to detect running jobs
+    const handleWorkflowState = (workflowState: string) => {
+      // Only update if we're connected
+      if (!isConnectedRef.current) return
+      
+      // workflowState is 'idle', 'running', or 'paused'
+      if (workflowState === 'running') {
+        setMachineStatus('running')
+        setIsJobRunning(true)
+      } else {
+        // When workflow stops (idle or paused), let controller state determine the status
+        setIsJobRunning(false)
+        // Trigger a status update by checking current controller state
+        // The controller state handler will set the appropriate status
+      }
+    }
+    
+    // Listen for homing completion (controller-specific events)
+    const handleHomingComplete = () => {
+      if (isConnectedRef.current) {
+        setIsHomed(true)
+        setHomingInProgress(false)
+        homingInProgressRef.current = false
+        setMachineStatus('connected_post_home')
+      }
     }
     
     const handleSocketDisconnect = (reason: unknown) => {
@@ -1662,6 +1838,9 @@ export default function SetupMockup() {
       if (isConnected) {
         setIsConnected(false)
         setConnectedPort(null)
+        setMachineStatus('not_connected')
+        setIsHomed(false)
+        setIsJobRunning(false)
         const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
         showErrorNotification('Connection Lost', `Socket disconnected: ${reasonStr}`)
       }
@@ -1671,14 +1850,24 @@ export default function SetupMockup() {
     socketService.on('serialport:close', handleSerialPortClose)
     socketService.on('error', handleSocketError)
     socketService.on('disconnect', handleSocketDisconnect)
+    socketService.on('controller:state', handleControllerState)
+    socketService.on('workflow:state', handleWorkflowState)
+    socketService.on('controller:homing', handleHomingComplete)
+    socketService.on('grbl:homing', handleHomingComplete) // Grbl-specific
+    socketService.on('marlin:homing', handleHomingComplete) // Marlin-specific
     
     return () => {
       socketService.off('serialport:open', handleSerialPortOpen)
       socketService.off('serialport:close', handleSerialPortClose)
       socketService.off('error', handleSocketError)
       socketService.off('disconnect', handleSocketDisconnect)
+      socketService.off('controller:state', handleControllerState)
+      socketService.off('workflow:state', handleWorkflowState)
+      socketService.off('controller:homing', handleHomingComplete)
+      socketService.off('grbl:homing', handleHomingComplete)
+      socketService.off('marlin:homing', handleHomingComplete)
     }
-  }, [isConnected, showErrorNotification])
+  }, [showErrorNotification, isConnected])
   
   // Drag sensors
   const sensors = useSensors(
@@ -1748,76 +1937,209 @@ export default function SetupMockup() {
         {/* Spacer */}
         <div className="flex-1" />
         
-        {/* Connection status & control */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-zinc-500'}`} />
-            <span className="text-sm text-muted-foreground">
-              {isConnected ? connectedPort : 'Not connected'}
-            </span>
-          </div>
+        {/* Notifications button */}
+        <div className="relative">
           <Button 
-            variant={isConnected ? "secondary" : "outline"} 
+            variant="ghost" 
             size="sm" 
-            className="h-8"
-            onClick={handleConnect}
-            disabled={isConnecting}
+            className="h-8 w-8 p-0"
+            onClick={() => setNotificationsOpen(true)}
           >
-            {isConnecting ? 'Connecting...' : isConnected ? 'Disconnect' : 'Connect'}
+            <Bell className="w-4 h-4" />
           </Button>
-          {/* Notifications button */}
-          <div className="relative">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={() => setNotificationsOpen(true)}
-            >
-              <Bell className="w-4 h-4" />
-            </Button>
-            {notifications.filter(n => !n.read).length > 0 && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-white">
-                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length}
-                </span>
-              </div>
-            )}
-          </div>
+          {notifications.filter(n => !n.read).length > 0 && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+              <span className="text-[10px] font-bold text-white">
+                {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length}
+              </span>
+            </div>
+          )}
         </div>
         
-        {/* Emergency Stop - always visible */}
-        <Button 
-          variant="destructive" 
-          size="lg"
-          className="ml-4 h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
-        >
-          <Square className="w-5 h-5 mr-2" />
-          E-Stop
-        </Button>
+        {/* Emergency actions - Reset and E-Stop */}
+        <div className="ml-4 flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-9 px-4"
+            onClick={handleReset}
+            disabled={!isConnected}
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Reset
+          </Button>
+          <Button 
+            variant="destructive" 
+            size="lg"
+            className="h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
+            onClick={handleEStop}
+            disabled={!isConnected}
+          >
+            <Square className="w-5 h-5 mr-2" />
+            E-Stop
+          </Button>
+        </div>
       </header>
       
       {/* Setup control bar - screen-specific controls */}
       <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
         <span className="text-sm text-muted-foreground mr-2">Machine:</span>
-        <Button variant="outline" size="sm" onClick={handleHome} disabled={!isConnected}>
-          <Home className="w-4 h-4 mr-1" /> Home
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleUnlock} disabled={!isConnected}>
-          <Unlock className="w-4 h-4 mr-1" /> Unlock
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleReset} disabled={!isConnected}>
-          <RotateCcw className="w-4 h-4 mr-1" /> Reset
-        </Button>
+        {/* Machine status - rectangular badge */}
+        <div 
+          className={`
+            px-3 py-1.5 rounded border flex items-center gap-2 min-w-[140px] justify-center
+            transition-all duration-200
+            ${
+              machineStatus === 'connected_post_home' || machineStatus === 'running'
+                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400' 
+                : machineStatus === 'connected_pre_home'
+                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400'
+                : machineStatus === 'alarm'
+                ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+                : machineStatus === 'error'
+                ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+                : 'bg-muted border-border text-muted-foreground'
+            }
+            ${isFlashing ? 'animate-pulse' : ''}
+          `}
+        >
+          <div 
+            className={`
+              w-2 h-2 rounded-full
+              ${
+                machineStatus === 'connected_post_home' || machineStatus === 'running'
+                  ? 'bg-green-500' 
+                  : machineStatus === 'connected_pre_home'
+                  ? 'bg-yellow-500'
+                  : machineStatus === 'alarm' || machineStatus === 'error'
+                  ? 'bg-red-500'
+                  : 'bg-zinc-500'
+              }
+            `} 
+          />
+          <span className="text-xs font-medium">
+            {machineStatus === 'not_connected'
+              ? 'Not connected'
+              : machineStatus === 'connected_pre_home'
+              ? 'Ready (Run Home)'
+              : machineStatus === 'connected_post_home'
+              ? 'Ready'
+              : machineStatus === 'alarm'
+              ? 'Alarm'
+              : machineStatus === 'running'
+              ? 'Busy'
+              : machineStatus === 'error'
+              ? 'Error'
+              : 'Unknown'}
+          </span>
+        </div>
+        
+        {/* Action buttons - context-aware based on machine status */}
+        {machineStatus === 'not_connected' && (
+          <div className="ml-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleConnect}
+              disabled={isConnecting}
+            >
+              {isConnecting ? 'Connecting...' : 'Connect'}
+            </Button>
+          </div>
+        )}
+        
+        {/* Connected pre-home: Yellow Ready (Run Home) - Show Disconnect and Home */}
+        {machineStatus === 'connected_pre_home' && (
+          <>
+            <div className="ml-3">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                Disconnect
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleHome}>
+              <Home className="w-4 h-4 mr-1" /> Run Home
+            </Button>
+          </>
+        )}
+        
+        {/* Connected post-home: Green Ready - Show Disconnect and Home */}
+        {machineStatus === 'connected_post_home' && (
+          <>
+            <div className="ml-3">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                Disconnect
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleHome}>
+              <Home className="w-4 h-4 mr-1" /> Home
+            </Button>
+          </>
+        )}
+        
+        {/* Running: Green Busy - Show Disconnect and Home */}
+        {machineStatus === 'running' && (
+          <>
+            <div className="ml-3">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                Disconnect
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleHome} disabled>
+              <Home className="w-4 h-4 mr-1" /> Home
+            </Button>
+          </>
+        )}
+        
+        {/* Alarm: Red Alarm - Show Unlock and Home */}
+        {machineStatus === 'alarm' && (
+          <>
+            <div className="ml-3">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                Disconnect
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleUnlock}>
+              <Unlock className="w-4 h-4 mr-1" /> Unlock
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleHome}>
+              <Home className="w-4 h-4 mr-1" /> Home
+            </Button>
+          </>
+        )}
+        
+        <div className="flex-1" />
         
         <div className="w-px h-6 bg-border mx-2" />
         
-        <span className="text-sm text-muted-foreground mr-2">Job:</span>
-        <Button variant="outline" size="sm">
-          <Play className="w-4 h-4 mr-1" /> Start
-        </Button>
-        <Button variant="outline" size="sm">
-          <Pause className="w-4 h-4 mr-1" /> Pause
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground mr-2">Job:</span>
+          <Button variant="outline" size="sm">
+            <Play className="w-4 h-4 mr-1" /> Start
+          </Button>
+          <Button variant="outline" size="sm">
+            <Pause className="w-4 h-4 mr-1" /> Pause
+          </Button>
+        </div>
       </div>
       
       {/* Dashboard - Two column flex layout */}
