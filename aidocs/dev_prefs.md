@@ -64,6 +64,22 @@ This document captures design decisions, UI preferences, and architectural choic
 - **Destructive**: Delete, Reset operations (with confirmation dialog)
 - **Ghost**: Navigation, subtle actions
 
+### User Feedback for Disabled Actions
+
+When a user clicks on a function that isn't available due to machine state (e.g., jogging while in alarm mode, homing while not connected), **flash the Machine Status box** to indicate why the action is disabled.
+
+**Benefits:**
+- Avoids need for tooltips on every disabled button
+- Provides immediate visual feedback about machine state
+- Centralizes state information in one location
+- More discoverable than hidden tooltips
+
+**Implementation:**
+- Use a visual flash animation (e.g., 3 quick flashes, ~200ms each)
+- Flash the status badge/box in the Machine Status panel
+- Only flash when action is attempted while disabled (not on hover)
+- Can reuse the existing `flashStatus` pattern from connection actions
+
 ### Confirmation Dialogs
 
 - Use `AlertDialog` for destructive actions

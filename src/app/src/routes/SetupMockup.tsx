@@ -34,6 +34,8 @@ import {
   ArrowDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MachineActionButton } from '@/components/MachineActionButton'
+import { ActionRequirements, canPerformAction } from '@/utils/machineState'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
@@ -247,13 +249,52 @@ function PanelHeader({
   )
 }
 
-function DROPanel() {
-  const [workspace, setWorkspace] = useState('G54')
+function DROPanel({ isConnected, connectedPort, machineStatus, onFlashStatus, machinePosition = { x: 0, y: 0, z: 0 }, workPosition = { x: 0, y: 0, z: 0 }, currentWCS = 'G54' }: PanelProps) {
   const [workspaces, setWorkspaces] = useState(MOCK_WORKSPACES)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingName, setEditingName] = useState('')
   
+  // Use currentWCS from props, fallback to G54
+  const workspace = currentWCS || 'G54'
   const currentWorkspace = workspaces.find(ws => ws.id === workspace)
+  
+  // Get WCS number for G10 commands (G54=1, G55=2, etc.)
+  const getWCSPNumber = (wcs: string): number => {
+    const map: Record<string, number> = {
+      'G54': 1, 'G55': 2, 'G56': 3, 'G57': 4, 'G58': 5, 'G59': 6
+    }
+    return map[wcs] || 1
+  }
+  
+  // Handle zero out work offset for a single axis
+  const handleZeroAxis = useCallback((axis: 'X' | 'Y' | 'Z') => {
+    if (!connectedPort) return
+    const p = getWCSPNumber(workspace)
+    const gcode = `G10 L20 P${p} ${axis}0`
+    socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
+  }, [connectedPort, workspace])
+  
+  // Handle zero out all work offsets
+  const handleZeroAll = useCallback(() => {
+    if (!connectedPort) return
+    const p = getWCSPNumber(workspace)
+    const gcode = `G10 L20 P${p} X0 Y0 Z0`
+    socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
+  }, [connectedPort, workspace])
+  
+  // Handle go to work zero for a single axis
+  const handleGoToZeroAxis = useCallback((axis: 'X' | 'Y' | 'Z') => {
+    if (!connectedPort) return
+    const gcode = `G0 ${axis}0`
+    socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
+  }, [connectedPort])
+  
+  // Handle go to work zero for all axes
+  const handleGoToZeroAll = useCallback(() => {
+    if (!connectedPort) return
+    const gcode = 'G0 X0 Y0 Z0'
+    socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
+  }, [connectedPort])
   
   const handleEditClick = () => {
     setEditingName(currentWorkspace?.name || '')
@@ -268,9 +309,9 @@ function DROPanel() {
   }
   
   const axes = [
-    { axis: 'X', color: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30', mpos: MOCK_POSITION.x, wpos: MOCK_WORK_POS.x },
-    { axis: 'Y', color: 'text-green-500', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30', mpos: MOCK_POSITION.y, wpos: MOCK_WORK_POS.y },
-    { axis: 'Z', color: 'text-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', mpos: MOCK_POSITION.z, wpos: MOCK_WORK_POS.z },
+    { axis: 'X' as const, color: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30', mpos: machinePosition.x, wpos: workPosition.x },
+    { axis: 'Y' as const, color: 'text-green-500', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30', mpos: machinePosition.y, wpos: workPosition.y },
+    { axis: 'Z' as const, color: 'text-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', mpos: machinePosition.z, wpos: workPosition.z },
   ]
 
   return (
@@ -278,7 +319,7 @@ function DROPanel() {
         {/* Workspace selector dropdown */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-muted-foreground">Workspace:</span>
-          <Select value={workspace} onValueChange={setWorkspace}>
+          <Select value={workspace} onValueChange={() => {}} disabled>
             <SelectTrigger className="h-8 flex-1">
               <SelectValue>
                 <span className="font-mono text-muted-foreground mr-2">{workspace}</span>
@@ -340,9 +381,19 @@ function DROPanel() {
             <span className={`text-sm font-bold w-5 ${color}`}>{axis}</span>
             
             {/* Set Zero button - icon only */}
-            <Button variant="outline" size="sm" className="w-8 h-8 p-0">
+            <MachineActionButton
+              isConnected={isConnected}
+              connectedPort={connectedPort}
+              machineStatus={machineStatus}
+              onFlashStatus={onFlashStatus}
+              onAction={() => handleZeroAxis(axis)}
+              requirements={ActionRequirements.standard}
+              variant="outline"
+              size="sm"
+              className="w-8 h-8 p-0"
+            >
               <RotateCcw className="w-3.5 h-3.5" />
-            </Button>
+            </MachineActionButton>
             
             {/* Work position - gets the flex space */}
             <div className={`flex-1 ${bgColor} ${borderColor} border rounded px-2 py-1.5 font-mono text-right text-base font-medium`}>
@@ -355,34 +406,105 @@ function DROPanel() {
             </div>
             
             {/* Go to Zero button - icon only */}
-            <Button variant="secondary" size="sm" className="w-8 h-8 p-0">
+            <MachineActionButton
+              isConnected={isConnected}
+              connectedPort={connectedPort}
+              machineStatus={machineStatus}
+              onFlashStatus={onFlashStatus}
+              onAction={() => handleGoToZeroAxis(axis)}
+              requirements={ActionRequirements.standard}
+              variant="secondary"
+              size="sm"
+              className="w-8 h-8 p-0"
+            >
               <Home className="w-3.5 h-3.5" />
-            </Button>
+            </MachineActionButton>
           </div>
         ))}
         
         {/* All axes action buttons */}
         <div className="flex gap-2 pt-2 border-t border-border mt-2">
-          <Button variant="outline" size="sm" className="flex-1 h-8">
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={handleZeroAll}
+            requirements={ActionRequirements.standard}
+            variant="outline"
+            size="sm"
+            className="flex-1 w-full h-8"
+          >
             <RotateCcw className="w-3 h-3 mr-1" /> Zero All
-          </Button>
-          <Button variant="secondary" size="sm" className="flex-1 h-8">
+          </MachineActionButton>
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={handleGoToZeroAll}
+            requirements={ActionRequirements.standard}
+            variant="secondary"
+            size="sm"
+            className="flex-1 w-full h-8"
+          >
             <Home className="w-3 h-3 mr-1" /> Go to Zero
-          </Button>
+          </MachineActionButton>
         </div>
     </div>
   )
 }
 
-function JogPanel() {
+function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
   const [mode, setMode] = useState<'steps' | 'analog'>('steps')
   const [distanceIndex, setDistanceIndex] = useState(3) // Default to 10mm
   const distances = [0.01, 0.1, 1, 10, 100, 500, 'Continuous'] as const
   const currentDistance = distances[distanceIndex]
   
-  const [speedIndex, setSpeedIndex] = useState(3) // Default to 500
-  const speeds = [10, 50, 100, 500, 1000, 2000, 5000] as const
-  const currentSpeed = speeds[speedIndex]
+  // Handle jog command
+  const handleJog = useCallback((x: number, y: number, z: number) => {
+    if (!connectedPort) return
+    
+    // For "Continuous", we'll use a very large distance (999999)
+    // In practice, continuous jogging would need different handling
+    const distance = currentDistance === 'Continuous' ? 999999 : currentDistance
+    
+    // Build the movement command
+    const parts: string[] = []
+    if (x !== 0) parts.push(`X${x * distance}`)
+    if (y !== 0) parts.push(`Y${y * distance}`)
+    if (z !== 0) parts.push(`Z${z * distance}`)
+    
+    if (parts.length === 0) return
+    
+    const command = parts.join(' ')
+    
+    // Send jog commands: G91 (relative), G0 (rapid move), G90 (absolute)
+    const socket = socketService.getSocket()
+    if (socket) {
+      socket.emit('command', connectedPort, 'gcode', 'G91') // relative mode
+      socket.emit('command', connectedPort, 'gcode', `G0 ${command}`) // rapid move
+      socket.emit('command', connectedPort, 'gcode', 'G90') // absolute mode
+    }
+  }, [connectedPort, currentDistance])
+  
+  // Handle go to zero for XY axes
+  const handleGoToZeroXY = useCallback(() => {
+    if (!connectedPort) return
+    const socket = socketService.getSocket()
+    if (socket) {
+      socket.emit('command', connectedPort, 'gcode', 'G0 X0 Y0')
+    }
+  }, [connectedPort])
+  
+  // Handle go to zero for Z axis
+  const handleGoToZeroZ = useCallback(() => {
+    if (!connectedPort) return
+    const socket = socketService.getSocket()
+    if (socket) {
+      socket.emit('command', connectedPort, 'gcode', 'G0 Z0')
+    }
+  }, [connectedPort])
   
   // Analog joystick state
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 })
@@ -454,48 +576,158 @@ function JogPanel() {
           <div className="flex items-center justify-center gap-24">
             {/* XY Pad - 3x3 with diagonals */}
             <div className="grid grid-cols-3 gap-1" style={{ width: '140px' }}>
-              <Button variant="secondary" className="aspect-square p-0">
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(-1, 1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <DiagUL />
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(0, 1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronUp className="w-5 h-5" />
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(1, 1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <DiagUR />
-              </Button>
+              </MachineActionButton>
               
-              <Button variant="secondary" className="aspect-square p-0">
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(-1, 0, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <Button variant="outline" className="aspect-square p-0 text-xs font-bold">
-                XY
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={handleGoToZeroXY}
+                requirements={ActionRequirements.jog}
+                variant="outline"
+                className="aspect-square p-0 text-xs font-bold"
+                title="Go to XY zero"
+              >
+                XY 0
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(1, 0, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronRight className="w-5 h-5" />
-              </Button>
+              </MachineActionButton>
               
-              <Button variant="secondary" className="aspect-square p-0">
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(-1, -1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <DiagLL />
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(0, -1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronDown className="w-5 h-5" />
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(1, -1, 0)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <DiagLR />
-              </Button>
+              </MachineActionButton>
             </div>
             
             {/* Z Controls - vertically stacked */}
             <div className="flex flex-col gap-1" style={{ width: '56px' }}>
-              <Button variant="secondary" className="aspect-square p-0">
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(0, 0, 1)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronUp className="w-5 h-5 text-blue-500" />
-              </Button>
-              <Button variant="outline" className="aspect-square p-0 text-xs font-bold text-blue-500">
-                Z
-              </Button>
-              <Button variant="secondary" className="aspect-square p-0">
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={handleGoToZeroZ}
+                requirements={ActionRequirements.jog}
+                variant="outline"
+                className="aspect-square p-0 text-xs font-bold text-blue-500"
+                title="Go to Z zero"
+              >
+                Z 0
+              </MachineActionButton>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={() => handleJog(0, 0, -1)}
+                requirements={ActionRequirements.jog}
+                variant="secondary"
+                className="aspect-square p-0"
+              >
                 <ChevronDown className="w-5 h-5 text-blue-500" />
-              </Button>
+              </MachineActionButton>
             </div>
           </div>
           
@@ -523,29 +755,6 @@ function JogPanel() {
               <span>∞</span>
             </div>
           </div>
-          
-          {/* Speed */}
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground flex justify-between">
-              <span>Speed</span>
-              <span className="font-mono font-medium">{currentSpeed} mm/min</span>
-            </div>
-            <Slider 
-              value={[speedIndex]} 
-              onValueChange={(v) => setSpeedIndex(v[0])}
-              max={speeds.length - 1} 
-              step={1}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground px-1">
-              <span>10</span>
-              <span>50</span>
-              <span>100</span>
-              <span>500</span>
-              <span>1k</span>
-              <span>2k</span>
-              <span>5k</span>
-            </div>
-          </div>
         </>
       ) : (
         <>
@@ -554,8 +763,28 @@ function JogPanel() {
             {/* XY Joystick */}
             <div 
               className="relative w-36 h-36 rounded-full bg-muted border-2 border-border cursor-crosshair select-none"
-              onMouseMove={(e) => e.buttons === 1 && handleJoystickMove(e)}
-              onMouseDown={handleJoystickMove}
+              onMouseMove={(e) => {
+                const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+                if (!canJog) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onFlashStatus()
+                  return
+                }
+                if (e.buttons === 1) {
+                  handleJoystickMove(e)
+                }
+              }}
+              onMouseDown={(e) => {
+                const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+                if (!canJog) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onFlashStatus()
+                  return
+                }
+                handleJoystickMove(e)
+              }}
               onMouseUp={() => setJoystickPos({ x: 0, y: 0 })}
               onMouseLeave={() => setJoystickPos({ x: 0, y: 0 })}
             >
@@ -585,6 +814,13 @@ function JogPanel() {
               <div 
                 className="relative h-32 w-10 rounded-full bg-muted border-2 border-border cursor-ns-resize select-none"
                 onMouseMove={(e) => {
+                  const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+                  if (!canJog) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onFlashStatus()
+                    return
+                  }
                   if (e.buttons === 1) {
                     const rect = e.currentTarget.getBoundingClientRect()
                     const y = (e.clientY - rect.top) / rect.height
@@ -592,6 +828,13 @@ function JogPanel() {
                   }
                 }}
                 onMouseDown={(e) => {
+                  const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+                  if (!canJog) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onFlashStatus()
+                    return
+                  }
                   const rect = e.currentTarget.getBoundingClientRect()
                   const y = (e.clientY - rect.top) / rect.height
                   setZLevel(Math.max(0, Math.min(100, (1 - y) * 100)))
@@ -608,29 +851,6 @@ function JogPanel() {
                 />
               </div>
               <span className="text-[10px] text-blue-500 font-bold">Z-</span>
-            </div>
-          </div>
-          
-          {/* Speed for analog mode */}
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground flex justify-between">
-              <span>Max Speed</span>
-              <span className="font-mono font-medium">{currentSpeed} mm/min</span>
-            </div>
-            <Slider 
-              value={[speedIndex]} 
-              onValueChange={(v) => setSpeedIndex(v[0])}
-              max={speeds.length - 1} 
-              step={1}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground px-1">
-              <span>10</span>
-              <span>50</span>
-              <span>100</span>
-              <span>500</span>
-              <span>1k</span>
-              <span>2k</span>
-              <span>5k</span>
             </div>
           </div>
         </>
@@ -1008,7 +1228,7 @@ const MOCK_PROBE_STRATEGIES = [
   { id: 6, name: 'Center Finder', desc: 'Find center of hole/boss' },
 ]
 
-function ProbePanel() {
+function ProbePanel(_props: PanelProps) {
   return (
     <div className="p-3 space-y-2">
       {MOCK_PROBE_STRATEGIES.map((strategy) => (
@@ -1030,7 +1250,7 @@ function ProbePanel() {
   )
 }
 
-function MacrosPanel() {
+function MacrosPanel(_props: PanelProps) {
   return (
     <div className="p-3">
       <div className="grid grid-cols-2 gap-2">
@@ -1049,7 +1269,7 @@ function MacrosPanel() {
   )
 }
 
-function CommandsPanel() {
+function CommandsPanel(_props: PanelProps) {
   return (
     <div className="p-3">
       <div className="grid grid-cols-2 gap-2">
@@ -1068,7 +1288,7 @@ function CommandsPanel() {
   )
 }
 
-function SpindlePanel() {
+function SpindlePanel(_props: PanelProps) {
   const [isOn, setIsOn] = useState(false)
   const [speedIndex, setSpeedIndex] = useState(2) // Default to 1000 RPM
   const [direction, setDirection] = useState<'cw' | 'ccw'>('cw')
@@ -1137,7 +1357,7 @@ function SpindlePanel() {
   )
 }
 
-function FilePanel() {
+function FilePanel(_props: PanelProps) {
   return (
     <div className="p-3 space-y-3">
         {/* Upload zone */}
@@ -1172,7 +1392,7 @@ function FilePanel() {
   )
 }
 
-function RapidPanel() {
+function RapidPanel(_props: PanelProps) {
   // Arrow SVG components for each direction
   const ArrowUL = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1349,11 +1569,22 @@ function ToolsPanel() {
 // MAIN DASHBOARD
 // ============================================================================
 
+// Panel props interface
+interface PanelProps {
+  isConnected: boolean
+  connectedPort: string | null
+  machineStatus: 'not_connected' | 'connected_pre_home' | 'connected_post_home' | 'alarm' | 'running' | 'error'
+  onFlashStatus: () => void
+  machinePosition?: { x: number; y: number; z: number }
+  workPosition?: { x: number; y: number; z: number }
+  currentWCS?: string
+}
+
 // Panel configuration with metadata
 const panelConfig: Record<string, { 
   title: string
   icon: React.ElementType
-  component: React.FC<{ isCollapsed?: boolean }>
+  component: React.FC<PanelProps>
 }> = {
   dro: { title: 'Position', icon: Crosshair, component: DROPanel },
   jog: { title: 'Jog Control', icon: Move, component: JogPanel },
@@ -1369,11 +1600,13 @@ const panelConfig: Record<string, {
 function SortablePanel({ 
   id, 
   isCollapsed, 
-  onToggle 
+  onToggle,
+  panelProps
 }: { 
   id: string
   isCollapsed: boolean
-  onToggle: () => void 
+  onToggle: () => void
+  panelProps: PanelProps
 }) {
   const {
     attributes,
@@ -1425,14 +1658,14 @@ function SortablePanel({
           </div>
         </div>
         {/* Panel content */}
-        {!isCollapsed && <PanelContent />}
+        {!isCollapsed && <PanelContent {...panelProps} />}
       </div>
     </div>
   )
 }
 
 // Drag overlay panel (shown while dragging) - full panel clone
-function DragOverlayPanel({ id, isCollapsed }: { id: string; isCollapsed: boolean }) {
+function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isCollapsed: boolean; panelProps: PanelProps }) {
   const config = panelConfig[id]
   if (!config) return null
   const Icon = config.icon
@@ -1450,7 +1683,7 @@ function DragOverlayPanel({ id, isCollapsed }: { id: string; isCollapsed: boolea
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
         </div>
       </div>
-      {!isCollapsed && <PanelContent />}
+      {!isCollapsed && <PanelContent {...panelProps} />}
     </div>
   )
 }
@@ -1486,9 +1719,16 @@ export default function SetupMockup() {
   const [isJobRunning, setIsJobRunning] = useState(false)
   const [homingInProgress, setHomingInProgress] = useState(false)
   
+  // Position state
+  const [machinePosition, setMachinePosition] = useState({ x: 0, y: 0, z: 0 })
+  const [workPosition, setWorkPosition] = useState({ x: 0, y: 0, z: 0 })
+  const [currentWCS, setCurrentWCS] = useState('G54') // Work Coordinate System
+  
   // Refs to track state in event handlers to avoid stale closures
   const isConnectedRef = useRef(isConnected)
   isConnectedRef.current = isConnected
+  const isHomedRef = useRef(isHomed)
+  isHomedRef.current = isHomed
   const homingInProgressRef = useRef(homingInProgress)
   homingInProgressRef.current = homingInProgress
   
@@ -1569,6 +1809,7 @@ export default function SetupMockup() {
           setIsConnected(false)
           setConnectedPort(null)
           setMachineStatus('not_connected')
+          isHomedRef.current = false
           setIsHomed(false)
           setIsJobRunning(false)
         }
@@ -1619,6 +1860,7 @@ export default function SetupMockup() {
             setIsConnected(true)
             setConnectedPort(port)
             setMachineStatus('connected_pre_home')
+            isHomedRef.current = false
             setIsHomed(false) // Reset homing state on new connection
           }
         })
@@ -1635,19 +1877,12 @@ export default function SetupMockup() {
   
   // Flash status when action attempted while disconnected
   const flashStatus = useCallback(() => {
-    if (isConnected) return
-    
-    // Flash 3 times using a toggle pattern
-    let flashCount = 0
-    const flashInterval = setInterval(() => {
-      setIsFlashing(prev => !prev)
-      flashCount++
-      if (flashCount >= 6) {
-        clearInterval(flashInterval)
-        setIsFlashing(false)
-      }
-    }, 200) // 200ms per flash cycle
-  }, [isConnected])
+    // Trigger flash animation: 150ms ramp up, 3x 50ms flash, 150ms ramp down (450ms total)
+    setIsFlashing(true)
+    setTimeout(() => {
+      setIsFlashing(false)
+    }, 450)
+  }, [])
   
   // Handle Home button - transitions to post-home after successful homing
   const handleHome = useCallback(() => {
@@ -1664,18 +1899,15 @@ export default function SetupMockup() {
   
   // Handle Reset button - goes to pre-home state
   const handleReset = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      console.warn('Cannot reset: not connected')
-      flashStatus()
-      return
-    }
+    if (!connectedPort) return
     socketService.getSocket()?.emit('command', connectedPort, 'reset')
     setMachineStatus('connected_pre_home')
+    isHomedRef.current = false
     setIsHomed(false) // Reset homing state after reset
     setHomingInProgress(false)
     homingInProgressRef.current = false
     setIsJobRunning(false)
-  }, [isConnected, connectedPort, flashStatus])
+  }, [connectedPort])
   
   // Handle Unlock button (clears alarms) - goes to pre-home state after unlock
   const handleUnlock = useCallback(() => {
@@ -1687,6 +1919,7 @@ export default function SetupMockup() {
     socketService.getSocket()?.emit('command', connectedPort, 'unlock')
     // After unlock, transition to pre-home (position might not be trusted)
     setMachineStatus('connected_pre_home')
+    isHomedRef.current = false
     setIsHomed(false)
     setHomingInProgress(false)
     homingInProgressRef.current = false
@@ -1694,18 +1927,26 @@ export default function SetupMockup() {
   
   // Handle E-Stop button (emergency stop - force stop all motion)
   const handleEStop = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      console.warn('Cannot E-Stop: not connected')
-      flashStatus()
-      return
-    }
-    // Send gcode:stop command with force: true
-    // This will send feedhold (!) if running, then reset (Ctrl-X) after delay
-    socketService.getSocket()?.emit('command', connectedPort, 'gcode:stop', { force: true })
+    if (!connectedPort) return
+    const socket = socketService.getSocket()
+    if (!socket) return
+    
+    // Stop workflow first
+    socket.emit('command', connectedPort, 'gcode:stop', { force: true })
+    
+    // Always send reset command to Grbl (sends Ctrl-X) regardless of state
+    // This ensures E-Stop always sends something to the machine
+    socket.emit('command', connectedPort, 'reset')
+    
     // E-Stop should stop any running job
     setIsJobRunning(false)
-    // Status will be updated by controller state handler after reset
-  }, [isConnected, connectedPort, flashStatus])
+    // Reset homing state after E-Stop (machine position may be invalid)
+    isHomedRef.current = false
+    setIsHomed(false)
+    setHomingInProgress(false)
+    homingInProgressRef.current = false
+    setMachineStatus('connected_pre_home')
+  }, [connectedPort])
   
   // Handler for jog commands (called from JogPanel)
   const handleJogAction = useCallback(() => {
@@ -1722,6 +1963,7 @@ export default function SetupMockup() {
       setConnectedPort(data.port)
       setIsConnecting(false)
       setMachineStatus('connected_pre_home')
+      isHomedRef.current = false
       setIsHomed(false)
       setHomingInProgress(false)
       homingInProgressRef.current = false
@@ -1733,6 +1975,7 @@ export default function SetupMockup() {
       setConnectedPort(null)
       setIsConnecting(false)
       setMachineStatus('not_connected')
+      isHomedRef.current = false
       setIsHomed(false)
       setHomingInProgress(false)
       homingInProgressRef.current = false
@@ -1758,7 +2001,32 @@ export default function SetupMockup() {
           mpos?: { x?: string; y?: string; z?: string }
           wpos?: { x?: string; y?: string; z?: string }
         }
-        parserstate?: unknown
+        parserstate?: {
+          modal?: {
+            wcs?: string
+          }
+        }
+      }
+      
+      // Update positions
+      if (state.status?.mpos) {
+        setMachinePosition({
+          x: parseFloat(state.status.mpos.x || '0'),
+          y: parseFloat(state.status.mpos.y || '0'),
+          z: parseFloat(state.status.mpos.z || '0')
+        })
+      }
+      if (state.status?.wpos) {
+        setWorkPosition({
+          x: parseFloat(state.status.wpos.x || '0'),
+          y: parseFloat(state.status.wpos.y || '0'),
+          z: parseFloat(state.status.wpos.z || '0')
+        })
+      }
+      
+      // Update WCS from parserstate
+      if (state.parserstate?.modal?.wcs) {
+        setCurrentWCS(state.parserstate.modal.wcs)
       }
       
       // Only update status if we're actually connected
@@ -1771,38 +2039,52 @@ export default function SetupMockup() {
       const isHoming = activeState === 'Home'
       const isIdle = activeState === 'Idle'
       
+      // Check if homing completed FIRST - when we transition from 'Home' state to 'Idle'
+      // This must run before the status update logic to avoid race conditions
+      let homingJustCompleted = false
+      // Check if we're idle and homing was in progress - this indicates homing completed
+      // We check homingInProgressRef to detect the transition from Home to Idle
+      if (isIdle && !isHoming && homingInProgressRef.current && !isHomedRef.current && isConnectedRef.current) {
+        // Homing was in progress and now we're idle - homing completed
+        console.log('[Homing] Homing completed - transitioning to post-home', {
+          isIdle,
+          isHoming,
+          homingInProgress: homingInProgressRef.current,
+          isHomed: isHomedRef.current,
+          isConnected: isConnectedRef.current
+        })
+        isHomedRef.current = true
+        setIsHomed(true)
+        setHomingInProgress(false)
+        homingInProgressRef.current = false
+        setMachineStatus('connected_post_home')
+        homingJustCompleted = true
+      } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomedRef.current) {
+        // Reset homing progress flag if we're idle without homing active
+        setHomingInProgress(false)
+      }
+      
       // Priority: Alarm > Running (from workflow) > Idle (post-home) > Idle (pre-home)
       // Note: Running state is handled by workflow:state, not controller:state
       // Don't override running status unless we get an alarm
+      // Use isHomedRef to avoid stale closure issues
+      // Don't override status if homing just completed (already set above)
       if (isAlarm) {
         setMachineStatus('alarm')
         setIsJobRunning(false)
-      } else if (!isJobRunning) {
-        // Only update status if workflow is not running
+      } else if (!isJobRunning && !homingJustCompleted) {
+        // Only update status if workflow is not running and homing didn't just complete
         // Workflow running state takes priority over controller idle state
-        if (isIdle && isHomed) {
+        if (isIdle && isHomedRef.current) {
           // Idle after homing = post-home ready
           setMachineStatus('connected_post_home')
         } else if (isHoming) {
           // Homing in progress - stay in pre-home until complete
           setMachineStatus('connected_pre_home')
-        } else if (isIdle && !isHomed) {
+        } else if (isIdle && !isHomedRef.current) {
           // Idle but not homed = pre-home
           setMachineStatus('connected_pre_home')
         }
-      }
-      
-      // Check if homing completed - when we transition from 'Home' state to 'Idle'
-      // This indicates homing cycle completed successfully
-      if (isIdle && !isHoming && homingInProgressRef.current && !isHomed && isConnectedRef.current) {
-        // Homing was in progress and now we're idle - homing completed
-        setIsHomed(true)
-        setHomingInProgress(false)
-        homingInProgressRef.current = false
-        setMachineStatus('connected_post_home')
-      } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomed) {
-        // Reset homing progress flag if we're idle without homing active
-        setHomingInProgress(false)
       }
     }
     
@@ -1826,6 +2108,7 @@ export default function SetupMockup() {
     // Listen for homing completion (controller-specific events)
     const handleHomingComplete = () => {
       if (isConnectedRef.current) {
+        isHomedRef.current = true
         setIsHomed(true)
         setHomingInProgress(false)
         homingInProgressRef.current = false
@@ -1839,6 +2122,7 @@ export default function SetupMockup() {
         setIsConnected(false)
         setConnectedPort(null)
         setMachineStatus('not_connected')
+        isHomedRef.current = false
         setIsHomed(false)
         setIsJobRunning(false)
         const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
@@ -1916,6 +2200,61 @@ export default function SetupMockup() {
         .os-scrollbar-track {
           background: transparent !important;
         }
+        @keyframes flash-bright {
+          0% {
+            filter: brightness(1);
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+          }
+          33.3% {
+            /* 150ms: Ramp up complete */
+            filter: brightness(1.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 12px 3px currentColor;
+          }
+          38.9% {
+            /* 175ms: Flash 1 peak */
+            filter: brightness(1.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 12px 3px currentColor;
+          }
+          44.4% {
+            /* 200ms: Flash 1 low */
+            filter: brightness(1.3);
+            transform: scale(1.04);
+            box-shadow: 0 0 6px 2px currentColor;
+          }
+          50% {
+            /* 225ms: Flash 2 peak */
+            filter: brightness(1.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 12px 3px currentColor;
+          }
+          55.6% {
+            /* 250ms: Flash 2 low */
+            filter: brightness(1.3);
+            transform: scale(1.04);
+            box-shadow: 0 0 6px 2px currentColor;
+          }
+          61.1% {
+            /* 275ms: Flash 3 peak */
+            filter: brightness(1.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 12px 3px currentColor;
+          }
+          66.7% {
+            /* 300ms: Flash 3 low - start ramp down */
+            filter: brightness(1.3);
+            transform: scale(1.04);
+            box-shadow: 0 0 6px 2px currentColor;
+          }
+          100% {
+            /* 450ms: Ramp down complete */
+            filter: brightness(1);
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+          }
+        }
       `}</style>
       {/* Header - persistent across all screens */}
       <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4">
@@ -1958,26 +2297,34 @@ export default function SetupMockup() {
         
         {/* Emergency actions - Reset and E-Stop */}
         <div className="ml-4 flex items-center gap-2">
-          <Button 
-            variant="outline" 
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={flashStatus}
+            onAction={handleReset}
+            requirements={ActionRequirements.standard}
+            variant="outline"
             size="sm"
             className="h-9 px-4"
-            onClick={handleReset}
-            disabled={!isConnected}
           >
             <RotateCcw className="w-4 h-4 mr-1" />
             Reset
-          </Button>
-          <Button 
-            variant="destructive" 
+          </MachineActionButton>
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={flashStatus}
+            onAction={handleEStop}
+            requirements={ActionRequirements.standard}
+            variant="destructive"
             size="lg"
             className="h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
-            onClick={handleEStop}
-            disabled={!isConnected}
           >
             <Square className="w-5 h-5 mr-2" />
             E-Stop
-          </Button>
+          </MachineActionButton>
         </div>
       </header>
       
@@ -2000,8 +2347,10 @@ export default function SetupMockup() {
                 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
                 : 'bg-muted border-border text-muted-foreground'
             }
-            ${isFlashing ? 'animate-pulse' : ''}
           `}
+          style={isFlashing ? {
+            animation: 'flash-bright 450ms ease-in-out'
+          } : {}}
         >
           <div 
             className={`
@@ -2163,6 +2512,15 @@ export default function SetupMockup() {
                     id={panelId}
                     isCollapsed={collapsedPanels[panelId] ?? false}
                     onToggle={() => togglePanel(panelId)}
+                    panelProps={{
+                      isConnected,
+                      connectedPort,
+                      machineStatus,
+                      onFlashStatus: flashStatus,
+                      machinePosition,
+                      workPosition,
+                      currentWCS
+                    }}
                   />
                 ))}
               </div>
@@ -2171,7 +2529,16 @@ export default function SetupMockup() {
               {activeId ? (
                 <DragOverlayPanel 
                   id={activeId} 
-                  isCollapsed={collapsedPanels[activeId] ?? false} 
+                  isCollapsed={collapsedPanels[activeId] ?? false}
+                  panelProps={{
+                    isConnected,
+                    connectedPort,
+                    machineStatus,
+                    onFlashStatus: flashStatus,
+                    machinePosition,
+                    workPosition,
+                    currentWCS
+                  }}
                 />
               ) : null}
             </DragOverlay>
