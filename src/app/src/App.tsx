@@ -1,10 +1,68 @@
+import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from '@/components/theme-provider'
+import { useSignInMutation } from '@/services/api'
+import { socketService } from '@/services/socket'
 import TestPage from '@/routes/TestPage'
 import Settings from '@/routes/Settings'
 import SetupMockup from '@/routes/SetupMockup'
 
 function App() {
+  const [signIn] = useSignInMutation()
+  const [authReady, setAuthReady] = useState(false)
+
+  // Auto-authenticate on app load
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        // Check for existing token
+        let token = localStorage.getItem('cncjs-token')
+        
+        // If no token, get one via signin (works even without users configured)
+        if (!token) {
+          try {
+            const result = await signIn({ token: '' }).unwrap()
+            token = result.token
+            if (token) {
+              localStorage.setItem('cncjs-token', token)
+            }
+          } catch (err) {
+            console.error('Failed to authenticate:', err)
+            // Still mark as ready even if auth fails - let components handle errors
+            setAuthReady(true)
+            return
+          }
+        }
+
+        // Connect Socket.IO with token if available
+        if (token) {
+          socketService.connect(token)
+        }
+        
+        // Mark auth as ready so components can make API calls
+        setAuthReady(true)
+      } catch (err) {
+        console.error('Auth initialization error:', err)
+        setAuthReady(true) // Still render, let components handle errors
+      }
+    }
+
+    initAuth()
+  }, [signIn])
+
+  // Show loading state while authenticating
+  if (!authReady) {
+    return (
+      <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-lg">Initializing...</div>
+          </div>
+        </div>
+      </ThemeProvider>
+    )
+  }
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
       <Routes>
