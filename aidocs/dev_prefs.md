@@ -73,6 +73,60 @@ This document captures design decisions, UI preferences, and architectural choic
 
 ---
 
+## Setup Dashboard Patterns
+
+### Panel Layout
+
+- **Two-column layout**: Left 33% for control panels, Right 66% for visualizer/tools
+- **Sortable panels**: Use `@dnd-kit` (not react-grid-layout) for sortable lists
+- **Auto-sizing**: Panels size to their content, no fixed heights
+- **Collapsible**: Accordion controls on panel headers with rotating chevron
+
+### Drag & Drop
+
+- **Drag handle**: Only the grip icon initiates drag (6-dot `GripVertical`)
+- **Drag overlay**: Show full panel clone at 96% scale (`scale-[0.96]`)
+- **Drop indicator**: Dashed primary-color border where item will land, don't highlight target panel
+
+### Scrollbars
+
+- **Library**: Use `overlayscrollbars-react` for custom styling
+- **Style**: Minimal pill thumb, no arrows, transparent track
+- **Tool Library**: Always visible scrollbar, wheel converts to horizontal scroll
+- **Left column**: Auto-hide after 400ms
+
+### Jog Control
+
+- **XY/Z spacing**: Large gap (`gap-24` = 96px) between XY pad and Z controls to prevent accidental clicks
+- **Diagonals**: Include all 8 directions in XY pad
+- **Modes**: Toggle between Steps (button grid) and Analog (virtual joystick)
+- **Distance/Speed**: Discrete-step sliders with tick labels, not button rows
+- **Analog joystick**: Circle for XY (drag thumb), vertical slider for Z (auto-centers on release)
+
+### Tool Library
+
+- **Sections**: "In Use" and "Available" with left accent borders
+- **Horizontal scroll**: Mouse wheel scrolls horizontally
+- **Cards**: Show tool number, name, diameter, type, and description
+
+### Visualizer Panel
+
+- **Tabs**: "3D View" and "Console" with vertical separator between tabs
+- **Console**: Dark terminal style (zinc-950 bg), colored output:
+  - Commands (`>`) in blue
+  - `ok` responses in green
+  - Errors in red
+  - Info/timestamps in gray
+- **Command input**: Bottom of console with `>` prompt
+
+### Probe Panel
+
+- **Strategy list**: Show available probe strategies with descriptions
+- **Run buttons**: Each strategy has a Run button
+- **Settings**: Strategy parameters configured in Settings screen, not in panel
+
+---
+
 ## Architecture Decisions
 
 ### Single Machine Configuration
