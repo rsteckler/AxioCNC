@@ -317,59 +317,57 @@
     <section id="story" class="bg-zinc-50 dark:bg-zinc-950 py-20">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="mb-12">
-                <h2 class="text-4xl font-bold mb-4">How AxioCNC Came To Be</h2>
+                <h2 class="text-4xl font-bold mb-4">How AxioCNC Started</h2>
                 <div class="h-1 w-24 bg-primary-light mb-6"></div>
             </div>
 
             <div class="space-y-6 text-lg leading-relaxed">
                 <p>
-                    I started with Carbide Motion but quickly outgrew it. I tried cncjs and it worked great for many years. 
-                    There were always some gaps I wished were fixed: native joystick support, better UI design (the Z-down 
-                    button is RIGHT next to the X+ button, and I've crashed my machine many times when my finger tapped 
-                    the wrong spot on the touch screen), but more than anything, it was abandoned and I wanted to work 
-                    with a project that was still improving and being maintained.
+                    I began with Carbide Motion, but it didn't take long to run into its limits. I switched to cncjs and used it for years. 
+                    It was reliable, but there were things about it that always bothered me: no native joystick support, a UI that made it 
+                    easy to hit the wrong button on a touchscreen (I've crashed my machine more than once because Z-down is right next to X+), 
+                    and, most importantly, it wasn't really being maintained anymore.
                 </p>
 
                 <p>
-                    I went on a search for new sender software. I tried UGS, but the Java app would crash on my Windows 
-                    machine every few minutes. It crashed 6 times just while I was setting it up, so I never had the 
-                    confidence to run a job, fearing it would crash in the middle of a workpiece.
+                    So I started looking for something better.
                 </p>
 
                 <p>
-                    I tried gSender, which has a fantastic UI and feature set, and is actively maintained. But I ran into 
-                    a bug on my first project where the software lost Z calibration in the middle of a job and plunged 
-                    into my carving.
+                    UGS was my first stop, but the Java app was unstable on Windows. It crashed repeatedly just while I was setting it up. 
+                    I never trusted it enough to run a real job.
                 </p>
 
                 <p>
-                    I tried ioSender and it was incredibly slow and the UI felt overloaded.
+                    gSender looked promising. The UI is solid and it's actively developed, but on my first project it lost Z calibration 
+                    mid-cut and drove the bit into the work. That was a deal breaker.
                 </p>
 
                 <p>
-                    Finally, I went back to cncjs and decided I would fix the things that bothered me. Unfortunately, 
-                    cncjs isn't actively integrating fixes, so I had to create a new version. That started with some minor 
-                    changes, but has evolved enough that it looks like totally different software now. I focused almost 
-                    entirely on the experience of the software, combining that with the flawless reliability that cncjs 
-                    has always delivered.
+                    ioSender worked, but it was slow and the interface felt cluttered.
+                </p>
+
+                <p>
+                    In the end I went back to cncjs with the intention of fixing what bothered me. When I realized fixes weren't really 
+                    being accepted upstream, I forked it. What started as a few small changes has grown into something that now looks and 
+                    behaves like a different application.
+                </p>
+
+                <p>
+                    My focus has been on two things: keeping the stability cncjs is known for, and improving how it actually feels to use 
+                    the software in a shop.
                 </p>
 
                 <div class="bg-white dark:bg-zinc-900 border-l-4 border-primary-light p-6 my-8 rounded-r-lg">
                     <p class="text-lg">
-                        The result is a G-code sender that is unique in the way it integrates with real-world workflows, 
-                        while maintaining the benefits of a reliable, networked server. Model and upload from your primary 
-                        machine, setup and run jobs from the workshop, then monitor progress in the quiet of a separate office.
+                        AxioCNC is built around real workflows. You can model and upload jobs from your main computer, run setup and cutting 
+                        from the shop, and keep an eye on progress from somewhere quieter if you want. The interface is simpler, with a lot of 
+                        half-finished or rarely used features removed, but it adds things I actually missed: native joystick support, continuous 
+                        analog jogging in both the UI and on a controller, built-in camera support, a tool library, a modern 3D view with project 
+                        outlines and zeroing aids, light and dark themes, and a task-based dashboard that helps you focus on what matters during 
+                        setup, cutting, and review.
                     </p>
                 </div>
-
-                <p>
-                    The experience has been simplified, removing many unused and half-complete features. It's also been 
-                    expanded to include native joystick support, analog continuous jogging both with joystick and in the UI, 
-                    native camera support, a tool library to make tool selection simple, a modern 3d visualizer that includes 
-                    project outline, zeroing methods and strategies, theming support for light and dark mode, and an intuitive 
-                    task-based dashboard that focuses you on the right tasks when you're setting up a job, monitoring a running 
-                    job, and viewing the results of your projects.
-                </p>
             </div>
         </div>
     </section>
