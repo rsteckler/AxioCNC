@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AxioCNC Documentation - Coming Soon">
+    <title>Documentation – AxioCNC</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="CNC, G-code sender, CNC control, AxioCNC documentation">
+    <meta name="author" content="AxioCNC">
+    <link rel="canonical" href="https://axiocnc.com/docs">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://axiocnc.com/docs">
+    <meta property="og:title" content="Documentation – AxioCNC">
+    <meta property="og:description" content="AxioCNC Documentation - Coming Soon">
+    <meta property="og:site_name" content="AxioCNC">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:url" content="https://axiocnc.com/docs">
+    <meta name="twitter:title" content="Documentation – AxioCNC">
+    <meta name="twitter:description" content="AxioCNC Documentation - Coming Soon">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+    <!-- Preload Tailwind CSS -->
+    <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: 'hsl(24 95% 53%)',
+                            dark: 'hsl(24 95% 63%)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+            }
+        }
+        
+        /* Smooth scroll behavior */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Skip to content link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: hsl(24 95% 53%);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            z-index: 100;
+            border-radius: 0 0 4px 0;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        
+        /* Mobile menu animation */
+        .mobile-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .mobile-menu.open {
+            max-height: 1000px;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 transition-colors">
+    <!-- Skip to content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Navigation -->
+    <nav class="border-b border-zinc-200 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm z-50" role="navigation" aria-label="Main navigation">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center" aria-label="AxioCNC Home">
+                        <img src="media/fulllogo.png" alt="AxioCNC" class="h-8 md:h-10 w-auto" />
+                    </a>
+                </div>
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="index.html#benefits" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to Benefits section">Benefits</a>
+                    <a href="index.html#how-it-works" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to How It Works section">How It Works</a>
+                    <a href="index.html#download" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to Download section">Download</a>
+                    <a href="docs.html" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors font-semibold" aria-label="View documentation">Docs</a>
+                    <a href="https://github.com/rsteckler/AxioCNC" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="View GitHub repository" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="https://github.com/rsteckler/AxioCNC/discussions" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="View GitHub discussions" target="_blank" rel="noopener noreferrer">Discussions</a>
+                    <a href="https://github.com/rsteckler/AxioCNC/issues" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="View GitHub issues" target="_blank" rel="noopener noreferrer">Issues</a>
+                </div>
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-button" class="md:hidden p-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Toggle mobile menu" aria-expanded="false" aria-controls="mobile-menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="mobile-menu md:hidden">
+                <div class="py-4 space-y-2">
+                    <a href="index.html#benefits" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to Benefits section">Benefits</a>
+                    <a href="index.html#how-it-works" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to How It Works section">How It Works</a>
+                    <a href="index.html#download" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to Download section">Download</a>
+                    <a href="docs.html" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded font-semibold" aria-label="View documentation">Docs</a>
+                    <a href="https://github.com/rsteckler/AxioCNC" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="View GitHub repository" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="https://github.com/rsteckler/AxioCNC/discussions" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="View GitHub discussions" target="_blank" rel="noopener noreferrer">Discussions</a>
+                    <a href="https://github.com/rsteckler/AxioCNC/issues" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="View GitHub issues" target="_blank" rel="noopener noreferrer">Issues</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content" role="main">
+        <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                    Documentation
+                </h1>
+                <div class="h-1 w-24 bg-primary-light mx-auto mb-8"></div>
+                <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-12 max-w-2xl mx-auto">
+                    <h2 class="text-3xl font-semibold mb-4 text-primary-light">Coming Soon</h2>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed mb-6">
+                        We're working on comprehensive documentation for AxioCNC. 
+                        Installation guides, user manuals, and API references will be available here soon.
+                    </p>
+                    <p class="text-base text-zinc-500 dark:text-zinc-500">
+                        In the meantime, check out our <a href="https://github.com/rsteckler/AxioCNC" class="text-primary-light hover:underline" target="_blank" rel="noopener noreferrer">GitHub repository</a> for the latest information.
+                    </p>
+                </div>
+                <div class="mt-12">
+                    <a href="index.html" class="px-8 py-3 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity inline-block" aria-label="Return to home page">
+                        Back to Home
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-12 bg-zinc-50 dark:bg-zinc-950 mt-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <img src="media/fulllogo.png" alt="AxioCNC" class="h-8 w-auto mb-4" />
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm">
+                        Stability-focused G-code sender for your CNC machine
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <li><a href="https://github.com/rsteckler/AxioCNC" class="hover:text-primary-light transition-colors" aria-label="View GitHub repository" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        <li><a href="docs.html" class="hover:text-primary-light transition-colors" aria-label="View documentation">Documentation</a></li>
+                        <li><a href="https://github.com/rsteckler/AxioCNC/discussions" class="hover:text-primary-light transition-colors" aria-label="View GitHub discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+                        <li><a href="https://github.com/rsteckler/AxioCNC/issues" class="hover:text-primary-light transition-colors" aria-label="View GitHub issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Based On</h4>
+                    <ul class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <li><a href="https://github.com/cncjs/cncjs" class="hover:text-primary-light transition-colors" aria-label="View cncjs project" target="_blank" rel="noopener noreferrer">cncjs</a></li>
+                        <li class="text-xs mt-4">Licensed under MIT License</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 dark:text-zinc-500">
+                <p>&copy; 2024 AxioCNC. Built for the CNC community.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Dark mode detection and toggle
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuIcon = document.getElementById('menu-icon');
+        const closeIcon = document.getElementById('close-icon');
+        
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', () => {
+                const isOpen = mobileMenu.classList.contains('open');
+                mobileMenu.classList.toggle('open');
+                mobileMenuButton.setAttribute('aria-expanded', !isOpen);
+                menuIcon.classList.toggle('hidden');
+                closeIcon.classList.toggle('hidden');
+            });
+            
+            // Close mobile menu when clicking on a link
+            const mobileLinks = mobileMenu.querySelectorAll('a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.remove('open');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                    menuIcon.classList.remove('hidden');
+                    closeIcon.classList.add('hidden');
+                });
+            });
+        }
+    </script>
+</body>
+</html>
