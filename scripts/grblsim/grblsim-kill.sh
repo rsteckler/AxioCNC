@@ -1,6 +1,10 @@
 #!/bin/bash
 # Kill Grbl simulator processes
 
+# Change to project root
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 FAKETTY="${FAKETTY:-/dev/ttyFAKE}"
 
 echo "🛑 Stopping Grbl simulator..."
