@@ -32,5 +32,5 @@ mkdir -p output/axiocnc/app
 mkdir -p output/axiocnc/server
 
 # Ensure we're in project root for the copy command
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || cd ..
 cp -af src/server/{i18n,views} output/axiocnc/server/

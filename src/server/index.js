@@ -242,7 +242,7 @@ const createServer = (options, callback) => {
 
       // Display version on startup
       log.info('='.repeat(60));
-      log.info(chalk.cyan(`NextCNC Server v${pkg.version}`));
+      log.info(chalk.cyan(`AxioCNC Server v${pkg.version}`));
       log.info('='.repeat(60));
 
       callback && callback(null, {
