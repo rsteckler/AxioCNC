@@ -280,6 +280,9 @@ const appMain = () => {
     // Controllers
     app.get(urljoin(settings.route, 'api/controllers'), api.controllers.get);
 
+    // Machine Status
+    app.get(urljoin(settings.route, 'api/machine/status'), api.machine.getStatus);
+
     // Commands
     app.get(urljoin(settings.route, 'api/commands'), api.commands.fetch);
     app.post(urljoin(settings.route, 'api/commands'), api.commands.create);
