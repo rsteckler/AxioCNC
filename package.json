@@ -60,6 +60,7 @@
     "grblsim:build": "bash scripts/grblsim/grblsim-build.sh",
     "grblsim:run": "bash scripts/grblsim/grblsim-run.sh",
     "grblsim:clean": "bash scripts/grblsim/grblsim-clean.sh",
+    "grblsim:clean:all": "bash scripts/grblsim/grblsim-clean.sh --all",
     "grblsim:kill": "bash scripts/grblsim/grblsim-kill.sh",
     "dev": "yarn run build-dev && concurrently --names \"start-app-dev,start-server-dev\" \"yarn run start-app-dev\" \"yarn run start-server-dev\"",
     "win-dev": "powershell -ExecutionPolicy Bypass -File scripts/build-dev.ps1 && concurrently --names \"start-app-dev,start-server-dev\" \"yarn run start-app-dev\" \"yarn run start-server-dev\"",
