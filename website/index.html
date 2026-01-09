@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AxioCNC - A reliable G-code sender that won't crash your machine. Control your CNC from any device on your network.">
+    <title>AxioCNC - Reliable G-Code Sender</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: 'hsl(24 95% 53%)',
+                            dark: 'hsl(24 95% 63%)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 transition-colors">
+    <!-- Navigation -->
+    <nav class="border-b border-zinc-200 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-primary-light">AxioCNC</h1>
+                </div>
+                <div class="flex space-x-8">
+                    <a href="#benefits" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors">Benefits</a>
+                    <a href="#how-it-works" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors">How It Works</a>
+                    <a href="#download" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors">Download</a>
+                    <a href="https://github.com" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div class="text-center">
+            <h2 class="text-5xl md:text-6xl font-bold mb-6">
+                G-Code Sender That<br/>
+                <span class="text-primary-light">Won't Crash Your Machine</span>
+            </h2>
+            <p class="text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto mb-8">
+                AxioCNC runs your CNC jobs reliably. No crashes mid-cut. No lost calibration. 
+                Control your machine from any computer, tablet, or phone on your network.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#download" class="px-8 py-3 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                    Download
+                </a>
+                <a href="#benefits" class="px-8 py-3 border-2 border-zinc-300 dark:border-zinc-700 rounded-lg font-semibold hover:border-primary-light transition-colors">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section id="benefits" class="bg-zinc-50 dark:bg-zinc-950 py-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-4xl font-bold mb-4">What You Get</h2>
+                <div class="h-1 w-24 bg-primary-light mb-6"></div>
+                <p class="text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl">
+                    AxioCNC solves the problems that crash machines and waste workpieces.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12">
+                <!-- Benefit 1 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">It Won't Crash</h3>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        Other software crashes in the middle of jobs. AxioCNC keeps running. 
+                        It's built on the same reliable foundation that's been running production 
+                        machines for years. Your workpiece stays safe.
+                    </p>
+                </div>
+
+                <!-- Benefit 2 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">You Won't Hit Wrong Buttons</h3>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        Controls are spaced so you don't accidentally tap the wrong button on a touchscreen. 
+                        No more crashes from hitting "Z down" when you meant "X+". The interface is designed 
+                        to prevent costly mistakes.
+                    </p>
+                </div>
+
+                <!-- Benefit 3 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">Works Across Your Network</h3>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        Design on your main computer. Upload and start jobs from your workshop tablet. 
+                        Monitor progress from your office. One server, accessible from anywhere on your network. 
+                        No need to stay in the shop.
+                    </p>
+                </div>
+
+                <!-- Benefit 4 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">Keeps Z Calibration</h3>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        No bugs that lose Z zero in the middle of a job. Your tool stays where it should be. 
+                        Touch plate probing works consistently. You can trust the readings.
+                    </p>
+                </div>
+
+                <!-- Benefit 5 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">Use a Joystick</h3>
+                    <p class="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        Plug in any USB gamepad or joystick and jog your machine smoothly. 
+                        Analog control for precise positioning. No more awkward arrow key controls.
+                    </p>
+                </div>
+
+                <!-- Benefit 6 -->
+                <div>
+                    <h3 class="text-2xl font-semibold mb-4">Know Which Tool to Grab</h3>
+                    <p class="text-lg text-zinc-400 dark:text-zinc-400 leading-relaxed">
+                        Instead of "T4", see "1/4 inch flat endmill". The tool library shows tool names, 
+                        diameters, and types. You know exactly which tool to pull from your toolbox.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-4xl font-bold mb-4">How It Works</h2>
+                <div class="h-1 w-24 bg-primary-light mb-6"></div>
+                <p class="text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl">
+                    One server connects to your machine. Access it from any device on your network.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-primary-light rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-white">1</span>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Install Once</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400">
+                        Install AxioCNC on one computer connected to your CNC machine via USB or serial port.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-primary-light rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-white">2</span>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Access from Anywhere</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400">
+                        Open a web browser on any device on your network. No extra software needed on other computers.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-primary-light rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-white">3</span>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Work Your Way</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400">
+                        Upload files from your design computer. Setup and jog from your workshop tablet. Monitor from your office.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features List -->
+    <section class="bg-zinc-50 dark:bg-zinc-950 py-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-4xl font-bold mb-4">What's Included</h2>
+                <div class="h-1 w-24 bg-primary-light mb-6"></div>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Native joystick/gamepad support</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Analog continuous jogging</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Spaced controls</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Prevents accidental button presses</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Tool library</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Human-readable tool names and specs</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Camera feed</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Monitor your machine remotely</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">3D toolpath visualization</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">See your job before you run it</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Multiple zeroing strategies</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Touch plate and edge finder support</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Light and dark themes</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Comfortable for long sessions</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Task-focused interface</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">Different views for setup, running, and results</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-primary-light rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                        <h4 class="font-semibold mb-1">Works with Grbl, Marlin, Smoothie, TinyG</h4>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">All major controller types supported</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl font-bold mb-4">Download</h2>
+            <div class="h-1 w-24 bg-primary-light mx-auto mb-8"></div>
+            <p class="text-xl text-zinc-600 dark:text-zinc-400 mb-12">
+                Available for Linux, Windows, and Raspberry Pi
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-6 mb-12">
+                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div class="text-4xl mb-4">🐧</div>
+                    <h3 class="text-xl font-semibold mb-2">Linux</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">.deb packages and AppImages</p>
+                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
+                        Download
+                    </button>
+                </div>
+
+                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div class="text-4xl mb-4">🪟</div>
+                    <h3 class="text-xl font-semibold mb-2">Windows</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">Installer package</p>
+                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
+                        Download
+                    </button>
+                </div>
+
+                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div class="text-4xl mb-4">🍓</div>
+                    <h3 class="text-xl font-semibold mb-2">Raspberry Pi</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">Headless server or desktop</p>
+                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
+                        Download
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-sm text-zinc-500 dark:text-zinc-500">
+                Installation instructions available on <a href="https://github.com" class="text-primary-light hover:underline">GitHub</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- Story Section (Moved Lower) -->
+    <section id="story" class="bg-zinc-50 dark:bg-zinc-950 py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-4xl font-bold mb-4">How AxioCNC Came To Be</h2>
+                <div class="h-1 w-24 bg-primary-light mb-6"></div>
+            </div>
+
+            <div class="space-y-6 text-lg leading-relaxed">
+                <p>
+                    I started with Carbide Motion but quickly outgrew it. I tried cncjs and it worked great for many years. 
+                    There were always some gaps I wished were fixed: native joystick support, better UI design (the Z-down 
+                    button is RIGHT next to the X+ button, and I've crashed my machine many times when my finger tapped 
+                    the wrong spot on the touch screen), but more than anything, it was abandoned and I wanted to work 
+                    with a project that was still improving and being maintained.
+                </p>
+
+                <p>
+                    I went on a search for new sender software. I tried UGS, but the Java app would crash on my Windows 
+                    machine every few minutes. It crashed 6 times just while I was setting it up, so I never had the 
+                    confidence to run a job, fearing it would crash in the middle of a workpiece.
+                </p>
+
+                <p>
+                    I tried gSender, which has a fantastic UI and feature set, and is actively maintained. But I ran into 
+                    a bug on my first project where the software lost Z calibration in the middle of a job and plunged 
+                    into my carving.
+                </p>
+
+                <p>
+                    I tried ioSender and it was incredibly slow and the UI felt overloaded.
+                </p>
+
+                <p>
+                    Finally, I went back to cncjs and decided I would fix the things that bothered me. Unfortunately, 
+                    cncjs isn't actively integrating fixes, so I had to create a new version. That started with some minor 
+                    changes, but has evolved enough that it looks like totally different software now. I focused almost 
+                    entirely on the experience of the software, combining that with the flawless reliability that cncjs 
+                    has always delivered.
+                </p>
+
+                <div class="bg-white dark:bg-zinc-900 border-l-4 border-primary-light p-6 my-8 rounded-r-lg">
+                    <p class="text-lg">
+                        The result is a G-code sender that is unique in the way it integrates with real-world workflows, 
+                        while maintaining the benefits of a reliable, networked server. Model and upload from your primary 
+                        machine, setup and run jobs from the workshop, then monitor progress in the quiet of a separate office.
+                    </p>
+                </div>
+
+                <p>
+                    The experience has been simplified, removing many unused and half-complete features. It's also been 
+                    expanded to include native joystick support, analog continuous jogging both with joystick and in the UI, 
+                    native camera support, a tool library to make tool selection simple, a modern 3d visualizer that includes 
+                    project outline, zeroing methods and strategies, theming support for light and dark mode, and an intuitive 
+                    task-based dashboard that focuses you on the right tasks when you're setting up a job, monitoring a running 
+                    job, and viewing the results of your projects.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Credits Section -->
+    <section class="py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold mb-6">A Thank You</h2>
+            <p class="text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
+                A huge thank you to everyone who worked on <strong class="text-primary-light">cncjs</strong>. 
+                I hope to carry on the legacy by bringing it into the modern workflow for both hobbyists and small businesses.
+            </p>
+            <p class="text-lg leading-relaxed text-zinc-600 dark:text-zinc-400 mt-4">
+                AxioCNC is built on their foundation of reliability and excellence. We stand on the shoulders of giants.
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-12 bg-zinc-50 dark:bg-zinc-950">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold text-primary-light mb-4">AxioCNC</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400 text-sm">
+                        Reliable G-code sender for your CNC machine
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <li><a href="https://github.com" class="hover:text-primary-light transition-colors">GitHub</a></li>
+                        <li><a href="https://github.com" class="hover:text-primary-light transition-colors">Documentation</a></li>
+                        <li><a href="https://github.com" class="hover:text-primary-light transition-colors">Contributing</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Based On</h4>
+                    <ul class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <li><a href="https://github.com/cncjs/cncjs" class="hover:text-primary-light transition-colors">cncjs</a></li>
+                        <li class="text-xs mt-4">Licensed under MIT License</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 dark:text-zinc-500">
+                <p>&copy; 2024 AxioCNC. Built for the CNC community.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Dark mode toggle script -->
+    <script>
+        // Simple dark mode detection and toggle
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</body>
+</html>
