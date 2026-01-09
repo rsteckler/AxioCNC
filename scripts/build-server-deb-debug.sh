@@ -59,9 +59,9 @@ cp -r output/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 # Install ALL dependencies (including dev dependencies for debugging)
 echo "Installing dependencies (including dev dependencies)..."
 cd "${PACKAGE_ROOT}${INSTALL_DIR}"
-npm install --no-audit --no-fund
+yarn install
 # Ensure zod is installed (required by shared/schemas)
-npm install zod@^4.3.5 --save --no-audit --no-fund || echo "Warning: Could not install zod"
+yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
 cd - > /dev/null
 
 # Create launcher script (with NODE_ENV=development)

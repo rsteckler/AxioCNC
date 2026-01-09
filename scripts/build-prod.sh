@@ -24,7 +24,7 @@ babel -d dist/axiocnc/server src/server
 i18next-scanner --config i18next-scanner.server.config.js "src/server/**/*.{html,js,jsx}" "!src/server/i18n/**" "!**/node_modules/**"
 
 # Build new frontend with Vite
-cd src/app && npm run build && cd ../..
+cd src/app && yarn build && cd ../..
 
 mkdir -p dist/axiocnc/app
 mkdir -p dist/axiocnc/server

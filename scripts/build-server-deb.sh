@@ -59,9 +59,9 @@ cp -r dist/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 # Install production dependencies
 echo "Installing production dependencies..."
 cd "${PACKAGE_ROOT}${INSTALL_DIR}"
-npm install --production --no-audit --no-fund
+yarn install --production
 # Ensure zod is installed (required by shared/schemas)
-npm install zod@^4.3.5 --save --no-audit --no-fund || echo "Warning: Could not install zod"
+yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
 cd - > /dev/null
 
 # Create launcher script
