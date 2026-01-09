@@ -7,7 +7,7 @@ import {
   ERR_INTERNAL_SERVER_ERROR
 } from '../constants';
 
-const pkgName = 'cncjs';
+const pkgName = 'axiocnc';
 
 export const getLatestVersion = (req, res) => {
   const scope = pkgName.split('/')[0];

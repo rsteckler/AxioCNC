@@ -4,8 +4,8 @@
 set -e
 
 ARCH=${1:-arm64}  # arm64 or armv7l
-PACKAGE_NAME="nextcnc-server"
-INSTALL_DIR="/opt/nextcnc"
+PACKAGE_NAME="axiocnc-server"
+INSTALL_DIR="/opt/axiocnc"
 BUILD_DIR="output/server-deb-build"
 
 echo "Building DEBUG server-only .deb package for ${ARCH}..."
@@ -54,7 +54,7 @@ mkdir -p "${PACKAGE_ROOT}/DEBIAN"
 
 # Copy built application (from output/ instead of dist/)
 echo "Copying application files..."
-cp -r output/cncjs/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
+cp -r output/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
 # Install ALL dependencies (including dev dependencies for debugging)
 echo "Installing dependencies (including dev dependencies)..."
@@ -68,9 +68,9 @@ cd - > /dev/null
 echo "Creating launcher script..."
 cat > "${PACKAGE_ROOT}/usr/bin/cncjs" << 'EOF'
 #!/usr/bin/env node
-// NextCNC Server Launcher (DEBUG)
+// AxioCNC Server Launcher (DEBUG)
 process.env.NODE_ENV = 'development';
-process.chdir('/opt/nextcnc');
+process.chdir('/opt/axiocnc');
 // Ensure --host 0.0.0.0 and --allow-remote-access are set
 const args = process.argv.slice(2);
 if (!args.includes('--host')) {
@@ -80,8 +80,8 @@ if (!args.includes('--allow-remote-access')) {
   args.push('--allow-remote-access');
 }
 // Reconstruct argv properly for commander
-process.argv = ['node', '/opt/nextcnc/server-cli.js', ...args];
-const launchServer = require('/opt/nextcnc/server-cli');
+process.argv = ['node', '/opt/axiocnc/server-cli.js', ...args];
+const launchServer = require('/opt/axiocnc/server-cli');
 launchServer().catch(err => {
   console.error('Error:', err);
   process.exit(1);
@@ -91,9 +91,9 @@ chmod +x "${PACKAGE_ROOT}/usr/bin/cncjs"
 
 # Create systemd service file (with NODE_ENV=development)
 echo "Creating systemd service..."
-cat > "${PACKAGE_ROOT}/etc/systemd/system/nextcnc.service" << EOF
+cat > "${PACKAGE_ROOT}/etc/systemd/system/axiocnc.service" << EOF
 [Unit]
-Description=NextCNC CNC Controller Server (DEBUG)
+Description=AxioCNC CNC Controller Server (DEBUG)
 After=network.target
 
 [Service]
@@ -117,9 +117,9 @@ cat > "${PACKAGE_ROOT}/DEBIAN/control" << EOF
 Package: ${PACKAGE_NAME}
 Version: ${VERSION}-debug
 Architecture: ${ARCH}
-Maintainer: NextCNC Team
-Description: NextCNC - Web-based CNC controller interface (Server DEBUG)
- NextCNC is a web-based interface for CNC controllers running Grbl,
+Maintainer: AxioCNC Team
+Description: AxioCNC - Web-based CNC controller interface (Server DEBUG)
+ AxioCNC is a web-based interface for CNC controllers running Grbl,
  Marlin, Smoothieware, or TinyG. This package provides the server
  component for headless deployment on Raspberry Pi (DEBUG version with source maps).
 Depends: nodejs (>= 18), udev
@@ -148,14 +148,14 @@ if [ -n "$USER" ] && [ "$USER" != "root" ]; then
 fi
 
 echo ""
-echo "NextCNC server (DEBUG) installed successfully!"
+echo "AxioCNC server (DEBUG) installed successfully!"
 echo ""
 echo "To start the server:"
 echo "  cncjs --port 8000 --host 0.0.0.0"
 echo ""
 echo "Or enable as a service:"
-echo "  sudo systemctl enable nextcnc"
-echo "  sudo systemctl start nextcnc"
+echo "  sudo systemctl enable axiocnc"
+echo "  sudo systemctl start axiocnc"
 echo ""
 echo "Note: You may need to log out and back in for serial port access."
 echo "Note: This is a DEBUG build with source maps enabled."
@@ -166,8 +166,8 @@ chmod +x "${PACKAGE_ROOT}/DEBIAN/postinst"
 cat > "${PACKAGE_ROOT}/DEBIAN/prerm" << 'EOF'
 #!/bin/bash
 # Stop service if running
-systemctl stop nextcnc || true
-systemctl disable nextcnc || true
+systemctl stop axiocnc || true
+systemctl disable axiocnc || true
 EOF
 chmod +x "${PACKAGE_ROOT}/DEBIAN/prerm"
 

@@ -125,7 +125,7 @@ const appMain = () => {
 
   try {
     // https://github.com/valery-barysok/session-file-store
-    const path = settings.middleware.session.path; // Defaults to './cncjs-sessions'
+    const path = settings.middleware.session.path; // Defaults to './axiocnc-sessions'
 
     rimraf.sync(path);
     fs.mkdirSync(path);

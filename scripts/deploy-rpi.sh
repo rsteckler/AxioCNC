@@ -1,12 +1,12 @@
 #!/bin/bash
-# Deploy NextCNC debug build to Raspberry Pi
+# Deploy AxioCNC debug build to Raspberry Pi
 
 set -e
 
 RPI_HOST="${RPI_HOST:-ryan@cnc.home}"
 ARCH="${1:-arm64}"  # arm64 or armv7l
 
-echo "🚀 Deploying NextCNC debug build to Raspberry Pi (${ARCH})..."
+echo "🚀 Deploying AxioCNC debug build to Raspberry Pi (${ARCH})..."
 echo ""
 
 # Build the debug package (show output in real-time, also capture to temp file)
@@ -26,12 +26,12 @@ VERSION=$(grep "Version:" "$BUILD_LOG" | tail -1 | sed -E 's/.*Version: [0-9]+\.
 
 # Fallback: extract from the final .deb filename in output
 if [ -z "$VERSION" ]; then
-    DEB_FILE=$(grep -o "output/nextcnc-server_[0-9]\+\.[0-9]\+\.[0-9]\+-debug_${ARCH}\.deb" "$BUILD_LOG" | tail -1)
+    DEB_FILE=$(grep -o "output/axiocnc-server_[0-9]\+\.[0-9]\+\.[0-9]\+-debug_${ARCH}\.deb" "$BUILD_LOG" | tail -1)
     if [ -n "$DEB_FILE" ] && [ -f "$DEB_FILE" ]; then
-        VERSION=$(echo "$DEB_FILE" | sed -E "s/.*nextcnc-server_([0-9]+\.[0-9]+\.[0-9]+)-debug_${ARCH}\.deb/\1/")
+        VERSION=$(echo "$DEB_FILE" | sed -E "s/.*axiocnc-server_([0-9]+\.[0-9]+\.[0-9]+)-debug_${ARCH}\.deb/\1/")
     fi
 else
-    DEB_FILE="output/nextcnc-server_${VERSION}-debug_${ARCH}.deb"
+    DEB_FILE="output/axiocnc-server_${VERSION}-debug_${ARCH}.deb"
 fi
 
 if [ -z "$VERSION" ] || [ ! -f "$DEB_FILE" ]; then
@@ -57,9 +57,9 @@ echo "🔧 Installing on Raspberry Pi..."
 ssh "${RPI_HOST}" << EOF
 set -e
 echo "Removing old version..."
-sudo dpkg -r nextcnc-server || true
+sudo dpkg -r axiocnc-server || true
 echo "Installing new version..."
-sudo dpkg -i ~/nextcnc-server_${VERSION}-debug_${ARCH}.deb
+sudo dpkg -i ~/axiocnc-server_${VERSION}-debug_${ARCH}.deb
 echo "Stopping server..."
 pkill -f 'node /usr/bin/cncjs' || pkill -f 'cncjs' || echo "Server was not running"
 echo ""
