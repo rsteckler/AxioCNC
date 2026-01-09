@@ -16,7 +16,7 @@ function App() {
     const initAuth = async () => {
       try {
         // Check for existing token
-        let token = localStorage.getItem('cncjs-token')
+        let token = localStorage.getItem('axiocnc-token')
         
         // If no token, get one via signin (works even without users configured)
         if (!token) {
@@ -24,7 +24,7 @@ function App() {
             const result = await signIn({ token: '' }).unwrap()
             token = result.token
             if (token) {
-              localStorage.setItem('cncjs-token', token)
+              localStorage.setItem('axiocnc-token', token)
             }
           } catch (err) {
             console.error('Failed to authenticate:', err)
@@ -53,7 +53,7 @@ function App() {
   // Show loading state while authenticating
   if (!authReady) {
     return (
-      <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="axiocnc-ui-theme">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="text-lg">Initializing...</div>

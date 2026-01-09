@@ -11,7 +11,7 @@ class SocketService {
       return this.socket
     }
 
-    this.token = token || localStorage.getItem('cncjs-token')
+    this.token = token || localStorage.getItem('axiocnc-token')
 
     if (!this.token) {
       console.warn('No token available for socket connection - call signIn first')

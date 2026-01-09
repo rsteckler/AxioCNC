@@ -19,7 +19,7 @@ export default function TestPage() {
     const initAuth = async () => {
       try {
         // Check for existing token
-        let token = localStorage.getItem('cncjs-token')
+        let token = localStorage.getItem('axiocnc-token')
         
         // If no token, get one via signin (works even without users configured)
         if (!token) {
@@ -27,7 +27,7 @@ export default function TestPage() {
           const result = await signIn({ token: '' }).unwrap()
           token = result.token
           if (token) {
-            localStorage.setItem('cncjs-token', token)
+            localStorage.setItem('axiocnc-token', token)
             addEvent(`Got token (session enabled: ${result.enabled ?? false})`)
           }
         } else {

@@ -225,7 +225,7 @@ export const api = createApi({
     baseUrl: '/api',
     prepareHeaders: (headers) => {
       // Get token from localStorage if available
-      const token = localStorage.getItem('cncjs-token')
+      const token = localStorage.getItem('axiocnc-token')
       if (token) {
         headers.set('Authorization', `Bearer ${token}`)
       }
