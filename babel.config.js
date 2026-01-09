@@ -5,7 +5,7 @@ module.exports = (api) => {
   ];
 
   if (typeof env === 'function' && env('test')) {
-    // Enable async/await for jest
+    // Enable async/await for tests
     plugins.push('@babel/plugin-transform-runtime');
   }
 

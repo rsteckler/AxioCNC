@@ -31,7 +31,6 @@ module.exports = {
   },
   plugins: [
     '@babel',
-    'jest',
   ],
   rules: {
     'import/no-relative-packages': 0,
