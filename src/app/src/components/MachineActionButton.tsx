@@ -86,12 +86,23 @@ export function MachineActionButton({
     }
   }
 
-  // Extract flex-1 from className if present (needs to be on wrapper, not button)
+  // Extract flex-1 and w-full from className if present (needs to be on wrapper, not button)
   const hasFlex1 = className?.includes('flex-1')
-  const wrapperClassName = hasFlex1 ? 'flex-1' : 'inline-block'
-  const buttonClassName = hasFlex1 
-    ? className.replace(/\bflex-1\b/g, '').trim() 
+  const hasWFull = className?.includes('w-full')
+  let wrapperClassName = 'inline-block'
+  if (hasFlex1) {
+    wrapperClassName = 'flex-1'
+  } else if (hasWFull) {
+    wrapperClassName = 'w-full block' // Add block to ensure it fills grid cells
+  }
+  // Remove w-full and flex-1 from button className, but keep w-full for button if wrapper has it
+  let buttonClassName = hasFlex1 || hasWFull
+    ? className.replace(/\b(flex-1|w-full)\b/g, '').trim() 
     : className
+  // If wrapper has w-full or flex-1, button should also have w-full to fill the wrapper
+  if (hasWFull || hasFlex1) {
+    buttonClassName = cn(buttonClassName, 'w-full')
+  }
 
   return (
     <div
