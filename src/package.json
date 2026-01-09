@@ -1,14 +1,14 @@
 {
-  "name": "cncjs-app",
+  "name": "axiocnc-app",
   "version": "1.10.15",
-  "productName": "CNCjs",
+  "productName": "AxioCNC",
   "description": "CNC Milling Controller",
-  "homepage": "https://github.com/cncjs/cncjs",
+  "homepage": "https://github.com/rsteckler/axiocnc",
   "author": "Cheton Wu <cheton@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:cncjs/cncjs.git"
+    "url": "git@github.com:rsteckler/axiocnc.git"
   },
   "main": "main.js",
   "dependencies": {

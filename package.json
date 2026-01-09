@@ -1,10 +1,10 @@
 {
-  "name": "cncjs",
+  "name": "axiocnc",
   "version": "1.10.15",
   "description": "A web-based interface for CNC milling controller running Grbl, Marlin, Smoothieware, or TinyG",
-  "homepage": "https://github.com/cncjs/cncjs",
+  "homepage": "https://github.com/rsteckler/axiocnc",
   "author": "Cheton Wu <cheton@gmail.com>",
-  "main": "./dist/cncjs/server-cli.js",
+  "main": "./dist/axiocnc/server-cli.js",
   "bin": {
     "cnc": "./bin/cnc",
     "cncjs": "./bin/cncjs"
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git@github.com:cncjs/cncjs.git"
+    "url": "git@github.com:rsteckler/axiocnc.git"
   },
   "license": "MIT",
   "engines": {
@@ -53,7 +53,7 @@
     "deploy:rpi-armv7l": "bash scripts/deploy-rpi.sh armv7l",
     "build:windows": "bash -c 'scripts/electron-builder.sh --windows --x64'",
     "build:windows-x64": "bash -c 'scripts/electron-builder.sh --windows --x64'",
-    "start-electron": "electron ./dist/cncjs/main",
+    "start-electron": "electron ./dist/axiocnc/main",
     "start-prod": "yarn build-prod && NODE_ENV=production ./bin/cncjs",
     "grbl-sim": "bash scripts/grbl-sim.sh",
     "grbl-sim:kill": "bash scripts/grbl-sim-kill.sh",
@@ -73,14 +73,14 @@
     "postinstall": "opencollective postinstall"
   },
   "build": {
-    "appId": "org.cncjs",
+    "appId": "org.axiocnc",
     "asar": false,
     "asarUnpack": [],
-    "productName": "CNCjs",
+    "productName": "AxioCNC",
     "directories": {
       "buildResources": "electron-build",
       "output": "output",
-      "app": "dist/cncjs"
+      "app": "dist/axiocnc"
     },
     "publish": [],
     "mac": {
@@ -126,6 +126,7 @@
   },
   "keywords": [
     "cncjs",
+    "axiocnc",
     "arduino",
     "raspberry",
     "pi",
@@ -358,6 +359,6 @@
   ],
   "collective": {
     "type": "opencollective",
-    "url": "https://opencollective.com/cncjs"
+    "url": "https://opencollective.com/axiocnc"
   }
 }
