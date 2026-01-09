@@ -10,6 +10,7 @@ export type MachineStatus =
   | 'connected_post_home'
   | 'alarm'
   | 'running'
+  | 'hold'
   | 'error'
 
 export type ActionRequirement = {
@@ -18,6 +19,7 @@ export type ActionRequirement = {
   requiresHomed?: boolean
   disallowAlarm?: boolean
   disallowRunning?: boolean
+  disallowHold?: boolean
   disallowNotConnected?: boolean
 }
 
@@ -36,6 +38,7 @@ export function canPerformAction(
     requiresPort = true,
     disallowAlarm = true,
     disallowRunning = true,
+    disallowHold = true,
     disallowNotConnected = true,
     requiresHomed = false,
   } = requirements
@@ -48,6 +51,7 @@ export function canPerformAction(
   if (disallowNotConnected && machineStatus === 'not_connected') return false
   if (disallowAlarm && machineStatus === 'alarm') return false
   if (disallowRunning && machineStatus === 'running') return false
+  if (disallowHold && machineStatus === 'hold') return false
 
   // Check homing requirement
   if (requiresHomed && !isHomed) return false
@@ -59,21 +63,23 @@ export function canPerformAction(
  * Common action requirement presets
  */
 export const ActionRequirements = {
-  /** Standard action - requires connection, no alarm, no running */
+  /** Standard action - requires connection, no alarm, no running, no hold */
   standard: {
     requiresConnected: true,
     requiresPort: true,
     disallowAlarm: true,
     disallowRunning: true,
+    disallowHold: true,
     disallowNotConnected: true,
   } as ActionRequirement,
 
-  /** Jogging action - requires connection, no alarm, no running */
+  /** Jogging action - requires connection, no alarm, no running, no hold */
   jog: {
     requiresConnected: true,
     requiresPort: true,
     disallowAlarm: true,
     disallowRunning: true,
+    disallowHold: true,
     disallowNotConnected: true,
   } as ActionRequirement,
 
@@ -84,6 +90,7 @@ export const ActionRequirements = {
     requiresHomed: true,
     disallowAlarm: true,
     disallowRunning: true,
+    disallowHold: true,
     disallowNotConnected: true,
   } as ActionRequirement,
 
@@ -102,6 +109,17 @@ export const ActionRequirements = {
     requiresPort: true,
     disallowAlarm: false,
     disallowRunning: true,
+    disallowHold: true,
+    disallowNotConnected: true,
+  } as ActionRequirement,
+
+  /** Action allowed during hold (e.g., spindle stop) */
+  allowHold: {
+    requiresConnected: true,
+    requiresPort: true,
+    disallowAlarm: true,
+    disallowRunning: false,
+    disallowHold: false,
     disallowNotConnected: true,
   } as ActionRequirement,
 } as const

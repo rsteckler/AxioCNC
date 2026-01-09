@@ -5,7 +5,7 @@ import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetMacrosQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetMacrosQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as MachineStatusType } from '@/services/api'
 import {
   DndContext,
   closestCenter,
@@ -31,10 +31,11 @@ import {
   Crosshair, RotateCcw, RotateCw, Maximize2, GripVertical,
   Zap, Terminal, Wrench, Target, FileCode, Library,
   Circle, Move, Pencil, Navigation, Bell, AlertCircle, X,
-  ArrowDown
+  ArrowDown, HelpCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements, canPerformAction } from '@/utils/machineState'
 import { Input } from '@/components/ui/input'
@@ -987,6 +988,9 @@ function VisualizerPanel({
   isConnected: boolean
   connectedPort: string | null
 }) {
+  // Get settings for connection options (needed for joining port room)
+  const { data: settings } = useGetSettingsQuery()
+  
   const [tab, setTab] = useState<'3d' | 'console'>('3d')
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([])
   const [commandInput, setCommandInput] = useState('')
@@ -1039,36 +1043,136 @@ function VisualizerPanel({
   }, [consoleLines.length])
   
   // Listen to Socket.IO events for console messages
+  // IMPORTANT: Must wait for socket to be connected AND added to controller.sockets via addConnection
+  // The controller's emit method only sends to sockets in this.sockets, so we need to ensure
+  // the socket is connected first, then added to controller.sockets
   useEffect(() => {
+    console.log('[Setup] Console listeners effect:', { isConnected, connectedPort })
+    
     if (!isConnected || !connectedPort) {
       // Clear console when disconnected
+      console.log('[Setup] Clearing console - not connected or no port')
       setConsoleLines([])
       return
     }
 
     const socket = socketService.getSocket()
-    if (!socket) return
-
-    // Listen for messages FROM Grbl
-    const handleSerialRead = (message: string) => {
-      const line = parseConsoleMessage(message, 'read')
-      setConsoleLines(prev => [...prev, line])
+    if (!socket) {
+      console.log('[Setup] No socket available for console listeners')
+      return
     }
 
-    // Listen for messages TO Grbl
-    const handleSerialWrite = (data: string) => {
-      const line = parseConsoleMessage(data, 'write')
-      setConsoleLines(prev => [...prev, line])
+    // Helper function to set up console listeners
+    const setupConsoleListeners = () => {
+      console.log('[Setup] Setting up console listeners for port:', connectedPort)
+      console.log('[Setup] Socket ID:', socket.id, 'Socket connected:', socket.connected)
+
+      // Listen for messages FROM Grbl
+      // Backend emits: this.emit('serialport:read', res.raw) or this.emit('serialport:read', message)
+      // Controller's emit method forwards to all sockets: socket.emit('serialport:read', ...args)
+      // So we receive: (message: string) directly
+      const handleSerialRead = (message: string) => {
+        // Backend emits serialport:read with just the message string
+        // The controller's emit method forwards to all sockets in this.sockets
+        // So we just receive the message string directly
+        console.log('[Setup] serialport:read event received:', { port: connectedPort, message: message.substring(0, 100) })
+        const line = parseConsoleMessage(message, 'read')
+        setConsoleLines(prev => [...prev, line])
+      }
+
+      // Listen for messages TO Grbl
+      // Backend emits: this.emit('serialport:write', data, context)
+      // So we receive: (data: string, context?: object)
+      const handleSerialWrite = (data: string, context?: unknown) => {
+        // Backend emits serialport:write with (data, context) where context is an object
+        // Not (port, data) - the controller's emit method forwards to all sockets in this.sockets
+        // So we just receive the data string directly
+        console.log('[Setup] serialport:write event received:', { port: connectedPort, data: data.substring(0, 100), context })
+        const line = parseConsoleMessage(data, 'write')
+        setConsoleLines(prev => [...prev, line])
+      }
+
+      // Set up listeners - they'll receive events once the socket is added to controller.sockets
+      // (which happens when we call socket.emit('open', ...))
+      socket.on('serialport:read', handleSerialRead)
+      socket.on('serialport:write', handleSerialWrite)
+      console.log('[Setup] Console listeners registered on socket:', socket.id)
+      console.log('[Setup] Console listeners will receive events once socket is added to controller.sockets')
+
+      return () => {
+        console.log('[Setup] Cleaning up console listeners for socket:', socket.id)
+        socket.off('serialport:read', handleSerialRead)
+        socket.off('serialport:write', handleSerialWrite)
+      }
     }
 
-    socket.on('serialport:read', handleSerialRead)
-    socket.on('serialport:write', handleSerialWrite)
-
-    return () => {
-      socket.off('serialport:read', handleSerialRead)
-      socket.off('serialport:write', handleSerialWrite)
+    // CRITICAL: Only set up listeners when socket is actually connected
+    // If socket is not connected yet, wait for it to connect
+    if (!socket.connected) {
+      console.log('[Setup] Socket not connected yet, waiting for connection before setting up console listeners')
+      const cleanupRef = { current: null as (() => void) | null }
+      
+      const handleConnect = () => {
+        console.log('[Setup] Socket connected, setting up console listeners now')
+        // Set up listeners after socket connects
+        cleanupRef.current = setupConsoleListeners()
+        // Also ensure we join the port room (if we're restoring state)
+        if (settings?.connection?.port && settings.connection.port === connectedPort) {
+          console.log('[Setup] Socket connected, joining port room for:', connectedPort)
+          const connectionOptions = settings.connection ? {
+            controllerType: settings.connection.controllerType || 'Grbl',
+            baudrate: settings.connection.baudRate || 115200,
+            rtscts: settings.connection.rtscts || false,
+          } : {
+            controllerType: 'Grbl',
+            baudrate: 115200,
+            rtscts: false,
+          }
+          socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
+            if (!err) {
+              console.log('[Setup] Joined port room after socket connect:', connectedPort)
+            } else {
+              console.error('[Setup] Error joining port room after socket connect:', err)
+            }
+          })
+        }
+      }
+      socket.once('connect', handleConnect)
+      
+      return () => {
+        socket.off('connect', handleConnect)
+        if (cleanupRef.current) {
+          cleanupRef.current()
+        }
+      }
     }
-  }, [isConnected, connectedPort])
+
+    // Socket is connected, set up listeners immediately
+    // Also ensure we join the port room if not already joined
+    const cleanup = setupConsoleListeners()
+    
+    // Join port room if we're connected but haven't joined yet
+    if (settings?.connection?.port && settings.connection.port === connectedPort) {
+      const connectionOptions = settings.connection ? {
+        controllerType: settings.connection.controllerType || 'Grbl',
+        baudrate: settings.connection.baudRate || 115200,
+        rtscts: settings.connection.rtscts || false,
+      } : {
+        controllerType: 'Grbl',
+        baudrate: 115200,
+        rtscts: false,
+      }
+      socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
+        if (!err) {
+          console.log('[Setup] Joined port room:', connectedPort)
+        } else {
+          console.error('[Setup] Error joining port room:', err)
+        }
+      })
+    }
+    
+    return cleanup
+  }, [isConnected, connectedPort, settings?.connection?.port])
   
   // Handle command input
   const handleSendCommand = useCallback(() => {
@@ -1361,7 +1465,9 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
   const speed = speeds[speedIndex]
   
   // Check if controls should be disabled
-  const isDisabled = !isConnected || machineStatus === 'alarm' || isJobRunning || machineStatus === 'not_connected'
+  // Spindle stop should be allowed during hold, but other controls should be disabled
+  const isDisabled = !isConnected || machineStatus === 'alarm' || machineStatus === 'not_connected' || 
+    (isJobRunning && machineStatus !== 'hold') // Allow during hold, disable during other running states
   const canControl = !isDisabled
   
   // Handle start/stop spindle
@@ -1397,15 +1503,26 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
     // Speed will be applied when starting spindle
   }, [isOn])
   
-  // Flash status if action attempted while disabled
+  // Flash status if action attempted while disabled (but not if disabled due to spindle running)
   const handleDisabledAction = useCallback(() => {
-    if (!canControl) {
+    if (!canControl && !isOn) {
+      // Only flash if disabled for reasons other than spindle running
       onFlashStatus()
     }
-  }, [canControl, onFlashStatus])
+  }, [canControl, isOn, onFlashStatus])
+
+  // Don't flash when disabled due to spindle running
+  const onFlashStatusForSpindleControls = isOn ? () => {} : onFlashStatus
 
   return (
     <div className="p-3 space-y-3">
+      {/* Notice when spindle is running */}
+      {isOn && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-md p-2 text-xs text-blue-700 dark:text-blue-400">
+          Direction and speed cannot be changed while the spindle is running.
+        </div>
+      )}
+      
       {/* Direction toggle */}
       <div className="space-y-1">
         <div className="flex gap-2 w-full">
@@ -1421,7 +1538,7 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
             isConnected={isConnected}
             connectedPort={connectedPort}
             machineStatus={machineStatus}
-            onFlashStatus={onFlashStatus}
+            onFlashStatus={onFlashStatusForSpindleControls}
             onAction={() => handleDirectionChange('cw')}
             requirements={{
               requiresConnected: true,
@@ -1441,7 +1558,7 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
             isConnected={isConnected}
             connectedPort={connectedPort}
             machineStatus={machineStatus}
-            onFlashStatus={onFlashStatus}
+            onFlashStatus={onFlashStatusForSpindleControls}
             onAction={() => handleDirectionChange('ccw')}
             requirements={{
               requiresConnected: true,
@@ -1468,7 +1585,7 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
         </div>
         <MachineActionWrapper
           isDisabled={isDisabled || isOn}
-          onFlashStatus={onFlashStatus}
+          onFlashStatus={onFlashStatusForSpindleControls}
         >
           <Slider 
             value={[speedIndex]} 
@@ -1496,20 +1613,21 @@ function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus
       </div>
       
       {/* On/Off toggle */}
-      <MachineActionButton
+        <MachineActionButton
         isConnected={isConnected}
         connectedPort={connectedPort}
         machineStatus={machineStatus}
         onFlashStatus={onFlashStatus}
         onAction={handleToggleSpindle}
-        requirements={{
+        requirements={isOn ? ActionRequirements.allowHold : {
           requiresConnected: true,
           requiresPort: true,
           disallowAlarm: true,
-          disallowRunning: false, // Allow spindle control during jobs
+          disallowRunning: false, // Allow spindle start during jobs (but not during hold)
+          disallowHold: true, // Don't allow starting spindle during hold
           disallowNotConnected: true,
         }}
-        customDisabled={isJobRunning}
+        customDisabled={!isOn && (isJobRunning && machineStatus !== 'hold')} // Allow stop during hold, disable start during other running states
         className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
         variant={isOn ? 'default' : 'outline'}
       >
@@ -2018,6 +2136,7 @@ export default function Setup() {
     | 'connected_post_home'
     | 'alarm'
     | 'running'
+    | 'hold'
     | 'error'
   
   // Connection state
@@ -2039,7 +2158,12 @@ export default function Setup() {
   const [spindleState, setSpindleState] = useState<'M3' | 'M4' | 'M5'>('M5')
   const [spindleSpeed, setSpindleSpeed] = useState<number>(0)
   
+  // Hold state
+  const [holdReason, setHoldReason] = useState<{ data?: string; msg?: string } | null>(null)
+  
   // Refs to track state in event handlers to avoid stale closures
+  const machineStatusRef = useRef<MachineStatus>(machineStatus)
+  machineStatusRef.current = machineStatus // Keep ref in sync
   const isConnectedRef = useRef(isConnected)
   isConnectedRef.current = isConnected
   const isHomedRef = useRef(isHomed)
@@ -2060,6 +2184,18 @@ export default function Setup() {
   
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
+  
+  // Get active controllers to check if we're already connected when remounting
+  // Refetch on mount to ensure we have fresh data when navigating back
+  const { data: controllersData, isLoading: isLoadingControllers, refetch: refetchControllers } = useGetControllersQuery(undefined, {
+    refetchOnMountOrArgChange: true, // Always refetch when component mounts
+  })
+
+  // Lazy query for machine status (we'll call it manually when needed)
+  const [getMachineStatus] = useLazyGetMachineStatusQuery()
+
+  // Store backend machine status
+  const [backendMachineStatus, setBackendMachineStatus] = useState<MachineStatusType | null>(null)
   
   // Show error notification
   const showErrorNotification = useCallback((title: string, message: string) => {
@@ -2109,27 +2245,61 @@ export default function Setup() {
     
     if (isConnected && connectedPort) {
       // Disconnect
+      console.log('[Setup] ===== DISCONNECT REQUESTED =====')
+      console.log('[Setup] Current state:', { isConnected, connectedPort, machineStatus })
+      
       const socket = socketService.getSocket()
       if (!socket) {
-        showErrorNotification('Socket Not Available', 'Socket connection is not available. Please refresh the page.')
+        console.log('[Setup] Socket not available - updating UI immediately')
+        // Socket not available - update UI immediately
+        setIsConnected(false)
+        setConnectedPort(null)
+        setMachineStatus('not_connected')
+        isHomedRef.current = false
+        setIsHomed(false)
+        setIsJobRunning(false)
+        setSpindleState('M5')
+        setSpindleSpeed(0)
+        console.log('[Setup] UI updated to disconnected (no socket)')
         return
       }
       
+      console.log('[Setup] Disconnecting from port:', connectedPort)
+      console.log('[Setup] Socket available:', { connected: socket.connected, id: socket.id })
+      
+      // Mark as manually disconnected to prevent restore
+      manuallyDisconnectedRef.current = true
+      console.log('[Setup] Marked as manually disconnected')
+      
+      // Update UI optimistically (will be confirmed by serialport:close event)
+      console.log('[Setup] Updating UI optimistically to disconnected')
+      setIsConnected(false)
+      setConnectedPort(null)
+      setMachineStatus('not_connected')
+      isHomedRef.current = false
+      setIsHomed(false)
+      setIsJobRunning(false)
+      setSpindleState('M5')
+      setSpindleSpeed(0)
+      console.log('[Setup] UI state updated, emitting close event to backend')
+      
+      // Request disconnect from backend
       socket.emit('close', connectedPort, (err: Error | null) => {
+        console.log('[Setup] ===== DISCONNECT CALLBACK =====')
+        console.log('[Setup] Disconnect callback:', err ? `Error: ${err}` : 'Success')
         if (err) {
           console.error('Disconnect error:', err)
+          // If already disconnected, that's fine - UI is already updated
+          // Only show error if it's a real error (not "already disconnected")
           const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to disconnect from machine')
-          showErrorNotification('Disconnect Failed', errorMessage)
-        } else {
-          setIsConnected(false)
-          setConnectedPort(null)
-          setMachineStatus('not_connected')
-          isHomedRef.current = false
-          setIsHomed(false)
-          setIsJobRunning(false)
-          setSpindleState('M5')
-          setSpindleSpeed(0)
+          if (!errorMessage.toLowerCase().includes('not connected') && 
+              !errorMessage.toLowerCase().includes('already') &&
+              !errorMessage.toLowerCase().includes('not found')) {
+            showErrorNotification('Disconnect Failed', errorMessage)
+          }
         }
+        // UI is already updated above, so we don't need to update it here
+        // The serialport:close event will also confirm the disconnect
       })
     } else {
       // Connect
@@ -2263,7 +2433,48 @@ export default function Setup() {
     setHomingInProgress(false)
     homingInProgressRef.current = false
     setMachineStatus('connected_pre_home')
+    // Clear hold state on E-Stop
+    setHoldReason(null)
   }, [connectedPort])
+  
+  // Handle Resume button (sends ~ to resume from hold and resets feeder/sender state)
+  const handleResume = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot resume: not connected')
+      flashStatus()
+      return
+    }
+    const socket = socketService.getSocket()
+    if (!socket) {
+      console.warn('Cannot resume: socket not available')
+      flashStatus()
+      return
+    }
+    // Send gcode:resume command (sends ~ AND resets feeder/sender hold state)
+    // This is better than cyclestart which only sends ~ without resetting feeder state
+    socket.emit('command', connectedPort, 'gcode:resume')
+  }, [isConnected, connectedPort, flashStatus])
+  
+  // Handle Stop button (stops the job during hold)
+  const handleStop = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot stop: not connected')
+      flashStatus()
+      return
+    }
+    const socket = socketService.getSocket()
+    if (!socket) {
+      console.warn('Cannot stop: socket not available')
+      flashStatus()
+      return
+    }
+    // Stop the job
+    socket.emit('command', connectedPort, 'gcode:stop')
+    setIsJobRunning(false)
+    // Clear hold state
+    setHoldReason(null)
+    // Status will be updated by workflow:state event
+  }, [isConnected, connectedPort, flashStatus])
   
   // Handler for jog commands (called from JogPanel)
   const handleJogAction = useCallback(() => {
@@ -2272,22 +2483,45 @@ export default function Setup() {
     }
   }, [isConnected, flashStatus])
   
+  // Track if we've received initial state from backend (for page refresh)
+  const hasReceivedInitialStateRef = useRef(false)
+  
+  // Track if we manually disconnected (to prevent restore after manual disconnect)
+  const manuallyDisconnectedRef = useRef(false)
+  
   // Listen for connection events and errors
   useEffect(() => {
     const handleSerialPortOpen = (...args: unknown[]) => {
       const data = args[0] as { port: string }
+      
+      // Clear manual disconnect flag when we successfully connect
+      manuallyDisconnectedRef.current = false
+      console.log('[Setup] Cleared manual disconnect flag on connection')
+      
       setIsConnected(true)
       setConnectedPort(data.port)
       setIsConnecting(false)
-      setMachineStatus('connected_pre_home')
-      isHomedRef.current = false
-      setIsHomed(false)
-      setHomingInProgress(false)
-      homingInProgressRef.current = false
-      setIsJobRunning(false)
+      
+      // On initial connection, backend will send current state via:
+      // - controller:state (activeState, positions, etc.)
+      // - feeder:status (hold state, hold reason)
+      // - sender:status (hold state, hold reason)
+      // - workflow:state (running/idle/paused)
+      // Don't reset state here - wait for those events to set the truth
+      // If this is a new connection (not page refresh), state will be reset below
+      if (!hasReceivedInitialStateRef.current) {
+        // Wait for initial state from backend
+        // State will be set by controller:state, feeder:status, sender:status, workflow:state events
+        // Set a default status that will be overridden by actual state
+        setMachineStatus('connected_pre_home')
+      }
     }
     
-    const handleSerialPortClose = () => {
+    const handleSerialPortClose = (data?: { port?: string }) => {
+      console.log('[Setup] ===== SERIALPORT:CLOSE EVENT =====')
+      console.log('[Setup] serialport:close event received:', data)
+      console.log('[Setup] Current state before close:', { isConnected, connectedPort, machineStatus })
+      
       setIsConnected(false)
       setConnectedPort(null)
       setIsConnecting(false)
@@ -2299,6 +2533,8 @@ export default function Setup() {
       setIsJobRunning(false)
       setSpindleState('M5')
       setSpindleSpeed(0)
+      
+      console.log('[Setup] UI updated to disconnected state')
     }
     
     const handleSocketError = (error: unknown) => {
@@ -2310,6 +2546,7 @@ export default function Setup() {
     }
     
     // Listen for controller state changes to detect alarm, running, and homing states
+    // This is called on initial connection (page refresh) AND on state changes
     const handleControllerState = (...args: unknown[]) => {
       // Backend sends: controller:state(GRBL, state)
       // State structure: { status: { activeState: 'Idle'|'Run'|'Alarm'|... }, parserstate: {...} }
@@ -2367,10 +2604,14 @@ export default function Setup() {
       // Only update status if we're actually connected
       if (!isConnectedRef.current) return
       
+      // Mark that we've received initial state from backend (for page refresh handling)
+      hasReceivedInitialStateRef.current = true
+      
       // Extract activeState from nested structure
       const activeState = state.status?.activeState || ''
       const isAlarm = activeState === 'Alarm'
       const isRunning = activeState === 'Run'
+      const isHold = activeState === 'Hold'
       const isHoming = activeState === 'Home'
       const isIdle = activeState === 'Idle'
       
@@ -2399,17 +2640,28 @@ export default function Setup() {
         setHomingInProgress(false)
       }
       
-      // Priority: Alarm > Running (from workflow) > Idle (post-home) > Idle (pre-home)
+      // Priority: Alarm > Hold > Running (from workflow) > Idle (post-home) > Idle (pre-home)
       // Note: Running state is handled by workflow:state, not controller:state
-      // Don't override running status unless we get an alarm
+      // Don't override running/hold status unless we get an alarm
       // Use isHomedRef to avoid stale closure issues
       // Don't override status if homing just completed (already set above)
+      // Note: Hold from controller:state is complementary to sender:status hold
+      //       sender:status provides hold reason (M0, M6, etc.), controller:state confirms Hold state
       if (isAlarm) {
         setMachineStatus('alarm')
         setIsJobRunning(false)
-      } else if (!isJobRunning && !homingJustCompleted) {
-        // Only update status if workflow is not running and homing didn't just complete
+        // Clear hold on alarm
+        setHoldReason(null)
+      } else if (isHold) {
+        // Grbl reports Hold state - set machine status to hold
+        // If we already have hold reason from sender:status, keep it
+        // If not, we still show hold status (reason might come later)
+        setMachineStatus('hold')
+        setIsJobRunning(true) // Job is still running, just paused
+      } else if (!isJobRunning && !homingJustCompleted && machineStatus !== 'hold') {
+        // Only update status if workflow is not running, not in hold, and homing didn't just complete
         // Workflow running state takes priority over controller idle state
+        // Hold state takes priority over idle state
         if (isIdle && isHomedRef.current) {
           // Idle after homing = post-home ready
           setMachineStatus('connected_post_home')
@@ -2418,6 +2670,29 @@ export default function Setup() {
           setMachineStatus('connected_pre_home')
         } else if (isIdle && !isHomedRef.current) {
           // Idle but not homed = pre-home
+          setMachineStatus('connected_pre_home')
+        }
+      } else if (isIdle && machineStatus === 'hold' && !isHold) {
+        // If we were in hold and now we're idle (not hold), clear hold state
+        // This handles the case where hold is cleared (e.g., after resume)
+        setHoldReason(null)
+        // Let workflow/controller determine the new status
+        if (isHomedRef.current) {
+          setMachineStatus('connected_post_home')
+        } else {
+          setMachineStatus('connected_pre_home')
+        }
+      } else if (isHold && machineStatus !== 'hold') {
+        // Controller shows Hold but UI doesn't - set hold state
+        // (holdReason will be set by sender:status or feeder:status if available)
+        setMachineStatus('hold')
+        setIsJobRunning(true)
+      } else if (!isHold && machineStatus === 'hold') {
+        // Controller no longer shows Hold but UI does - clear hold state
+        setHoldReason(null)
+        if (isHomedRef.current) {
+          setMachineStatus('connected_post_home')
+        } else {
           setMachineStatus('connected_pre_home')
         }
       }
@@ -2429,14 +2704,97 @@ export default function Setup() {
       if (!isConnectedRef.current) return
       
       // workflowState is 'idle', 'running', or 'paused'
-      if (workflowState === 'running') {
-        setMachineStatus('running')
-        setIsJobRunning(true)
-      } else {
-        // When workflow stops (idle or paused), let controller state determine the status
-        setIsJobRunning(false)
-        // Trigger a status update by checking current controller state
-        // The controller state handler will set the appropriate status
+      // Note: Don't override hold status - hold takes priority
+      // Use functional setState to check current state
+      setMachineStatus((currentStatus) => {
+        if (currentStatus === 'hold') {
+          // Hold takes priority - don't change status
+          if (workflowState === 'running') {
+            setIsJobRunning(true)
+          }
+          return currentStatus
+        }
+        
+        if (workflowState === 'running') {
+          setIsJobRunning(true)
+          return 'running'
+        } else {
+          setIsJobRunning(false)
+          // When workflow stops (idle or paused), let controller state determine the status
+          // The controller state handler will set the appropriate status
+          return currentStatus // Keep current status, controller will update it
+        }
+      })
+    }
+    
+    // Listen for sender status to detect hold state (for loaded G-code files)
+    const handleSenderStatus = (senderData: {
+      hold?: boolean
+      holdReason?: { data?: string; msg?: string; err?: boolean }
+      name?: string
+      size?: number
+      total?: number
+      sent?: number
+      received?: number
+    }) => {
+      // Only update if we're connected
+      if (!isConnectedRef.current) return
+      
+      if (senderData.hold && senderData.holdReason) {
+        // Machine is in hold state (from sender - loaded G-code files)
+        console.log('[Sender Status] Received hold reason:', senderData.holdReason)
+        setHoldReason(senderData.holdReason)
+        setMachineStatus('hold')
+        setIsJobRunning(true) // Job is still running, just paused
+      } else if (!senderData.hold && machineStatus === 'hold') {
+        // Hold was cleared - check if we should reset
+        // Only reset if controller state also says we're not in hold
+        // This prevents resetting when sender clears but controller still shows Hold
+      }
+    }
+    
+    // Listen for feeder status to get hold reason (for macros sent via command('gcode'))
+    // NOTE: We don't set hold state from feeder status - only controller state determines hold
+    // Feeder status is only used to get the hold reason message (M0 comment, etc.)
+    // This is called on initial connection (page refresh) AND on state changes
+    const handleFeederStatus = (feederData: {
+      hold?: boolean
+      holdReason?: { data?: string; msg?: string; err?: boolean }
+      queue?: number
+      pending?: boolean
+    }) => {
+      // Only update if we're connected
+      if (!isConnectedRef.current) return
+      
+      // Mark that we've received initial state from backend
+      hasReceivedInitialStateRef.current = true
+      
+      // Log whenever we receive hold reason from feeder (for debugging)
+      if (feederData.hold && feederData.holdReason) {
+        console.log('[Feeder Status] Received hold reason:', {
+          holdReason: feederData.holdReason,
+          currentMachineStatus: machineStatusRef.current,
+          willStore: machineStatusRef.current === 'hold'
+        })
+      }
+      
+      // Only update hold reason if controller confirms we're in Hold state
+      // This prevents storing hold reason from stale feeder state
+      if (feederData.hold && feederData.holdReason && machineStatusRef.current === 'hold') {
+        // Machine is in hold state (confirmed by controller) - update hold reason message
+        setHoldReason(prevReason => {
+          // Prefer feeder holdReason if it has a message, otherwise keep previous
+          if (feederData.holdReason?.msg) {
+            return feederData.holdReason
+          }
+          return prevReason || feederData.holdReason
+        })
+      } else if (!feederData.hold && machineStatusRef.current !== 'hold') {
+        // Feeder hold was cleared AND controller confirms we're not in hold - clear hold reason
+        if (holdReason) {
+          console.log('[Feeder hold cleared, clearing hold reason]')
+          setHoldReason(null)
+        }
       }
     }
     
@@ -2473,9 +2831,12 @@ export default function Setup() {
     socketService.on('disconnect', handleSocketDisconnect)
     socketService.on('controller:state', handleControllerState)
     socketService.on('workflow:state', handleWorkflowState)
+    socketService.on('sender:status', handleSenderStatus)
+    socketService.on('feeder:status', handleFeederStatus)
     socketService.on('controller:homing', handleHomingComplete)
     socketService.on('grbl:homing', handleHomingComplete) // Grbl-specific
     socketService.on('marlin:homing', handleHomingComplete) // Marlin-specific
+    
     
     return () => {
       socketService.off('serialport:open', handleSerialPortOpen)
@@ -2484,11 +2845,286 @@ export default function Setup() {
       socketService.off('disconnect', handleSocketDisconnect)
       socketService.off('controller:state', handleControllerState)
       socketService.off('workflow:state', handleWorkflowState)
+      socketService.off('sender:status', handleSenderStatus)
+      socketService.off('feeder:status', handleFeederStatus)
       socketService.off('controller:homing', handleHomingComplete)
       socketService.off('grbl:homing', handleHomingComplete)
       socketService.off('marlin:homing', handleHomingComplete)
     }
   }, [showErrorNotification, isConnected])
+  
+  // Listen to machine:status events from backend (single source of truth)
+  useEffect(() => {
+    const socket = socketService.getSocket()
+    if (!socket) {
+      console.log('[Setup] No socket available for machine:status listener')
+      return
+    }
+
+    console.log('[Setup] Setting up machine:status Socket.IO listener')
+
+    const handleMachineStatus = (port: string, status: MachineStatusType) => {
+      console.log('[Setup] ===== machine:status event received =====', {
+        port,
+        status: {
+          connected: status.connected,
+          machineStatus: status.machineStatus,
+          isHomed: status.isHomed,
+          isJobRunning: status.isJobRunning,
+          controllerType: status.controllerType
+        }
+      })
+
+      // Update backend status
+      setBackendMachineStatus(status)
+
+      // Only update local state if this is for the configured port
+      if (status.port === settings?.connection?.port) {
+        console.log('[Setup] This status is for our configured port, updating local state')
+        
+        setIsConnected(status.connected)
+        setConnectedPort(status.connected ? status.port : null)
+        setMachineStatus(status.machineStatus)
+        setIsHomed(status.isHomed)
+        isHomedRef.current = status.isHomed
+        setIsJobRunning(status.isJobRunning)
+        
+        if (status.controllerState) {
+          setMachinePosition({
+            x: parseFloat(status.controllerState.mpos?.x || '0'),
+            y: parseFloat(status.controllerState.mpos?.y || '0'),
+            z: parseFloat(status.controllerState.mpos?.z || '0')
+          })
+          setWorkPosition({
+            x: parseFloat(status.controllerState.wpos?.x || '0'),
+            y: parseFloat(status.controllerState.wpos?.y || '0'),
+            z: parseFloat(status.controllerState.wpos?.z || '0')
+          })
+        }
+        
+        console.log('[Setup] Local state updated from machine:status event:', {
+          machineStatus: status.machineStatus,
+          isHomed: status.isHomed,
+          isJobRunning: status.isJobRunning
+        })
+      } else {
+        console.log('[Setup] Status is for different port, ignoring:', {
+          statusPort: status.port,
+          configuredPort: settings?.connection?.port
+        })
+      }
+    }
+
+    socket.on('machine:status', handleMachineStatus)
+
+    // Request current status on mount
+    if (settings?.connection?.port) {
+      console.log('[Setup] Requesting current machine status for port:', settings.connection.port)
+      socket.emit('machine:status:request', settings.connection.port)
+    } else {
+      console.log('[Setup] No port configured, requesting all statuses')
+      socket.emit('machine:status:request')
+    }
+
+    return () => {
+      console.log('[Setup] Cleaning up machine:status listener')
+      socket.off('machine:status', handleMachineStatus)
+    }
+  }, [settings?.connection?.port])
+
+  // Separate effect to restore connection state when component mounts or controllers data loads
+  // This handles both navigation back (socket connected) and hard refresh (socket not connected yet)
+  // NOTE: This is a fallback - the machine:status Socket.IO events should be the primary source
+  useEffect(() => {
+    console.log('[Setup] ===== RESTORE EFFECT TRIGGERED =====')
+    console.log('[Setup] Restore effect dependencies:', { 
+      controllersData: controllersData ? `Array(${controllersData.length})` : null,
+      isConnected,
+      connectedPort,
+      backendMachineStatus: backendMachineStatus ? 'exists' : null
+    })
+    
+    // If we already have backend machine status, use that instead
+    if (backendMachineStatus && backendMachineStatus.connected && backendMachineStatus.port === settings?.connection?.port) {
+      console.log('[Setup] Already have backend machine status, using it:', {
+        machineStatus: backendMachineStatus.machineStatus,
+        isHomed: backendMachineStatus.isHomed
+      })
+      setIsConnected(backendMachineStatus.connected)
+      setConnectedPort(backendMachineStatus.port)
+      setMachineStatus(backendMachineStatus.machineStatus)
+      setIsHomed(backendMachineStatus.isHomed)
+      isHomedRef.current = backendMachineStatus.isHomed
+      setIsJobRunning(backendMachineStatus.isJobRunning)
+      return
+    }
+    
+    const checkAndRestore = () => {
+      console.log('[Setup] checkAndRestore() called')
+      console.log('[Setup] Current state:', { isConnected, connectedPort, machineStatus })
+      
+      // Only run if we're not already connected
+      if (isConnected) {
+        console.log('[Setup] Already connected, skipping restore')
+        return
+      }
+      
+      // If we manually disconnected, don't restore
+      if (manuallyDisconnectedRef.current) {
+        console.log('[Setup] Manually disconnected, skipping restore')
+        return
+      }
+      
+      // Try to get machine status from API first (more reliable than controllers)
+      if (settings?.connection?.port) {
+        console.log('[Setup] Fetching machine status from API for port:', settings.connection.port)
+        getMachineStatus({ port: settings.connection.port })
+          .unwrap()
+          .then((response) => {
+            console.log('[Setup] Machine status from API:', response.status)
+            if (response.status && response.status.connected) {
+              const status = response.status
+              console.log('[Setup] Restoring from API machine status:', {
+                machineStatus: status.machineStatus,
+                isHomed: status.isHomed
+              })
+              console.log('[Setup] Restoring UI state from API:', {
+                machineStatus: status.machineStatus,
+                isHomed: status.isHomed,
+                isJobRunning: status.isJobRunning
+              })
+              
+              setIsConnected(true)
+              setConnectedPort(status.port)
+              setMachineStatus(status.machineStatus)
+              setIsHomed(status.isHomed)
+              isHomedRef.current = status.isHomed
+              setIsJobRunning(status.isJobRunning)
+              
+              // Store backend status so restore effect can use it
+              setBackendMachineStatus(status)
+              
+              // Join port room ONLY if socket is connected
+              // The backend should preserve state when joining an existing connection
+              // Request status via Socket.IO instead of calling open
+              const socket = socketService.getSocket()
+              if (socket?.connected) {
+                // Request current status via Socket.IO (backend will preserve state)
+                console.log('[Setup] Requesting machine status via Socket.IO for:', status.port)
+                socket.emit('machine:status:request', status.port)
+                
+                // Also join the port room to receive console events
+                // But only if we haven't already joined (to avoid triggering serialport:open)
+                // Actually, we need to join the room - but the backend should handle this gracefully
+                // The backend's handleSerialPortOpen now preserves state, so this should be safe
+                const connectionOptions = settings.connection ? {
+                  controllerType: settings.connection.controllerType || 'Grbl',
+                  baudrate: settings.connection.baudRate || 115200,
+                  rtscts: settings.connection.rtscts || false,
+                } : {
+                  controllerType: 'Grbl',
+                  baudrate: 115200,
+                  rtscts: false,
+                }
+                
+                console.log('[Setup] Joining port room (backend should preserve state):', status.port)
+                socket.emit('open', status.port, connectionOptions, (err: Error | null) => {
+                  if (!err) {
+                    console.log('[Setup] Joined port room for:', status.port)
+                    console.log('[Setup] Socket should now be added to controller.sockets and receiving events')
+                    // Request status again after joining to ensure we have latest
+                    setTimeout(() => {
+                      socket.emit('machine:status:request', status.port)
+                    }, 100)
+                    
+                    // Force a status report to trigger console events and verify listeners are working
+                    setTimeout(() => {
+                      console.log('[Setup] Requesting status report to test console listeners')
+                      socket.emit('command', status.port, 'statusreport')
+                    }, 200)
+                  } else {
+                    console.error('[Setup] Error joining port room:', err)
+                  }
+                })
+              } else {
+                console.log('[Setup] Socket not connected yet, will join when socket connects')
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn('[Setup] Failed to get machine status from API, falling back to controllers:', err)
+            // Fall through to controllers-based restore
+            restoreFromControllers()
+          })
+        return
+      }
+      
+      // Fallback: restore from controllers data (old method)
+      restoreFromControllers()
+    }
+
+    const restoreFromControllers = () => {
+      // Wait for controllers data to be available
+      if (!controllersData) {
+        console.log('[Setup] Waiting for controllers data...')
+        return
+      }
+      
+      const controllers = controllersData || []
+      if (controllers.length > 0) {
+        const activeController = controllers[0]
+        const port = activeController.port
+        if (!port) {
+          console.log('[Setup] Active controller found but no port')
+          return
+        }
+        
+        console.log('[Setup] ===== RESTORING FROM CONTROLLERS (FALLBACK) =====')
+        console.log('[Setup] Active controller:', {
+          port: activeController.port,
+          ready: activeController.ready,
+          homed: activeController.homed,
+          controllerType: activeController.controller?.type,
+          activeState: activeController.controller?.state?.status?.activeState
+        })
+        
+        setIsConnected(true)
+        setConnectedPort(port)
+        
+        // Use homed flag from backend controller
+        const isHomed = activeController.homed === true
+        const controllerState = activeController.controller?.state
+        
+        if (controllerState?.status?.activeState === 'Alarm') {
+          setMachineStatus('alarm')
+          setIsHomed(false)
+        } else if (isHomed) {
+          setMachineStatus('connected_post_home')
+          setIsHomed(true)
+        } else {
+          setMachineStatus('connected_pre_home')
+          setIsHomed(false)
+        }
+        isHomedRef.current = isHomed
+        
+        // Join port room
+        const socket = socketService.getSocket()
+        if (socket?.connected) {
+          const connectionOptions = {
+            controllerType: activeController.controller?.type || 'Grbl',
+            baudrate: activeController.baudrate || 115200,
+            rtscts: activeController.rtscts || false,
+          }
+          socket.emit('open', port, connectionOptions)
+        }
+      }
+    }
+    
+    // Check immediately on mount
+    checkAndRestore()
+      
+    // Also check when controllersData changes (in case it loads after mount)
+  }, [controllersData, isConnected, connectedPort, settings?.connection?.port, backendMachineStatus, getMachineStatus])
   
   // Drag sensors
   const sensors = useSensors(
@@ -2640,7 +3276,7 @@ export default function Setup() {
             machineStatus={machineStatus}
             onFlashStatus={flashStatus}
             onAction={handleReset}
-            requirements={ActionRequirements.standard}
+            requirements={ActionRequirements.allowAlarm}
             variant="outline"
             size="sm"
             className="h-9 px-4"
@@ -2669,58 +3305,112 @@ export default function Setup() {
       <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
         <span className="text-sm text-muted-foreground mr-2">Machine:</span>
         {/* Machine status - rectangular badge */}
-        <div 
-          className={`
-            px-3 py-1.5 rounded border flex items-center gap-2 min-w-[140px] justify-center
-            transition-all duration-200
-            ${
-              machineStatus === 'connected_post_home' || machineStatus === 'running'
-                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400' 
-                : machineStatus === 'connected_pre_home'
-                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400'
-                : machineStatus === 'alarm'
-                ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
-                : machineStatus === 'error'
-                ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
-                : 'bg-muted border-border text-muted-foreground'
-            }
-          `}
-          style={isFlashing ? {
-            animation: 'flash-bright 450ms ease-in-out'
-          } : {}}
-        >
-          <div 
-            className={`
-              w-2 h-2 rounded-full
-              ${
-                machineStatus === 'connected_post_home' || machineStatus === 'running'
-                  ? 'bg-green-500' 
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div 
+                className={`
+                  relative px-3 py-1.5 rounded border flex items-center gap-2 min-w-[140px] justify-center
+                  transition-all duration-200
+                  ${
+                    machineStatus === 'connected_post_home' || machineStatus === 'running'
+                      ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400' 
+                      : machineStatus === 'connected_pre_home'
+                      ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400'
+                      : machineStatus === 'hold'
+                      ? 'bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-400'
+                      : machineStatus === 'alarm'
+                      ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+                      : machineStatus === 'error'
+                      ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+                      : 'bg-muted border-border text-muted-foreground'
+                  }
+                `}
+                style={isFlashing ? {
+                  animation: 'flash-bright 450ms ease-in-out'
+                } : {}}
+              >
+                <div 
+                  className={`
+                    w-2 h-2 rounded-full
+                    ${
+                      machineStatus === 'connected_post_home' || machineStatus === 'running'
+                        ? 'bg-green-500' 
+                        : machineStatus === 'connected_pre_home'
+                        ? 'bg-yellow-500'
+                        : machineStatus === 'hold'
+                        ? 'bg-orange-500'
+                        : machineStatus === 'alarm' || machineStatus === 'error'
+                        ? 'bg-red-500'
+                        : 'bg-zinc-500'
+                    }
+                  `} 
+                />
+                <span className="text-xs font-medium pr-3">
+                  {machineStatus === 'not_connected'
+                    ? 'Not connected'
+                    : machineStatus === 'connected_pre_home'
+                    ? 'Ready (Run Home)'
+                    : machineStatus === 'connected_post_home'
+                    ? 'Ready'
+                    : machineStatus === 'alarm'
+                    ? 'Alarm'
+                    : machineStatus === 'running'
+                    ? 'Busy'
+                    : machineStatus === 'hold'
+                    ? 'Hold'
+                    : machineStatus === 'error'
+                    ? 'Error'
+                    : 'Unknown'}
+                </span>
+                {/* Help icon in top right */}
+                <HelpCircle className="absolute top-0.5 right-0.5 w-3 h-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <p className="text-sm">
+                {machineStatus === 'not_connected'
+                  ? 'AxioCNC is not connected to your machine.'
                   : machineStatus === 'connected_pre_home'
-                  ? 'bg-yellow-500'
-                  : machineStatus === 'alarm' || machineStatus === 'error'
-                  ? 'bg-red-500'
-                  : 'bg-zinc-500'
-              }
-            `} 
-          />
-          <span className="text-xs font-medium">
-            {machineStatus === 'not_connected'
-              ? 'Not connected'
-              : machineStatus === 'connected_pre_home'
-              ? 'Ready (Run Home)'
-              : machineStatus === 'connected_post_home'
-              ? 'Ready'
-              : machineStatus === 'alarm'
-              ? 'Alarm'
-              : machineStatus === 'running'
-              ? 'Busy'
-              : machineStatus === 'error'
-              ? 'Error'
-              : 'Unknown'}
-          </span>
-        </div>
+                  ? 'Your machine is connected, but AxioCNC can\'t verify that the displayed position matches the physical machine. Home your machine to establish truth of position.'
+                  : machineStatus === 'connected_post_home'
+                  ? 'Your machine is connected and ready.'
+                  : machineStatus === 'hold'
+                  ? 'Your machine is paused and motion is disabled for safety. This can happen during a tool change, or because a job was paused. Click Resume to enable machine motion.'
+                  : machineStatus === 'alarm'
+                  ? 'The machine is in an error state and motion has been disabled. AxioCNC can\'t verify that the displayed position matches the physical machine. Reset the machine, then home the machine to establish truth of position. Check your zero after resetting to verify it was maintained.'
+                  : machineStatus === 'running'
+                  ? 'Your machine is running a job.'
+                  : machineStatus === 'error'
+                  ? 'An error has occurred.'
+                  : 'Unknown machine status.'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         {/* Action buttons - context-aware based on machine status */}
+        {machineStatus === 'hold' && (
+          <>
+            <div className="ml-3">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleConnect}
+                disabled={isConnecting}
+              >
+                Disconnect
+              </Button>
+            </div>
+            <Button variant="default" size="sm" onClick={handleResume}>
+              <Play className="w-4 h-4 mr-1" /> Resume
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleStop}>
+              <Square className="w-4 h-4 mr-1" /> Stop
+            </Button>
+          </>
+        )}
+        
         {machineStatus === 'not_connected' && (
           <div className="ml-3">
             <Button 

@@ -2,14 +2,53 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { SystemSettings } from '../../../shared/schemas/settings'
 
 // Types for API responses
+// Controller status from API (matches controller.status getter)
 export interface Controller {
   port: string
-  controllerType: string
   baudrate: number
+  rtscts?: boolean
+  sockets?: string[]
+  ready?: boolean
+  homed?: boolean // Track if machine has been homed
+  controller?: {
+    type: string
+    settings?: unknown
+    state?: unknown
+  }
+  feeder?: unknown
+  sender?: unknown
+  workflow?: {
+    state?: string
+  }
 }
 
-export interface ControllersResponse {
-  controllers: Controller[]
+// API returns array directly, not wrapped in object
+export type ControllersResponse = Controller[]
+
+// Machine Status from MachineStatusManager
+export interface MachineStatus {
+  port: string
+  connected: boolean
+  controllerType: string | null
+  machineStatus: 'not_connected' | 'connected_pre_home' | 'connected_post_home' | 'alarm' | 'running' | 'hold'
+  isHomed: boolean
+  isJobRunning: boolean
+  homingInProgress: boolean
+  controllerState: {
+    activeState: string
+    mpos: { x: string; y: string; z: string } | null
+    wpos: { x: string; y: string; z: string } | null
+  } | null
+  workflowState: 'idle' | 'running' | 'paused' | null
+  lastUpdate: number
+}
+
+export interface MachineStatusResponse {
+  status: MachineStatus
+}
+
+export interface MachineStatusesResponse {
+  statuses: Record<string, MachineStatus>
 }
 
 // Re-export SystemSettings type for convenience
@@ -198,6 +237,15 @@ export const api = createApi({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
       query: () => '/controllers',
+      providesTags: ['Controllers'],
+    }),
+
+    // Get machine status (from MachineStatusManager)
+    getMachineStatus: builder.query<MachineStatusResponse, { port?: string } | void>({
+      query: (params) => ({
+        url: '/machine/status',
+        params: params && 'port' in params && params.port ? { port: params.port } : undefined,
+      }),
       providesTags: ['Controllers'],
     }),
 
@@ -540,6 +588,8 @@ export const api = createApi({
 
 export const {
   useGetControllersQuery,
+  useGetMachineStatusQuery,
+  useLazyGetMachineStatusQuery,
   // Settings
   useGetSettingsQuery,
   useSetSettingsMutation,

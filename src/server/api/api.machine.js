@@ -1,20 +1,17 @@
 import { ensureString } from 'ensure-type';
 import logger from '../lib/logger';
 import machineStatusManager from '../services/machinestatus/MachineStatusManager';
-import {
-  ERR_BAD_REQUEST
-} from '../constants';
 
 const log = logger('api:machine');
 
 /**
  * GET /api/machine/status
- * 
+ *
  * Query machine status for a specific port or all ports
- * 
+ *
  * Query params:
  * - port (optional): Specific port to query. If not provided, returns all statuses
- * 
+ *
  * Response:
  * {
  *   "status": { ... }  // Single port status
