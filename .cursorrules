@@ -229,3 +229,14 @@ src/
 | `docs/API.md` | Complete REST API reference |
 | `docs/frontend-features.md` | Feature parity checklist |
 
+
+---
+
+## Planning & Architecture
+
+**Save project plans in `aidocs/` directory**, not in the default `.cursor/plans/` location. This ensures plans are:
+- Version controlled with the project
+- Accessible to the team
+- Organized with other project documentation
+
+When creating project-specific plans, save them directly to `aidocs/` (e.g., `aidocs/controller-abstraction-layer-plan.md`) rather than using the tool's default home directory location.
