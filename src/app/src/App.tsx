@@ -5,7 +5,7 @@ import { useSignInMutation } from '@/services/api'
 import { socketService } from '@/services/socket'
 import TestPage from '@/routes/TestPage'
 import Settings from '@/routes/Settings'
-import SetupMockup from '@/routes/SetupMockup'
+import Setup from '@/routes/Setup'
 
 function App() {
   const [signIn] = useSignInMutation()
@@ -66,7 +66,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
       <Routes>
-        <Route path="/" element={<SetupMockup />} />
+        <Route path="/" element={<Setup />} />
         <Route path="/test" element={<TestPage />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
