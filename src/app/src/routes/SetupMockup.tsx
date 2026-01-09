@@ -5,7 +5,7 @@ import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetMacrosQuery } from '@/services/api'
 import {
   DndContext,
   closestCenter,
@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
+import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements, canPerformAction } from '@/utils/machineState'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -77,14 +78,6 @@ const MOCK_MACROS = [
   { id: 4, name: 'Park', icon: Square },
 ]
 
-const MOCK_COMMANDS = [
-  { id: 1, name: 'Unlock', code: '$X', icon: Zap },
-  { id: 2, name: 'Check Mode', code: '$C', icon: Circle },
-  { id: 3, name: 'Sleep', code: '$SLP', icon: Square },
-  { id: 4, name: 'Get Settings', code: '$$', icon: Terminal },
-  { id: 5, name: 'Get Position', code: '?', icon: Crosshair },
-  { id: 6, name: 'Get Parser', code: '$G', icon: FileCode },
-]
 
 const MOCK_TOOLS = [
   { num: 1, name: '1/4" Flat Endmill', diameter: 6.35, type: 'endmill', inUse: true, desc: 'Roughing, pockets, profiles' },
@@ -739,12 +732,18 @@ function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: 
                 {currentDistance === 'Continuous' ? 'Continuous' : `${currentDistance} mm`}
               </span>
             </div>
-            <Slider 
-              value={[distanceIndex]} 
-              onValueChange={(v) => setDistanceIndex(v[0])}
-              max={distances.length - 1} 
-              step={1}
-            />
+            <MachineActionWrapper
+              isDisabled={!canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)}
+              onFlashStatus={onFlashStatus}
+            >
+              <Slider 
+                value={[distanceIndex]} 
+                onValueChange={(v) => setDistanceIndex(v[0])}
+                max={distances.length - 1} 
+                step={1}
+                disabled={!canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)}
+              />
+            </MachineActionWrapper>
             <div className="flex justify-between text-[10px] text-muted-foreground px-1">
               <span>0.01</span>
               <span>0.1</span>
@@ -766,10 +765,7 @@ function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: 
               onMouseMove={(e) => {
                 const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
                 if (!canJog) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onFlashStatus()
-                  return
+                  return // Don't flash on hover, just prevent movement
                 }
                 if (e.buttons === 1) {
                   handleJoystickMove(e)
@@ -816,10 +812,7 @@ function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: 
                 onMouseMove={(e) => {
                   const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
                   if (!canJog) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onFlashStatus()
-                    return
+                    return // Don't flash on hover, just prevent movement
                   }
                   if (e.buttons === 1) {
                     const rect = e.currentTarget.getBoundingClientRect()
@@ -1250,63 +1243,221 @@ function ProbePanel(_props: PanelProps) {
   )
 }
 
-function MacrosPanel(_props: PanelProps) {
-  return (
-    <div className="p-3">
-      <div className="grid grid-cols-2 gap-2">
-        {MOCK_MACROS.map((macro) => (
-          <Button 
-            key={macro.id} 
-            variant="outline" 
-            className="h-14 flex-col gap-1"
-          >
-            <macro.icon className="w-5 h-5" />
-            <span className="text-xs">{macro.name}</span>
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function CommandsPanel(_props: PanelProps) {
-  return (
-    <div className="p-3">
-      <div className="grid grid-cols-2 gap-2">
-        {MOCK_COMMANDS.map((command) => (
-          <Button 
-            key={command.id} 
-            variant="outline" 
-            className="h-14 flex-col gap-1"
-          >
-            <command.icon className="w-5 h-5" />
-            <span className="text-xs">{command.name}</span>
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SpindlePanel(_props: PanelProps) {
-  const [isOn, setIsOn] = useState(false)
-  const [speedIndex, setSpeedIndex] = useState(2) // Default to 1000 RPM
-  const [direction, setDirection] = useState<'cw' | 'ccw'>('cw')
+function MacrosPanel({
+  isConnected,
+  connectedPort,
+  machineStatus,
+  onFlashStatus,
+}: PanelProps) {
+  const { data: macrosData, isLoading } = useGetMacrosQuery()
+  const socket = socketService.getSocket()
   
+  const macros = macrosData?.records ?? []
+  
+  const handleMacroClick = useCallback((content: string) => {
+    if (!isConnected || !connectedPort || !socket) {
+      onFlashStatus()
+      return
+    }
+    
+    // Send the macro G-code content to the backend
+    // The backend's 'gcode' command handler can accept multi-line strings
+    // It will automatically split by newlines and feed them to the queue
+    socket.emit('command', connectedPort, 'gcode', content)
+  }, [isConnected, connectedPort, socket, onFlashStatus])
+  
+  if (isLoading) {
+    return (
+      <div className="p-3">
+        <div className="text-sm text-muted-foreground text-center py-8">Loading macros...</div>
+      </div>
+    )
+  }
+  
+  if (macros.length === 0) {
+    return (
+      <div className="p-3">
+        <div className="text-sm text-muted-foreground text-center py-8">
+          No macros found. Add macros in Settings.
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="p-3">
+      <div className="flex flex-col gap-2 w-full">
+        {macros.map((macro) => (
+          <MachineActionButton
+            key={macro.id}
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={() => handleMacroClick(macro.content)}
+            requirements={ActionRequirements.standard}
+            variant="outline"
+            size="sm"
+            className="w-full h-auto min-h-[3.5rem] flex flex-col gap-1 p-2 items-center justify-center"
+            title={macro.description || macro.name}
+          >
+            <span className="text-xs font-medium line-clamp-1 w-full text-center break-words overflow-hidden">{macro.name}</span>
+            {macro.description && (
+              <span className="text-[10px] text-muted-foreground line-clamp-2 w-full text-center break-words overflow-hidden">{macro.description}</span>
+            )}
+          </MachineActionButton>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SpindlePanel({ isConnected, connectedPort, machineStatus, onFlashStatus, isJobRunning = false, spindleState = 'M5', spindleSpeed = 0 }: PanelProps) {
   const speeds = [0, 500, 1000, 1500, 2000, 2500, 3000]
+  
+  // Derive state from backend
+  const isOn = spindleState === 'M3' || spindleState === 'M4'
+  const backendDirection = spindleState === 'M4' ? 'ccw' : 'cw'
+  
+  // Local state for direction (can be changed when spindle is off)
+  const [localDirection, setLocalDirection] = useState<'cw' | 'ccw'>('cw')
+  
+  // Use backend direction when spindle is on, local direction when off
+  const direction = isOn ? backendDirection : localDirection
+  
+  // Sync local direction with backend when spindle turns off
+  useEffect(() => {
+    if (!isOn) {
+      setLocalDirection(backendDirection)
+    }
+  }, [isOn, backendDirection])
+  
+  // Find closest speed index from backend speed, or default to 1000 RPM
+  const getSpeedIndex = (speed: number | undefined): number => {
+    if (speed === undefined) return 2 // Default to 1000 RPM
+    // Find closest speed in speeds array
+    let closestIndex = 2
+    let minDiff = Math.abs(speed - speeds[2])
+    speeds.forEach((s, i) => {
+      const diff = Math.abs(speed - s)
+      if (diff < minDiff) {
+        minDiff = diff
+        closestIndex = i
+      }
+    })
+    return closestIndex
+  }
+  
+  const [speedIndex, setSpeedIndex] = useState(() => getSpeedIndex(spindleSpeed))
+  
+  // Update speed index when backend speed changes (only if spindle is off)
+  useEffect(() => {
+    if (!isOn && spindleSpeed !== undefined) {
+      setSpeedIndex(getSpeedIndex(spindleSpeed))
+    }
+  }, [spindleSpeed, isOn])
+  
   const speed = speeds[speedIndex]
+  
+  // Check if controls should be disabled
+  const isDisabled = !isConnected || machineStatus === 'alarm' || isJobRunning || machineStatus === 'not_connected'
+  const canControl = !isDisabled
+  
+  // Handle start/stop spindle
+  const handleToggleSpindle = useCallback(() => {
+    if (!connectedPort) return
+    
+    const socket = socketService.getSocket()
+    if (!socket) return
+    
+    if (isOn) {
+      // Stop spindle
+      socket.emit('command', connectedPort, 'gcode', 'M5')
+    } else {
+      // Start spindle with current speed and direction
+      const command = direction === 'cw' ? `M3 S${speed}` : `M4 S${speed}`
+      socket.emit('command', connectedPort, 'gcode', command)
+    }
+  }, [connectedPort, isOn, direction, speed])
+  
+  // Handle direction change (only when stopped)
+  const handleDirectionChange = useCallback((newDirection: 'cw' | 'ccw') => {
+    if (isOn) return // Can't change direction while running
+    
+    // Update local state - will be applied when starting
+    setLocalDirection(newDirection)
+  }, [isOn])
+  
+  // Handle speed change (only when stopped)
+  const handleSpeedChange = useCallback((newSpeedIndex: number) => {
+    if (isOn) return // Can't change speed while running
+    
+    setSpeedIndex(newSpeedIndex)
+    // Speed will be applied when starting spindle
+  }, [isOn])
+  
+  // Flash status if action attempted while disabled
+  const handleDisabledAction = useCallback(() => {
+    if (!canControl) {
+      onFlashStatus()
+    }
+  }, [canControl, onFlashStatus])
 
   return (
     <div className="p-3 space-y-3">
-      {/* On/Off toggle */}
-      <Button 
-        className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
-        variant={isOn ? 'default' : 'outline'}
-        onClick={() => setIsOn(!isOn)}
-      >
-        <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
-        {isOn ? 'Stop Spindle' : 'Start Spindle'}
-      </Button>
+      {/* Direction toggle */}
+      <div className="space-y-1">
+        <div className="flex gap-2 w-full">
+          <div className="flex-1 text-center">
+            <span className="text-[10px] text-muted-foreground">Most common</span>
+          </div>
+          <div className="flex-1 text-center">
+            <span className="text-[10px] text-muted-foreground">Not common</span>
+          </div>
+        </div>
+        <div className="flex gap-2 w-full">
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={() => handleDirectionChange('cw')}
+            requirements={{
+              requiresConnected: true,
+              requiresPort: true,
+              disallowAlarm: true,
+              disallowRunning: false, // Allow direction change during jobs (when spindle is off)
+              disallowNotConnected: true,
+            }}
+            customDisabled={isJobRunning || isOn} // Disable when job running or spindle is on
+            variant={direction === 'cw' ? 'default' : 'outline'}
+            className="flex-1"
+          >
+            <RotateCw className="w-4 h-4 mr-1" />
+            CW
+          </MachineActionButton>
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={() => handleDirectionChange('ccw')}
+            requirements={{
+              requiresConnected: true,
+              requiresPort: true,
+              disallowAlarm: true,
+              disallowRunning: false, // Allow direction change during jobs (when spindle is off)
+              disallowNotConnected: true,
+            }}
+            customDisabled={isJobRunning || isOn} // Disable when job running or spindle is on
+            variant={direction === 'ccw' ? 'default' : 'outline'}
+            className="flex-1"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            CCW
+          </MachineActionButton>
+        </div>
+      </div>
       
       {/* Speed control */}
       <div className="space-y-2">
@@ -1314,13 +1465,24 @@ function SpindlePanel(_props: PanelProps) {
           <span>Speed (RPM)</span>
           <span className="font-mono font-medium">{speed} RPM</span>
         </div>
-        <Slider 
-          value={[speedIndex]} 
-          onValueChange={(v) => setSpeedIndex(v[0])}
-          max={speeds.length - 1} 
-          step={1}
-          disabled={!isOn}
-        />
+        <MachineActionWrapper
+          isDisabled={isDisabled || isOn}
+          onFlashStatus={onFlashStatus}
+        >
+          <Slider 
+            value={[speedIndex]} 
+            onValueChange={(v) => {
+              if (isDisabled || isOn) {
+                handleDisabledAction()
+                return
+              }
+              handleSpeedChange(v[0])
+            }}
+            max={speeds.length - 1} 
+            step={1}
+            disabled={isDisabled || isOn} // Disable when spindle is on OR controls are disabled
+          />
+        </MachineActionWrapper>
         <div className="flex justify-between text-[10px] text-muted-foreground px-1">
           <span>0</span>
           <span>500</span>
@@ -1332,27 +1494,27 @@ function SpindlePanel(_props: PanelProps) {
         </div>
       </div>
       
-      {/* Direction toggle */}
-      <div className="flex gap-2">
-        <Button
-          variant={direction === 'cw' ? 'default' : 'outline'}
-          className="flex-1"
-          onClick={() => setDirection('cw')}
-          disabled={!isOn}
-        >
-          <RotateCw className="w-4 h-4 mr-1" />
-          CW
-        </Button>
-        <Button
-          variant={direction === 'ccw' ? 'default' : 'outline'}
-          className="flex-1"
-          onClick={() => setDirection('ccw')}
-          disabled={!isOn}
-        >
-          <RotateCcw className="w-4 h-4 mr-1" />
-          CCW
-        </Button>
-      </div>
+      {/* On/Off toggle */}
+      <MachineActionButton
+        isConnected={isConnected}
+        connectedPort={connectedPort}
+        machineStatus={machineStatus}
+        onFlashStatus={onFlashStatus}
+        onAction={handleToggleSpindle}
+        requirements={{
+          requiresConnected: true,
+          requiresPort: true,
+          disallowAlarm: true,
+          disallowRunning: false, // Allow spindle control during jobs
+          disallowNotConnected: true,
+        }}
+        customDisabled={isJobRunning}
+        className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
+        variant={isOn ? 'default' : 'outline'}
+      >
+        <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
+        {isOn ? 'Stop Spindle' : 'Start Spindle'}
+      </MachineActionButton>
     </div>
   )
 }
@@ -1392,7 +1554,54 @@ function FilePanel(_props: PanelProps) {
   )
 }
 
-function RapidPanel(_props: PanelProps) {
+function RapidPanel({
+  isConnected,
+  connectedPort,
+  machineStatus,
+  onFlashStatus,
+}: PanelProps) {
+  const { data: settings } = useGetSettingsQuery()
+  const socket = socketService.getSocket()
+  
+  // Get machine limits from settings, with defaults
+  const limits = settings?.machine?.limits || {
+    xmin: 0,
+    xmax: 300,
+    ymin: 0,
+    ymax: 300,
+    zmin: -50,
+    zmax: 0,
+  }
+  
+  // Calculate positions for each button
+  const positions = {
+    // Top row (Y max)
+    upperLeft: { x: limits.xmin, y: limits.ymax },
+    upperCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymax },
+    upperRight: { x: limits.xmax, y: limits.ymax },
+    // Middle row (Y center)
+    middleLeft: { x: limits.xmin, y: (limits.ymin + limits.ymax) / 2 },
+    center: { x: (limits.xmin + limits.xmax) / 2, y: (limits.ymin + limits.ymax) / 2 },
+    middleRight: { x: limits.xmax, y: (limits.ymin + limits.ymax) / 2 },
+    // Bottom row (Y min)
+    lowerLeft: { x: limits.xmin, y: limits.ymin },
+    lowerCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymin },
+    lowerRight: { x: limits.xmax, y: limits.ymin },
+  }
+  
+  const handleRapidMove = useCallback((x: number, y: number) => {
+    if (!isConnected || !connectedPort || !socket) {
+      onFlashStatus()
+      return
+    }
+    
+    // Send G0 (rapid move) command to machine coordinates using G53
+    // G53 is a one-shot machine coordinate system override (non-modal, applies to current line only)
+    // This moves to machine coordinates (MPos) instead of work coordinates (WPos)
+    const command = `G53 G0 X${x.toFixed(3)} Y${y.toFixed(3)}`
+    socket.emit('command', connectedPort, 'gcode', command)
+  }, [isConnected, connectedPort, socket, onFlashStatus])
+  
   // Arrow SVG components for each direction
   const ArrowUL = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1450,37 +1659,136 @@ function RapidPanel(_props: PanelProps) {
       {/* Visual grid layout matching work area orientation */}
       <div className="grid grid-cols-3 gap-1.5 max-w-[180px] mx-auto">
         {/* Top row */}
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Upper Left">
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.upperLeft.x, positions.upperLeft.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Upper Left (X${positions.upperLeft.x.toFixed(0)} Y${positions.upperLeft.y.toFixed(0)})`}
+        >
           <ArrowUL />
-        </Button>
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Upper Center">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.upperCenter.x, positions.upperCenter.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Upper Center (X${positions.upperCenter.x.toFixed(0)} Y${positions.upperCenter.y.toFixed(0)})`}
+        >
           <ArrowU />
-        </Button>
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Upper Right">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.upperRight.x, positions.upperRight.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Upper Right (X${positions.upperRight.x.toFixed(0)} Y${positions.upperRight.y.toFixed(0)})`}
+        >
           <ArrowUR />
-        </Button>
+        </MachineActionButton>
         
         {/* Middle row */}
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Middle Left">
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.middleLeft.x, positions.middleLeft.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Middle Left (X${positions.middleLeft.x.toFixed(0)} Y${positions.middleLeft.y.toFixed(0)})`}
+        >
           <ArrowL />
-        </Button>
-        <Button variant="secondary" size="sm" className="h-10 w-full p-0" title="Center">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.center.x, positions.center.y)}
+          requirements={ActionRequirements.jog}
+          variant="secondary"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Center (X${positions.center.x.toFixed(0)} Y${positions.center.y.toFixed(0)})`}
+        >
           <CenterIcon />
-        </Button>
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Middle Right">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.middleRight.x, positions.middleRight.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Middle Right (X${positions.middleRight.x.toFixed(0)} Y${positions.middleRight.y.toFixed(0)})`}
+        >
           <ArrowR />
-        </Button>
+        </MachineActionButton>
         
         {/* Bottom row */}
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Lower Left">
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.lowerLeft.x, positions.lowerLeft.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Lower Left (X${positions.lowerLeft.x.toFixed(0)} Y${positions.lowerLeft.y.toFixed(0)})`}
+        >
           <ArrowLL />
-        </Button>
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Lower Center">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.lowerCenter.x, positions.lowerCenter.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Lower Center (X${positions.lowerCenter.x.toFixed(0)} Y${positions.lowerCenter.y.toFixed(0)})`}
+        >
           <ArrowD />
-        </Button>
-        <Button variant="outline" size="sm" className="h-10 w-full p-0" title="Lower Right">
+        </MachineActionButton>
+        <MachineActionButton
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={() => handleRapidMove(positions.lowerRight.x, positions.lowerRight.y)}
+          requirements={ActionRequirements.jog}
+          variant="outline"
+          size="sm"
+          className="h-10 w-full p-0"
+          title={`Lower Right (X${positions.lowerRight.x.toFixed(0)} Y${positions.lowerRight.y.toFixed(0)})`}
+        >
           <ArrowLR />
-        </Button>
+        </MachineActionButton>
       </div>
     </div>
   )
@@ -1578,6 +1886,9 @@ interface PanelProps {
   machinePosition?: { x: number; y: number; z: number }
   workPosition?: { x: number; y: number; z: number }
   currentWCS?: string
+  isJobRunning?: boolean
+  spindleState?: 'M3' | 'M4' | 'M5'
+  spindleSpeed?: number
 }
 
 // Panel configuration with metadata
@@ -1591,7 +1902,6 @@ const panelConfig: Record<string, {
   rapid: { title: 'Rapid', icon: Navigation, component: RapidPanel },
   probe: { title: 'Probe', icon: Target, component: ProbePanel },
   macros: { title: 'Macros', icon: Zap, component: MacrosPanel },
-  commands: { title: 'Commands', icon: Terminal, component: CommandsPanel },
   file: { title: 'File', icon: FileCode, component: FilePanel },
   spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
 }
@@ -1625,7 +1935,8 @@ function SortablePanel({
   }
 
   const config = panelConfig[id]
-  if (!config) return null
+  // Safety check: never render 'commands' panel even if it somehow gets into panelOrder
+  if (!config || id === 'commands') return null
   const PanelContent = config.component
   const Icon = config.icon
 
@@ -1667,7 +1978,8 @@ function SortablePanel({
 // Drag overlay panel (shown while dragging) - full panel clone
 function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isCollapsed: boolean; panelProps: PanelProps }) {
   const config = panelConfig[id]
-  if (!config) return null
+  // Safety check: never render 'commands' panel even if it somehow gets into panelOrder
+  if (!config || id === 'commands') return null
   const Icon = config.icon
   const PanelContent = config.component
 
@@ -1688,14 +2000,53 @@ function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isColla
   )
 }
 
-export default function SetupMockup() {
+export default function Setup() {
   const navigate = useNavigate()
   
   // Panel order - just an array of IDs
-  const [panelOrder, setPanelOrder] = useState(['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'commands'])
+  // Filter out 'commands' to ensure it never appears (handles any cached localStorage or old state)
+  const [panelOrder, setPanelOrder] = useState(() => {
+    const defaultOrder = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros']
+    // If there's cached order in localStorage, filter out 'commands'
+    try {
+      const cached = localStorage.getItem('setup-panel-order')
+      if (cached) {
+        const parsed = JSON.parse(cached) as string[]
+        // Filter out 'commands' and only keep valid panel IDs
+        const validPanelIds = ['dro', 'jog', 'rapid', 'probe', 'file', 'macros', 'spindle']
+        const filtered = parsed.filter(id => id !== 'commands' && validPanelIds.includes(id))
+        if (filtered.length > 0) return filtered
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    return defaultOrder
+  })
   
   // Track which panels are collapsed
   const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>({})
+  
+  // Filter out 'commands' from panelOrder on mount (safety check for cached state)
+  useEffect(() => {
+    const hasCommands = panelOrder.includes('commands')
+    const hasInvalidPanels = panelOrder.some(id => !panelConfig[id])
+    if (hasCommands || hasInvalidPanels) {
+      console.warn('[Setup] Detected invalid panel IDs, filtering them out:', {
+        original: panelOrder,
+        hasCommands,
+        invalidPanels: panelOrder.filter(id => !panelConfig[id])
+      })
+      const filtered = panelOrder.filter(id => id !== 'commands' && panelConfig[id])
+      setPanelOrder(filtered)
+      // Also clean up any localStorage that might have cached the old order
+      try {
+        localStorage.removeItem('setup-panel-order')
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
   
   // Track active drag item
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -1723,6 +2074,10 @@ export default function SetupMockup() {
   const [machinePosition, setMachinePosition] = useState({ x: 0, y: 0, z: 0 })
   const [workPosition, setWorkPosition] = useState({ x: 0, y: 0, z: 0 })
   const [currentWCS, setCurrentWCS] = useState('G54') // Work Coordinate System
+  
+  // Spindle state
+  const [spindleState, setSpindleState] = useState<'M3' | 'M4' | 'M5'>('M5')
+  const [spindleSpeed, setSpindleSpeed] = useState<number>(0)
   
   // Refs to track state in event handlers to avoid stale closures
   const isConnectedRef = useRef(isConnected)
@@ -1812,6 +2167,8 @@ export default function SetupMockup() {
           isHomedRef.current = false
           setIsHomed(false)
           setIsJobRunning(false)
+          setSpindleState('M5')
+          setSpindleSpeed(0)
         }
       })
     } else {
@@ -1980,6 +2337,8 @@ export default function SetupMockup() {
       setHomingInProgress(false)
       homingInProgressRef.current = false
       setIsJobRunning(false)
+      setSpindleState('M5')
+      setSpindleSpeed(0)
     }
     
     const handleSocketError = (error: unknown) => {
@@ -2004,7 +2363,9 @@ export default function SetupMockup() {
         parserstate?: {
           modal?: {
             wcs?: string
+            spindle?: string // 'M3', 'M4', or 'M5'
           }
+          spindle?: string // Speed value as string (e.g., "1000.0")
         }
       }
       
@@ -2027,6 +2388,20 @@ export default function SetupMockup() {
       // Update WCS from parserstate
       if (state.parserstate?.modal?.wcs) {
         setCurrentWCS(state.parserstate.modal.wcs)
+      }
+      
+      // Update spindle state from parserstate
+      if (state.parserstate?.modal?.spindle) {
+        const spindle = state.parserstate.modal.spindle
+        if (spindle === 'M3' || spindle === 'M4' || spindle === 'M5') {
+          setSpindleState(spindle)
+        }
+      }
+      
+      // Update spindle speed from parserstate
+      if (state.parserstate?.spindle !== undefined) {
+        const speed = parseFloat(state.parserstate.spindle || '0')
+        setSpindleSpeed(speed)
       }
       
       // Only update status if we're actually connected
@@ -2125,6 +2500,8 @@ export default function SetupMockup() {
         isHomedRef.current = false
         setIsHomed(false)
         setIsJobRunning(false)
+        setSpindleState('M5')
+        setSpindleSpeed(0)
         const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
         showErrorNotification('Connection Lost', `Socket disconnected: ${reasonStr}`)
       }
@@ -2162,7 +2539,10 @@ export default function SetupMockup() {
   )
   
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
+    const activeId = event.active.id as string
+    // Never allow dragging 'commands' panel
+    if (activeId === 'commands') return
+    setActiveId(activeId)
   }
   
   const handleDragEnd = (event: DragEndEvent) => {
@@ -2170,9 +2550,19 @@ export default function SetupMockup() {
     setActiveId(null)
     if (over && active.id !== over.id) {
       setPanelOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string)
-        const newIndex = items.indexOf(over.id as string)
-        return arrayMove(items, oldIndex, newIndex)
+        // Filter out 'commands' and invalid panel IDs before reordering
+        const validItems = items.filter(id => {
+          // Exclude 'commands' and ensure the panel exists in panelConfig
+          if (id === 'commands') return false
+          return panelConfig[id] !== undefined
+        })
+        const oldIndex = validItems.indexOf(active.id as string)
+        const newIndex = validItems.indexOf(over.id as string)
+        if (oldIndex >= 0 && newIndex >= 0) {
+          const reordered = arrayMove(validItems, oldIndex, newIndex)
+          return reordered
+        }
+        return validItems
       })
     }
   }
@@ -2504,9 +2894,9 @@ export default function SetupMockup() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
+            <SortableContext items={panelOrder.filter(id => id !== 'commands' && panelConfig[id])} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2">
-                {panelOrder.map((panelId) => (
+                {panelOrder.filter(id => id !== 'commands' && panelConfig[id]).map((panelId) => (
                   <SortablePanel
                     key={panelId}
                     id={panelId}
@@ -2519,14 +2909,17 @@ export default function SetupMockup() {
                       onFlashStatus: flashStatus,
                       machinePosition,
                       workPosition,
-                      currentWCS
+                      currentWCS,
+                      isJobRunning,
+                      spindleState,
+                      spindleSpeed
                     }}
                   />
                 ))}
               </div>
             </SortableContext>
             <DragOverlay>
-              {activeId ? (
+              {activeId && activeId !== 'commands' ? (
                 <DragOverlayPanel 
                   id={activeId} 
                   isCollapsed={collapsedPanels[activeId] ?? false}

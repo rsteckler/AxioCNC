@@ -522,7 +522,6 @@ export function GeneralSection({
                       <ul className="list-disc list-inside text-sm space-y-1 ml-2">
                         <li>Machine configuration and connection settings</li>
                         <li>All macros</li>
-                        <li>All custom commands</li>
                         <li>All event handlers</li>
                         <li>Watch folders</li>
                         <li>Theme and appearance settings</li>

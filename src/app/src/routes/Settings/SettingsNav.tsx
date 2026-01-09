@@ -17,7 +17,6 @@ export const settingsSections: SettingsSection[] = [
   { id: 'camera', label: 'Camera', icon: <Camera className="w-4 h-4" /> },
   { id: 'joystick', label: 'Joystick', icon: <Gamepad2 className="w-4 h-4" /> },
   { id: 'macros', label: 'Macros', icon: <Code className="w-4 h-4" /> },
-  { id: 'commands', label: 'Commands', icon: <Terminal className="w-4 h-4" /> },
   { id: 'events', label: 'Events', icon: <Zap className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
 ]

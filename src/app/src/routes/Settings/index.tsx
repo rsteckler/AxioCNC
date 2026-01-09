@@ -5,10 +5,6 @@ import { useDebouncedCallback } from '@/hooks/useDebounce'
 import { 
   useGetSettingsQuery, 
   useSetSettingsMutation,
-  useGetCommandsQuery,
-  useCreateCommandMutation,
-  useUpdateCommandMutation,
-  useDeleteCommandMutation,
   useGetEventsQuery,
   useCreateEventMutation,
   useUpdateEventMutation,
@@ -37,7 +33,6 @@ import {
   ZeroingStrategiesSection,
   JoystickSection,
   MacrosSection,
-  CommandsSection,
   EventsSection,
   AboutSection,
   type MachineConfig,
@@ -46,7 +41,6 @@ import {
   type ZeroingMethodsConfig,
   type ZeroingStrategiesConfig,
   type Macro,
-  type Command,
   type EventHandler,
   type Theme,
   type AccentColor,
@@ -218,12 +212,6 @@ export default function Settings() {
   const { data: settings, isLoading: isLoadingSettings } = useGetSettingsQuery()
   const [setSettings] = useSetSettingsMutation()
   
-  // Commands API
-  const { data: commandsData, isLoading: isLoadingCommands } = useGetCommandsQuery()
-  const [createCommand] = useCreateCommandMutation()
-  const [updateCommand] = useUpdateCommandMutation()
-  const [deleteCommand] = useDeleteCommandMutation()
-  
   // Events API
   const { data: eventsData, isLoading: isLoadingEvents } = useGetEventsQuery()
   const [createEvent] = useCreateEventMutation()
@@ -245,14 +233,13 @@ export default function Settings() {
   const { data: currentVersionData } = useGetCurrentVersionQuery()
   const { data: latestVersionData } = useGetVersionQuery()
   
-  // Derive commands/events/macros/watchFolders from API data
-  const commands: Command[] = commandsData?.records ?? []
+  // Derive events/macros/watchFolders from API data
   // Cast event/trigger strings to the expected union types
   const events: EventHandler[] = (eventsData?.records ?? []) as EventHandler[]
   const macros: Macro[] = macrosData?.records ?? []
   const watchFolders: WatchFolder[] = (watchFoldersData?.records ?? []) as WatchFolder[]
   
-  const isLoading = isLoadingSettings || isLoadingCommands || isLoadingEvents || isLoadingMacros || isLoadingWatchFolders
+  const isLoading = isLoadingSettings || isLoadingEvents || isLoadingMacros || isLoadingWatchFolders
 
   // Local state for form values
   const [language, setLanguage] = useState('en')
@@ -449,15 +436,6 @@ export default function Settings() {
     // Joystick
     setJoystickConfig(DEFAULT_JOYSTICK_CONFIG)
     
-    // Delete all commands
-    for (const command of commands) {
-      try {
-        await deleteCommand(command.id).unwrap()
-      } catch (error) {
-        console.error('Failed to delete command:', error)
-      }
-    }
-    
     // Delete all events
     for (const event of events) {
       try {
@@ -506,7 +484,7 @@ export default function Settings() {
     })
     
     console.log('Settings reset to defaults')
-  }, [debouncedSave, setTheme, setAccentColor, setCustomTheme, watchFolders, deleteWatchFolder, commands, deleteCommand, events, deleteEvent, macros, deleteMacro, createMacro])
+  }, [debouncedSave, setTheme, setAccentColor, setCustomTheme, watchFolders, deleteWatchFolder, events, deleteEvent, macros, deleteMacro, createMacro])
 
   // Watch folders handlers (API-backed)
   const handleAddWatchFolder = useCallback(async (folder: Omit<WatchFolder, 'id'>) => {
@@ -739,39 +717,6 @@ export default function Settings() {
     debouncedSave({ zeroingStrategies: changes })
   }, [debouncedSave])
 
-  // Commands handlers (API-backed)
-  const handleAddCommand = useCallback(async (command: Omit<Command, 'id' | 'mtime'>) => {
-    try {
-      await createCommand(command).unwrap()
-    } catch (error) {
-      console.error('Failed to create command:', error)
-    }
-  }, [createCommand])
-
-  const handleEditCommand = useCallback(async (command: Command) => {
-    try {
-      await updateCommand({ id: command.id, updates: { title: command.title, commands: command.commands, enabled: command.enabled } }).unwrap()
-    } catch (error) {
-      console.error('Failed to update command:', error)
-    }
-  }, [updateCommand])
-
-  const handleDeleteCommand = useCallback(async (id: string) => {
-    try {
-      await deleteCommand(id).unwrap()
-    } catch (error) {
-      console.error('Failed to delete command:', error)
-    }
-  }, [deleteCommand])
-
-  const handleToggleCommandEnabled = useCallback(async (id: string, enabled: boolean) => {
-    try {
-      await updateCommand({ id, updates: { enabled } }).unwrap()
-    } catch (error) {
-      console.error('Failed to toggle command:', error)
-    }
-  }, [updateCommand])
-
   // Events handlers (API-backed)
   const handleAddEvent = useCallback(async (event: Omit<EventHandler, 'id' | 'mtime'>) => {
     try {
@@ -974,14 +919,6 @@ export default function Settings() {
               onAdd={handleAddMacro}
               onEdit={handleEditMacro}
               onDelete={handleDeleteMacro}
-            />
-
-            <CommandsSection
-              commands={commands}
-              onAdd={handleAddCommand}
-              onEdit={handleEditCommand}
-              onDelete={handleDeleteCommand}
-              onToggleEnabled={handleToggleCommandEnabled}
             />
 
             <EventsSection
