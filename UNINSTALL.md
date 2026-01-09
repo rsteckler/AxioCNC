@@ -1,4 +1,4 @@
-# Uninstalling NextCNC Packages
+# Uninstalling AxioCNC Packages
 
 ## Uninstall Electron Package (cncjs-app)
 
@@ -16,21 +16,21 @@ rm -rf ~/.config/CNCjs
 rm -rf ~/.cncjs
 ```
 
-## Uninstall Server Package (nextcnc-server)
+## Uninstall Server Package (axiocnc-server)
 
 If you installed the server-only package:
 
 ```bash
 # Remove the package
-sudo apt-get remove nextcnc-server
+sudo apt-get remove axiocnc-server
 
 # Or using dpkg
-sudo dpkg -r nextcnc-server
+sudo dpkg -r axiocnc-server
 
 # Remove configuration files (optional)
-rm -rf ~/.config/cncjs
-rm -rf ~/.cncjs
-rm -rf /opt/nextcnc
+rm -rf ~/.config/axiocnc
+rm -rf ~/.axiocnc
+rm -rf /opt/axiocnc
 ```
 
 ## Remove Service (if enabled)
@@ -39,11 +39,11 @@ If you enabled the systemd service:
 
 ```bash
 # Stop and disable service
-sudo systemctl stop nextcnc
-sudo systemctl disable nextcnc
+sudo systemctl stop axiocnc
+sudo systemctl disable axiocnc
 
 # Remove service file
-sudo rm /etc/systemd/system/nextcnc.service
+sudo rm /etc/systemd/system/axiocnc.service
 sudo systemctl daemon-reload
 ```
 
@@ -53,11 +53,11 @@ To remove everything:
 
 ```bash
 # Remove package
-sudo apt-get remove --purge cncjs-app nextcnc-server
+sudo apt-get remove --purge cncjs-app axiocnc-server
 
 # Remove application files
 sudo rm -rf /opt/CNCjs
-sudo rm -rf /opt/nextcnc
+sudo rm -rf /opt/axiocnc
 
 # Remove launcher (if exists)
 sudo rm -f /usr/bin/cncjs
@@ -69,9 +69,9 @@ rm -rf ~/.config/CNCjs
 rm -rf ~/.cncjs
 
 # Remove service
-sudo systemctl stop nextcnc 2>/dev/null
-sudo systemctl disable nextcnc 2>/dev/null
-sudo rm -f /etc/systemd/system/nextcnc.service
+sudo systemctl stop axiocnc 2>/dev/null
+sudo systemctl disable axiocnc 2>/dev/null
+sudo rm -f /etc/systemd/system/axiocnc.service
 sudo systemctl daemon-reload
 ```
 

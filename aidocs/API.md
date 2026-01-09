@@ -1,6 +1,6 @@
-# NextCNC Backend API Documentation
+# AxioCNC Backend API Documentation
 
-This document provides a complete reference for the NextCNC backend REST API. All endpoints require JWT authentication unless otherwise specified.
+This document provides a complete reference for the AxioCNC backend REST API. All endpoints require JWT authentication unless otherwise specified.
 
 ---
 
@@ -84,7 +84,7 @@ Retrieves the latest available version information from the npm registry.
   "name": "cncjs",
   "version": "1.10.0",
   "description": "A web-based interface for CNC milling controllers",
-  "homepage": "https://github.com/cncjs/cncjs"
+  "homepage": "https://github.com/rsteckler/axiocnc"
 }
 ```
 

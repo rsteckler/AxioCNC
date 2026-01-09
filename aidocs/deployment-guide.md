@@ -1,4 +1,4 @@
-# NextCNC Deployment Guide
+# AxioCNC Deployment Guide
 
 Practical guide for building and deploying installers for Linux, Raspberry Pi, and Windows.
 
@@ -38,29 +38,29 @@ This creates `dist/cncjs/` with:
 **Linux (x64):**
 ```bash
 yarn build:linux-x64
-# Creates: output/nextcnc-1.0.0-x86_64.AppImage
-#          output/nextcnc_1.0.0_amd64.deb
-#          output/nextcnc-1.0.0.x86_64.rpm
+# Creates: output/axiocnc-1.0.0-x86_64.AppImage
+#          output/axiocnc_1.0.0_amd64.deb
+#          output/axiocnc-1.0.0.x86_64.rpm
 ```
 
 **Raspberry Pi (ARM32):**
 ```bash
 yarn build:linux-armv7l
-# Creates: output/nextcnc-1.0.0-armv7l.AppImage
-#          output/nextcnc_1.0.0_armv7l.deb
+# Creates: output/axiocnc-1.0.0-armv7l.AppImage
+#          output/axiocnc_1.0.0_armv7l.deb
 ```
 
 **Raspberry Pi 5 (ARM64):**
 ```bash
 yarn build:linux-arm64
-# Creates: output/nextcnc-1.0.0-arm64.AppImage
-#          output/nextcnc_1.0.0_arm64.deb
+# Creates: output/axiocnc-1.0.0-arm64.AppImage
+#          output/axiocnc_1.0.0_arm64.deb
 ```
 
 **Windows (x64):**
 ```bash
 yarn build:windows-x64
-# Creates: output/nextcnc Setup 1.0.0.exe  (NSIS installer)
+# Creates: output/axiocnc Setup 1.0.0.exe  (NSIS installer)
 ```
 
 **All Linux variants:**
@@ -79,30 +79,30 @@ yarn build:linux
 
 ```bash
 # Install
-sudo dpkg -i output/nextcnc_1.0.0_amd64.deb
+sudo dpkg -i output/axiocnc_1.0.0_amd64.deb
 
 # If dependencies missing:
 sudo apt-get install -f
 
 # Run
-nextcnc
+axiocnc
 # or
-/usr/bin/nextcnc
+/usr/bin/axiocnc
 ```
 
 #### Using AppImage (No Install Required)
 
 ```bash
 # Make executable
-chmod +x output/nextcnc-1.0.0-x86_64.AppImage
+chmod +x output/axiocnc-1.0.0-x86_64.AppImage
 
 # Run directly
-./nextcnc-1.0.0-x86_64.AppImage
+./axiocnc-1.0.0-x86_64.AppImage
 ```
 
 ### Windows
 
-1. Download `nextcnc Setup 1.0.0.exe`
+1. Download `axiocnc Setup 1.0.0.exe`
 2. Double-click installer
 3. Follow setup wizard
 4. Launch from Start Menu or desktop shortcut
@@ -116,7 +116,7 @@ After installation, verify:
 ### 1. Application Starts
 ```bash
 # Linux/RPi
-nextcnc
+axiocnc
 
 # Windows
 # Launch from Start Menu
@@ -157,8 +157,8 @@ Create test file, should appear in UI.
 
 After first run, configuration stored at:
 
-- **Linux/RPi**: `~/.config/nextcnc/` or `~/.nextcnc/`
-- **Windows**: `%APPDATA%\nextcnc\`
+- **Linux/RPi**: `~/.config/axiocnc/` or `~/.axiocnc/`
+- **Windows**: `%APPDATA%\axiocnc\`
 
 Key files:
 - `cnc.json` - Main configuration
@@ -217,7 +217,7 @@ npm run electron-rebuild
   netstat -ano | findstr :8000
   ```
 - Change port in settings or kill the process
-- Or configure different port: `nextcnc --port 8001`
+- Or configure different port: `axiocnc --port 8001`
 
 ### Electron App Won't Start (Windows)
 
@@ -227,7 +227,7 @@ npm run electron-rebuild
 - Check Event Viewer for errors
 - Try running from command line:
   ```cmd
-  cd "C:\Program Files\nextcnc\resources\app"
+  cd "C:\Program Files\axiocnc\resources\app"
   electron.exe .
   ```
 - Check Windows Defender/antivirus isn't blocking
@@ -242,8 +242,8 @@ Edit `package.json`:
 ```json
 {
   "build": {
-    "productName": "NextCNC",
-    "appId": "org.nextcnc",
+    "productName": "AxioCNC",
+    "appId": "org.axiocnc",
     "win": {
       "icon": "electron-build/icon.ico"
     },
@@ -264,18 +264,18 @@ Icons location: `electron-build/`
 **Linux (systemd):**
 ```bash
 # Create service file
-sudo nano /etc/systemd/system/nextcnc.service
+sudo nano /etc/systemd/system/axiocnc.service
 ```
 
 ```ini
 [Unit]
-Description=NextCNC CNC Controller
+Description=AxioCNC CNC Controller
 After=network.target
 
 [Service]
 Type=simple
 User=YOUR_USERNAME
-ExecStart=/usr/bin/nextcnc
+ExecStart=/usr/bin/axiocnc
 Restart=always
 
 [Install]
@@ -284,8 +284,8 @@ WantedBy=multi-user.target
 
 ```bash
 # Enable and start
-sudo systemctl enable nextcnc
-sudo systemctl start nextcnc
+sudo systemctl enable axiocnc
+sudo systemctl start axiocnc
 ```
 
 **Windows (Task Scheduler):**
@@ -296,12 +296,12 @@ sudo systemctl start nextcnc
 
 Run with options:
 ```bash
-nextcnc --port 8000 --watch /path/to/watch
+axiocnc --port 8000 --watch /path/to/watch
 ```
 
 See all options:
 ```bash
-nextcnc --help
+axiocnc --help
 ```
 
 ---
@@ -337,7 +337,7 @@ nextcnc --help
 **Linux:**
 - Create `.deb` repository (APT)
 - Users add repo: `sudo add-apt-repository ...`
-- Install: `sudo apt install nextcnc`
+- Install: `sudo apt install axiocnc`
 
 **Windows:**
 - Use Chocolatey or Scoop

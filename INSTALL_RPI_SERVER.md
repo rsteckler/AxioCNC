@@ -1,4 +1,4 @@
-# Installing NextCNC Server on Raspberry Pi
+# Installing AxioCNC Server on Raspberry Pi
 
 **Simple installation for headless Raspberry Pi deployment.**
 
@@ -9,7 +9,7 @@
 ### 1. Install the package
 
 ```bash
-sudo dpkg -i nextcnc-server_1.10.5_arm64.deb
+sudo dpkg -i axiocnc-server_1.10.5_arm64.deb
 sudo apt-get install -f  # if dependencies missing
 ```
 
@@ -40,14 +40,14 @@ Access it from any device on your network:
 
 ```bash
 # Enable service
-sudo systemctl enable nextcnc
-sudo systemctl start nextcnc
+sudo systemctl enable axiocnc
+sudo systemctl start axiocnc
 
 # Check status
-sudo systemctl status nextcnc
+sudo systemctl status axiocnc
 
 # View logs
-sudo journalctl -u nextcnc -f
+sudo journalctl -u axiocnc -f
 ```
 
 ---
@@ -85,7 +85,7 @@ cncjs --help
 ## Uninstall
 
 ```bash
-sudo apt-get remove nextcnc-server
+sudo apt-get remove axiocnc-server
 ```
 
 ---
@@ -97,7 +97,7 @@ sudo apt-get remove nextcnc-server
 If `cncjs` command isn't found:
 ```bash
 # Check if installed
-dpkg -l | grep nextcnc-server
+dpkg -l | grep axiocnc-server
 
 # Try full path
 /usr/bin/cncjs

@@ -37,7 +37,7 @@ yarn build:server-deb-armv7l
 yarn build:server-deb
 ```
 
-This creates: `output/nextcnc-server_1.10.5_arm64.deb`
+This creates: `output/axiocnc-server_1.10.5_arm64.deb`
 
 ---
 
@@ -46,13 +46,13 @@ This creates: `output/nextcnc-server_1.10.5_arm64.deb`
 ### Step 1: Transfer to Pi
 
 ```bash
-scp output/nextcnc-server_1.10.5_arm64.deb pi@raspberrypi.local:~/
+scp output/axiocnc-server_1.10.5_arm64.deb pi@raspberrypi.local:~/
 ```
 
 ### Step 2: Install
 
 ```bash
-sudo dpkg -i nextcnc-server_1.10.5_arm64.deb
+sudo dpkg -i axiocnc-server_1.10.5_arm64.deb
 sudo apt-get install -f  # if dependencies missing
 ```
 
@@ -68,9 +68,9 @@ That's it! The server starts on `http://0.0.0.0:8000`
 
 ## What Gets Installed
 
-- **Application**: `/opt/nextcnc/` (server files + node_modules)
+- **Application**: `/opt/axiocnc/` (server files + node_modules)
 - **Launcher**: `/usr/bin/cncjs` (command-line launcher)
-- **Service**: `/etc/systemd/system/nextcnc.service` (optional systemd service)
+- **Service**: `/etc/systemd/system/axiocnc.service` (optional systemd service)
 
 ---
 
@@ -78,14 +78,14 @@ That's it! The server starts on `http://0.0.0.0:8000`
 
 ```bash
 # Enable auto-start on boot
-sudo systemctl enable nextcnc
-sudo systemctl start nextcnc
+sudo systemctl enable axiocnc
+sudo systemctl start axiocnc
 
 # Check status
-sudo systemctl status nextcnc
+sudo systemctl status axiocnc
 
 # View logs
-sudo journalctl -u nextcnc -f
+sudo journalctl -u axiocnc -f
 ```
 
 ---
@@ -104,8 +104,8 @@ http://<pi-ip-address>:8000
 
 ## Package Details
 
-- **Package Name**: `nextcnc-server`
-- **Install Location**: `/opt/nextcnc`
+- **Package Name**: `axiocnc-server`
+- **Install Location**: `/opt/axiocnc`
 - **Command**: `cncjs` (in PATH)
 - **Default Port**: 8000
 - **Default Host**: 0.0.0.0 (all interfaces)

@@ -1,4 +1,4 @@
-# NextCNC Deployment Strategy
+# AxioCNC Deployment Strategy
 
 End-user installation options for Linux, Raspberry Pi, and Windows.
 
@@ -88,11 +88,11 @@ yarn build:macos        # Creates .dmg (future macOS support)
 **Installation Experience:**
 ```bash
 # Linux/RPi
-sudo dpkg -i nextcnc_1.0.0.deb        # or
-sudo apt install ./nextcnc_1.0.0.deb
+sudo dpkg -i axiocnc_1.0.0.deb        # or
+sudo apt install ./axiocnc_1.0.0.deb
 
 # Windows
-nextcnc-setup-1.0.0.exe  # Wizard-based install
+axiocnc-setup-1.0.0.exe  # Wizard-based install
 ```
 
 ---
@@ -133,7 +133,7 @@ docker run -d \
   --device=/dev/ttyUSB0 \
   -v /path/to/watch:/watch \
   -p 8000:8000 \
-  nextcnc:latest
+  axiocnc:latest
 ```
 
 **Verdict:** ❌ **Not recommended for end-user deployment** - too complex, but useful for developers/CI
@@ -144,9 +144,9 @@ docker run -d \
 
 **Install via npm/yarn globally:**
 ```bash
-npm install -g nextcnc
+npm install -g axiocnc
 # or
-yarn global add nextcnc
+yarn global add axiocnc
 ```
 
 **Pros:**
@@ -220,9 +220,9 @@ yarn build:linux-arm64    # Raspberry Pi 5
 
 ### Electron (Recommended)
 ```
-User: Downloads nextcnc-1.0.0-linux-x64.deb
+User: Downloads axiocnc-1.0.0-linux-x64.deb
 User: Double-clicks → Install
-User: Opens "NextCNC" from Applications menu
+User: Opens "AxioCNC" from Applications menu
 ✅ Done - app starts, hardware access works
 ```
 
@@ -237,8 +237,8 @@ User: Runs docker-compose up
 
 ### Native Package (Alternative)
 ```
-User: Downloads nextcnc-1.0.0.deb
-User: Runs: sudo dpkg -i nextcnc-1.0.0.deb
+User: Downloads axiocnc-1.0.0.deb
+User: Runs: sudo dpkg -i axiocnc-1.0.0.deb
 User: Installs Node.js if not present
 User: Waits for native module compilation
 ✅ Works, but slower install

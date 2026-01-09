@@ -1,4 +1,4 @@
-# Installing NextCNC on Raspberry Pi
+# Installing AxioCNC on Raspberry Pi
 
 ## Built Installers
 
@@ -195,7 +195,7 @@ To run NextCNC automatically when the Pi boots:
 2. **Add this content:**
    ```ini
    [Unit]
-   Description=NextCNC CNC Controller
+   Description=AxioCNC CNC Controller
    After=network.target
 
    [Service]
@@ -213,13 +213,13 @@ To run NextCNC automatically when the Pi boots:
 
 3. **Enable and start:**
    ```bash
-   sudo systemctl enable nextcnc
-   sudo systemctl start nextcnc
+   sudo systemctl enable axiocnc
+   sudo systemctl start axiocnc
    ```
 
 4. **Check status:**
    ```bash
-   sudo systemctl status nextcnc
+   sudo systemctl status axiocnc
    ```
 
 ---

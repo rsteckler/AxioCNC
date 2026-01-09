@@ -1,4 +1,4 @@
-# NextCNC Deployment Quick Start
+# AxioCNC Deployment Quick Start
 
 **TL;DR:** Your Electron setup is ready! Build installers with:
 
@@ -23,18 +23,18 @@ yarn build-prod
 yarn build:linux-armv7l
 
 # 3. Transfer to Pi
-scp output/nextcnc_1.0.0_armv7l.deb pi@raspberrypi.local:~
+scp output/axiocnc_1.0.0_armv7l.deb pi@raspberrypi.local:~
 
 # 4. On Pi: Install
 ssh pi@raspberrypi.local
-sudo dpkg -i ~/nextcnc_1.0.0_armv7l.deb
+sudo dpkg -i ~/axiocnc_1.0.0_armv7l.deb
 
 # 5. Add user to dialout group (for serial access)
 sudo usermod -a -G dialout $USER
 # Log out and back in
 
 # 6. Run
-nextcnc
+axiocnc
 ```
 
 ### For Windows
@@ -47,7 +47,7 @@ yarn build-prod
 yarn build:windows-x64
 
 # 3. Installer created at:
-#    output/nextcnc Setup 1.0.0.exe
+#    output/axiocnc Setup 1.0.0.exe
 
 # 4. Double-click installer on Windows machine
 # 5. Follow setup wizard
@@ -63,10 +63,10 @@ yarn build-prod
 yarn build:linux-x64
 
 # 3. Install
-sudo dpkg -i output/nextcnc_1.0.0_amd64.deb
+sudo dpkg -i output/axiocnc_1.0.0_amd64.deb
 
 # 4. Run
-nextcnc
+axiocnc
 ```
 
 ---
@@ -74,19 +74,19 @@ nextcnc
 ## What Gets Built
 
 After `yarn build-prod`, you get:
-- `dist/cncjs/` - Complete application ready for packaging
+- `dist/axiocnc/` - Complete application ready for packaging
   - `app/` - Vite-built frontend
   - `server/` - Express backend
   - `electron-app/` - Electron main process
   - `node_modules/` - All dependencies (including serialport)
 
 After `yarn build:linux-*`, you get:
-- `output/nextcnc_*.deb` - Debian/Ubuntu/Raspberry Pi OS installer
-- `output/nextcnc_*.AppImage` - Universal Linux app (no install needed)
-- `output/nextcnc_*.rpm` - Fedora/RHEL installer
+- `output/axiocnc_*.deb` - Debian/Ubuntu/Raspberry Pi OS installer
+- `output/axiocnc_*.AppImage` - Universal Linux app (no install needed)
+- `output/axiocnc_*.rpm` - Fedora/RHEL installer
 
 After `yarn build:windows-x64`, you get:
-- `output/nextcnc Setup *.exe` - Windows installer (NSIS)
+- `output/axiocnc Setup *.exe` - Windows installer (NSIS)
 
 ---
 
@@ -116,10 +116,10 @@ npm run electron-rebuild
 
 Default locations after install:
 
-- **Linux/RPi**: `~/.config/nextcnc/` or `~/.nextcnc/`
-- **Windows**: `%APPDATA%\nextcnc\`
+- **Linux/RPi**: `~/.config/axiocnc/` or `~/.axiocnc/`
+- **Windows**: `%APPDATA%\axiocnc\`
 
-Watch folder: `~/.cncjs/watch/` (Linux) or `%USERPROFILE%\.cncjs\watch\` (Windows)
+Watch folder: `~/.axiocnc/watch/` (Linux) or `%USERPROFILE%\.axiocnc\watch\` (Windows)
 
 ---
 
@@ -132,8 +132,8 @@ Watch folder: `~/.cncjs/watch/` (Linux) or `%USERPROFILE%\.cncjs\watch\` (Window
    - Test file upload/watch folders
 
 2. **Customize branding** (optional):
-   - Update `productName` in `package.json` (currently "CNCjs")
-   - Update `appId` (currently "org.cncjs")
+   - Update `productName` in `package.json` (currently "AxioCNC")
+   - Update `appId` (currently "org.axiocnc")
    - Replace icons in `electron-build/` if needed
 
 3. **Set up auto-start** (optional):
