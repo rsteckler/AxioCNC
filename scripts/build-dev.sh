@@ -34,3 +34,5 @@ mkdir -p output/axiocnc/server
 # Ensure we're in project root for the copy command
 cd "$(dirname "$0")/.." || cd ..
 cp -af src/server/{i18n,views} output/axiocnc/server/
+# Copy favicon if it exists
+[ -f src/app/public/favicon.ico ] && cp -af src/app/public/favicon.ico output/axiocnc/app/ || true
