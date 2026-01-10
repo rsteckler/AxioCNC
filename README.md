@@ -1,337 +1,304 @@
-# CNCjs [![Backers on Open Collective](https://opencollective.com/cncjs/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/cncjs/sponsors/badge.svg)](#sponsors) [![Travis CI Build Status](https://travis-ci.org/cncjs/cncjs.svg)](https://travis-ci.org/cncjs/cncjs) [![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/qxx53wq32w3edule?svg=true)](https://ci.appveyor.com/project/cheton/cncjs) [![Coverage Status](https://coveralls.io/repos/github/cncjs/cncjs/badge.svg?branch=master)](https://coveralls.io/github/cncjs/cncjs?branch=master)
+# AxioCNC
 
-[![NPM](https://nodei.co/npm/cncjs.png?downloads=true&stars=true)](https://www.npmjs.com/package/cncjs)
-![cncjs](https://raw.githubusercontent.com/cncjs/cncjs/master/media/banner.png)
+> Stability-focused G-code sender built around real CNC workflows. Control your machine from any device on your network.
 
-CNCjs is a full-featured web-based interface for CNC controllers running [Grbl](https://github.com/grbl/grbl), [Marlin](https://github.com/MarlinFirmware/Marlin), [Smoothieware](https://github.com/Smoothieware/Smoothieware), or [TinyG](https://github.com/synthetos/TinyG).
+**[🌐 Visit the AxioCNC Website](https://axiocnc.com)** • [📖 Documentation](https://axiocnc.com/docs) • [💬 Discussions](https://github.com/rsteckler/AxioCNC/discussions) • [🐛 Report Issue](https://github.com/rsteckler/AxioCNC/issues/new)
 
-For a more complete introduction, see the [Introduction](https://github.com/cncjs/cncjs/wiki/Introduction) section of the wiki page.
+---
 
-![cncjs](https://cloud.githubusercontent.com/assets/447801/24392019/aa2d725e-13c4-11e7-9538-fd5f746a2130.png)
+## 🎯 What is AxioCNC?
 
-## Features
+AxioCNC is a web-based interface for CNC controllers that prioritizes **stability and predictability** during long cutting jobs. Built on the proven cncjs server foundation, it brings a modern interface and workflow improvements designed to prevent costly mistakes and crashes.
 
-* Supported controllers
-    - [Grbl](https://github.com/gnea/grbl) ([Download](https://github.com/gnea/grbl/releases))
-    - [Grbl-Mega](https://github.com/gnea/grbl-Mega) ([Download](https://github.com/gnea/grbl-Mega/releases))
-    - [Marlin](https://github.com/MarlinFirmware/Marlin) ([Download](http://marlinfw.org/meta/download/))
-    - [Smoothieware](https://github.com/Smoothieware/Smoothieware) ([Download](https://github.com/Smoothieware/Smoothieware/tree/edge/FirmwareBin))
-    - [TinyG](https://github.com/synthetos/TinyG) (_Recommend: firmware version 0.97 build 449.xx_) ([Download](http://synthetos.github.io/))
-    - [g2core](https://github.com/synthetos/g2)
-* [Desktop App for Linux, Mac OS X, and Windows](https://github.com/cncjs/cncjs/wiki/Desktop-App)
-* 6-axis digital readout (DRO)
-* Tool path 3D visualization
-* Simultaneously communicate with multiple clients
-* Responsive view for small screen display with device width less than 720px
-    - <i>Safari on an iPhone 5S</i> [\[1\]](https://cloud.githubusercontent.com/assets/447801/15633749/b817cd4a-25e7-11e6-9beb-600c65ea1324.PNG) [\[2\]](https://cloud.githubusercontent.com/assets/447801/15633750/b819b5f6-25e7-11e6-8bfe-d3e6247e443b.PNG)
-* Customizable workspace
-* [Custom widget](https://github.com/cncjs/cncjs-widget-boilerplate) (since 1.9.10)
-* Custom MDI (Multiple Document Interface) command buttons (since 1.9.13)
-* My Account
-* Commands
-* Events
-* [Keyboard Shortcuts](https://cnc.js.org/docs/user-guide/#keyboard-shortcuts)
-* [Contour ShuttleXpress](https://cnc.js.org/docs/user-guide/#contour-shuttlexpress)
-* Multi-Language Support 
-* Watch Directory
-* [Tool Change](https://github.com/cncjs/cncjs/wiki/Tool-Change) (since 1.9.11)
-* Z-Probe
+**Perfect for:**
+- Hobbyists running CNC mills and routers
+- Small shops needing reliable G-code execution
+- Anyone who's crashed a machine by hitting the wrong button on a touchscreen
 
-## Custom Widgets
+### Why AxioCNC?
 
-* [cncjs-widget-boilerplate](https://github.com/cncjs/cncjs-widget-boilerplate) - Creating custom widgets for CNCjs.
+- ✅ **Stability-first design** - Predictable behavior during long jobs
+- ✅ **Prevents costly mistakes** - Spaced controls to avoid accidental taps
+- ✅ **Network accessible** - Control from any device on your network
+- ✅ **Modern, themeable UI** - Light and dark modes for comfortable sessions
+- ✅ **Native joystick support** - Smooth analog jogging with any USB gamepad
+- ✅ **Human-readable tool library** - See "1/4 inch flat endmill" instead of "T4"
 
-## Pendants
+---
 
-### Boilerplate Code
+## 📸 Screenshots
 
-* [cncjs-pendant-boilerplate](https://github.com/cncjs/cncjs-pendant-boilerplate) - A bare minimum example to develop a cncjs pendant.
+> **Note:** Screenshots coming soon. [Visit our website](https://axiocnc.com) to see the interface in action.
 
-### Existing Pendants
+---
 
-* [cncjs-pendant-keyboard](https://github.com/cncjs/cncjs-pendant-keyboard) - A simple pendant (using wireless keyboard or usb) to CNCJS.
-* [cncjs-pendant-numpad](https://github.com/mariolukas/cncjs-pendant-numpad) - A simple pendant (using wireless numpad or usb) to CNCJS.
-* [cncjs-pendant-lcd](https://github.com/cncjs/cncjs-pendant-lcd) - CNCjs Web Kiosk for Raspberry Pi Touch Displays.
-* [cncjs-pendant-ps3](https://github.com/cncjs/cncjs-pendant-ps3) - Dual Shock / PS3 Bluetooth Remote Pendant for CNCjs.
-* [cncjs-pendant-raspi-gpio](https://github.com/cncjs/cncjs-pendant-raspi-gpio) - Simple Raspberry Pi GPIO Pendant control for CNCjs.
+## ✨ Features
 
-## Tablet UI
+### Core Functionality
 
-* [cncjs-pendant-tinyweb](https://github.com/cncjs/cncjs-pendant-tinyweb) - A tiny web console for small 320x240 LCD display.<br>
-    ![cncjs-pendant-tinyweb](https://raw.githubusercontent.com/cncjs/cncjs/master/media/tinyweb-axes.png)
-* [cncjs-shopfloor-tablet](https://github.com/cncjs/cncjs-shopfloor-tablet) - A simplified UI for cncjs optimized for tablet computers in a production (shop floor) environment.<br>
-    ![cncjs-shopfloor-tablet](https://user-images.githubusercontent.com/4861133/33970662-4a8244b2-e018-11e7-92ab-5a379e3de461.PNG)
+- **Multiple Controller Support** - Works with Grbl, Marlin, Smoothie, and TinyG/g2core
+- **6-Axis Digital Readout** - Real-time position feedback for X, Y, Z, A, B, C axes
+- **3D Toolpath Visualization** - See your job before you run it with interactive 3D viewer
+- **G-code File Management** - Upload, load, visualize, and execute G-code files
+- **Real-time Machine Status** - Monitor position, state, and workflow status
+- **Console Terminal** - Direct command interface with full history
 
-## Browser Support
+### Workflow Improvements
 
-![Chrome](https://raw.github.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png)<br>Chrome | ![Edge](https://raw.github.com/alrra/browser-logos/master/src/edge/edge_48x48.png)<br>Edge | ![Firefox](https://raw.github.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png)<br>Firefox | ![IE](https://raw.github.com/alrra/browser-logos/master/src/archive/internet-explorer_9-11/internet-explorer_9-11_48x48.png)<br>IE | ![Opera](https://raw.github.com/alrra/browser-logos/master/src/opera/opera_48x48.png)<br>Opera | ![Safari](https://raw.github.com/alrra/browser-logos/master/src/safari/safari_48x48.png)<br>Safari
---- | --- | --- | --- | --- | --- |
- Yes | Yes | Yes| Not supported | Yes | Yes | 
+- **Task-Oriented Interface** - Different views optimized for setup, cutting, and review
+- **Spaced Control Layout** - XY jog pad and Z controls are separated to prevent accidental clicks
+- **Analog Joystick Jogging** - Continuous smooth movement with USB gamepads/joysticks
+- **Tool Library** - Human-readable tool names, diameters, and descriptions
+- **Probe Strategies** - Built-in support for touch plates and edge finders
+- **Watch Directory** - Automatically detect new G-code files in a folder
 
-## Supported Node.js Versions
+### Modern Interface
 
-| Version | Supported Level |
-| :------ |:--------------- |
-| <= 10   | Not supported   |
-| 12      | Supported       |
-| >= 14   | Recommended     |
+- **Light & Dark Themes** - Choose what's comfortable for your shop environment
+- **Customizable Accent Colors** - Personalize the interface (Orange, Blue, Green, Purple, Red, Zinc)
+- **Responsive Design** - Works on desktop, tablet, and mobile devices
+- **Auto-save Settings** - Changes save automatically with visual feedback
 
-## Getting Started
+### Network & Access
 
-### Node.js Installation
+- **Web-Based Interface** - Access from any device with a browser
+- **Network Accessible** - Design on your computer, run from your tablet, monitor from your office
+- **Single Server Setup** - Install once, access from anywhere on your network
+- **Multiple Simultaneous Connections** - Several users can monitor the same machine
 
-Node.js 14 or higher is recommended. You can install [Node Version Manager](https://github.com/creationix/nvm) to manage multiple Node.js versions. If you have `git` installed, just clone the `nvm` repo, and check out the latest version:
-```
-git clone https://github.com/creationix/nvm.git ~/.nvm
-cd ~/.nvm
-git checkout `git describe --abbrev=0 --tags`
-cd ..
-. ~/.nvm/nvm.sh
-```
+### Safety & Reliability
 
-Add these lines to your `~/.bash_profile`, `~/.bashrc`, or `~/.profile` file to have it automatically sourced upon login: 
-```bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" # This loads nvm
-```
+- **Built on Proven Foundation** - Based on cncjs server architecture known for stability
+- **Error Handling** - Configurable "continue on error" behavior for production runs
+- **Feed Hold & Resume** - Pause and resume jobs safely
+- **Emergency Stop** - Immediate machine stop with reset capability
 
-Once installed, you can select Node.js versions with:
-```
-nvm install 14
-nvm use 14
-```
+---
 
-It's also recommended that you upgrade npm to the latest version. To upgrade, run:
-```
-npm install npm@latest -g
-```
+## 🚀 Quick Start
 
 ### Installation
 
-Install cncjs as a non-root user, or the [serialport](https://github.com/node-serialport/node-serialport) module may not install correctly on some platforms like Raspberry Pi.
-```
-npm install -g cncjs
-```
+AxioCNC is available as installers for Linux, Windows, and Raspberry Pi. **The easiest way to get started is to [download from our website](https://axiocnc.com#download).**
 
-If you're going to use sudo or root to install cncjs, you need to specify the `--unsafe-perm` option to run npm as the root account.
-```
-sudo npm install --unsafe-perm -g cncjs
-```
+#### Linux (x64)
 
-Check out [https://github.com/cncjs/cncjs/wiki/Installation](https://github.com/cncjs/cncjs/wiki/Installation) for other installation methods.
+```bash
+# Download the .deb package from GitHub Releases or our website
+wget https://github.com/rsteckler/AxioCNC/releases/latest/download/axiocnc_*.deb
 
-### Upgrade
+# Install
+sudo dpkg -i axiocnc_*.deb
+sudo apt-get install -f  # if dependencies are missing
 
-Run `npm install -g cncjs@latest` to install the latest version. To determine the version, use `cncjs -V`.
-
-### Usage
-
-Run `cncjs` to start the server, and visit `http://yourhostname:8000/` to view the web interface. Pass `--help` to `cncjs` for more options.
-
-```
-pi@rpi3$ cncjs -h
-
-  Usage: cncjs [options]
-
-
-  Options:
-
-    -V, --version                       output the version number
-    -p, --port <port>                   Set listen port (default: 8000)
-    -H, --host <host>                   Set listen address or hostname (default: 0.0.0.0)
-    -b, --backlog <backlog>             Set listen backlog (default: 511)
-    -c, --config <filename>             Set config file (default: ~/.cncrc)
-    -v, --verbose                       Increase the verbosity level (-v, -vv, -vvv)
-    -m, --mount <route-path>:<target>   Add a mount point for serving static files
-    -w, --watch-directory <path>        Watch a directory for changes
-    --access-token-lifetime <lifetime>  Access token lifetime in seconds or a time span string (default: 30d)
-    --allow-remote-access               Allow remote access to the server (default: false)
-    --controller <type>                 Specify CNC controller: Grbl|Marlin|Smoothie|TinyG|g2core (default: '')
-    -h, --help                          output usage information
-
-  Examples:
-
-    $ cncjs -vv
-    $ cncjs --mount /pendant:/home/pi/tinyweb
-    $ cncjs --mount /widget:~+/widget --mount /pendant:~/pendant
-    $ cncjs --mount /widget:https://cncjs.github.io/cncjs-widget-boilerplate/v1/
-    $ cncjs --watch-directory /home/pi/watch
-    $ cncjs --access-token-lifetime 60d  # e.g. 3600, 30m, 12h, 30d
-    $ cncjs --allow-remote-access
-    $ cncjs --controller Grbl
+# Run
+axiocnc
 ```
 
-Instead of passing command line options for `--watch-directory`, `--access-token-lifetime`, `--allow-remote-access`, and `--controller`, you can create a `~/.cncrc` file that contains the following configuration in JSON format:
-```json
-{
-    "mountPoints": [
-        {
-            "route": "/pendant",
-            "target": "/home/pi/tinyweb"
-        },
-        {
-            "route": "/widget",
-            "target": "https://cncjs.github.io/cncjs-widget-boilerplate/v1/"
-        }
-    ],
-    "watchDirectory": "/path/to/dir",
-    "accessTokenLifetime": "30d",
-    "allowRemoteAccess": false,
-    "controller": ""
-}
+#### Windows
+
+1. Download the installer from [GitHub Releases](https://github.com/rsteckler/AxioCNC/releases) or [our website](https://axiocnc.com#download)
+2. Double-click `axiocnc Setup *.exe`
+3. Follow the installation wizard
+4. Launch AxioCNC from the Start Menu
+
+#### Raspberry Pi
+
+```bash
+# Download the appropriate package for your Pi model
+# Raspberry Pi 3/4 (ARM32):
+wget https://github.com/rsteckler/AxioCNC/releases/latest/download/axiocnc_*_armv7l.deb
+
+# Raspberry Pi 5 (ARM64):
+wget https://github.com/rsteckler/AxioCNC/releases/latest/download/axiocnc_*_arm64.deb
+
+# Install
+sudo dpkg -i axiocnc_*.deb
+sudo apt-get install -f
+
+# Add user to dialout group for serial access (log out/in after)
+sudo usermod -a -G dialout $USER
+
+# Run
+axiocnc
 ```
 
-To troubleshoot issues, run:
-```
-cncjs -vvv
-```
+> **💡 Tip:** For headless Raspberry Pi installations, see our [Server Installation Guide](INSTALL_RPI_SERVER.md)
 
-### Configuration File
+### First Run
 
-The configuration file <b>.cncrc</b> contains settings that are equivalent to the cncjs command-line options. The configuration file is stored in user's home directory. To find out the actual location of the home directory, do the following:
+1. **Start AxioCNC** - The application will open a browser window at `http://localhost:8000`
+2. **Connect to Your Machine** - Go to the Setup screen and configure:
+   - Serial port (e.g., `/dev/ttyUSB0` on Linux, `COM3` on Windows)
+   - Baud rate (typically `115200` for Grbl)
+   - Controller type (Grbl, Marlin, Smoothie, or TinyG)
+3. **Click Connect** - Your machine status will appear when connected
+4. **Upload G-code** - Use the file picker or drag-and-drop a `.nc` or `.gcode` file
+5. **Visualize & Run** - Review the toolpath in the 3D viewer, then start your job
 
-* Linux/Mac
-  ```sh
-  echo $HOME
-  ```
+### Serial Port Access (Linux/Raspberry Pi)
 
-* Windows
-  ```sh
-  echo %USERPROFILE%
-  ```
+After installation, you may need to add your user to the `dialout` group:
 
-Check out an example configuration file [here](https://github.com/cncjs/cncjs/blob/master/examples/.cncrc).
-
-### File Format
-
-See https://github.com/cncjs/cncjs/issues/242#issuecomment-352294549 for a detailed explanation.
-
-```json
-{
-  "ports": [
-     {
-       "path": "/dev/ttyAMA0",
-       "manufacturer": ""
-     }
-  ],
-  "baudrates": [115200, 250000],
-  "mountPoints": [
-    {
-      "route": "/widget",
-      "target": "https://cncjs.github.io/cncjs-widget-boilerplate/v1/"
-    }
-  ],
-  "watchDirectory": "/path/to/dir",
-  "accessTokenLifetime": "30d",
-  "allowRemoteAccess": false,
-  "controller": "",
-  "state": {
-    "checkForUpdates": true,
-    "controller": {
-      "exception": {
-        "ignoreErrors": false
-      }
-    }
-  },
-  "commands": [
-    {
-      "title": "Update (root user)",
-      "commands": "sudo npm install -g cncjs@latest --unsafe-perm; pkill -f cncjs"
-    },
-    {
-      "title": "Update (non-root user)",
-      "commands": "npm install -g cncjs@latest; pkill -f cncjs"
-    },
-    {
-      "title": "Reboot",
-      "commands": "sudo /sbin/reboot"
-    },
-    {
-      "title": "Shutdown",
-      "commands": "sudo /sbin/shutdown"
-    }
-  ],
-  "events": [],
-  "macros": [],
-  "users": []
-}
+```bash
+sudo usermod -a -G dialout $USER
 ```
 
-## Documentation
+**Important:** Log out and back in (or reboot) for this change to take effect.
 
-https://cnc.js.org/docs/
+Verify access:
+```bash
+groups $USER  # Should show "dialout" in the list
+ls -l /dev/ttyUSB* /dev/ttyACM*  # Check available serial ports
+```
 
-## Examples
+---
 
-There are several *.gcode files in the [examples](https://github.com/cncjs/cncjs/tree/master/examples) directory. You can use the GCode widget to load a GCode file and make a trial run.
+## 📖 Usage
 
-If you don't have a CAM software, try using [jscut](http://jscut.org/) to create G-Code from *.svg. It's a simple CAM package that runs in the browser.
+### Basic Workflow
 
-Check out a live demo at http://jscut.org/jscut.html.
+1. **Design** - Create G-code with your CAM software (Fusion 360, Carbide Create, etc.)
+2. **Upload** - Drag and drop your G-code file into AxioCNC or use the file picker
+3. **Visualize** - Review the toolpath in the 3D viewer to verify it looks correct
+4. **Setup** - Use jog controls to position your workpiece, then set your work zero
+5. **Run** - Start the job and monitor progress in real-time
+6. **Monitor** - Watch the machine status, position updates, and progress from any device
 
-## Contributions
+### Key Controls
 
-Use [GitHub issues](https://github.com/cncjs/cncjs/issues) for requests.
+- **Jog Controls** - Move machine in X, Y, Z with discrete steps or analog joystick
+- **Home All** - Return machine to home position (if supported by firmware)
+- **Feed Hold** - Pause job execution (press Resume to continue)
+- **Stop** - Abort current job (with confirmation)
+- **Set Zero** - Set current position as work coordinate origin
+- **Go to Zero** - Rapid move to work coordinate zero position
 
-Pull requests welcome! Learn how to [contribute](CONTRIBUTING.md).
+### Joystick Support
 
-## Localization
+Plug in any USB gamepad or joystick:
+1. Go to **Settings** → **Joystick**
+2. Configure button mappings and analog stick sensitivity
+3. Use the joystick for smooth, continuous jogging in the Setup screen
 
-You can help translate resource files in both of [app](https://github.com/cncjs/cncjs/tree/master/src/app/i18n) and [server](https://github.com/cncjs/cncjs/tree/master/src/server/i18n) directories from English to other languages. Check out [Localization guide](https://github.com/cncjs/cncjs/blob/master/CONTRIBUTING.md#localization) to learn how to get started. If you are not familiar with GitHub development, you can [open an issue](https://github.com/cncjs/cncjs/issues) or send your translations to cheton@gmail.com.
+### Tool Library
 
-Locale | Language | Status | Contributors 
-:----- | :------- | :----- | :-----------
-[cs](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/cs) | Čeština (Czech) | ✔ | [Miroslav Zuzelka](https://github.com/dronecz)
-[de](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/de) | Deutsch (German) | ✔ | [Thorsten Godau](https://github.com/dl9sec), [Max B.](https://github.com/mbs38)
-[es](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/es) | Español (Spanish) | ✔ | [Juan Biondi](https://github.com/yeyeto2788), [hasecilu](https://github.com/hasecilu)
-[fr](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/fr) | Français (French) | ✔ | [Simon Maillard](https://github.com/maisim), [CorentinBrulé](https://github.com/CorentinBrule)
-[hu](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/hu) | Magyar (Hungarian) | ✔ | Sipos Péter
-[it](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/it) | Italiano (Italian) | ✔ | [vince87](https://github.com/vince87)
-[ja](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/ja) | 日本語 (Japanese) | ✔ | [Naoki Okamoto](https://github.com/toonaoki)
-[nl](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/nl) | Nederlands (Netherlands) | ✔ | [dutchpatriot](https://github.com/dutchpatriot)
-[pt-br](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/pt-br) | Português (Brasil) | ✔ | [cmsteinBR](https://github.com/cmsteinBR)
-[ru](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/ru) | Ру́сский (Russian) | ✔ | [Denis Yusupov](https://github.com/minithc)
-[uk](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/uk) | українська (Ukrainian) | ✔ | [khvalera](https://github.com/khvalera)
-[tr](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/tr) | Türkçe (Turkish) | ✔ | Ali GÜNDOĞDU
-[zh-cn](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/zh-cn) | 简体中文 (Simplified Chinese) | ✔ | [Mandy Chien](https://github.com/MandyChien), [Terry Lee](https://github.com/TerryShampoo)
-[zh-tw](https://github.com/cncjs/cncjs/tree/master/src/app/i18n/zh-tw) | 繁體中文 (Traditional Chinese) | ✔ | [Cheton Wu](https://github.com/cheton)
+Manage your tools with human-readable names:
+1. Go to **Settings** → **Machine** (tool library coming in future release)
+2. Add tools with names like "1/4 inch flat endmill" instead of just "T4"
+3. See tool diameter, type, and description at a glance
 
-## Donate
+---
 
-If you would like to support this project, you can make a donation using PayPal. Thank you!
+## 🆘 Getting Help
 
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=38CYN33CWPBR2)
+### Having Issues?
 
-## Contributors
+- **🐛 Found a Bug?** - [Open an issue on GitHub](https://github.com/rsteckler/AxioCNC/issues/new/choose)
+  - Include: Your operating system, AxioCNC version, controller type, and steps to reproduce
+  - Check [existing issues](https://github.com/rsteckler/AxioCNC/issues) first to see if it's already reported
 
-This project exists thanks to all the people who contribute. [[Contribute](CONTRIBUTING.md)].
-<a href="graphs/contributors"><img src="https://opencollective.com/cncjs/contributors.svg?width=890&button=false" /></a>
+- **💬 Have a Question?** - [Start a discussion](https://github.com/rsteckler/AxioCNC/discussions/new)
+  - Use the **Q&A** category for usage questions
+  - Use **Ideas** for feature suggestions
+  - Use **General** for other topics
 
+- **📚 Need Documentation?** - [Visit our documentation site](https://axiocnc.com/docs)
+  - Installation guides
+  - API reference
+  - Troubleshooting tips
 
-## Backers
+- **🌐 Prefer the Website?** - [axiocnc.com](https://axiocnc.com) has the same information in a more polished format
 
-Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/cncjs#backer)]
+### Common Questions
 
-<a href="https://opencollective.com/cncjs#backers" target="_blank"><img src="https://opencollective.com/cncjs/backers.svg?width=890"></a>
+**Q: Will this work with my CNC controller?**  
+A: AxioCNC supports Grbl, Marlin, Smoothie, and TinyG/g2core. If your controller runs one of these firmwares, it will work.
 
+**Q: Can I use this on a Raspberry Pi?**  
+A: Yes! We provide ARM32 and ARM64 installers specifically for Raspberry Pi. See the [Raspberry Pi Installation Guide](INSTALL_RPI.md).
 
-## Sponsors
+**Q: Does it work without an internet connection?**  
+A: Yes, once installed, AxioCNC runs entirely on your local network. No internet connection required for normal operation.
 
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/cncjs#sponsor)]
+**Q: Can multiple people access the same machine?**  
+A: Yes, multiple devices can connect to the same AxioCNC server simultaneously. All devices see the same machine status.
 
-<a href="https://opencollective.com/cncjs/sponsor/0/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/0/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/1/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/1/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/2/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/2/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/3/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/3/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/4/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/4/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/5/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/5/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/6/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/6/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/7/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/7/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/8/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/8/avatar.svg"></a>
-<a href="https://opencollective.com/cncjs/sponsor/9/website" target="_blank"><img src="https://opencollective.com/cncjs/sponsor/9/avatar.svg"></a>
+**Q: Is my G-code file compatible?**  
+A: AxioCNC accepts standard G-code files (`.nc`, `.gcode`, `.cnc`). It works with output from Fusion 360, Carbide Create, VCarve, and most other CAM software.
 
+---
 
+## 🔗 Additional Resources
 
-## License
+- **[🌐 Official Website](https://axiocnc.com)** - Best starting point for new users
+- **[📖 Documentation](https://axiocnc.com/docs)** - Complete guides and API reference
+- **[💬 GitHub Discussions](https://github.com/rsteckler/AxioCNC/discussions)** - Community Q&A and ideas
+- **[🐛 Issue Tracker](https://github.com/rsteckler/AxioCNC/issues)** - Report bugs and request features
+- **[📋 Changelog](CHANGELOG.md)** - Version history and release notes
 
-Licensed under the [MIT License](https://raw.githubusercontent.com/cncjs/cncjs/master/LICENSE).
+---
+
+**Ready to get started?** [Download AxioCNC](https://axiocnc.com#download) or [visit our website](https://axiocnc.com) for more information.
+
+---
+
+## 🏗️ For Developers & Contributors
+
+> **Note:** The sections below are for developers and contributors. End users can find everything they need above.
+
+### Build Status
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Release](https://img.shields.io/badge/Release-v1.10.15-blue)](https://github.com/rsteckler/AxioCNC/releases)
+
+Build status and test coverage information will be added here as CI/CD is configured.
+
+### Contributing
+
+We welcome contributions! Before you get started:
+
+1. **Read our [Contributing Guide](CONTRIBUTING.md)** - Learn about our workflow, code style, and protected code areas
+2. **Check [Protected Code](aidocs/protected-code.md)** - Some areas require explicit permission before modification
+3. **Review [Development Preferences](aidocs/dev_prefs.md)** - UI patterns and architectural decisions
+4. **See [Testing Guide](aidocs/testing-guide.md)** - How we test and maintain code quality
+
+**Quick Development Setup:**
+
+```bash
+# Clone the repository
+git clone https://github.com/rsteckler/AxioCNC.git
+cd AxioCNC
+
+# Install dependencies
+yarn install
+
+# Start development servers (requires two terminals)
+# Terminal 1: Backend
+yarn start-server-dev
+
+# Terminal 2: Frontend
+cd src/app && npm run dev
+```
+
+For more details, see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Developer Documentation](aidocs/overview.md).
+
+---
+
+## 🙏 Acknowledgments
+
+AxioCNC is built on the solid foundation of [cncjs](https://github.com/cncjs/cncjs). We're grateful to everyone who contributed to that project and helped make reliable CNC control software available to the community.
+
+**Special thanks to:**
+- The cncjs project and its contributors
+- The CNC community for feedback and testing
+- Everyone who reports issues and suggests improvements
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2015-2017 Cheton Wu (cncjs foundation)  
+Copyright (c) 2024 AxioCNC Contributors
