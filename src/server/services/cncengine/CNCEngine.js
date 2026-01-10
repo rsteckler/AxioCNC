@@ -1,5 +1,4 @@
 import { ensureArray } from 'ensure-type';
-import _ from 'lodash';
 import noop from 'lodash/noop';
 import { SerialPort } from 'serialport';
 import socketIO from 'socket.io';

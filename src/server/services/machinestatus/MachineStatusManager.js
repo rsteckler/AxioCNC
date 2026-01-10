@@ -1,6 +1,5 @@
 import events from 'events';
 import logger from '../../lib/logger';
-import store from '../../store';
 
 const log = logger('service:machinestatus');
 
@@ -130,7 +129,7 @@ class MachineStatusManager extends events.EventEmitter {
     updateStatus(port, updates) {
         if (!port) {
             log.warn('updateStatus called without port');
-            return;
+            return undefined;
         }
 
         const currentStatus = this.getStatus(port);

@@ -383,7 +383,7 @@ const appMain = () => {
     }
 
     // Serve index.hbs for all other routes (client-side routes) using renderPage helper
-    renderPage('index.hbs', (req, res) => {
+    return renderPage('index.hbs', (req, res) => {
       const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
       const lng = req.language;
       const t = req.t;

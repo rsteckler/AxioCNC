@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import watch from 'watch';
 
 class FSMonitor {
