@@ -3,18 +3,10 @@ import fs from 'fs';
 import _ from 'lodash';
 import chalk from 'chalk';
 import logger from '../../lib/logger';
+import x from '../../lib/json-stringify';
+import { getDefaultSettings } from '../../../shared/schemas/settings';
 
 const log = logger('service:configstore');
-
-const defaultState = { // default state
-  allowAnonymousUsageDataCollection: false,
-  checkForUpdates: true,
-  controller: {
-    exception: {
-      ignoreErrors: false
-    }
-  }
-};
 
 class ConfigStore extends events.EventEmitter {
     file = '';
@@ -42,11 +34,11 @@ class ConfigStore extends events.EventEmitter {
           fs.writeFileSync(this.file, content, 'utf8');
         }
 
-        this.watcher = fs.watch(this.file, (eventType, filename) => {
-          log.debug(`fs.watch(eventType='${eventType}', filename='${filename}')`);
+        this.watcher = fs.watchFile(this.file, (curr, prev) => {
+          log.debug(`fs.watchFile(curr=${x(curr)}, prev=${x(prev)})`);
 
-          if (eventType === 'change') {
-            log.debug(`"${filename}" has been changed`);
+          if (curr?.mtimeMs !== prev?.mtimeMs) {
+            log.info(`"${this.file}" has been changed`);
             const ok = this.reload();
             ok && this.emit('change', this.config); // it is ok to emit change event
           }
@@ -76,10 +68,16 @@ class ConfigStore extends events.EventEmitter {
         this.config = {};
       }
 
-      this.config.state = {
-        ...defaultState,
-        ...this.config.state
+      // Initialize settings with defaults from Zod schema
+      this.config.settings = {
+        ...getDefaultSettings(),
+        ...this.config.settings
       };
+
+      // Initialize extensions as empty object if not present
+      if (!this.config.extensions) {
+        this.config.extensions = {};
+      }
 
       return true;
     }
