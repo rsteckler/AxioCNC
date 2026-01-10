@@ -990,6 +990,7 @@ interface VisualizerPanelProps {
   onWizardClose?: () => void
   machinePosition?: { x: number; y: number; z: number }
   workPosition?: { x: number; y: number; z: number }
+  probeContact?: boolean
 }
 
 function VisualizerPanel({ 
@@ -998,7 +999,8 @@ function VisualizerPanel({
   wizardMethod,
   onWizardClose,
   machinePosition = { x: 0, y: 0, z: 0 },
-  workPosition = { x: 0, y: 0, z: 0 }
+  workPosition = { x: 0, y: 0, z: 0 },
+  probeContact = false
 }: VisualizerPanelProps) {
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
@@ -1264,6 +1266,7 @@ function VisualizerPanel({
           connectedPort={connectedPort}
           machinePosition={machinePosition}
           workPosition={workPosition}
+          probeContact={probeContact}
         />
       ) : tab === '3d' ? (
         <div className="flex-1 relative">
@@ -1394,6 +1397,7 @@ interface ZeroingWizardTabProps {
   connectedPort: string | null
   machinePosition: { x: number; y: number; z: number }
   workPosition: { x: number; y: number; z: number }
+  probeContact?: boolean
 }
 
 function ZeroingWizardTab({ 
@@ -1402,7 +1406,8 @@ function ZeroingWizardTab({
   isConnected, 
   connectedPort,
   machinePosition,
-  workPosition
+  workPosition,
+  probeContact = false
 }: ZeroingWizardTabProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const socket = socketService.getSocket()
@@ -1415,6 +1420,9 @@ function ZeroingWizardTab({
   // Get total steps based on method type
   const getTotalSteps = () => {
     if (method.type === 'manual') {
+      return 3
+    }
+    if (method.type === 'touchplate') {
       return 3
     }
     // Other methods will be implemented later
@@ -1459,8 +1467,42 @@ function ZeroingWizardTab({
     }
   }, [connectedPort, socket])
   
+  const handleTouchPlateProbe = useCallback(() => {
+    if (!connectedPort || !socket || method.type !== 'touchplate') {
+      return
+    }
+    
+    // Build probe sequence:
+    // 1. Switch to relative mode
+    // 2. Probe down (G38.2 for Grbl)
+    // 3. Switch to absolute mode
+    // 4. Set zero with plate thickness offset (G10 L20 P1 Z[plateThickness])
+    // 5. Retract
+    const commands = [
+      'G91', // Relative mode
+      `G38.2 Z-${method.probeDistance} F${method.probeFeedrate}`, // Probe down
+      'G90', // Absolute mode
+      `G10 L20 P1 Z${method.plateThickness}`, // Set zero with plate thickness
+      'G91', // Relative mode
+      'G0 Z10', // Retract 10mm
+      'G90', // Absolute mode
+    ]
+    
+    // Send commands sequentially
+    commands.forEach((cmd, index) => {
+      setTimeout(() => {
+        socket.emit('command', connectedPort, 'gcode', cmd)
+      }, index * 100) // Small delay between commands
+    })
+  }, [connectedPort, socket, method])
+  
   const handleComplete = () => {
-    // Set zero for the axes specified by the method
+    // For touchplate, the probe already sets zero, so just close
+    if (method.type === 'touchplate') {
+      onClose()
+      return
+    }
+    // For manual, set zero for the axes specified by the method
     handleSetZero(method.axes)
     onClose()
   }
@@ -1469,6 +1511,9 @@ function ZeroingWizardTab({
   const renderStepContent = () => {
     if (method.type === 'manual') {
       return renderManualStep(currentStep, method.axes)
+    }
+    if (method.type === 'touchplate') {
+      return renderTouchPlateStep(currentStep, method)
     }
     // Other method types will be implemented later
     return <div>Method type {method.type} not yet implemented</div>
@@ -1649,6 +1694,145 @@ function ZeroingWizardTab({
                 </div>
               </div>
             )}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+  
+  const renderTouchPlateStep = (step: number, method: ZeroingMethod) => {
+    if (method.type !== 'touchplate') return null
+    
+    switch (step) {
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 1: Verify Touch Plate</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Verify that the touch plate is working by manually touching it to the tool. The touch plate should trigger when contact is made.
+                </p>
+                <p>
+                  This ensures the probe circuit is functioning correctly before starting the zeroing process.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Touch the plate to the tool manually. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg border ${
+                probeContact 
+                  ? 'bg-green-500/10 border-green-500/30' 
+                  : 'bg-muted/50 border-border'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    probeContact ? 'bg-green-500' : 'bg-muted'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    Probe Status: {probeContact ? 'Contact Detected' : 'No Contact'}
+                  </span>
+                </div>
+                {probeContact && (
+                  <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                    The probe circuit is working correctly. You can proceed to the next step.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 2: Position Touch Plate</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Place the touch plate on the workpiece at the location where you want to set Z zero.
+                </p>
+                <p>
+                  Use the jog controls to position the tool above the touch plate location. The tool should be positioned so it can probe down onto the plate.
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Work Coordinate System Position:</div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">X: </span>
+                  <span className="font-mono">{workPosition.x.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Y: </span>
+                  <span className="font-mono">{workPosition.y.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Z: </span>
+                  <span className="font-mono">{workPosition.z.toFixed(3)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                Make sure the touch plate is flat on the workpiece surface and the tool can reach it when probing down.
+              </p>
+            </div>
+          </div>
+        )
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 3: Run Probe</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Press the probe button below to start the automatic Z-probe sequence. The tool will probe down until it contacts the touch plate, then set Z zero accounting for the plate thickness ({method.plateThickness}mm).
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="text-sm font-medium">Probe Settings:</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Plate Thickness: </span>
+                  <span className="font-mono">{method.plateThickness}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Feedrate: </span>
+                  <span className="font-mono">{method.probeFeedrate}mm/min</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Distance: </span>
+                  <span className="font-mono">{method.probeDistance}mm</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleTouchPlateProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort}
+              >
+                <Target className="w-5 h-5" />
+                Start Z-Probe
+              </Button>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({method.probeDistance}mm) before starting.
+              </p>
+            </div>
           </div>
         )
       default:
@@ -2670,6 +2854,9 @@ export default function Setup() {
   // Hold state
   const [holdReason, setHoldReason] = useState<{ data?: string; msg?: string } | null>(null)
   
+  // Probe status (from pinState - 'P' indicates probe contact)
+  const [probeContact, setProbeContact] = useState<boolean>(false)
+  
   // Wizard state
   const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
   
@@ -3068,6 +3255,7 @@ export default function Setup() {
           activeState?: string
           mpos?: { x?: string; y?: string; z?: string }
           wpos?: { x?: string; y?: string; z?: string }
+          pinState?: string // Grbl v1.1: 'P' indicates probe triggered, e.g., 'PZ' = probe + Z limit
         }
         parserstate?: {
           modal?: {
@@ -3105,6 +3293,13 @@ export default function Setup() {
         if (spindle === 'M3' || spindle === 'M4' || spindle === 'M5') {
           setSpindleState(spindle)
         }
+      }
+      
+      // Update probe contact status from pinState (Grbl v1.1)
+      // pinState contains 'P' when probe is triggered
+      if (state.status?.pinState !== undefined) {
+        const pinState = state.status.pinState || ''
+        setProbeContact(pinState.includes('P'))
       }
       
       // Update spindle speed from parserstate
@@ -3890,7 +4085,7 @@ export default function Setup() {
                   : machineStatus === 'hold'
                   ? 'Your machine is paused and motion is disabled for safety. This can happen during a tool change, or because a job was paused. Click Resume to enable machine motion.'
                   : machineStatus === 'alarm'
-                  ? 'The machine is in an error state and motion has been disabled. AxioCNC can\'t verify that the displayed position matches the physical machine. Reset the machine, then home the machine to establish truth of position. Check your zero after resetting to verify it was maintained.'
+                  ? 'The machine is in an error state and motion has been disabled. Hit Reset to clear the alarm. If the machine is still in alarm state after a reset, it may need to be unlocked to complete the reset. In all cases, the machine should be rehomed after clearing the alarm to establish truth of position. AxioCNC can\'t verify that the displayed position matches the physical machine until it is rehomed.'
                   : machineStatus === 'running'
                   ? 'Your machine is running a job.'
                   : machineStatus === 'error'
@@ -4099,6 +4294,7 @@ export default function Setup() {
               onWizardClose={() => setWizardMethod(null)}
               machinePosition={machinePosition}
               workPosition={workPosition}
+              probeContact={probeContact}
             />
           </div>
           {/* Tools - 25% height */}
