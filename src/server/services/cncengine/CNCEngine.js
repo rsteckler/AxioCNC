@@ -246,7 +246,7 @@ class CNCEngine {
 
           let controller = store.get(`controllers["${port}"]`);
           let controllerType;
-          
+
           if (!controller) {
             let { controllerType: ct = GRBL, baudrate, rtscts, pin } = { ...options };
             controllerType = ct;
@@ -303,7 +303,7 @@ class CNCEngine {
           }
 
           controller.addConnection(socket);
-          
+
           // Note: addConnection may emit socket.emit('serialport:open') directly to the new socket
           // This is a Socket.IO emit, not controller.emit(), so our wrapper won't catch it
           // However, we've already handled status sync above, so this is fine
@@ -445,7 +445,7 @@ class CNCEngine {
       // Check if listeners are already set up for this controller
       // We use a symbol to avoid conflicts with controller properties
       const STATUS_LISTENERS_KEY = Symbol('statusListenersSet');
-      
+
       if (controller[STATUS_LISTENERS_KEY]) {
         // Listeners already set up, skip
         return;
@@ -456,7 +456,7 @@ class CNCEngine {
 
       // Wrap the controller's emit method to intercept events
       const originalEmit = controller.emit.bind(controller);
-      
+
       controller.emit = (eventName, ...args) => {
         // Call original emit to send to sockets
         originalEmit(eventName, ...args);

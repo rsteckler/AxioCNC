@@ -134,13 +134,27 @@ const getFilesFromFolder = (id, searchPath = '') => {
         path: file,
         relativePath: path.relative(root, file),
         type: (function() {
-          if (stat.isFile && stat.isFile()) return 'f';
-          if (stat.isDirectory && stat.isDirectory()) return 'd';
-          if (stat.isBlockDevice && stat.isBlockDevice()) return 'b';
-          if (stat.isCharacterDevice && stat.isCharacterDevice()) return 'c';
-          if (stat.isSymbolicLink && stat.isSymbolicLink()) return 'l';
-          if (stat.isFIFO && stat.isFIFO()) return 'p';
-          if (stat.isSocket && stat.isSocket()) return 's';
+          if (stat.isFile && stat.isFile()) {
+ return 'f';
+}
+          if (stat.isDirectory && stat.isDirectory()) {
+ return 'd';
+}
+          if (stat.isBlockDevice && stat.isBlockDevice()) {
+ return 'b';
+}
+          if (stat.isCharacterDevice && stat.isCharacterDevice()) {
+ return 'c';
+}
+          if (stat.isSymbolicLink && stat.isSymbolicLink()) {
+ return 'l';
+}
+          if (stat.isFIFO && stat.isFIFO()) {
+ return 'p';
+}
+          if (stat.isSocket && stat.isSocket()) {
+ return 's';
+}
           return '';
         }()),
         size: stat.size,
@@ -181,7 +195,7 @@ const readFileFromFolder = (id, file, callback) => {
   }
 
   const fullPath = path.join(root, file);
-  
+
   // Security: ensure the resolved path is within the root
   if (!fullPath.startsWith(root)) {
     callback(new Error('Invalid path'));
@@ -204,7 +218,7 @@ export default {
   stop,
   getFiles,
   readFile,
-  
+
   // Multi-folder API
   addFolder,
   removeFolder,

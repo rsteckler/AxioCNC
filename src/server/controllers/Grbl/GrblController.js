@@ -542,13 +542,13 @@ class GrblController {
         // Track homed status: when activeState transitions from "Home" to "Idle", machine is homed
         const previousActiveState = this.state?.status?.activeState || '';
         const currentActiveState = res.activeState || '';
-        
+
         // If we were in "Home" state and now we're "Idle", homing completed
         if (previousActiveState === 'Home' && currentActiveState === 'Idle') {
           this.homed = true;
           log.debug('Homing completed - machine is now homed');
         }
-        
+
         // Reset homed status on alarm (machine needs to be re-homed after alarm)
         if (currentActiveState === 'Alarm') {
           this.homed = false;

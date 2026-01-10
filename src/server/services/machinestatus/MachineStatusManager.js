@@ -6,7 +6,7 @@ const log = logger('service:machinestatus');
 
 /**
  * MachineStatusManager - Single source of truth for machine status
- * 
+ *
  * Tracks machine status per port (connection, homed, alarm, workflow, etc.)
  * Reacts to controller events even when no frontend is connected.
  * Emits status changes via Socket.IO to connected clients.
@@ -204,7 +204,7 @@ class MachineStatusManager extends events.EventEmitter {
         log.debug(`Serial port opened: ${port}`, options);
 
         const controllerType = options?.controllerType || null;
-        
+
         // Get current status to preserve existing state
         const currentStatus = this.getStatus(port);
         const isAlreadyConnected = currentStatus.connected;

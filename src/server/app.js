@@ -371,17 +371,17 @@ const appMain = () => {
     if (req.path.startsWith('/api/')) {
       return next();
     }
-    
+
     // Skip static file requests (js, css, images, etc.) - let them fall through to 404 if not found
     if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json)$/i)) {
       return next();
     }
-    
+
     // Skip Socket.IO requests
     if (req.path.startsWith('/socket.io/')) {
       return next();
     }
-    
+
     // Serve index.hbs for all other routes (client-side routes) using renderPage helper
     renderPage('index.hbs', (req, res) => {
       const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
