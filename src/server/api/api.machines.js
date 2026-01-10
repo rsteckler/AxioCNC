@@ -1,4 +1,3 @@
-import { ensureNumber, ensureString } from 'ensure-type';
 import _get from 'lodash/get';
 import _set from 'lodash/set';
 import _find from 'lodash/find';
@@ -6,6 +5,7 @@ import _castArray from 'lodash/castArray';
 import _isPlainObject from 'lodash/isPlainObject';
 import uuid from 'uuid';
 import settings from '../config/settings';
+import { ensureNumber, ensureString } from '../lib/ensure-type';
 import logger from '../lib/logger';
 import config from '../services/configstore';
 import { getPagingRange } from './paging';

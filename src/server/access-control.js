@@ -1,4 +1,4 @@
-import { ensureArray } from 'ensure-type';
+import ensureArray from 'ensure-array';
 import _ from 'lodash';
 import rangeCheck from 'range_check';
 import settings from './config/settings';

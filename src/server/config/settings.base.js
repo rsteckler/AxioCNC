@@ -2,7 +2,7 @@ import path from 'path';
 import pkg from '../../package.json';
 
 const RC_FILE = '.cncrc';
-const SESSION_PATH = '.axiocnc-sessions';
+const SESSION_PATH = '.cncjs-sessions';
 
 // Secret
 const secret = pkg.version;

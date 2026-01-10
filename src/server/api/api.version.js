@@ -2,12 +2,11 @@ import url from 'url';
 import registryUrl from 'registry-url';
 import registryAuthToken from 'registry-auth-token';
 import request from 'superagent';
-import pkg from '../../package.json';
 import {
   ERR_INTERNAL_SERVER_ERROR
 } from '../constants';
 
-const pkgName = 'axiocnc';
+const pkgName = 'cncjs';
 
 export const getLatestVersion = (req, res) => {
   const scope = pkgName.split('/')[0];
@@ -47,8 +46,4 @@ export const getLatestVersion = (req, res) => {
 
       res.send({ time, name, version, description, homepage });
     });
-};
-
-export const getCurrentVersion = (req, res) => {
-  res.send({ version: pkg.version });
 };

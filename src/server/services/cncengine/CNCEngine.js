@@ -1,4 +1,4 @@
-import { ensureArray } from 'ensure-type';
+import ensureArray from 'ensure-array';
 import noop from 'lodash/noop';
 import { SerialPort } from 'serialport';
 import socketIO from 'socket.io';
@@ -9,7 +9,6 @@ import settings from '../../config/settings';
 import store from '../../store';
 import config from '../configstore';
 import taskRunner from '../taskrunner';
-import machineStatusManager from '../machinestatus/MachineStatusManager';
 import {
   GrblController,
   MarlinController,
@@ -138,9 +137,6 @@ class CNCEngine {
         path: '/socket.io'
       });
 
-      // Set Socket.IO instance for status manager
-      machineStatusManager.setIO(this.io);
-
       this.io.use(socketioJwt.authorize({
         secret: settings.secret,
         handshake: true
@@ -178,15 +174,6 @@ class CNCEngine {
           // User-defined baud rates and ports
           baudrates: ensureArray(config.get('baudrates', [])),
           ports: ensureArray(config.get('ports', []))
-        });
-
-        // Send current machine statuses to newly connected client
-        const allStatuses = machineStatusManager.getAllStatuses();
-        Object.keys(allStatuses).forEach(port => {
-          const status = machineStatusManager.getStatusSummary(port);
-          if (status) {
-            socket.emit('machine:status', port, status);
-          }
         });
 
         socket.on('disconnect', () => {
@@ -244,11 +231,8 @@ class CNCEngine {
           log.debug(`socket.open("${port}", ${JSON.stringify(options)}): id=${socket.id}`);
 
           let controller = store.get(`controllers["${port}"]`);
-          let controllerType;
-
           if (!controller) {
-            let { controllerType: ct = GRBL, baudrate, rtscts, pin } = { ...options };
-            controllerType = ct;
+            let { controllerType = GRBL, baudrate, rtscts, pin } = { ...options };
 
             if (controllerType === 'TinyG2') {
               // TinyG2 is deprecated and will be removed in a future release
@@ -270,42 +254,9 @@ class CNCEngine {
               rtscts: !!rtscts,
               pin,
             });
-          } else {
-            // Get controller type from existing controller
-            controllerType = controller.type || GRBL;
-          }
-
-          // Wire up status manager to listen to controller events BEFORE addConnection
-          // (addConnection may emit serialport:open synchronously if already open)
-          this.setupControllerStatusListeners(controller, port, controllerType);
-
-          // If controller is already open, ensure status is synced (but preserve existing state)
-          if (controller.isOpen()) {
-            // Note: handleSerialPortOpen now preserves homed state if already connected
-            // This ensures status is up-to-date when a new socket joins an existing connection
-            machineStatusManager.handleSerialPortOpen(port, {
-              port: port,
-              baudrate: controller.options.baudrate,
-              controllerType: controllerType,
-              inuse: true
-            });
-
-            // Send current controller state if available (this updates position and alarm state)
-            if (controller.state && Object.keys(controller.state).length > 0) {
-              machineStatusManager.handleControllerState(port, controllerType, controller.state);
-            }
-
-            // Send current workflow state if available
-            if (controller.workflow) {
-              machineStatusManager.handleWorkflowState(port, controller.workflow.state);
-            }
           }
 
           controller.addConnection(socket);
-
-          // Note: addConnection may emit socket.emit('serialport:open') directly to the new socket
-          // This is a Socket.IO emit, not controller.emit(), so our wrapper won't catch it
-          // However, we've already handled status sync above, so this is fine
 
           if (controller.isOpen()) {
             // Join the room
@@ -378,15 +329,6 @@ class CNCEngine {
             return;
           }
 
-          // Handle special commands that affect machine status
-          if (cmd === 'reset') {
-            machineStatusManager.handleReset(port);
-          } else if (cmd === 'unlock') {
-            machineStatusManager.handleUnlock(port);
-          } else if (cmd === 'homing') {
-            machineStatusManager.handleHoming(port);
-          }
-
           controller.command.apply(controller, [cmd].concat(args));
         });
 
@@ -413,71 +355,7 @@ class CNCEngine {
 
           controller.writeln(data, context);
         });
-
-        // Request machine status on connection
-        socket.on('machine:status:request', (port) => {
-          log.debug(`socket.machine:status:request("${port}"): id=${socket.id}`);
-
-          if (port) {
-            // Request status for specific port
-            const status = machineStatusManager.getStatusSummary(port);
-            if (status) {
-              socket.emit('machine:status', port, status);
-            }
-          } else {
-            // Request all statuses
-            const allStatuses = machineStatusManager.getAllStatuses();
-            Object.keys(allStatuses).forEach(p => {
-              socket.emit('machine:status', p, machineStatusManager.getStatusSummary(p));
-            });
-          }
-        });
       });
-    }
-
-    /**
-     * Setup status manager listeners for a controller
-     * Wraps the controller's emit method to intercept events
-     * Only sets up listeners once per controller (checks for existing flag)
-     */
-    setupControllerStatusListeners(controller, port, controllerType) {
-      // Check if listeners are already set up for this controller
-      // We use a symbol to avoid conflicts with controller properties
-      const STATUS_LISTENERS_KEY = Symbol('statusListenersSet');
-
-      if (controller[STATUS_LISTENERS_KEY]) {
-        // Listeners already set up, skip
-        return;
-      }
-
-      // Mark that listeners are set up
-      controller[STATUS_LISTENERS_KEY] = true;
-
-      // Wrap the controller's emit method to intercept events
-      const originalEmit = controller.emit.bind(controller);
-
-      controller.emit = (eventName, ...args) => {
-        // Call original emit to send to sockets
-        originalEmit(eventName, ...args);
-
-        // Intercept events we care about and notify status manager
-        if (eventName === 'serialport:open') {
-          const options = args[0] || {};
-          machineStatusManager.handleSerialPortOpen(port, {
-            ...options,
-            controllerType: controllerType
-          });
-        } else if (eventName === 'serialport:close') {
-          machineStatusManager.handleSerialPortClose(port);
-        } else if (eventName === 'controller:state') {
-          const type = args[0];
-          const state = args[1];
-          machineStatusManager.handleControllerState(port, type, state);
-        } else if (eventName === 'workflow:state') {
-          const workflowState = args[0];
-          machineStatusManager.handleWorkflowState(port, workflowState);
-        }
-      };
     }
 
     stop() {

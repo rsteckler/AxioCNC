@@ -1,4 +1,4 @@
-import { ensureArray } from 'ensure-type';
+import ensureArray from 'ensure-array';
 import find from 'lodash/find';
 import isPlainObject from 'lodash/isPlainObject';
 import uuid from 'uuid';

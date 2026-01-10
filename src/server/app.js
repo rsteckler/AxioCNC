@@ -87,8 +87,7 @@ const appMain = () => {
     app.set('view engine', settings.view.defaultExtension); // The default engine extension to use when omitted
     app.set('views', [
       path.resolve(__dirname, '../app'),
-      path.resolve(__dirname, 'views'),
-      path.resolve(__dirname, '../..') // Project root for index.hbs
+      path.resolve(__dirname, 'views')
     ]); // The view directory path
 
     log.debug('app.settings: %j', app.settings);
@@ -125,7 +124,7 @@ const appMain = () => {
 
   try {
     // https://github.com/valery-barysok/session-file-store
-    const path = settings.middleware.session.path; // Defaults to './axiocnc-sessions'
+    const path = settings.middleware.session.path; // Defaults to './cncjs-sessions'
 
     rimraf.sync(path);
     fs.mkdirSync(path);
@@ -254,22 +253,12 @@ const appMain = () => {
 
   { // Register API routes with authorized access
     // Version
-    app.get(urljoin(settings.route, 'api/version/current'), api.version.getCurrentVersion);
     app.get(urljoin(settings.route, 'api/version/latest'), api.version.getLatestVersion);
 
-    // System Settings (Zod-validated)
-    app.get(urljoin(settings.route, 'api/settings'), api.settings.get);
-    app.post(urljoin(settings.route, 'api/settings'), api.settings.set);
-    app.delete(urljoin(settings.route, 'api/settings'), api.settings.reset);
-
-    // Extensions (schemaless, for widgets/plugins)
-    app.get(urljoin(settings.route, 'api/extensions'), api.extensions.get);
-    app.post(urljoin(settings.route, 'api/extensions'), api.extensions.set);
-    app.delete(urljoin(settings.route, 'api/extensions'), api.extensions.unset);
-
-    // Tool Config
-    app.get(urljoin(settings.route, 'api/tool'), api.tool.get);
-    app.post(urljoin(settings.route, 'api/tool'), api.tool.set);
+    // State
+    app.get(urljoin(settings.route, 'api/state'), api.state.get);
+    app.post(urljoin(settings.route, 'api/state'), api.state.set);
+    app.delete(urljoin(settings.route, 'api/state'), api.state.unset);
 
     // G-code
     app.get(urljoin(settings.route, 'api/gcode'), api.gcode.fetch);
@@ -279,9 +268,6 @@ const appMain = () => {
 
     // Controllers
     app.get(urljoin(settings.route, 'api/controllers'), api.controllers.get);
-
-    // Machine Status
-    app.get(urljoin(settings.route, 'api/machine/status'), api.machine.getStatus);
 
     // Commands
     app.get(urljoin(settings.route, 'api/commands'), api.commands.fetch);
@@ -327,27 +313,11 @@ const appMain = () => {
     app.put(urljoin(settings.route, 'api/users/:id'), api.users.update);
     app.delete(urljoin(settings.route, 'api/users/:id'), api.users.__delete);
 
-    // Watch (legacy single-folder API)
+    // Watch
     app.get(urljoin(settings.route, 'api/watch/files'), api.watch.getFiles);
     app.post(urljoin(settings.route, 'api/watch/files'), api.watch.getFiles);
     app.get(urljoin(settings.route, 'api/watch/file'), api.watch.readFile);
     app.post(urljoin(settings.route, 'api/watch/file'), api.watch.readFile);
-
-    // Watch Folders (new multi-folder API)
-    app.get(urljoin(settings.route, 'api/watchfolders'), api.watchfolders.fetch);
-    app.post(urljoin(settings.route, 'api/watchfolders'), api.watchfolders.create);
-    app.get(urljoin(settings.route, 'api/watchfolders/browse'), api.watchfolders.browse);
-    app.get(urljoin(settings.route, 'api/watchfolders/:id'), api.watchfolders.read);
-    app.put(urljoin(settings.route, 'api/watchfolders/:id'), api.watchfolders.update);
-    app.delete(urljoin(settings.route, 'api/watchfolders/:id'), api.watchfolders.__delete);
-
-    // Themes
-    app.get(urljoin(settings.route, 'api/themes'), api.themes.fetch);
-    app.post(urljoin(settings.route, 'api/themes'), api.themes.create);
-    app.get(urljoin(settings.route, 'api/themes/path'), api.themes.getPath);
-    app.get(urljoin(settings.route, 'api/themes/:id'), api.themes.read);
-    app.put(urljoin(settings.route, 'api/themes/:id'), api.themes.update);
-    app.delete(urljoin(settings.route, 'api/themes/:id'), api.themes.__delete);
   }
 
   // page
@@ -363,39 +333,6 @@ const appMain = () => {
       loading: t('loading')
     };
   }));
-
-  // SPA catch-all route: serve index.hbs for all client-side routes
-  // This allows React Router to handle routing on the client side
-  app.get('*', (req, res, next) => {
-    // Skip API routes - let them fall through to 404 if not found
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-
-    // Skip static file requests (js, css, images, etc.) - let them fall through to 404 if not found
-    if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json)$/i)) {
-      return next();
-    }
-
-    // Skip Socket.IO requests
-    if (req.path.startsWith('/socket.io/')) {
-      return next();
-    }
-
-    // Serve index.hbs for all other routes (client-side routes) using renderPage helper
-    return renderPage('index.hbs', (req, res) => {
-      const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
-      const lng = req.language;
-      const t = req.t;
-
-      return {
-        webroot: webroot,
-        lang: lng,
-        title: `${t('title')} ${settings.version}`,
-        loading: t('loading')
-      };
-    })(req, res, next);
-  });
 
   { // Error handling
     app.use(errlog());

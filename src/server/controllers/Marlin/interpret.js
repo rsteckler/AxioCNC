@@ -1,4 +1,4 @@
-import { ensureArray } from 'ensure-type';
+import ensureArray from 'ensure-array';
 import { parseLine } from 'gcode-parser';
 
 const fromPairs = (pairs) => {
