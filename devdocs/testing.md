@@ -15,10 +15,10 @@ This document provides guidance for writing tests and improving code coverage in
 
 ```bash
 # Run all tests
-yarn test
+yarn test:test
 
 # Run tests with coverage
-yarn coveralls
+yarn test:coverage
 
 # Run a specific test file
 node --require @babel/register test/sender.js
@@ -385,7 +385,7 @@ test('SerialConnection mock test', (t) => {
 
 ### Checking Coverage
 
-After running `yarn coveralls`, review the output to identify:
+After running `yarn test:coverage`, review the output to identify:
 1. Files with low coverage (< 80%)
 2. Untested branches (if/else paths)
 3. Untested functions
@@ -569,7 +569,7 @@ yarn add -D faker  # For generating test data
 - [ ] Uses descriptive test names
 - [ ] Includes assertion messages
 - [ ] Cleans up after itself (mocks, state)
-- [ ] Runs successfully with `yarn test`
+- [ ] Runs successfully with `yarn test:test`
 - [ ] Improves coverage metrics
 - [ ] For protected code: Tests behavior only, doesn't modify source
 
@@ -598,10 +598,10 @@ If you encounter:
 
 1. **Pick an area** from Priority Areas (start with High Priority)
 2. **Review existing tests** in `test/` for patterns
-3. **Check coverage** with `yarn coveralls` to see what's missing
+3. **Check coverage** with `yarn test:coverage` to see what's missing
 4. **Write a test file** following the patterns above
-5. **Run tests** with `yarn test`
-6. **Verify coverage** improved with `yarn coveralls`
+5. **Run tests** with `yarn test:test`
+6. **Verify coverage** improved with `yarn test:coverage`
 7. **Submit PR** with test file and coverage improvements
 
 **Example First Test:**

@@ -495,5 +495,5 @@ yarn add -D sinon       # Spies/stubs (if proxyquire insufficient)
 ✅ All 16 endpoint files have test coverage  
 ✅ Function coverage for API endpoints > 85%  
 ✅ All error paths tested (400, 401, 404, 500)  
-✅ Tests run successfully with `yarn test`  
+✅ Tests run successfully with `yarn test:test`  
 ✅ Tests enable confident refactoring of endpoint code  

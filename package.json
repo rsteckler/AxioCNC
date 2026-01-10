@@ -67,13 +67,12 @@
     "start-app-dev": "cd src/app && yarn dev",
     "start-server-dev": "cross-env NODE_ENV=development ./bin/cncjs --port 8000 -m /widget:https://cncjs.github.io/cncjs-widget-boilerplate/v1/",
     "server-watch": "nodemon --config nodemon.server.json",
-    "lint": "concurrently --kill-others-on-fail --names \"i18nlint,eslint,stylint\" \"yarn i18nlint\" \"yarn eslint\" \"yarn stylint\"",
-    "eslint": "eslint --color src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
-    "eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
-    "i18nlint": "bash -c 'find src/{app,server}/i18n -type f -name \"*.json\" | xargs -L1 -I{} -- bash -c \"echo Linting {}; jsonlint -q {}\"'",
-    "stylint": "stylint src/app",
-    "test": "tap test/*.js --allow-incomplete-coverage --timeout=0 --node-arg=--require --node-arg=@babel/register",
-    "coveralls": "tap test/*.js --coverage --coverage-report=text-lcov --nyc-arg=--require --nyc-arg=@babel/register",
+    "test:test": "tap test/*.js --allow-incomplete-coverage --timeout=0 --node-arg=--require --node-arg=@babel/register",
+    "test:coverage": "tap test/*.js --coverage --coverage-report=text-lcov --nyc-arg=--require --nyc-arg=@babel/register",
+    "test:lint": "concurrently --kill-others-on-fail --names \"test:lint:i18n,test:lint:eslint\" \"yarn test:lint:i18n\" \"yarn test:lint:eslint\"",
+    "test:lint:i18n": "bash -c 'find src/{app,server}/i18n -type f -name \"*.json\" | xargs -L1 -I{} -- bash -c \"echo Linting {}; jsonlint -q {}\"'",
+    "test:lint:eslint": "eslint --color src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
+    "test:lint:eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
     "postinstall": "opencollective postinstall"
   },
   "build": {
@@ -360,7 +359,7 @@
     "webpack-node-externals": "~1.7.2"
   },
   "pre-push": [
-    "eslint-debug"
+    "test:lint:eslint-debug"
   ],
   "collective": {
     "type": "opencollective",
