@@ -1099,6 +1099,11 @@ function VisualizerPanel({
         console.log('[Setup] serialport:read event received:', { port: connectedPort, message: message.substring(0, 100) })
         const line = parseConsoleMessage(message, 'read')
         setConsoleLines(prev => [...prev, line])
+        
+        // Track alarm messages for notifications
+        if (line.type === 'alarm') {
+          lastAlarmMessageRef.current = line.message
+        }
       }
 
       // Listen for messages TO Grbl
@@ -1423,7 +1428,8 @@ function ZeroingWizardTab({
       return 3
     }
     if (method.type === 'touchplate') {
-      return 3
+      // If requireCheck is false, skip the verification step (2 steps instead of 3)
+      return method.requireCheck === false ? 2 : 3
     }
     // Other methods will be implemented later
     return 1
@@ -1704,8 +1710,17 @@ function ZeroingWizardTab({
   const renderTouchPlateStep = (step: number, method: ZeroingMethod) => {
     if (method.type !== 'touchplate') return null
     
-    switch (step) {
+    // TypeScript should narrow to TouchPlateConfig here, but we'll be explicit
+    const touchplateMethod = method as Extract<ZeroingMethod, { type: 'touchplate' }>
+    
+    // Map step numbers based on requireCheck setting
+    // If requireCheck is false, skip step 1 (verification), so step 1->position, step 2->probe
+    const skipVerification = touchplateMethod.requireCheck === false
+    const actualStep = skipVerification ? step + 1 : step
+    
+    switch (actualStep) {
       case 1:
+        // Step 1: Verify Touch Plate (only shown if requireCheck is true)
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1749,10 +1764,11 @@ function ZeroingWizardTab({
           </div>
         )
       case 2:
+        // Step 2: Position Touch Plate (shown as step 1 if requireCheck is false)
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <h3 className="text-base font-semibold">Step 2: Position Touch Plate</h3>
+              <h3 className="text-base font-semibold">Step {skipVerification ? 1 : 2}: Position Touch Plate</h3>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
                   Place the touch plate on the workpiece at the location where you want to set Z zero.
@@ -1788,13 +1804,14 @@ function ZeroingWizardTab({
           </div>
         )
       case 3:
+        // Step 3: Run Probe (shown as step 2 if requireCheck is false)
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <h3 className="text-base font-semibold">Step 3: Run Probe</h3>
+              <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Run Probe</h3>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  Press the probe button below to start the automatic Z-probe sequence. The tool will probe down until it contacts the touch plate, then set Z zero accounting for the plate thickness ({method.plateThickness}mm).
+                  Press the probe button below to start the automatic Z-probe sequence. The tool will probe down until it contacts the touch plate, then set Z zero accounting for the plate thickness ({touchplateMethod.plateThickness}mm).
                 </p>
               </div>
             </div>
@@ -1803,15 +1820,15 @@ function ZeroingWizardTab({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Plate Thickness: </span>
-                  <span className="font-mono">{method.plateThickness}mm</span>
+                  <span className="font-mono">{touchplateMethod.plateThickness}mm</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Probe Feedrate: </span>
-                  <span className="font-mono">{method.probeFeedrate}mm/min</span>
+                  <span className="font-mono">{touchplateMethod.probeFeedrate}mm/min</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Probe Distance: </span>
-                  <span className="font-mono">{method.probeDistance}mm</span>
+                  <span className="font-mono">{touchplateMethod.probeDistance}mm</span>
                 </div>
               </div>
             </div>
@@ -1830,7 +1847,7 @@ function ZeroingWizardTab({
             <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({method.probeDistance}mm) before starting.
+                <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({touchplateMethod.probeDistance}mm) before starting.
               </p>
             </div>
           </div>
@@ -2863,12 +2880,14 @@ export default function Setup() {
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineStatus>(machineStatus)
   machineStatusRef.current = machineStatus // Keep ref in sync
+  const previousMachineStatusRef = useRef<MachineStatus>(machineStatus) // Track previous status for transitions
   const isConnectedRef = useRef(isConnected)
   isConnectedRef.current = isConnected
   const isHomedRef = useRef(isHomed)
   isHomedRef.current = isHomed
   const homingInProgressRef = useRef(homingInProgress)
   homingInProgressRef.current = homingInProgress
+  const lastAlarmMessageRef = useRef<string | null>(null) // Track last alarm message from console
   
   // Notifications state
   const [notifications, setNotifications] = useState<Array<{
@@ -3355,10 +3374,20 @@ export default function Setup() {
       // Note: Hold from controller:state is complementary to sender:status hold
       //       sender:status provides hold reason (M0, M6, etc.), controller:state confirms Hold state
       if (isAlarm) {
+        const previousStatus = previousMachineStatusRef.current
         setMachineStatus('alarm')
         setIsJobRunning(false)
         // Clear hold on alarm
         setHoldReason(null)
+        
+        // Show notification when transitioning TO alarm state (not when already in alarm)
+        if (previousStatus !== 'alarm') {
+          const alarmMessage = lastAlarmMessageRef.current || 'Machine alarm triggered'
+          showErrorNotification('Machine Alarm', alarmMessage)
+        }
+        
+        // Update previous status ref
+        previousMachineStatusRef.current = 'alarm'
       } else if (isHold) {
         // Grbl reports Hold state - set machine status to hold
         // If we already have hold reason from sender:status, keep it
