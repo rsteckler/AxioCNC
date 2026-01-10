@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { Home, RotateCcw, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -13,16 +13,17 @@ import {
 } from '@/components/ui/select'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { buildSetZeroCommand, buildGoToZeroCommand } from '@/utils/gcode'
+import { useGetExtensionsQuery, useSetExtensionsMutation } from '@/services/api'
 import type { PanelProps } from '../types'
 
-const MOCK_WORKSPACES = [
-  { id: 'G54', name: 'Main' },
-  { id: 'G55', name: 'Fixture 2' },
-  { id: 'G56', name: 'G56' },
-  { id: 'G57', name: 'G57' },
-  { id: 'G58', name: 'G58' },
-  { id: 'G59', name: 'G59' },
-]
+// Default workspace IDs (G54-G59)
+const WORKSPACE_IDS = ['G54', 'G55', 'G56', 'G57', 'G58', 'G59']
+
+// Default workspace names (only G54 and G55 have non-default names)
+const DEFAULT_WORKSPACE_NAMES: Record<string, string> = {
+  'G54': 'Main',
+  'G55': 'Fixture 2',
+}
 
 export function DROPanel({ 
   isConnected, 
@@ -33,8 +34,23 @@ export function DROPanel({
   workPosition = { x: 0, y: 0, z: 0 }, 
   currentWCS = 'G54' 
 }: PanelProps) {
-  const [workspaces, setWorkspaces] = useState(MOCK_WORKSPACES)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  
+  // Load workspace names from extensions API
+  const { data: savedWorkspaces } = useGetExtensionsQuery({ key: 'workspaces' })
+  const [setExtensions] = useSetExtensionsMutation()
+  
+  // Merge saved workspace names with defaults
+  // Saved format: { G54: 'Main', G55: 'Fixture 2', ... }
+  // Convert to array format for component state: [{ id: 'G54', name: 'Main' }, ...]
+  const workspaces = useMemo(() => {
+    const savedNames = (savedWorkspaces || {}) as Record<string, string>
+    
+    return WORKSPACE_IDS.map(id => ({
+      id,
+      name: savedNames[id] || DEFAULT_WORKSPACE_NAMES[id] || id
+    }))
+  }, [savedWorkspaces])
   
   // Use currentWCS from props, fallback to G54
   const workspace = currentWCS || 'G54'
@@ -89,11 +105,24 @@ export function DROPanel({
     setEditDialogOpen(true)
   }
   
-  const handleSaveName = (newName: string) => {
-    setWorkspaces(workspaces.map(ws => 
-      ws.id === workspace ? { ...ws, name: newName } : ws
-    ))
-  }
+  const handleSaveName = useCallback(async (newName: string) => {
+    try {
+      // Get current saved workspace names
+      const savedNames = (savedWorkspaces || {}) as Record<string, string>
+      
+      // Update the workspace name
+      const updatedNames = {
+        ...savedNames,
+        [workspace]: newName.trim() || workspace // Use workspace ID as fallback if empty
+      }
+      
+      // Persist to backend via extensions API
+      await setExtensions({ key: 'workspaces', data: updatedNames }).unwrap()
+    } catch (error) {
+      console.error('Failed to save workspace name:', error)
+      // On error, could show a toast notification, but for now just log
+    }
+  }, [workspace, savedWorkspaces, setExtensions])
   
   const axes = [
     { axis: 'X' as const, color: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30', mpos: machinePosition.x, wpos: workPosition.x },
