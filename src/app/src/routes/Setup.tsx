@@ -5,7 +5,7 @@ import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetMacrosQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as MachineStatusType } from '@/services/api'
+import { useGetSettingsQuery, useGetMacrosQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, useSetExtensionsMutation, useDeleteExtensionsMutation, type MachineStatus as MachineStatusType } from '@/services/api'
 import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import {
   DndContext,
@@ -250,6 +250,9 @@ function DROPanel({ isConnected, connectedPort, machineStatus, onFlashStatus, ma
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingName, setEditingName] = useState('')
   
+  // Extensions API for clearing bitsetter reference
+  const [deleteExtensions] = useDeleteExtensionsMutation()
+  
   // Use currentWCS from props, fallback to G54
   const workspace = currentWCS || 'G54'
   const currentWorkspace = workspaces.find(ws => ws.id === workspace)
@@ -262,21 +265,42 @@ function DROPanel({ isConnected, connectedPort, machineStatus, onFlashStatus, ma
     return map[wcs] || 1
   }
   
+  // Helper to clear bitsetter reference for current WCS
+  const clearBitsetterReference = useCallback(async () => {
+    try {
+      const wcsKey = `bitsetter.toolReference.${workspace}`
+      await deleteExtensions({ key: wcsKey }).unwrap()
+    } catch (err) {
+      console.error('Failed to clear bitsetter reference:', err)
+      // Don't block zeroing if clearing reference fails
+    }
+  }, [workspace, deleteExtensions])
+  
   // Handle zero out work offset for a single axis
-  const handleZeroAxis = useCallback((axis: 'X' | 'Y' | 'Z') => {
+  const handleZeroAxis = useCallback(async (axis: 'X' | 'Y' | 'Z') => {
     if (!connectedPort) return
+    
+    // Clear bitsetter reference if Z zero is being set (bitsetter reference becomes invalid)
+    if (axis === 'Z') {
+      await clearBitsetterReference()
+    }
+    
     const p = getWCSPNumber(workspace)
     const gcode = `G10 L20 P${p} ${axis}0`
     socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
-  }, [connectedPort, workspace])
+  }, [connectedPort, workspace, getWCSPNumber, clearBitsetterReference])
   
   // Handle zero out all work offsets
-  const handleZeroAll = useCallback(() => {
+  const handleZeroAll = useCallback(async () => {
     if (!connectedPort) return
+    
+    // Clear bitsetter reference when zeroing all axes (includes Z)
+    await clearBitsetterReference()
+    
     const p = getWCSPNumber(workspace)
     const gcode = `G10 L20 P${p} X0 Y0 Z0`
     socketService.getSocket()?.emit('command', connectedPort, 'gcode', gcode)
-  }, [connectedPort, workspace])
+  }, [connectedPort, workspace, getWCSPNumber, clearBitsetterReference])
   
   // Handle go to work zero for a single axis
   const handleGoToZeroAxis = useCallback((axis: 'X' | 'Y' | 'Z') => {
@@ -992,6 +1016,7 @@ interface VisualizerPanelProps {
   workPosition?: { x: number; y: number; z: number }
   probeContact?: boolean
   lastAlarmMessageRef?: React.MutableRefObject<string | null>
+  currentWCS?: string
 }
 
 function VisualizerPanel({ 
@@ -1002,7 +1027,8 @@ function VisualizerPanel({
   machinePosition = { x: 0, y: 0, z: 0 },
   workPosition = { x: 0, y: 0, z: 0 },
   probeContact = false,
-  lastAlarmMessageRef
+  lastAlarmMessageRef,
+  currentWCS = 'G54'
 }: VisualizerPanelProps) {
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
@@ -1071,25 +1097,19 @@ function VisualizerPanel({
   // The controller's emit method only sends to sockets in this.sockets, so we need to ensure
   // the socket is connected first, then added to controller.sockets
   useEffect(() => {
-    console.log('[Setup] Console listeners effect:', { isConnected, connectedPort })
-    
     if (!isConnected || !connectedPort) {
       // Clear console when disconnected
-      console.log('[Setup] Clearing console - not connected or no port')
       setConsoleLines([])
       return
     }
 
     const socket = socketService.getSocket()
     if (!socket) {
-      console.log('[Setup] No socket available for console listeners')
       return
     }
 
     // Helper function to set up console listeners
     const setupConsoleListeners = () => {
-      console.log('[Setup] Setting up console listeners for port:', connectedPort)
-      console.log('[Setup] Socket ID:', socket.id, 'Socket connected:', socket.connected)
 
       // Listen for messages FROM Grbl
       // Backend emits: this.emit('serialport:read', res.raw) or this.emit('serialport:read', message)
@@ -1099,12 +1119,10 @@ function VisualizerPanel({
         // Backend emits serialport:read with just the message string
         // The controller's emit method forwards to all sockets in this.sockets
         // So we just receive the message string directly
-        console.log('[Setup] serialport:read event received:', { port: connectedPort, message: message.substring(0, 100) })
         
         // Check for alarm messages BEFORE parsing - capture the raw message
         const trimmed = message.trim()
         if (trimmed.startsWith('ALARM:')) {
-          console.log('[Setup] Raw alarm message detected, storing:', trimmed)
           if (lastAlarmMessageRef) {
             lastAlarmMessageRef.current = trimmed
           }
@@ -1119,7 +1137,6 @@ function VisualizerPanel({
         
         // Track alarm messages for notifications (also after parsing in case format differs)
         if (line.type === 'alarm') {
-          console.log('[Setup] Alarm message captured from parsed line:', line.message)
           if (lastAlarmMessageRef) {
             lastAlarmMessageRef.current = line.message
           }
@@ -1133,7 +1150,6 @@ function VisualizerPanel({
         // Backend emits serialport:write with (data, context) where context is an object
         // Not (port, data) - the controller's emit method forwards to all sockets in this.sockets
         // So we just receive the data string directly
-        console.log('[Setup] serialport:write event received:', { port: connectedPort, data: data.substring(0, 100), context })
         const line = parseConsoleMessage(data, 'write')
         setConsoleLines(prev => [...prev, line])
       }
@@ -1142,11 +1158,8 @@ function VisualizerPanel({
       // (which happens when we call socket.emit('open', ...))
       socket.on('serialport:read', handleSerialRead)
       socket.on('serialport:write', handleSerialWrite)
-      console.log('[Setup] Console listeners registered on socket:', socket.id)
-      console.log('[Setup] Console listeners will receive events once socket is added to controller.sockets')
 
       return () => {
-        console.log('[Setup] Cleaning up console listeners for socket:', socket.id)
         socket.off('serialport:read', handleSerialRead)
         socket.off('serialport:write', handleSerialWrite)
       }
@@ -1155,16 +1168,13 @@ function VisualizerPanel({
     // CRITICAL: Only set up listeners when socket is actually connected
     // If socket is not connected yet, wait for it to connect
     if (!socket.connected) {
-      console.log('[Setup] Socket not connected yet, waiting for connection before setting up console listeners')
       const cleanupRef = { current: null as (() => void) | null }
       
       const handleConnect = () => {
-        console.log('[Setup] Socket connected, setting up console listeners now')
         // Set up listeners after socket connects
         cleanupRef.current = setupConsoleListeners()
         // Also ensure we join the port room (if we're restoring state)
         if (settings?.connection?.port && settings.connection.port === connectedPort) {
-          console.log('[Setup] Socket connected, joining port room for:', connectedPort)
           const connectionOptions = settings.connection ? {
             controllerType: settings.connection.controllerType || 'Grbl',
             baudrate: settings.connection.baudRate || 115200,
@@ -1175,9 +1185,7 @@ function VisualizerPanel({
             rtscts: false,
           }
           socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
-            if (!err) {
-              console.log('[Setup] Joined port room after socket connect:', connectedPort)
-            } else {
+            if (err) {
               console.error('[Setup] Error joining port room after socket connect:', err)
             }
           })
@@ -1209,9 +1217,7 @@ function VisualizerPanel({
         rtscts: false,
       }
       socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
-        if (!err) {
-          console.log('[Setup] Joined port room:', connectedPort)
-        } else {
+        if (err) {
           console.error('[Setup] Error joining port room:', err)
         }
       })
@@ -1292,6 +1298,7 @@ function VisualizerPanel({
           machinePosition={machinePosition}
           workPosition={workPosition}
           probeContact={probeContact}
+          currentWCS={currentWCS}
         />
       ) : tab === '3d' ? (
         <div className="flex-1 relative">
@@ -1423,6 +1430,7 @@ interface ZeroingWizardTabProps {
   machinePosition: { x: number; y: number; z: number }
   workPosition: { x: number; y: number; z: number }
   probeContact?: boolean
+  currentWCS?: string
 }
 
 function ZeroingWizardTab({ 
@@ -1432,10 +1440,35 @@ function ZeroingWizardTab({
   connectedPort,
   machinePosition,
   workPosition,
-  probeContact = false
+  probeContact = false,
+  currentWCS = 'G54'
 }: ZeroingWizardTabProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [probeStatus, setProbeStatus] = useState<'idle' | 'probing' | 'capturing' | 'storing' | 'complete' | 'error'>('idle')
+  const [probeError, setProbeError] = useState<string | null>(null)
   const socket = socketService.getSocket()
+  
+  // Extensions API for bitsetter toolReference storage
+  const [setExtensions] = useSetExtensionsMutation()
+  const [deleteExtensions] = useDeleteExtensionsMutation()
+  
+  // Helper to convert WCS to P number (G54=1, G55=2, etc.)
+  const getWCSPNumber = useCallback((wcs: string): number => {
+    const map: Record<string, number> = {
+      'G54': 1, 'G55': 2, 'G56': 3, 'G57': 4, 'G58': 5, 'G59': 6
+    }
+    return map[wcs] || 1
+  }, [])
+  
+  // Helper to clear bitsetter reference for current WCS
+  const clearBitsetterReference = useCallback(async () => {
+    try {
+      const wcsKey = `bitsetter.toolReference.${currentWCS}`
+      await deleteExtensions({ key: wcsKey }).unwrap()
+    } catch (err) {
+      console.error('Failed to clear bitsetter reference:', err)
+    }
+  }, [currentWCS, deleteExtensions])
   
   // Reset to step 1 when method changes
   useEffect(() => {
@@ -1478,41 +1511,54 @@ function ZeroingWizardTab({
     }
   }
   
-  const handleSetZero = useCallback((axes: 'x' | 'y' | 'z' | 'xy' | 'xyz') => {
+  const handleSetZero = useCallback(async (axes: 'x' | 'y' | 'z' | 'xy' | 'xyz') => {
     if (!connectedPort || !socket) {
       return
     }
     
+    // Clear bitsetter reference if Z zero is being set (bitsetter reference becomes invalid)
+    if (axes.includes('z')) {
+      await clearBitsetterReference()
+    }
+    
     // Build G10 command to set zero
-    // G10 L20 P1 sets work coordinate system (P1 = G54, P2 = G55, etc.)
-    // G10 L20 P1 X0 Y0 Z0 sets current position as origin
+    // G10 L20 Px sets work coordinate system (P1 = G54, P2 = G55, etc.)
+    // G10 L20 Px X0 Y0 Z0 sets current position as origin
     const parts: string[] = []
     if (axes.includes('x')) parts.push('X0')
     if (axes.includes('y')) parts.push('Y0')
     if (axes.includes('z')) parts.push('Z0')
     
     if (parts.length > 0) {
-      const command = `G10 L20 P1 ${parts.join(' ')}`
+      const p = getWCSPNumber(currentWCS)
+      const command = `G10 L20 P${p} ${parts.join(' ')}`
       socket.emit('command', connectedPort, 'gcode', command)
     }
-  }, [connectedPort, socket])
+  }, [connectedPort, socket, currentWCS, getWCSPNumber, clearBitsetterReference])
   
-  const handleTouchPlateProbe = useCallback(() => {
+  const handleTouchPlateProbe = useCallback(async () => {
     if (!connectedPort || !socket || method.type !== 'touchplate') {
       return
     }
+    
+    // Clear bitsetter reference when setting Z zero via touchplate (bitsetter reference becomes invalid)
+    await clearBitsetterReference()
     
     // Build probe sequence:
     // 1. Switch to relative mode
     // 2. Probe down (G38.2 for Grbl)
     // 3. Switch to absolute mode
-    // 4. Set zero with plate thickness offset (G10 L20 P1 Z[plateThickness])
+    // 4. Set zero with plate thickness offset (G10 L20 Px Z[plateThickness])
     // 5. Retract
+    const p = getWCSPNumber(currentWCS)
     const commands = [
-      'G91', // Relative mode
+      'G21', // Metric units
+      'M5', // Stop spindle
+      'G90', // Absolute mode
+      'G91', // Relative mode (for probe)
       `G38.2 Z-${method.probeDistance} F${method.probeFeedrate}`, // Probe down
       'G90', // Absolute mode
-      `G10 L20 P1 Z${method.plateThickness}`, // Set zero with plate thickness
+      `G10 L20 P${p} Z${method.plateThickness}`, // Set zero with plate thickness
       'G91', // Relative mode
       'G0 Z10', // Retract 10mm
       'G90', // Absolute mode
@@ -1524,21 +1570,21 @@ function ZeroingWizardTab({
         socket.emit('command', connectedPort, 'gcode', cmd)
       }, index * 100) // Small delay between commands
     })
-  }, [connectedPort, socket, method])
+  }, [connectedPort, socket, method, currentWCS, getWCSPNumber, clearBitsetterReference])
   
   const handleBitsetterNavigate = useCallback(() => {
     if (!connectedPort || !socket || method.type !== 'bitsetter') {
       return
     }
     
-    // Navigate to bitsetter position safely
+    // Navigate to bitsetter position safely using machine coordinates (G53)
     // Sequence: Raise Z to safe height -> Move XY -> Lower Z to bitsetter position
     const safeHeight = method.position.z + method.retractHeight
     const commands = [
       'G90', // Absolute mode (ensure we're in absolute mode)
-      `G0 Z${safeHeight}`, // Raise Z to safe height above bitsetter (or stay at current if already higher)
-      `G0 X${method.position.x} Y${method.position.y}`, // Move to bitsetter XY position
-      `G0 Z${method.position.z}`, // Lower to bitsetter Z position (tool should be above sensor)
+      `G53 G0 Z${safeHeight}`, // Raise Z to safe height above bitsetter (machine coordinates)
+      `G53 G0 X${method.position.x} Y${method.position.y}`, // Move to bitsetter XY position (machine coordinates)
+      `G53 G0 Z${method.position.z}`, // Lower to bitsetter Z position (machine coordinates, tool should be above sensor)
     ]
     
     // Send commands sequentially with delays to allow each command to complete
@@ -1549,43 +1595,178 @@ function ZeroingWizardTab({
     })
   }, [connectedPort, socket, method])
   
-  const handleBitsetterProbe = useCallback(() => {
+  const handleBitsetterProbe = useCallback(async () => {
     if (!connectedPort || !socket || method.type !== 'bitsetter') {
       return
     }
     
-    // Build probe sequence:
-    // 1. Switch to relative mode
-    // 2. Probe down (G38.2 for Grbl)
-    // 3. Switch to absolute mode
-    // 4. Set zero (bitsetter sets Z zero at probe contact)
-    // 5. Retract to safe height
+    // Reset capture flag for new probe
+    capturingPositionRef.current = false
+    
+    setProbeStatus('probing')
+    setProbeError(null)
+    
+    // Multi-stage probe sequence based on user's example script:
+    // 1. Fast probe down
+    // 2. Small retract
+    // 3. Fine probe down with pauses
+    // 4. Probe up to verify contact loss
+    // 5. Fine probe down again
+    // 6. Probe up to verify contact loss again
+    // 7. Switch to absolute mode
+    // 8. Capture position (TOOL_REFERENCE)
+    // 9. Retract to safe height
+    
+    const rapidFeedrate = method.probeFeedrate || 200 // Fast feedrate for initial probe
+    const fineFeedrate = 40 // Fine feedrate for dialing in
+    
     const commands = [
-      'G91', // Relative mode
-      `G38.2 Z-${method.probeDistance} F${method.probeFeedrate}`, // Probe down
-      'G90', // Absolute mode
-      'G10 L20 P1 Z0', // Set zero at current position (bitsetter contact point)
-      'G91', // Relative mode
-      `G0 Z${method.retractHeight}`, // Retract to safe height
-      'G90', // Absolute mode
+      'G21', // Metric units
+      'M5', // Stop spindle
+      'G90', // Absolute positioning
+      'G91', // Switch to relative mode for probing
+      `G38.2 Z-${method.probeDistance} F${rapidFeedrate}`, // Fast probe down
+      'G0 Z2', // Small retract
+      `G38.2 Z-5 F${fineFeedrate}`, // Fine probe down
+      'G4 P0.25', // Pause 0.25 seconds
+      'G38.4 Z10 F20', // Probe up to verify contact loss
+      'G4 P0.25', // Pause 0.25 seconds
+      'G38.2 Z-2 F10', // Very fine probe down
+      'G4 P0.25', // Pause 0.25 seconds
+      'G38.4 Z10 F5', // Ultra fine probe up to verify contact loss
+      'G4 P0.25', // Pause 0.25 seconds
+      'G90', // Switch back to absolute mode (position is now stable)
     ]
     
-    // Send commands sequentially
-    commands.forEach((cmd, index) => {
-      setTimeout(() => {
-        socket.emit('command', connectedPort, 'gcode', cmd)
-      }, index * 100) // Small delay between commands
-    })
-  }, [connectedPort, socket, method])
+    // Store the position before probing to detect when it stabilizes after probe
+    const positionBeforeProbe = { ...workPosition }
+    previousWorkPositionRef.current = positionBeforeProbe
+    
+    // Send probe sequence commands sequentially
+    let commandIndex = 0
+    const sendCommand = () => {
+      if (commandIndex < commands.length) {
+        socket.emit('command', connectedPort, 'gcode', commands[commandIndex])
+        commandIndex++
+        // Vary delays: longer for movements, shorter for pauses
+        // Probe commands need more time (500ms for G38.2/G38.4, 300ms for G4)
+        const cmd = commands[commandIndex - 1]
+        const delay = cmd.startsWith('G4') ? 350 : (cmd.startsWith('G38') ? 800 : 300)
+        setTimeout(sendCommand, delay)
+      } else {
+        // After probe sequence completes, wait for controller state to update
+        // Then capture position once it stabilizes
+        setTimeout(() => {
+          setProbeStatus('capturing')
+          // Position will be captured via useEffect watching workPosition
+        }, 1000) // Longer delay to ensure controller has processed all commands
+      }
+    }
+    
+    sendCommand()
+  }, [connectedPort, socket, method, currentWCS, getWCSPNumber, workPosition])
   
-  const handleComplete = () => {
-    // For touchplate and bitsetter, the probe already sets zero, so just close
-    if (method.type === 'touchplate' || method.type === 'bitsetter') {
+  // Monitor workPosition after probe to capture TOOL_REFERENCE
+  const previousWorkPositionRef = useRef<{ x: number; y: number; z: number } | null>(null)
+  const capturingPositionRef = useRef(false)
+  const captureTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  useEffect(() => {
+    // Only capture position if we're in capturing state and haven't captured yet
+    if (probeStatus === 'capturing' && !capturingPositionRef.current) {
+      const previousPos = previousWorkPositionRef.current
+      
+      // Check if position has changed (probe has completed) and stabilized
+      // Position should have changed from before probe, then stabilized
+      if (previousPos) {
+        const zChanged = Math.abs(workPosition.z - previousPos.z) > 0.001
+        
+        // Wait for position to stabilize (no change for 500ms)
+        if (captureTimeoutRef.current) {
+          clearTimeout(captureTimeoutRef.current)
+        }
+        
+        captureTimeoutRef.current = setTimeout(() => {
+          // Check again if position is stable
+          const currentPos = { ...workPosition }
+          if (previousWorkPositionRef.current && Math.abs(currentPos.z - previousWorkPositionRef.current.z) < 0.001) {
+            capturingPositionRef.current = true
+            setProbeStatus('storing')
+            
+            // Store TOOL_REFERENCE in Extensions API
+            // This is the work Z position at bitsetter contact point
+            const toolReference = currentPos.z
+            const wcsKey = `bitsetter.toolReference.${currentWCS}`
+            
+            setExtensions({ 
+              key: wcsKey, 
+              data: { 
+                value: toolReference, 
+                wcs: currentWCS, 
+                timestamp: new Date().toISOString() 
+              } 
+            })
+              .unwrap()
+              .then(() => {
+                setProbeStatus('complete')
+                // Retract to safe height after storing reference
+                if (method.type === 'bitsetter') {
+                  const safeHeight = method.position.z + method.retractHeight
+                  if (connectedPort && socket) {
+                    socket.emit('command', connectedPort, 'gcode', 'G90') // Ensure absolute mode
+                    setTimeout(() => {
+                      socket.emit('command', connectedPort, 'gcode', `G53 G0 Z${safeHeight}`) // Retract in machine coordinates
+                    }, 200)
+                  }
+                }
+              })
+              .catch((err) => {
+                console.error('Failed to store bitsetter reference:', err)
+                setProbeStatus('error')
+                setProbeError('Failed to store tool reference. Please try again.')
+                capturingPositionRef.current = false
+              })
+          }
+        }, 500) // Wait 500ms for position to stabilize
+      }
+    }
+    
+    // Update previous position reference
+    previousWorkPositionRef.current = { ...workPosition }
+    
+    // Cleanup timeout on unmount or status change
+    return () => {
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current)
+      }
+    }
+  }, [workPosition, probeStatus, currentWCS, setExtensions, method, connectedPort, socket])
+  
+  const handleComplete = async () => {
+    // For touchplate and manual, clear bitsetter reference if Z zero is being set
+    if (method.type === 'touchplate' || (method.type === 'manual' && method.axes.includes('z'))) {
+      await clearBitsetterReference()
+    }
+    
+    // For touchplate, the probe already sets zero, so just close
+    if (method.type === 'touchplate') {
       onClose()
       return
     }
+    
+    // For bitsetter, the probe already captured the reference, so just close
+    if (method.type === 'bitsetter') {
+      onClose()
+      return
+    }
+    
     // For manual, set zero for the axes specified by the method
-    handleSetZero(method.axes)
+    if (method.type === 'manual') {
+      await handleSetZero(method.axes)
+      onClose()
+      return
+    }
+    
     onClose()
   }
   
@@ -1956,7 +2137,7 @@ function ZeroingWizardTab({
               <h3 className="text-base font-semibold">Step 1: Verify BitSetter Circuit</h3>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  Verify that the BitSetter circuit is working by manually touching the tool to the sensor. The BitSetter should trigger when contact is made.
+                  Verify that the BitSetter circuit is working by manually pressing the sensor down. The BitSetter should trigger when the sensor is pressed.
                 </p>
                 <p>
                   This ensures the probe circuit is functioning correctly before starting the zeroing process.
@@ -1967,7 +2148,7 @@ function ZeroingWizardTab({
               <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  Touch the tool to the BitSetter manually. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
+                  Press the BitSetter sensor down manually with your finger or a tool. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
                 </p>
               </div>
               <div className={`p-3 rounded-lg border ${
@@ -2050,43 +2231,106 @@ function ZeroingWizardTab({
           </div>
         )
       case 3:
-        // Step 3: Change Tool if Necessary (shown as step 2 if requireCheck is false)
+        // Step 3: Install First Tool (shown as step 2 if requireCheck is false)
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Change Tool if Necessary</h3>
+              <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Install First Tool</h3>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  If you need to change the tool before probing, do so now. Make sure the correct tool is installed in the spindle.
-                </p>
-                <p>
-                  The BitSetter will measure the tool length for the currently installed tool. If you change tools after this step, you'll need to run this zeroing method again for the new tool.
+                  Install the first tool before probing. We will measure the length of this tool so tool changes during the job are easier and you will only need to re-measure on the bitsetter instead of setting Z again on the material.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                Once the correct tool is installed, press Next to proceed to the probing step.
+                Once the first tool is installed, press Next to proceed to the probing step.
               </p>
             </div>
           </div>
         )
       case 4:
         // Step 4: Run Probe (shown as step 3 if requireCheck is false)
+        const isProbing = probeStatus === 'probing' || probeStatus === 'capturing' || probeStatus === 'storing'
+        const isProbeComplete = probeStatus === 'complete'
+        const isProbeError = probeStatus === 'error'
+        
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Run Probe</h3>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  Press the probe button below to start the automatic BitSetter probe sequence. The tool will probe down until it contacts the BitSetter sensor, then set Z zero at the contact point.
+                  Press the probe button below to start the automatic BitSetter probe sequence. The tool will perform a multi-stage probe sequence to accurately measure the tool length.
                 </p>
                 <p>
-                  After probing, the tool will automatically retract to a safe height above the BitSetter.
+                  After probing, the tool reference will be stored. The tool will automatically retract to a safe height above the BitSetter.
                 </p>
               </div>
             </div>
+            
+            {/* Probe Status */}
+            {isProbing && (
+              <div className={`p-4 rounded-lg border ${
+                probeStatus === 'probing' ? 'bg-blue-500/10 border-blue-500/30' :
+                probeStatus === 'capturing' ? 'bg-amber-500/10 border-amber-500/30' :
+                'bg-purple-500/10 border-purple-500/30'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full animate-pulse ${
+                    probeStatus === 'probing' ? 'bg-blue-500' :
+                    probeStatus === 'capturing' ? 'bg-amber-500' :
+                    'bg-purple-500'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {probeStatus === 'probing' && 'Running probe sequence...'}
+                      {probeStatus === 'capturing' && 'Capturing position...'}
+                      {probeStatus === 'storing' && 'Storing tool reference...'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {probeStatus === 'probing' && 'The tool is probing down to contact the BitSetter sensor.'}
+                      {probeStatus === 'capturing' && 'Reading work position after probe contact...'}
+                      {probeStatus === 'storing' && 'Saving tool reference to Extensions API...'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {isProbeComplete && (
+              <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/30">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Probe complete! Tool reference stored.
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                      The tool reference has been saved for {currentWCS}. You can now use this reference for tool changes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {isProbeError && (
+              <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                      Probe error
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                      {probeError || 'An error occurred during the probe sequence. Please try again.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="text-sm font-medium">Probe Settings:</div>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -2102,26 +2346,78 @@ function ZeroingWizardTab({
                   <span className="text-muted-foreground">Retract Height: </span>
                   <span className="font-mono">{bitsetterMethod.retractHeight}mm</span>
                 </div>
+                <div>
+                  <span className="text-muted-foreground">Work Coordinate: </span>
+                  <span className="font-mono">{currentWCS}</span>
+                </div>
               </div>
             </div>
+            
+            {/* Current Position Display */}
+            {!isProbeComplete && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="text-sm font-medium">Current Work Position:</div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">X: </span>
+                    <span className="font-mono">{workPosition.x.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Y: </span>
+                    <span className="font-mono">{workPosition.y.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Z: </span>
+                    <span className="font-mono">{workPosition.z.toFixed(3)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center justify-center py-4">
               <Button
                 onClick={handleBitsetterProbe}
                 variant="default"
                 size="lg"
                 className="gap-2"
-                disabled={!isConnected || !connectedPort}
+                disabled={!isConnected || !connectedPort || isProbing}
               >
-                <Target className="w-5 h-5" />
-                Start BitSetter Probe
+                {isProbing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {probeStatus === 'probing' && 'Probing...'}
+                    {probeStatus === 'capturing' && 'Capturing...'}
+                    {probeStatus === 'storing' && 'Storing...'}
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-5 h-5" />
+                    {isProbeComplete ? 'Probe Complete' : 'Start BitSetter Probe'}
+                  </>
+                )}
               </Button>
             </div>
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({bitsetterMethod.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
-              </p>
-            </div>
+            
+            {!isProbing && !isProbeComplete && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                  <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({bitsetterMethod.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
+                </p>
+              </div>
+            )}
+            
+            {isProbeComplete && (
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
+                  <p className="font-medium">Tool reference stored</p>
+                  <p>
+                    The tool reference for {currentWCS} has been saved. When you change tools during a job, you can use this reference to automatically adjust the Z offset.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )
       default:
@@ -2153,7 +2449,9 @@ function ZeroingWizardTab({
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">{method.name}</h2>
+            <h2 className="text-lg font-semibold">
+              {method.type === 'bitsetter' ? 'BitSetter (First Tool)' : method.name}
+            </h2>
           </div>
           <Button
             variant="ghost"
@@ -3234,12 +3532,9 @@ export default function Setup() {
     
     if (isConnected && connectedPort) {
       // Disconnect
-      console.log('[Setup] ===== DISCONNECT REQUESTED =====')
-      console.log('[Setup] Current state:', { isConnected, connectedPort, machineStatus })
       
       const socket = socketService.getSocket()
       if (!socket) {
-        console.log('[Setup] Socket not available - updating UI immediately')
         // Socket not available - update UI immediately
         setIsConnected(false)
         setConnectedPort(null)
@@ -3249,19 +3544,14 @@ export default function Setup() {
         setIsJobRunning(false)
         setSpindleState('M5')
         setSpindleSpeed(0)
-        console.log('[Setup] UI updated to disconnected (no socket)')
         return
       }
       
-      console.log('[Setup] Disconnecting from port:', connectedPort)
-      console.log('[Setup] Socket available:', { connected: socket.connected, id: socket.id })
       
       // Mark as manually disconnected to prevent restore
       manuallyDisconnectedRef.current = true
-      console.log('[Setup] Marked as manually disconnected')
       
       // Update UI optimistically (will be confirmed by serialport:close event)
-      console.log('[Setup] Updating UI optimistically to disconnected')
       setIsConnected(false)
       setConnectedPort(null)
       setMachineStatus('not_connected')
@@ -3270,12 +3560,9 @@ export default function Setup() {
       setIsJobRunning(false)
       setSpindleState('M5')
       setSpindleSpeed(0)
-      console.log('[Setup] UI state updated, emitting close event to backend')
       
       // Request disconnect from backend
       socket.emit('close', connectedPort, (err: Error | null) => {
-        console.log('[Setup] ===== DISCONNECT CALLBACK =====')
-        console.log('[Setup] Disconnect callback:', err ? `Error: ${err}` : 'Success')
         if (err) {
           console.error('Disconnect error:', err)
           // If already disconnected, that's fine - UI is already updated
@@ -3485,7 +3772,6 @@ export default function Setup() {
       
       // Clear manual disconnect flag when we successfully connect
       manuallyDisconnectedRef.current = false
-      console.log('[Setup] Cleared manual disconnect flag on connection')
       
       setIsConnected(true)
       setConnectedPort(data.port)
@@ -3507,9 +3793,6 @@ export default function Setup() {
     }
     
     const handleSerialPortClose = (data?: { port?: string }) => {
-      console.log('[Setup] ===== SERIALPORT:CLOSE EVENT =====')
-      console.log('[Setup] serialport:close event received:', data)
-      console.log('[Setup] Current state before close:', { isConnected, connectedPort, machineStatus })
       
       setIsConnected(false)
       setConnectedPort(null)
@@ -3523,7 +3806,6 @@ export default function Setup() {
       setSpindleState('M5')
       setSpindleSpeed(0)
       
-      console.log('[Setup] UI updated to disconnected state')
     }
     
     const handleSocketError = (error: unknown) => {
@@ -3619,13 +3901,6 @@ export default function Setup() {
       // We check homingInProgressRef to detect the transition from Home to Idle
       if (isIdle && !isHoming && homingInProgressRef.current && !isHomedRef.current && isConnectedRef.current) {
         // Homing was in progress and now we're idle - homing completed
-        console.log('[Homing] Homing completed - transitioning to post-home', {
-          isIdle,
-          isHoming,
-          homingInProgress: homingInProgressRef.current,
-          isHomed: isHomedRef.current,
-          isConnected: isConnectedRef.current
-        })
         isHomedRef.current = true
         setIsHomed(true)
         setHomingInProgress(false)
@@ -3658,23 +3933,17 @@ export default function Setup() {
         if (isTransitioningToAlarm) {
           // Try to get alarm message from ref (updated by VisualizerPanel when serialport:read events arrive)
           let alarmMessage = lastAlarmMessageRef.current
-          console.log('[Setup] Alarm state detected, checking for message:', { 
-            refMessage: lastAlarmMessageRef.current
-          })
           
           // If still no message found, wait a short time for the alarm message to arrive via serialport:read
           // This handles the case where controller:state arrives before serialport:read
           if (!alarmMessage) {
-            console.log('[Setup] Alarm message not found yet, waiting 100ms...')
             // Wait up to 100ms for alarm message to arrive
             setTimeout(() => {
               const delayedMessage = lastAlarmMessageRef.current || 'Machine alarm triggered'
-              console.log('[Setup] Showing delayed alarm notification:', delayedMessage)
               showErrorNotification('Machine Alarm', delayedMessage)
             }, 100)
           } else {
             // Message found immediately, show notification right away
-            console.log('[Setup] Showing immediate alarm notification:', alarmMessage)
             showErrorNotification('Machine Alarm', alarmMessage)
           }
         }
@@ -3768,7 +4037,6 @@ export default function Setup() {
       
       if (senderData.hold && senderData.holdReason) {
         // Machine is in hold state (from sender - loaded G-code files)
-        console.log('[Sender Status] Received hold reason:', senderData.holdReason)
         setHoldReason(senderData.holdReason)
         setMachineStatus('hold')
         setIsJobRunning(true) // Job is still running, just paused
@@ -3795,15 +4063,6 @@ export default function Setup() {
       // Mark that we've received initial state from backend
       hasReceivedInitialStateRef.current = true
       
-      // Log whenever we receive hold reason from feeder (for debugging)
-      if (feederData.hold && feederData.holdReason) {
-        console.log('[Feeder Status] Received hold reason:', {
-          holdReason: feederData.holdReason,
-          currentMachineStatus: machineStatusRef.current,
-          willStore: machineStatusRef.current === 'hold'
-        })
-      }
-      
       // Only update hold reason if controller confirms we're in Hold state
       // This prevents storing hold reason from stale feeder state
       if (feederData.hold && feederData.holdReason && machineStatusRef.current === 'hold') {
@@ -3818,7 +4077,6 @@ export default function Setup() {
       } else if (!feederData.hold && machineStatusRef.current !== 'hold') {
         // Feeder hold was cleared AND controller confirms we're not in hold - clear hold reason
         if (holdReason) {
-          console.log('[Feeder hold cleared, clearing hold reason]')
           setHoldReason(null)
         }
       }
@@ -3836,7 +4094,6 @@ export default function Setup() {
     }
     
     const handleSocketDisconnect = (reason: unknown) => {
-      console.log('Socket disconnected:', reason)
       if (isConnected) {
         setIsConnected(false)
         setConnectedPort(null)
@@ -3883,30 +4140,17 @@ export default function Setup() {
   useEffect(() => {
     const socket = socketService.getSocket()
     if (!socket) {
-      console.log('[Setup] No socket available for machine:status listener')
       return
     }
 
-    console.log('[Setup] Setting up machine:status Socket.IO listener')
 
     const handleMachineStatus = (port: string, status: MachineStatusType) => {
-      console.log('[Setup] ===== machine:status event received =====', {
-        port,
-        status: {
-          connected: status.connected,
-          machineStatus: status.machineStatus,
-          isHomed: status.isHomed,
-          isJobRunning: status.isJobRunning,
-          controllerType: status.controllerType
-        }
-      })
 
       // Update backend status
       setBackendMachineStatus(status)
 
       // Only update local state if this is for the configured port
       if (status.port === settings?.connection?.port) {
-        console.log('[Setup] This status is for our configured port, updating local state')
         
         setIsConnected(status.connected)
         setConnectedPort(status.connected ? status.port : null)
@@ -3927,17 +4171,7 @@ export default function Setup() {
             z: parseFloat(status.controllerState.wpos?.z || '0')
           })
         }
-        
-        console.log('[Setup] Local state updated from machine:status event:', {
-          machineStatus: status.machineStatus,
-          isHomed: status.isHomed,
-          isJobRunning: status.isJobRunning
-        })
       } else {
-        console.log('[Setup] Status is for different port, ignoring:', {
-          statusPort: status.port,
-          configuredPort: settings?.connection?.port
-        })
       }
     }
 
@@ -3945,15 +4179,12 @@ export default function Setup() {
 
     // Request current status on mount
     if (settings?.connection?.port) {
-      console.log('[Setup] Requesting current machine status for port:', settings.connection.port)
       socket.emit('machine:status:request', settings.connection.port)
     } else {
-      console.log('[Setup] No port configured, requesting all statuses')
       socket.emit('machine:status:request')
     }
 
     return () => {
-      console.log('[Setup] Cleaning up machine:status listener')
       socket.off('machine:status', handleMachineStatus)
     }
   }, [settings?.connection?.port])
@@ -3962,20 +4193,8 @@ export default function Setup() {
   // This handles both navigation back (socket connected) and hard refresh (socket not connected yet)
   // NOTE: This is a fallback - the machine:status Socket.IO events should be the primary source
   useEffect(() => {
-    console.log('[Setup] ===== RESTORE EFFECT TRIGGERED =====')
-    console.log('[Setup] Restore effect dependencies:', { 
-      controllersData: controllersData ? `Array(${controllersData.length})` : null,
-      isConnected,
-      connectedPort,
-      backendMachineStatus: backendMachineStatus ? 'exists' : null
-    })
-    
     // If we already have backend machine status, use that instead
     if (backendMachineStatus && backendMachineStatus.connected && backendMachineStatus.port === settings?.connection?.port) {
-      console.log('[Setup] Already have backend machine status, using it:', {
-        machineStatus: backendMachineStatus.machineStatus,
-        isHomed: backendMachineStatus.isHomed
-      })
       setIsConnected(backendMachineStatus.connected)
       setConnectedPort(backendMachineStatus.port)
       setMachineStatus(backendMachineStatus.machineStatus)
@@ -3986,39 +4205,24 @@ export default function Setup() {
     }
     
     const checkAndRestore = () => {
-      console.log('[Setup] checkAndRestore() called')
-      console.log('[Setup] Current state:', { isConnected, connectedPort, machineStatus })
       
       // Only run if we're not already connected
       if (isConnected) {
-        console.log('[Setup] Already connected, skipping restore')
         return
       }
       
       // If we manually disconnected, don't restore
       if (manuallyDisconnectedRef.current) {
-        console.log('[Setup] Manually disconnected, skipping restore')
         return
       }
       
       // Try to get machine status from API first (more reliable than controllers)
       if (settings?.connection?.port) {
-        console.log('[Setup] Fetching machine status from API for port:', settings.connection.port)
         getMachineStatus({ port: settings.connection.port })
           .unwrap()
           .then((response) => {
-            console.log('[Setup] Machine status from API:', response.status)
             if (response.status && response.status.connected) {
               const status = response.status
-              console.log('[Setup] Restoring from API machine status:', {
-                machineStatus: status.machineStatus,
-                isHomed: status.isHomed
-              })
-              console.log('[Setup] Restoring UI state from API:', {
-                machineStatus: status.machineStatus,
-                isHomed: status.isHomed,
-                isJobRunning: status.isJobRunning
-              })
               
               setIsConnected(true)
               setConnectedPort(status.port)
@@ -4036,7 +4240,6 @@ export default function Setup() {
               const socket = socketService.getSocket()
               if (socket?.connected) {
                 // Request current status via Socket.IO (backend will preserve state)
-                console.log('[Setup] Requesting machine status via Socket.IO for:', status.port)
                 socket.emit('machine:status:request', status.port)
                 
                 // Also join the port room to receive console events
@@ -4053,11 +4256,8 @@ export default function Setup() {
                   rtscts: false,
                 }
                 
-                console.log('[Setup] Joining port room (backend should preserve state):', status.port)
                 socket.emit('open', status.port, connectionOptions, (err: Error | null) => {
                   if (!err) {
-                    console.log('[Setup] Joined port room for:', status.port)
-                    console.log('[Setup] Socket should now be added to controller.sockets and receiving events')
                     // Request status again after joining to ensure we have latest
                     setTimeout(() => {
                       socket.emit('machine:status:request', status.port)
@@ -4065,7 +4265,6 @@ export default function Setup() {
                     
                     // Force a status report to trigger console events and verify listeners are working
                     setTimeout(() => {
-                      console.log('[Setup] Requesting status report to test console listeners')
                       socket.emit('command', status.port, 'statusreport')
                     }, 200)
                   } else {
@@ -4073,7 +4272,6 @@ export default function Setup() {
                   }
                 })
               } else {
-                console.log('[Setup] Socket not connected yet, will join when socket connects')
               }
             }
           })
@@ -4092,7 +4290,6 @@ export default function Setup() {
     const restoreFromControllers = () => {
       // Wait for controllers data to be available
       if (!controllersData) {
-        console.log('[Setup] Waiting for controllers data...')
         return
       }
       
@@ -4101,18 +4298,8 @@ export default function Setup() {
         const activeController = controllers[0]
         const port = activeController.port
         if (!port) {
-          console.log('[Setup] Active controller found but no port')
           return
         }
-        
-        console.log('[Setup] ===== RESTORING FROM CONTROLLERS (FALLBACK) =====')
-        console.log('[Setup] Active controller:', {
-          port: activeController.port,
-          ready: activeController.ready,
-          homed: activeController.homed,
-          controllerType: activeController.controller?.type,
-          activeState: activeController.controller?.state?.status?.activeState
-        })
         
         setIsConnected(true)
         setConnectedPort(port)
@@ -4615,6 +4802,7 @@ export default function Setup() {
               workPosition={workPosition}
               probeContact={probeContact}
               lastAlarmMessageRef={lastAlarmMessageRef}
+              currentWCS={currentWCS}
             />
           </div>
           {/* Tools - 25% height */}
