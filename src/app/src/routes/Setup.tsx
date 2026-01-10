@@ -270,8 +270,14 @@ function DROPanel({ isConnected, connectedPort, machineStatus, onFlashStatus, ma
     try {
       const wcsKey = `bitsetter.toolReference.${workspace}`
       await deleteExtensions({ key: wcsKey }).unwrap()
-    } catch (err) {
-      console.error('Failed to clear bitsetter reference:', err)
+    } catch (err: any) {
+      // 404 means the key doesn't exist (nothing to clear) - this is fine, silently ignore it
+      // RTK Query throws FetchBaseQueryError with status property
+      const status = err?.status || err?.data?.status || (typeof err === 'object' && 'status' in err ? (err as any).status : undefined)
+      if (status !== 404 && status !== 'FETCH_ERROR') {
+        console.error('Failed to clear bitsetter reference:', err)
+      }
+      // Otherwise silently ignore - nothing to clear
       // Don't block zeroing if clearing reference fails
     }
   }, [workspace, deleteExtensions])
@@ -1465,8 +1471,14 @@ function ZeroingWizardTab({
     try {
       const wcsKey = `bitsetter.toolReference.${currentWCS}`
       await deleteExtensions({ key: wcsKey }).unwrap()
-    } catch (err) {
-      console.error('Failed to clear bitsetter reference:', err)
+    } catch (err: any) {
+      // 404 means the key doesn't exist (nothing to clear) - this is fine, silently ignore it
+      // RTK Query throws FetchBaseQueryError with status property
+      const status = err?.status || err?.data?.status || (typeof err === 'object' && 'status' in err ? (err as any).status : undefined)
+      if (status !== 404 && status !== 'FETCH_ERROR') {
+        console.error('Failed to clear bitsetter reference:', err)
+      }
+      // Otherwise silently ignore - nothing to clear
     }
   }, [currentWCS, deleteExtensions])
   
@@ -1491,6 +1503,10 @@ function ZeroingWizardTab({
     if (method.type === 'bitzero') {
       // If requireCheck is false, skip the verification step (4 steps instead of 5)
       return method.requireCheck === false ? 4 : 5
+    }
+    if (method.type === 'custom') {
+      // Custom G-code: step 1 = run G-code, step 2 = complete
+      return 2
     }
     // Other methods will be implemented later
     return 1
@@ -1859,10 +1875,11 @@ function ZeroingWizardTab({
   }, [workPosition, probeStatus, currentWCS, setExtensions, method, connectedPort, socket])
   
   const handleComplete = async () => {
-    // For touchplate, manual, and bitzero, clear bitsetter reference if Z zero is being set
+    // For touchplate, manual, bitzero, and custom (if Z axis), clear bitsetter reference if Z zero is being set
     if (method.type === 'touchplate' || 
         method.type === 'bitzero' || 
-        (method.type === 'manual' && method.axes.includes('z'))) {
+        (method.type === 'manual' && method.axes.includes('z')) ||
+        (method.type === 'custom' && method.axes.includes('z'))) {
       await clearBitsetterReference()
     }
     
@@ -1880,6 +1897,12 @@ function ZeroingWizardTab({
     
     // For bitzero, the probe already sets XYZ zero, so just close
     if (method.type === 'bitzero') {
+      onClose()
+      return
+    }
+    
+    // For custom, the G-code already ran, so just close
+    if (method.type === 'custom') {
       onClose()
       return
     }
@@ -1907,6 +1930,9 @@ function ZeroingWizardTab({
     }
     if (method.type === 'bitzero') {
       return renderBitZeroStep(currentStep, method)
+    }
+    if (method.type === 'custom') {
+      return renderCustomStep(currentStep, method)
     }
     // Other method types will be implemented later
     return <div>Method type {method.type} not yet implemented</div>
@@ -2866,6 +2892,350 @@ function ZeroingWizardTab({
     }
   }
   
+  const handleCustomProbe = useCallback(async () => {
+    if (!connectedPort || !socket || method.type !== 'custom') {
+      return
+    }
+    
+    // Verify socket is connected before starting
+    if (!socket.connected) {
+      setProbeError('Socket not connected. Please check your connection and try again.')
+      setProbeStatus('error')
+      return
+    }
+    
+    // Clear bitsetter reference if Z axis is being zeroed
+    if (method.axes.includes('z')) {
+      await clearBitsetterReference()
+    }
+    
+    setProbeStatus('probing')
+    setProbeError(null)
+    
+    const customMethod = method as Extract<ZeroingMethod, { type: 'custom' }>
+    const gcodeString = customMethod.gcode.trim()
+    
+    if (!gcodeString) {
+      setProbeError('No G-code found. Please configure the custom G-code in settings.')
+      setProbeStatus('error')
+      return
+    }
+    
+    // Parse G-code to count lines for progress tracking
+    const gcodeLines = gcodeString
+      .split('\n')
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0 && !line.startsWith(';')) // Remove empty lines and comments
+    
+    const totalLines = gcodeLines.length
+    let linesSent = 0
+    let linesReceived = 0
+    let lastWorkflowState: string | null = null
+    let isCleanedUp = false
+    let timeoutId: NodeJS.Timeout | null = null
+    let currentStatusRef = 'probing' // Track status to avoid closure issues
+    
+    // Track progress via serialport:write events (each line sent)
+    // Note: This gives us line-by-line fidelity as each G-code line is sent
+    const handleSerialWrite = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const data = args[0] as string
+      const context = args[1] as { source?: string } | undefined
+      
+      // Only count lines sent from the feeder (not manual commands or status queries)
+      if (context?.source === 'feeder' || (!context?.source && data.trim())) {
+        const trimmed = data.trim()
+        // Filter out Grbl status queries and other non-G-code commands
+        if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
+          linesSent++
+          // We now have line-by-line progress tracking!
+        }
+      }
+    }
+    
+    // Track responses via serialport:read events (ok responses)
+    // This gives us line-by-line acknowledgment tracking
+    // Keep a small buffer of recent messages to find the failing line if error comes out of order
+    const recentMessages: string[] = []
+    const handleSerialRead = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const message = args[0] as string
+      if (!message || typeof message !== 'string') return
+      
+      // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
+      recentMessages.push(message.trim())
+      if (recentMessages.length > 5) {
+        recentMessages.shift()
+      }
+      
+      const line = parseConsoleMessage(message, 'read')
+      
+      if (line.type === 'ok') {
+        linesReceived++
+      } else if (line.type === 'error' || line.type === 'alarm') {
+        // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
+        // Backend emits it just before the error, but messages might arrive out of order
+        const failingLine = recentMessages.find(msg => msg.startsWith('> '))
+        
+        // Include the failing line in the error message if found
+        const errorMsg = failingLine
+          ? `${line.message}\n\nFailing line: ${failingLine}`
+          : line.message
+        
+        setProbeError(errorMsg)
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+        return
+      }
+    }
+    
+    // Track workflow state changes (idle -> running -> idle = complete)
+    // This is the most reliable indicator of completion
+    const handleWorkflowState = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const state = args[0] as string
+      
+      if (lastWorkflowState === null) {
+        lastWorkflowState = state
+      } else if (lastWorkflowState === 'idle' && state === 'running') {
+        // Workflow started - G-code is being executed
+        lastWorkflowState = state
+      } else if (lastWorkflowState === 'running' && state === 'idle') {
+        // Workflow completed - all G-code has finished
+        if (currentStatusRef === 'probing') {
+          setProbeStatus('complete')
+          currentStatusRef = 'complete'
+          cleanup()
+        }
+        lastWorkflowState = state
+      } else {
+        lastWorkflowState = state
+      }
+      
+      // Handle error states
+      if (state === 'error' || state === 'alarm') {
+        setProbeError('Machine entered error state during G-code execution')
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+      }
+    }
+    
+    // Handle disconnections
+    const handleDisconnect = () => {
+      if (isCleanedUp) return
+      setProbeError('Socket disconnected during G-code execution')
+      setProbeStatus('error')
+      currentStatusRef = 'error'
+      cleanup()
+    }
+    
+    const cleanup = () => {
+      if (isCleanedUp) return
+      isCleanedUp = true
+      
+      socket.off('serialport:write', handleSerialWrite)
+      socket.off('serialport:read', handleSerialRead)
+      socket.off('workflow:state', handleWorkflowState)
+      socket.off('disconnect', handleDisconnect)
+      
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+    }
+    
+    // Set up listeners
+    socket.on('serialport:write', handleSerialWrite)
+    socket.on('serialport:read', handleSerialRead)
+    socket.on('workflow:state', handleWorkflowState)
+    socket.once('disconnect', handleDisconnect)
+    
+    try {
+      // Send the entire G-code block to the backend via the 'gcode' command
+      // Match legacy frontend behavior: send as STRING (like macro.content), not array
+      // 
+      // The backend's builtinCommand.match() strips comments with: .replace(/;.*$/, '').trim()
+      // But this only applies to %msg and %wait commands. Assignment expressions like
+      // %PROBE_DISTANCE = 20 ;comment go through a different path that doesn't strip comments.
+      // 
+      // However, the backend's evaluate-assignment-expression uses esprima which cannot
+      // parse JavaScript with inline comments. Assignment lines with comments will cause
+      // parse errors because esprima sees the text after ";" as an unexpected identifier.
+      // 
+      // The solution: Strip comments from assignment lines using the same pattern as
+      // builtinCommand.match does: .replace(/;.*$/, '').trim() but only for % lines
+      // that aren't %msg or %wait (which are handled differently by the backend).
+      const processedGcode = gcodeString
+        .split(/\r?\n/)
+        .map((line: string) => {
+          const trimmed = line.trim()
+          // For assignment expression lines (starting with % but not %msg or %wait),
+          // strip comments using the same regex pattern as builtinCommand.match
+          // The backend's builtinCommand.match() strips comments with .replace(/;.*$/, '')
+          // but only for %msg/%wait. Assignment expressions need comments stripped too
+          // because evaluate-assignment-expression uses esprima which can't parse JS with comments
+          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+            // Use same comment-stripping logic as builtinCommand.match: .replace(/;.*$/, '')
+            return trimmed.replace(/;.*$/, '').trim()
+          }
+          // For all other lines (including %msg, %wait, and regular G-code), preserve as-is
+          // The backend will handle comments appropriately for these
+          return line
+        })
+        .join('\n')
+      
+      // Send as STRING (same format as macro.content) - backend will split and process
+      socket.emit('command', connectedPort, 'gcode', processedGcode)
+      
+      // Fallback timeout - if workflow doesn't complete within reasonable time, mark as complete anyway
+      // This handles cases where workflow state might not transition properly
+      timeoutId = setTimeout(() => {
+        if (!isCleanedUp && currentStatusRef === 'probing') {
+          console.warn(`G-code execution timeout - lines sent: ${linesSent}/${totalLines}, received: ${linesReceived}/${totalLines}`)
+          // If we've sent most lines and received most responses, assume it's done
+          if (linesSent >= totalLines * 0.8 && linesReceived >= totalLines * 0.8) {
+            setProbeStatus('complete')
+            currentStatusRef = 'complete'
+          } else {
+            setProbeError('G-code execution may not have completed - please verify manually')
+            setProbeStatus('error')
+            currentStatusRef = 'error'
+          }
+          cleanup()
+        }
+      }, 60000) // 60 second timeout
+      
+    } catch (error) {
+      cleanup()
+      setProbeError(`Error sending G-code: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setProbeStatus('error')
+    }
+  }, [connectedPort, socket, method, clearBitsetterReference])
+  
+  const renderCustomStep = (step: number, method: ZeroingMethod) => {
+    if (method.type !== 'custom') return null
+    
+    const customMethod = method as Extract<ZeroingMethod, { type: 'custom' }>
+    const isProbing = probeStatus === 'probing'
+    const isProbeComplete = probeStatus === 'complete'
+    const isProbeError = probeStatus === 'error'
+    
+    switch (step) {
+      case 1:
+        // Step 1: Run Custom G-code
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 1: Run Custom G-code</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Review the custom G-code below and press the button to execute it. The G-code will run sequentially until complete.
+                </p>
+              </div>
+            </div>
+            
+            {/* Display G-code */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm font-medium mb-2">Custom G-code:</div>
+              <pre className="text-xs font-mono bg-background border rounded p-3 overflow-x-auto max-h-48 overflow-y-auto">
+                {customMethod.gcode || '(No G-code configured)'}
+              </pre>
+              {!customMethod.gcode && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Please configure the custom G-code in settings before running this probe method.
+                </p>
+              )}
+            </div>
+            
+            {/* Probe Status */}
+            {(isProbing || isProbeComplete || isProbeError) && (
+              <div className={`p-3 rounded-lg border ${
+                isProbeComplete 
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : isProbeError
+                  ? 'bg-red-500/10 border-red-500/30'
+                  : 'bg-blue-500/10 border-blue-500/30'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    isProbeComplete ? 'bg-green-500' : isProbeError ? 'bg-red-500' : 'bg-blue-500 animate-pulse'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    {isProbeComplete 
+                      ? 'G-code Execution Complete'
+                      : isProbeError
+                      ? 'Error During Execution'
+                      : 'Executing G-code...'}
+                  </span>
+                </div>
+                {probeError && (
+                  <p className="text-xs text-red-900 dark:text-red-100 mt-1 ml-5">
+                    {probeError}
+                  </p>
+                )}
+                {isProbeComplete && (
+                  <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                    All G-code commands have been executed. Proceed to the next step to complete the zeroing process.
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Run Button */}
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleCustomProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort || !customMethod.gcode || isProbing || isProbeComplete}
+              >
+                <Target className="w-5 h-5" />
+                {isProbing ? 'Running...' : isProbeComplete ? 'G-code Complete' : 'Run Custom G-code'}
+              </Button>
+            </div>
+            
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure the machine is in a safe state before running the G-code. Verify the G-code will not cause collisions or unsafe movements.
+              </p>
+            </div>
+          </div>
+        )
+      case 2:
+        // Step 2: Complete (only shown after G-code is done)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 2: Complete</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  The custom G-code has been executed. Verify that the zeroing operation completed successfully before proceeding.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <Check className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+                <p className="font-medium">G-code Execution Complete</p>
+                <p>
+                  The custom G-code probe sequence has finished. If the zeroing was successful, click Complete to finish. If not, you can go back and re-run the G-code.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+  
   if (!isConnected || !connectedPort) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8">
@@ -2983,7 +3353,11 @@ function ZeroingWizardTab({
             Complete
           </Button>
         ) : (
-          <Button onClick={handleNext} className="gap-2">
+          <Button 
+            onClick={handleNext} 
+            className="gap-2"
+            disabled={method.type === 'custom' && currentStep === 1 && probeStatus !== 'complete'}
+          >
             Next
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
@@ -3071,16 +3445,16 @@ function MacrosPanel({
   
   const macros = macrosData?.records ?? []
   
-  const handleMacroClick = useCallback((content: string) => {
+  const handleMacroClick = useCallback((macroId: string) => {
     if (!isConnected || !connectedPort || !socket) {
       onFlashStatus()
       return
     }
     
-    // Send the macro G-code content to the backend
-    // The backend's 'gcode' command handler can accept multi-line strings
-    // It will automatically split by newlines and feed them to the queue
-    socket.emit('command', connectedPort, 'gcode', content)
+    // Send macro:run command to execute the macro by ID (same as legacy frontend)
+    // The backend's 'macro:run' handler will retrieve the macro content from configstore
+    // and execute it via the 'gcode' command handler
+    socket.emit('command', connectedPort, 'macro:run', macroId)
   }, [isConnected, connectedPort, socket, onFlashStatus])
   
   if (isLoading) {
@@ -3111,7 +3485,7 @@ function MacrosPanel({
             connectedPort={connectedPort}
             machineStatus={machineStatus}
             onFlashStatus={onFlashStatus}
-            onAction={() => handleMacroClick(macro.content)}
+            onAction={() => handleMacroClick(macro.id)}
             requirements={ActionRequirements.standard}
             variant="outline"
             size="sm"
@@ -5334,4 +5708,3 @@ export default function Setup() {
     </div>
   )
 }
-
