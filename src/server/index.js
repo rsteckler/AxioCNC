@@ -5,7 +5,7 @@ import path from 'path';
 import url from 'url';
 import bcrypt from 'bcrypt-nodejs';
 import chalk from 'chalk';
-import ensureArray from 'ensure-array';
+import { ensureArray, ensureString } from 'ensure-type';
 import expandTilde from 'expand-tilde';
 import express from 'express';
 import httpProxy from 'http-proxy';
@@ -16,12 +16,12 @@ import size from 'lodash/size';
 import trimEnd from 'lodash/trimEnd';
 import uniqWith from 'lodash/uniqWith';
 import webappengine from 'webappengine';
+import pkg from '../package.json';
 import settings from './config/settings';
 import app from './app';
 import cncengine from './services/cncengine';
 import monitor from './services/monitor';
 import config from './services/configstore';
-import { ensureString } from './lib/ensure-type';
 import logger, { setLevel } from './lib/logger';
 import urljoin from './lib/urljoin';
 
@@ -239,6 +239,11 @@ const createServer = (options, callback) => {
 
       const address = server.address().address;
       const port = server.address().port;
+
+      // Display version on startup
+      log.info('='.repeat(60));
+      log.info(chalk.cyan(`AxioCNC Server v${pkg.version}`));
+      log.info('='.repeat(60));
 
       callback && callback(null, {
         address,
