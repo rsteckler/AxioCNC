@@ -991,6 +991,7 @@ interface VisualizerPanelProps {
   machinePosition?: { x: number; y: number; z: number }
   workPosition?: { x: number; y: number; z: number }
   probeContact?: boolean
+  lastAlarmMessageRef?: React.MutableRefObject<string | null>
 }
 
 function VisualizerPanel({ 
@@ -1000,7 +1001,8 @@ function VisualizerPanel({
   onWizardClose,
   machinePosition = { x: 0, y: 0, z: 0 },
   workPosition = { x: 0, y: 0, z: 0 },
-  probeContact = false
+  probeContact = false,
+  lastAlarmMessageRef
 }: VisualizerPanelProps) {
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
@@ -1017,6 +1019,7 @@ function VisualizerPanel({
   const [commandInput, setCommandInput] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
   const consoleContainerRef = useRef<HTMLDivElement>(null)
+  const consoleLinesRef = useRef<ConsoleLine[]>([]) // Track console lines for alarm message lookup
   const scrollToBottom = useCallback(() => {
     if (!consoleContainerRef.current) return
     
@@ -1097,12 +1100,29 @@ function VisualizerPanel({
         // The controller's emit method forwards to all sockets in this.sockets
         // So we just receive the message string directly
         console.log('[Setup] serialport:read event received:', { port: connectedPort, message: message.substring(0, 100) })
-        const line = parseConsoleMessage(message, 'read')
-        setConsoleLines(prev => [...prev, line])
         
-        // Track alarm messages for notifications
+        // Check for alarm messages BEFORE parsing - capture the raw message
+        const trimmed = message.trim()
+        if (trimmed.startsWith('ALARM:')) {
+          console.log('[Setup] Raw alarm message detected, storing:', trimmed)
+          if (lastAlarmMessageRef) {
+            lastAlarmMessageRef.current = trimmed
+          }
+        }
+        
+        const line = parseConsoleMessage(message, 'read')
+        setConsoleLines(prev => {
+          const updated = [...prev, line]
+          consoleLinesRef.current = updated // Keep ref in sync
+          return updated
+        })
+        
+        // Track alarm messages for notifications (also after parsing in case format differs)
         if (line.type === 'alarm') {
-          lastAlarmMessageRef.current = line.message
+          console.log('[Setup] Alarm message captured from parsed line:', line.message)
+          if (lastAlarmMessageRef) {
+            lastAlarmMessageRef.current = line.message
+          }
         }
       }
 
@@ -1431,6 +1451,10 @@ function ZeroingWizardTab({
       // If requireCheck is false, skip the verification step (2 steps instead of 3)
       return method.requireCheck === false ? 2 : 3
     }
+    if (method.type === 'bitsetter') {
+      // If requireCheck is false, skip the verification step (3 steps instead of 4)
+      return method.requireCheck === false ? 3 : 4
+    }
     // Other methods will be implemented later
     return 1
   }
@@ -1502,9 +1526,61 @@ function ZeroingWizardTab({
     })
   }, [connectedPort, socket, method])
   
+  const handleBitsetterNavigate = useCallback(() => {
+    if (!connectedPort || !socket || method.type !== 'bitsetter') {
+      return
+    }
+    
+    // Navigate to bitsetter position safely
+    // Sequence: Raise Z to safe height -> Move XY -> Lower Z to bitsetter position
+    const safeHeight = method.position.z + method.retractHeight
+    const commands = [
+      'G90', // Absolute mode (ensure we're in absolute mode)
+      `G0 Z${safeHeight}`, // Raise Z to safe height above bitsetter (or stay at current if already higher)
+      `G0 X${method.position.x} Y${method.position.y}`, // Move to bitsetter XY position
+      `G0 Z${method.position.z}`, // Lower to bitsetter Z position (tool should be above sensor)
+    ]
+    
+    // Send commands sequentially with delays to allow each command to complete
+    commands.forEach((cmd, index) => {
+      setTimeout(() => {
+        socket.emit('command', connectedPort, 'gcode', cmd)
+      }, index * 300) // Longer delay for navigation commands to allow movement to complete
+    })
+  }, [connectedPort, socket, method])
+  
+  const handleBitsetterProbe = useCallback(() => {
+    if (!connectedPort || !socket || method.type !== 'bitsetter') {
+      return
+    }
+    
+    // Build probe sequence:
+    // 1. Switch to relative mode
+    // 2. Probe down (G38.2 for Grbl)
+    // 3. Switch to absolute mode
+    // 4. Set zero (bitsetter sets Z zero at probe contact)
+    // 5. Retract to safe height
+    const commands = [
+      'G91', // Relative mode
+      `G38.2 Z-${method.probeDistance} F${method.probeFeedrate}`, // Probe down
+      'G90', // Absolute mode
+      'G10 L20 P1 Z0', // Set zero at current position (bitsetter contact point)
+      'G91', // Relative mode
+      `G0 Z${method.retractHeight}`, // Retract to safe height
+      'G90', // Absolute mode
+    ]
+    
+    // Send commands sequentially
+    commands.forEach((cmd, index) => {
+      setTimeout(() => {
+        socket.emit('command', connectedPort, 'gcode', cmd)
+      }, index * 100) // Small delay between commands
+    })
+  }, [connectedPort, socket, method])
+  
   const handleComplete = () => {
-    // For touchplate, the probe already sets zero, so just close
-    if (method.type === 'touchplate') {
+    // For touchplate and bitsetter, the probe already sets zero, so just close
+    if (method.type === 'touchplate' || method.type === 'bitsetter') {
       onClose()
       return
     }
@@ -1520,6 +1596,9 @@ function ZeroingWizardTab({
     }
     if (method.type === 'touchplate') {
       return renderTouchPlateStep(currentStep, method)
+    }
+    if (method.type === 'bitsetter') {
+      return renderBitsetterStep(currentStep, method)
     }
     // Other method types will be implemented later
     return <div>Method type {method.type} not yet implemented</div>
@@ -1848,6 +1927,199 @@ function ZeroingWizardTab({
               <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-yellow-900 dark:text-yellow-100">
                 <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({touchplateMethod.probeDistance}mm) before starting.
+              </p>
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+  
+  const renderBitsetterStep = (step: number, method: ZeroingMethod) => {
+    if (method.type !== 'bitsetter') return null
+    
+    // TypeScript should narrow to BitSetterConfig here, but we'll be explicit
+    const bitsetterMethod = method as Extract<ZeroingMethod, { type: 'bitsetter' }>
+    
+    // Map step numbers based on requireCheck setting
+    // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->tool change, step 3->probe
+    const skipVerification = bitsetterMethod.requireCheck === false
+    const actualStep = skipVerification ? step + 1 : step
+    
+    switch (actualStep) {
+      case 1:
+        // Step 1: Verify BitSetter Circuit (only shown if requireCheck is true)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 1: Verify BitSetter Circuit</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Verify that the BitSetter circuit is working by manually touching the tool to the sensor. The BitSetter should trigger when contact is made.
+                </p>
+                <p>
+                  This ensures the probe circuit is functioning correctly before starting the zeroing process.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Touch the tool to the BitSetter manually. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg border ${
+                probeContact 
+                  ? 'bg-green-500/10 border-green-500/30' 
+                  : 'bg-muted/50 border-border'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    probeContact ? 'bg-green-500' : 'bg-muted'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    Probe Status: {probeContact ? 'Contact Detected' : 'No Contact'}
+                  </span>
+                </div>
+                {probeContact && (
+                  <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                    The probe circuit is working correctly. You can proceed to the next step.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      case 2:
+        // Step 2: Navigate to BitSetter (shown as step 1 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 1 : 2}: Navigate to BitSetter</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  The tool will automatically navigate to the BitSetter location configured in settings. The machine will move to the BitSetter position safely.
+                </p>
+                <p>
+                  <strong>BitSetter Location:</strong>
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2 text-sm">
+                  <li>X: {bitsetterMethod.position.x.toFixed(3)}mm</li>
+                  <li>Y: {bitsetterMethod.position.y.toFixed(3)}mm</li>
+                  <li>Z: {bitsetterMethod.position.z.toFixed(3)}mm</li>
+                </ul>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Current Position:</div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">X: </span>
+                  <span className="font-mono">{machinePosition.x.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Y: </span>
+                  <span className="font-mono">{machinePosition.y.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Z: </span>
+                  <span className="font-mono">{machinePosition.z.toFixed(3)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleBitsetterNavigate}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort}
+              >
+                <Navigation className="w-5 h-5" />
+                Navigate to BitSetter
+              </Button>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure there is a clear path to the BitSetter location and that no obstacles will interfere with the tool movement.
+              </p>
+            </div>
+          </div>
+        )
+      case 3:
+        // Step 3: Change Tool if Necessary (shown as step 2 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Change Tool if Necessary</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  If you need to change the tool before probing, do so now. Make sure the correct tool is installed in the spindle.
+                </p>
+                <p>
+                  The BitSetter will measure the tool length for the currently installed tool. If you change tools after this step, you'll need to run this zeroing method again for the new tool.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                Once the correct tool is installed, press Next to proceed to the probing step.
+              </p>
+            </div>
+          </div>
+        )
+      case 4:
+        // Step 4: Run Probe (shown as step 3 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Run Probe</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Press the probe button below to start the automatic BitSetter probe sequence. The tool will probe down until it contacts the BitSetter sensor, then set Z zero at the contact point.
+                </p>
+                <p>
+                  After probing, the tool will automatically retract to a safe height above the BitSetter.
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="text-sm font-medium">Probe Settings:</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Probe Feedrate: </span>
+                  <span className="font-mono">{bitsetterMethod.probeFeedrate}mm/min</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Distance: </span>
+                  <span className="font-mono">{bitsetterMethod.probeDistance}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Retract Height: </span>
+                  <span className="font-mono">{bitsetterMethod.retractHeight}mm</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleBitsetterProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort}
+              >
+                <Target className="w-5 h-5" />
+                Start BitSetter Probe
+              </Button>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({bitsetterMethod.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
               </p>
             </div>
           </div>
@@ -2880,7 +3152,6 @@ export default function Setup() {
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineStatus>(machineStatus)
   machineStatusRef.current = machineStatus // Keep ref in sync
-  const previousMachineStatusRef = useRef<MachineStatus>(machineStatus) // Track previous status for transitions
   const isConnectedRef = useRef(isConnected)
   isConnectedRef.current = isConnected
   const isHomedRef = useRef(isHomed)
@@ -3374,20 +3645,39 @@ export default function Setup() {
       // Note: Hold from controller:state is complementary to sender:status hold
       //       sender:status provides hold reason (M0, M6, etc.), controller:state confirms Hold state
       if (isAlarm) {
-        const previousStatus = previousMachineStatusRef.current
+        // Check current status before updating - this is the "previous" value for transition detection
+        const currentStatus = machineStatusRef.current
+        const isTransitioningToAlarm = currentStatus !== 'alarm'
+        
         setMachineStatus('alarm')
         setIsJobRunning(false)
         // Clear hold on alarm
         setHoldReason(null)
         
         // Show notification when transitioning TO alarm state (not when already in alarm)
-        if (previousStatus !== 'alarm') {
-          const alarmMessage = lastAlarmMessageRef.current || 'Machine alarm triggered'
-          showErrorNotification('Machine Alarm', alarmMessage)
+        if (isTransitioningToAlarm) {
+          // Try to get alarm message from ref (updated by VisualizerPanel when serialport:read events arrive)
+          let alarmMessage = lastAlarmMessageRef.current
+          console.log('[Setup] Alarm state detected, checking for message:', { 
+            refMessage: lastAlarmMessageRef.current
+          })
+          
+          // If still no message found, wait a short time for the alarm message to arrive via serialport:read
+          // This handles the case where controller:state arrives before serialport:read
+          if (!alarmMessage) {
+            console.log('[Setup] Alarm message not found yet, waiting 100ms...')
+            // Wait up to 100ms for alarm message to arrive
+            setTimeout(() => {
+              const delayedMessage = lastAlarmMessageRef.current || 'Machine alarm triggered'
+              console.log('[Setup] Showing delayed alarm notification:', delayedMessage)
+              showErrorNotification('Machine Alarm', delayedMessage)
+            }, 100)
+          } else {
+            // Message found immediately, show notification right away
+            console.log('[Setup] Showing immediate alarm notification:', alarmMessage)
+            showErrorNotification('Machine Alarm', alarmMessage)
+          }
         }
-        
-        // Update previous status ref
-        previousMachineStatusRef.current = 'alarm'
       } else if (isHold) {
         // Grbl reports Hold state - set machine status to hold
         // If we already have hold reason from sender:status, keep it
@@ -4324,6 +4614,7 @@ export default function Setup() {
               machinePosition={machinePosition}
               workPosition={workPosition}
               probeContact={probeContact}
+              lastAlarmMessageRef={lastAlarmMessageRef}
             />
           </div>
           {/* Tools - 25% height */}
