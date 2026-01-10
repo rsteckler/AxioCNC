@@ -59,22 +59,22 @@ export const fetch = (req, res) => {
         totalRecords: Number(totalRecords)
       },
       records: pagedRecords.map(record => {
-        const { id, mtime, name, content } = { ...record };
-        return { id, mtime, name, content };
+        const { id, mtime, name, description, content } = { ...record };
+        return { id, mtime, name, description, content };
       })
     });
   } else {
     res.send({
       records: records.map(record => {
-        const { id, mtime, name, content } = { ...record };
-        return { id, mtime, name, content };
+        const { id, mtime, name, description, content } = { ...record };
+        return { id, mtime, name, description, content };
       })
     });
   }
 };
 
 export const create = (req, res) => {
-  const { name, content } = { ...req.body };
+  const { name, description = '', content } = { ...req.body };
 
   if (!name) {
     res.status(ERR_BAD_REQUEST).send({
@@ -96,13 +96,14 @@ export const create = (req, res) => {
       id: uuid.v4(),
       mtime: new Date().getTime(),
       name: name,
+      description: description,
       content: content
     };
 
     records.push(record);
     config.set(CONFIG_KEY, records);
 
-    res.send({ err: null });
+    res.send({ id: record.id, mtime: record.mtime });
   } catch (err) {
     res.status(ERR_INTERNAL_SERVER_ERROR).send({
       msg: 'Failed to save ' + JSON.stringify(settings.rcfile)
@@ -122,8 +123,8 @@ export const read = (req, res) => {
     return;
   }
 
-  const { mtime, name, content } = { ...record };
-  res.send({ id, mtime, name, content });
+  const { mtime, name, description, content } = { ...record };
+  res.send({ id, mtime, name, description, content });
 };
 
 export const update = (req, res) => {
@@ -140,33 +141,19 @@ export const update = (req, res) => {
 
   const {
     name = record.name,
+    description = record.description,
     content = record.content
   } = { ...req.body };
-
-  /*
-    if (!name) {
-        res.status(ERR_BAD_REQUEST).send({
-            msg: 'The "name" parameter must not be empty'
-        });
-        return;
-    }
-
-    if (!content) {
-        res.status(ERR_BAD_REQUEST).send({
-            msg: 'The "content" parameter must not be empty'
-        });
-        return;
-    }
-    */
 
   try {
     record.mtime = new Date().getTime();
     record.name = String(name || '');
+    record.description = String(description || '');
     record.content = String(content || '');
 
     config.set(CONFIG_KEY, records);
 
-    res.send({ err: null });
+    res.send({ id: record.id, mtime: record.mtime });
   } catch (err) {
     res.status(ERR_INTERNAL_SERVER_ERROR).send({
       msg: 'Failed to save ' + JSON.stringify(settings.rcfile)
@@ -192,7 +179,7 @@ export const __delete = (req, res) => {
     });
     config.set(CONFIG_KEY, filteredRecords);
 
-    res.send({ err: null });
+    res.send({ id: record.id });
   } catch (err) {
     res.status(ERR_INTERNAL_SERVER_ERROR).send({
       msg: 'Failed to save ' + JSON.stringify(settings.rcfile)
