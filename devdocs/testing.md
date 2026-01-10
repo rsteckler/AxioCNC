@@ -579,8 +579,8 @@ yarn add -D faker  # For generating test data
 
 - [tap Documentation](https://node-tap.org/docs/getting-started/)
 - [Test Anything Protocol](https://testanything.org/)
-- Project: `aidocs/protected-code.md` — Protected code guidelines
-- Project: `docs/API.md` — API documentation for endpoint testing
+- Project: `devdocs/protected-code.md` — Protected code guidelines
+- Project: `devdocs/api.md` — API documentation for endpoint testing
 
 ---
 

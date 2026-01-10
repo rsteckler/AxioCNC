@@ -1,14 +1,21 @@
 # Contributing
 
 ## Index
-* [Troubleshooting](CONTRIBUTING.md#troubleshooting)
-* [Code Contributions](CONTRIBUTING.md#code-contributions)
-* [Keeping a Fork Up-to-date](CONTRIBUTING.md#keeping-a-fork-up-to-date)
-* [Running Local Development Server](CONTRIBUTING.md#running-local-development-server)
-* [Running Production Build](CONTRIBUTING.md#running-production-build)
-* [Build Desktop Apps](CONTRIBUTING.md#build-desktop-apps)
-* [Localization](CONTRIBUTING.md#localization)
-* [Translation Validation](CONTRIBUTING.md#translation-validation)
+* [Troubleshooting](#troubleshooting)
+* [Code Contributions](#code-contributions)
+* [Keeping a Fork Up-to-date](#keeping-a-fork-up-to-date)
+* [Running Local Development Server](#running-local-development-server)
+* [Running Production Build](#running-production-build)
+* [Build Desktop Apps](#build-desktop-apps)
+* [Localization](#localization)
+* [Translation Validation](#translation-validation)
+
+## Related Documentation
+
+- **[Development Setup](development.md)** - Complete guide for setting up a local development environment
+- **[Testing Guide](testing.md)** - How to write and run tests
+- **[Protected Code](protected-code.md)** - Safety-critical code guidelines
+- **[API Documentation](api.md)** - REST API reference
 
 ## Troubleshooting
 
@@ -109,55 +116,26 @@ git push origin master
 
 ## Running Local Development Server
 
-Make sure you have the latest Node.js version installed, and run `yarn dev` to start a local development server for development and testing. Every code changes will trigger webpack Hot Module Replacement (HMR) which will be really useful while developing in React.
+See [Development Setup Guide](development.md) for detailed instructions on setting up and running the development environment.
 
+Quick start:
 ```bash
-$ yarn install  # Ensure that packages are installed
-$ yarn dev  # It may take several minutes...
-  :  :  :
-Server is listening on 0.0.0.0:8000
+# Terminal 1: Backend
+yarn start-server-dev
+
+# Terminal 2: Frontend
+cd src/app && npm run dev
 ```
 
-Connect to http://localhost:8000 and wait until bundle finished.
-```bash
-webpack: wait until bundle finished: /__webpack_hmr
-  :  :  :
-webpack: bundle is now VALID
-```
-
-Now you're ready to go!
+Open `http://localhost:5173` in your browser.
 
 ## Running Production Build
 
-```bash
-$ yarn install  # Ensure that packages are installed
-$ yarn build
-$ ./bin/cncjs -vv
-  :  :  :
-Server is listening on 0.0.0.0:8000
-```
+See [Development Setup Guide](development.md#building-for-production) for build instructions.
 
 ## Build Desktop Apps
 
-#### macOS (x64)
-```bash
-$ yarn build && yarn build:macos-x64
-```
-
-#### macOS (arm64)
-```bash
-$ yarn build && yarn build:macos-arm64
-```
-
-#### Windows (x64)
-```bash
-$ yarn build && yarn build:windows-x64
-```
-
-#### Linux (x64)
-```bash
-$ yarn build && yarn build:linux-x64
-```
+See [Development Setup Guide](development.md#building-desktop-apps-electron) and [Deployment Guide](deployment.md) for detailed build and deployment instructions.
 
 ## Localization
 

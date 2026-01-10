@@ -144,12 +144,12 @@ Watch folder: `~/.axiocnc/watch/` (Linux) or `%USERPROFILE%\.axiocnc\watch\` (Wi
 
 ## Detailed Documentation
 
-See `aidocs/deployment-strategy.md` for:
+See `deployment-strategy.md` for:
 - All deployment options compared
 - Why Electron is recommended
 - Why Docker isn't ideal for end users
 
-See `aidocs/deployment-guide.md` for:
+See `deployment-guide.md` for:
 - Complete build instructions
 - Troubleshooting guide
 - Advanced configuration

@@ -123,7 +123,7 @@ sudo usermod -a -G dialout $USER
 axiocnc
 ```
 
-> **💡 Tip:** For headless Raspberry Pi installations, see our [Server Installation Guide](INSTALL_RPI_SERVER.md)
+> **💡 Tip:** For headless Raspberry Pi installations, see our [Server Installation Guide](docs/installation/rpi-server.md)
 
 ### First Run
 
@@ -216,7 +216,7 @@ Manage your tools with human-readable names:
 A: AxioCNC supports Grbl, Marlin, Smoothie, and TinyG/g2core. If your controller runs one of these firmwares, it will work.
 
 **Q: Can I use this on a Raspberry Pi?**  
-A: Yes! We provide ARM32 and ARM64 installers specifically for Raspberry Pi. See the [Raspberry Pi Installation Guide](INSTALL_RPI.md).
+A: Yes! We provide ARM32 and ARM64 installers specifically for Raspberry Pi. See the [Raspberry Pi Installation Guide](docs/installation/rpi.md).
 
 **Q: Does it work without an internet connection?**  
 A: Yes, once installed, AxioCNC runs entirely on your local network. No internet connection required for normal operation.
@@ -258,10 +258,11 @@ Build status and test coverage information will be added here as CI/CD is config
 
 We welcome contributions! Before you get started:
 
-1. **Read our [Contributing Guide](CONTRIBUTING.md)** - Learn about our workflow, code style, and protected code areas
-2. **Check [Protected Code](aidocs/protected-code.md)** - Some areas require explicit permission before modification
-3. **Review [Development Preferences](aidocs/dev_prefs.md)** - UI patterns and architectural decisions
-4. **See [Testing Guide](aidocs/testing-guide.md)** - How we test and maintain code quality
+1. **Read our [Contributing Guide](devdocs/contributing.md)** - Learn about our workflow, code style, and protected code areas
+2. **See [Development Setup](devdocs/development.md)** - How to set up a local development environment
+3. **Check [Protected Code](devdocs/protected-code.md)** - Some areas require explicit permission before modification
+4. **Review [Development Preferences](devdocs/dev_prefs.md)** - UI patterns and architectural decisions
+5. **See [Testing Guide](devdocs/testing.md)** - How we test and maintain code quality
 
 **Quick Development Setup:**
 
@@ -281,7 +282,7 @@ yarn start-server-dev
 cd src/app && npm run dev
 ```
 
-For more details, see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Developer Documentation](aidocs/overview.md).
+For more details, see [Development Guide](devdocs/development.md), [Contributing Guide](devdocs/contributing.md), and the [Developer Documentation](../aidocs/overview.md).
 
 ---
 
