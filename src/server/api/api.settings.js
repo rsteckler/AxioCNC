@@ -48,7 +48,16 @@ export const set = (req, res) => {
   const current = config.get(CONFIG_KEY, {});
 
   // Deep merge the incoming data with current settings
-  const merged = _.merge({}, current, data);
+  // Use mergeWith to replace arrays instead of merging them by index
+  // This is critical for array-based settings like zeroingMethods.methods
+  const merged = _.mergeWith({}, current, data, (objValue, srcValue) => {
+    // If source value is an array, replace the object value entirely
+    if (_.isArray(srcValue)) {
+      return srcValue;
+    }
+    // Otherwise, use default merge behavior (undefined = use default merge)
+    return undefined;
+  });
 
   // Validate the final merged result against full schema
   const result = SystemSettingsSchema.safeParse(merged);

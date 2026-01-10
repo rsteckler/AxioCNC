@@ -57,6 +57,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // MOCKUP DATA
@@ -2061,11 +2071,11 @@ function ZeroingWizardTab({
           </div>
         )
       case 3:
-        // Check if WCS is at zero for the axes that were zeroed
+        // Check if WCS is at zero for the axes that were zeroed (2 decimal accuracy = 0.01mm tolerance)
         const isAtZero = 
-          (!axes.includes('x') || Math.abs(workPosition.x) < 0.001) &&
-          (!axes.includes('y') || Math.abs(workPosition.y) < 0.001) &&
-          (!axes.includes('z') || Math.abs(workPosition.z) < 0.001)
+          (!axes.includes('x') || Math.abs(workPosition.x) < 0.01) &&
+          (!axes.includes('y') || Math.abs(workPosition.y) < 0.01) &&
+          (!axes.includes('z') || Math.abs(workPosition.z) < 0.01)
         
         return (
           <div className="space-y-4">
@@ -2928,6 +2938,13 @@ function ZeroingWizardTab({
       .filter((line: string) => line.length > 0 && !line.startsWith(';')) // Remove empty lines and comments
     
     const totalLines = gcodeLines.length
+    
+    // If no actual G-code lines, mark as error (can't execute empty G-code)
+    if (totalLines === 0) {
+      setProbeError('No G-code found. Please configure the custom G-code in settings.')
+      setProbeStatus('error')
+      return
+    }
     let linesSent = 0
     let linesReceived = 0
     let lastWorkflowState: string | null = null
@@ -2974,6 +2991,15 @@ function ZeroingWizardTab({
       
       if (line.type === 'ok') {
         linesReceived++
+        
+        // Check if all lines have been acknowledged - if so, mark as complete immediately
+        // This handles cases where workflow state might not transition (e.g., single-line commands)
+        if (linesReceived >= totalLines && currentStatusRef === 'probing' && !isCleanedUp) {
+          setProbeStatus('complete')
+          currentStatusRef = 'complete'
+          cleanup()
+          return
+        }
       } else if (line.type === 'error' || line.type === 'alarm') {
         // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
         // Backend emits it just before the error, but messages might arrive out of order
@@ -3139,20 +3165,21 @@ function ZeroingWizardTab({
               </div>
             </div>
             
-            {/* Display G-code */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="text-sm font-medium mb-2">Custom G-code:</div>
-              <pre className="text-xs font-mono bg-background border rounded p-3 overflow-x-auto max-h-48 overflow-y-auto">
-                {customMethod.gcode || '(No G-code configured)'}
-              </pre>
-              {!customMethod.gcode && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Please configure the custom G-code in settings before running this probe method.
-                </p>
-              )}
+            {/* Run Button */}
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleCustomProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort || !customMethod.gcode || isProbing || isProbeComplete}
+              >
+                <Target className="w-5 h-5" />
+                {isProbing ? 'Running...' : isProbeComplete ? 'G-code Complete' : 'Run Custom G-code'}
+              </Button>
             </div>
             
-            {/* Probe Status */}
+            {/* Probe Status - Executing G-code box */}
             {(isProbing || isProbeComplete || isProbeError) && (
               <div className={`p-3 rounded-lg border ${
                 isProbeComplete 
@@ -3186,25 +3213,25 @@ function ZeroingWizardTab({
               </div>
             )}
             
-            {/* Run Button */}
-            <div className="flex items-center justify-center py-4">
-              <Button
-                onClick={handleCustomProbe}
-                variant="default"
-                size="lg"
-                className="gap-2"
-                disabled={!isConnected || !connectedPort || !customMethod.gcode || isProbing || isProbeComplete}
-              >
-                <Target className="w-5 h-5" />
-                {isProbing ? 'Running...' : isProbeComplete ? 'G-code Complete' : 'Run Custom G-code'}
-              </Button>
-            </div>
-            
+            {/* Warning */}
             <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-yellow-900 dark:text-yellow-100">
                 <strong>Warning:</strong> Make sure the machine is in a safe state before running the G-code. Verify the G-code will not cause collisions or unsafe movements.
               </p>
+            </div>
+            
+            {/* Display G-code */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm font-medium mb-2">Custom G-code:</div>
+              <pre className="text-xs font-mono bg-background border rounded p-3 overflow-x-auto max-h-48 overflow-y-auto">
+                {customMethod.gcode || '(No G-code configured)'}
+              </pre>
+              {!customMethod.gcode && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Please configure the custom G-code in settings before running this probe method.
+                </p>
+              )}
             </div>
           </div>
         )
@@ -3225,7 +3252,7 @@ function ZeroingWizardTab({
               <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
                 <p className="font-medium">G-code Execution Complete</p>
                 <p>
-                  The custom G-code probe sequence has finished. If the zeroing was successful, click Complete to finish. If not, you can go back and re-run the G-code.
+                  The custom G-code probe sequence has finished. If the zeroing was successful, click Complete to finish.
                 </p>
               </div>
             </div>
@@ -3442,20 +3469,31 @@ function MacrosPanel({
 }: PanelProps) {
   const { data: macrosData, isLoading } = useGetMacrosQuery()
   const socket = socketService.getSocket()
+  const [confirmMacro, setConfirmMacro] = useState<{ id: string; name: string } | null>(null)
   
   const macros = macrosData?.records ?? []
   
-  const handleMacroClick = useCallback((macroId: string) => {
+  const handleMacroClick = useCallback((macroId: string, macroName: string) => {
     if (!isConnected || !connectedPort || !socket) {
       onFlashStatus()
+      return
+    }
+    
+    // Show confirmation dialog
+    setConfirmMacro({ id: macroId, name: macroName })
+  }, [isConnected, connectedPort, socket, onFlashStatus])
+  
+  const handleConfirmRun = useCallback(() => {
+    if (!confirmMacro || !isConnected || !connectedPort || !socket) {
       return
     }
     
     // Send macro:run command to execute the macro by ID (same as legacy frontend)
     // The backend's 'macro:run' handler will retrieve the macro content from configstore
     // and execute it via the 'gcode' command handler
-    socket.emit('command', connectedPort, 'macro:run', macroId)
-  }, [isConnected, connectedPort, socket, onFlashStatus])
+    socket.emit('command', connectedPort, 'macro:run', confirmMacro.id)
+    setConfirmMacro(null)
+  }, [confirmMacro, isConnected, connectedPort, socket])
   
   if (isLoading) {
     return (
@@ -3476,30 +3514,47 @@ function MacrosPanel({
   }
   
   return (
-    <div className="p-3">
-      <div className="flex flex-col gap-2 w-full">
-        {macros.map((macro) => (
-          <MachineActionButton
-            key={macro.id}
-            isConnected={isConnected}
-            connectedPort={connectedPort}
-            machineStatus={machineStatus}
-            onFlashStatus={onFlashStatus}
-            onAction={() => handleMacroClick(macro.id)}
-            requirements={ActionRequirements.standard}
-            variant="outline"
-            size="sm"
-            className="w-full h-auto min-h-[3.5rem] flex flex-col gap-1 p-2 items-center justify-center"
-            title={macro.description || macro.name}
-          >
-            <span className="text-xs font-medium line-clamp-1 w-full text-center break-words overflow-hidden">{macro.name}</span>
-            {macro.description && (
-              <span className="text-[10px] text-muted-foreground w-full text-center break-words whitespace-normal">{macro.description}</span>
-            )}
-          </MachineActionButton>
-        ))}
+    <>
+      <div className="p-3">
+        <div className="flex flex-col gap-2 w-full">
+          {macros.map((macro) => (
+            <MachineActionButton
+              key={macro.id}
+              isConnected={isConnected}
+              connectedPort={connectedPort}
+              machineStatus={machineStatus}
+              onFlashStatus={onFlashStatus}
+              onAction={() => handleMacroClick(macro.id, macro.name)}
+              requirements={ActionRequirements.standard}
+              variant="outline"
+              size="sm"
+              className="w-full h-auto min-h-[3.5rem] flex flex-col gap-1 p-2 items-center justify-center"
+              title={macro.description || macro.name}
+            >
+              <span className="text-xs font-medium line-clamp-1 w-full text-center break-words overflow-hidden">{macro.name}</span>
+              {macro.description && (
+                <span className="text-[10px] text-muted-foreground w-full text-center break-words whitespace-normal">{macro.description}</span>
+              )}
+            </MachineActionButton>
+          ))}
+        </div>
       </div>
-    </div>
+      
+      <AlertDialog open={confirmMacro !== null} onOpenChange={(open) => !open && setConfirmMacro(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Run Macro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to run the macro <strong>{confirmMacro?.name}</strong>? Make sure the machine is in a safe state before proceeding.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRun}>Run</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
