@@ -198,16 +198,9 @@ test('api.commands', (t) => {
         // Has 'command' instead of 'commands' - should be converted
         command: 'G90'
       },
-      {
-        // Not a plain object - should be converted to {}
-        id: 'cmd-4',
-        mtime: 4000,
-        title: 'Command 4',
-        commands: 'G91'
-      }
+      // Not a plain object - should be converted to {}
+      ['not', 'an', 'object']
     ];
-    // Make last record non-plain object by setting it to array
-    records[3] = ['not', 'an', 'object'];
 
     mockConfigStore._data.commands = records;
 
@@ -233,14 +226,18 @@ test('api.commands', (t) => {
     subt.equal(res.body.records[2].commands, 'G90', 'third record should convert command to commands');
     subt.ok(!res.body.records[2].command, 'third record should not have command field');
 
-    // Fourth record should be sanitized to plain object
+    // Fourth record should be sanitized to plain object (converted from array to {})
     subt.ok(typeof res.body.records[3] === 'object' && !Array.isArray(res.body.records[3]), 'fourth record should be plain object');
     subt.ok(res.body.records[3].id, 'fourth record should have ID after sanitization');
+    // Non-plain objects lose their original properties, so it becomes {} with just id and defaults
+    subt.equal(res.body.records[3].enabled, true, 'fourth record should default enabled to true');
+    subt.equal(res.body.records[3].commands, '', 'fourth record should default commands to empty string');
 
     // Check that configStore was updated with sanitized records
     const storedRecords = mockConfigStore._data.commands;
     subt.ok(storedRecords[0].id, 'stored records should have IDs');
     subt.equal(storedRecords[2].commands, 'G90', 'stored records should have commands not command');
+    subt.ok(typeof storedRecords[3] === 'object' && !Array.isArray(storedRecords[3]), 'stored record should be sanitized to object');
 
     subt.end();
   });
