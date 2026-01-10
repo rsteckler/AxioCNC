@@ -95,6 +95,9 @@ class GrblController {
 
     settings = {};
 
+    // Track if machine has been homed (persists across state changes)
+    homed = false;
+
     queryTimer = null;
 
     actionMask = {
@@ -424,6 +427,21 @@ class GrblController {
 
           // Initialize controller
           this.initController();
+        }
+
+        // Track homed status: when activeState transitions from "Home" to "Idle", machine is homed
+        const previousActiveState = this.state?.status?.activeState || '';
+        const currentActiveState = res.activeState || '';
+
+        // If we were in "Home" state and now we're "Idle", homing completed
+        if (previousActiveState === 'Home' && currentActiveState === 'Idle') {
+          this.homed = true;
+          log.debug('Homing completed - machine is now homed');
+        }
+
+        // Reset homed status on alarm (machine needs to be re-homed after alarm)
+        if (currentActiveState === 'Alarm') {
+          this.homed = false;
         }
 
         this.actionMask.queryStatusReport = false;
@@ -910,6 +928,7 @@ class GrblController {
         rtscts: this.options.rtscts,
         sockets: Object.keys(this.sockets),
         ready: this.ready,
+        homed: this.homed, // Track if machine has been homed
         controller: {
           type: this.type,
           settings: this.settings,
@@ -1359,6 +1378,16 @@ class GrblController {
 
               return line.trim().length > 0;
             });
+
+          // If feeder is in hold state and workflow is IDLE (job finished), reset it
+          // This handles the case where a new macro is run after a previous job completed
+          // but the feeder still has stale hold state from the previous run.
+          // We only clear when workflow is IDLE to avoid clearing legitimate holds during active jobs.
+          // When workflow is RUNNING, a hold might be legitimate (e.g., M0 detected in feeder).
+          // When workflow is PAUSED, we should preserve the hold state for resume.
+          if (this.feeder.state.hold && this.workflow.state === WORKFLOW_STATE_IDLE) {
+            this.feeder.reset();
+          }
 
           this.feeder.feed(data, context);
 
