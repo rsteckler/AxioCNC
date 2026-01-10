@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
@@ -6,6 +6,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
 import { useGetSettingsQuery, useGetMacrosQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as MachineStatusType } from '@/services/api'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import {
   DndContext,
   closestCenter,
@@ -31,7 +32,7 @@ import {
   Crosshair, RotateCcw, RotateCw, Maximize2, GripVertical,
   Zap, Terminal, Wrench, Target, FileCode, Library,
   Circle, Move, Pencil, Navigation, Bell, AlertCircle, X,
-  ArrowDown, HelpCircle
+  ArrowDown, HelpCircle, Check, ChevronRight as ChevronRightIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -53,6 +54,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 
@@ -981,17 +983,34 @@ function parseConsoleMessage(
   }
 }
 
-function VisualizerPanel({ 
-  isConnected, 
-  connectedPort 
-}: { 
+interface VisualizerPanelProps {
   isConnected: boolean
   connectedPort: string | null
-}) {
+  wizardMethod?: ZeroingMethod | null
+  onWizardClose?: () => void
+  machinePosition?: { x: number; y: number; z: number }
+  workPosition?: { x: number; y: number; z: number }
+}
+
+function VisualizerPanel({ 
+  isConnected, 
+  connectedPort,
+  wizardMethod,
+  onWizardClose,
+  machinePosition = { x: 0, y: 0, z: 0 },
+  workPosition = { x: 0, y: 0, z: 0 }
+}: VisualizerPanelProps) {
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
   
-  const [tab, setTab] = useState<'3d' | 'console'>('3d')
+  const [tab, setTab] = useState<'3d' | 'console' | 'wizard'>('3d')
+  
+  // Switch to wizard tab when wizard method is set
+  useEffect(() => {
+    if (wizardMethod) {
+      setTab('wizard')
+    }
+  }, [wizardMethod])
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([])
   const [commandInput, setCommandInput] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
@@ -1219,9 +1238,34 @@ function VisualizerPanel({
           <Terminal className="w-4 h-4 inline mr-1.5" />
           Console
         </button>
+        {wizardMethod && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <button
+              onClick={() => setTab('wizard')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === 'wizard' 
+                  ? 'border-primary text-foreground' 
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Target className="w-4 h-4 inline mr-1.5" />
+              {wizardMethod.name}
+            </button>
+          </>
+        )}
       </div>
       
-      {tab === '3d' ? (
+      {tab === 'wizard' && wizardMethod ? (
+        <ZeroingWizardTab
+          method={wizardMethod}
+          onClose={onWizardClose || (() => {})}
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machinePosition={machinePosition}
+          workPosition={workPosition}
+        />
+      ) : tab === '3d' ? (
         <div className="flex-1 relative">
           <VisualizerScene />
           
@@ -1316,31 +1360,488 @@ function VisualizerPanel({
   )
 }
 
-const MOCK_PROBE_STRATEGIES = [
-  { id: 1, name: 'Probe Z', desc: 'Touch plate on top of workpiece' },
-  { id: 2, name: 'Probe Z (Surface)', desc: 'Direct surface contact' },
-  { id: 3, name: 'Probe XYZ Corner', desc: 'Find corner origin' },
-  { id: 4, name: 'Probe X', desc: 'Find X edge' },
-  { id: 5, name: 'Probe Y', desc: 'Find Y edge' },
-  { id: 6, name: 'Center Finder', desc: 'Find center of hole/boss' },
-]
+// Helper function to get description for zeroing method based on type
+function getMethodDescription(method: ZeroingMethod): string {
+  switch (method.type) {
+    case 'bitsetter':
+      return 'Automatic tool length sensor for Z-axis zeroing'
+    case 'bitzero':
+      return `Corner/edge/center probe for ${method.axes.toUpperCase()} zeroing`
+    case 'touchplate':
+      return 'Touch plate for Z-axis zeroing'
+    case 'manual':
+      return `Manually jog to position and set ${method.axes.toUpperCase()} zero`
+    case 'custom':
+      return 'Custom G-code sequence for zeroing'
+    default:
+      return 'Zeroing method'
+  }
+}
 
-function ProbePanel(_props: PanelProps) {
+// Helper function to get axes label
+function getAxesLabel(axes: string): string {
+  return axes.toUpperCase()
+}
+
+// ============================================================================
+// Zeroing Wizard Component (Tab Version)
+// ============================================================================
+
+interface ZeroingWizardTabProps {
+  method: ZeroingMethod
+  onClose: () => void
+  isConnected: boolean
+  connectedPort: string | null
+  machinePosition: { x: number; y: number; z: number }
+  workPosition: { x: number; y: number; z: number }
+}
+
+function ZeroingWizardTab({ 
+  method, 
+  onClose,
+  isConnected, 
+  connectedPort,
+  machinePosition,
+  workPosition
+}: ZeroingWizardTabProps) {
+  const [currentStep, setCurrentStep] = useState(1)
+  const socket = socketService.getSocket()
+  
+  // Reset to step 1 when method changes
+  useEffect(() => {
+    setCurrentStep(1)
+  }, [method.id])
+  
+  // Get total steps based on method type
+  const getTotalSteps = () => {
+    if (method.type === 'manual') {
+      return 3
+    }
+    // Other methods will be implemented later
+    return 1
+  }
+  
+  const totalSteps = getTotalSteps()
+  const isLastStep = currentStep === totalSteps
+  const isFirstStep = currentStep === 1
+  
+  const handleNext = () => {
+    if (!isLastStep) {
+      setCurrentStep(prev => prev + 1)
+    } else {
+      // On last step, complete the wizard
+      handleComplete()
+    }
+  }
+  
+  const handleBack = () => {
+    if (!isFirstStep) {
+      setCurrentStep(prev => prev - 1)
+    }
+  }
+  
+  const handleSetZero = useCallback((axes: 'x' | 'y' | 'z' | 'xy' | 'xyz') => {
+    if (!connectedPort || !socket) {
+      return
+    }
+    
+    // Build G10 command to set zero
+    // G10 L20 P1 sets work coordinate system (P1 = G54, P2 = G55, etc.)
+    // G10 L20 P1 X0 Y0 Z0 sets current position as origin
+    const parts: string[] = []
+    if (axes.includes('x')) parts.push('X0')
+    if (axes.includes('y')) parts.push('Y0')
+    if (axes.includes('z')) parts.push('Z0')
+    
+    if (parts.length > 0) {
+      const command = `G10 L20 P1 ${parts.join(' ')}`
+      socket.emit('command', connectedPort, 'gcode', command)
+    }
+  }, [connectedPort, socket])
+  
+  const handleComplete = () => {
+    // Set zero for the axes specified by the method
+    handleSetZero(method.axes)
+    onClose()
+  }
+  
+  // Render step content based on method type and current step
+  const renderStepContent = () => {
+    if (method.type === 'manual') {
+      return renderManualStep(currentStep, method.axes)
+    }
+    // Other method types will be implemented later
+    return <div>Method type {method.type} not yet implemented</div>
+  }
+  
+  const renderManualStep = (step: number, axes: string) => {
+    switch (step) {
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 1: Position XY</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Use the jog controls to move the tool to the XY location that matches the zero point in your CAM software.
+                </p>
+                {axes.includes('x') && axes.includes('y') && (
+                  <>
+                    <p>
+                      When the endmill is directly above the desired point, press the zero buttons in the Position panel:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <span>Zero button</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 border border-border rounded bg-muted/50">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </span>
+                        <span>next to X</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span>Zero button</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 border border-border rounded bg-muted/50">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </span>
+                        <span>next to Y</span>
+                      </li>
+                    </ul>
+                    <p>
+                      This sets the current position as the zero point for this job. After you have set zero for X and Y, press Next to continue.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Current Machine Position:</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">X: </span>
+                  <span className="font-mono">{machinePosition.x.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Y: </span>
+                  <span className="font-mono">{machinePosition.y.toFixed(3)}</span>
+                </div>
+              </div>
+            </div>
+            {axes.includes('x') && axes.includes('y') && (
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Tip: You can use the Z controls to lower the bit near the surface for better accuracy when positioning XY. We'll set the Z zero in the next step.
+                </p>
+              </div>
+            )}
+          </div>
+        )
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 2: Position Z (Paper Test)</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Lower the Z-axis until the tool just touches the surface. A piece of paper should barely slide in and out with friction.
+                </p>
+                {axes.includes('z') && (
+                  <>
+                    <p>
+                      When the tool is positioned correctly, press the zero button in the Position panel:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <span>Zero button</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 border border-border rounded bg-muted/50">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </span>
+                        <span>next to Z</span>
+                      </li>
+                    </ul>
+                    <p>
+                      After you have set zero for Z, press Next to continue.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Current Machine Position:</div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Z: </span>
+                <span className="font-mono">{machinePosition.z.toFixed(3)}</span>
+              </div>
+            </div>
+            {axes.includes('z') && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
+                    <p className="font-medium">Paper Test Instructions:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                      <li>Place a piece of paper (about 0.1mm thick) on the surface</li>
+                      <li>Slowly lower the Z-axis using small jog steps</li>
+                      <li>Stop when the paper can barely slide in and out with friction</li>
+                      <li>The tool should just touch the paper, not press into it</li>
+                    </ol>
+                  </div>
+                </div>
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                    <strong>Tip:</strong> Use very small jog distances (0.01mm) for fine adjustment when approaching the surface.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      case 3:
+        // Check if WCS is at zero for the axes that were zeroed
+        const isAtZero = 
+          (!axes.includes('x') || Math.abs(workPosition.x) < 0.001) &&
+          (!axes.includes('y') || Math.abs(workPosition.y) < 0.001) &&
+          (!axes.includes('z') || Math.abs(workPosition.z) < 0.001)
+        
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 3: Confirm Zero</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Zero has been set for {getAxesLabel(axes)}. Pressing XY0 in the jog controls will return to this XY position, and pressing Z0 will move Z down to this depth.
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="text-sm font-medium">Work Coordinate System Position:</div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                {axes.includes('x') && (
+                  <div>
+                    <span className="text-muted-foreground">X: </span>
+                    <span className="font-mono">{workPosition.x.toFixed(3)}</span>
+                  </div>
+                )}
+                {axes.includes('y') && (
+                  <div>
+                    <span className="text-muted-foreground">Y: </span>
+                    <span className="font-mono">{workPosition.y.toFixed(3)}</span>
+                  </div>
+                )}
+                {axes.includes('z') && (
+                  <div>
+                    <span className="text-muted-foreground">Z: </span>
+                    <span className="font-mono">{workPosition.z.toFixed(3)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {isAtZero ? (
+              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <div className="text-sm text-green-900 dark:text-green-100">
+                  <p className="font-medium">Zero confirmed: The work coordinate system is set to the current position.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div className="text-sm text-red-900 dark:text-red-100">
+                  <p className="font-medium">Warning: The current position is not at the zero position. The work coordinate system shows non-zero values.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+  
+  if (!isConnected || !connectedPort) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <div className="text-center space-y-2">
+          <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
+          <h3 className="text-lg font-semibold">Not Connected</h3>
+          <p className="text-sm text-muted-foreground">
+            Please connect to a machine before running this zeroing method.
+          </p>
+          <Button variant="outline" onClick={onClose} className="mt-4">
+            Close
+          </Button>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex-1 flex flex-col min-h-0 p-6">
+      {/* Header */}
+      <div className="mb-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">{method.name}</h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Step {currentStep} of {totalSteps} - {getAxesLabel(method.axes)} Zeroing
+        </p>
+      </div>
+      
+      {/* Progress indicator - full width with justified steps */}
+      <div className="relative w-full py-4 mb-4">
+        {/* Full-width connecting line behind circles */}
+        <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 bg-muted" />
+        
+        {/* Steps container with justify-between - first on left, last on right, middle centered */}
+        <div className="relative flex items-center justify-between w-full">
+          {Array.from({ length: totalSteps }).map((_, index) => {
+            const stepNum = index + 1
+            const isActive = stepNum === currentStep
+            const isComplete = stepNum < currentStep
+            
+            return (
+              <div
+                key={stepNum}
+                className="relative z-10"
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    isComplete
+                      ? 'bg-green-500 text-white'
+                      : isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground border-2 border-background'
+                  }`}
+                >
+                  {isComplete ? <Check className="w-4 h-4" /> : stepNum}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        
+        {/* Progress line that extends as steps are completed */}
+        {currentStep > 1 && (
+          <div 
+            className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-green-500 transition-all duration-300 z-0"
+            style={{
+              left: '16px', // Half of circle width (w-8 = 32px, so 16px is center)
+              width: totalSteps === 3
+                ? currentStep === 2 
+                  ? 'calc(50% - 32px)' // To middle of second circle
+                  : 'calc(100% - 32px)' // To middle of third circle
+                : currentStep === totalSteps
+                ? 'calc(100% - 32px)'
+                : `calc(${((currentStep - 1) / (totalSteps - 1)) * 100}% - 32px)`
+            }}
+          />
+        )}
+      </div>
+      
+      {/* Step content */}
+      <div className="flex-1 overflow-y-auto min-h-0 mb-4">
+        {renderStepContent()}
+      </div>
+      
+      {/* Navigation buttons */}
+      <div className="flex items-center gap-2 pt-4 border-t border-border">
+        {!isFirstStep && (
+          <Button
+            variant="outline"
+            onClick={handleBack}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+        )}
+        <div className="flex-1" />
+        {isLastStep ? (
+          <Button onClick={handleComplete} className="gap-2">
+            <Check className="w-4 h-4" />
+            Complete
+          </Button>
+        ) : (
+          <Button onClick={handleNext} className="gap-2">
+            Next
+            <ChevronRightIcon className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface ProbePanelProps extends PanelProps {
+  onStartWizard?: (method: ZeroingMethod) => void
+}
+
+function ProbePanel({ isConnected, connectedPort, machineStatus, onFlashStatus, workPosition = { x: 0, y: 0, z: 0 }, onStartWizard }: ProbePanelProps) {
+  const { data: settings, isLoading } = useGetSettingsQuery()
+  
+  // Get enabled zeroing methods from settings
+  const methods: ZeroingMethod[] = settings?.zeroingMethods?.methods?.filter(m => m.enabled) ?? []
+  
+  const handleRun = useCallback((method: ZeroingMethod) => {
+    if (onStartWizard) {
+      onStartWizard(method)
+    }
+  }, [onStartWizard])
+  
+  if (isLoading) {
+    return (
+      <div className="p-3 space-y-2">
+        <div className="text-sm text-muted-foreground text-center py-4">Loading zeroing methods...</div>
+      </div>
+    )
+  }
+  
+  if (methods.length === 0) {
+    return (
+      <div className="p-3 space-y-2">
+        <div className="text-sm text-muted-foreground text-center py-4">
+          No zeroing methods configured. Add methods in Settings.
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div className="p-3 space-y-2">
-      {MOCK_PROBE_STRATEGIES.map((strategy) => (
+      {methods.map((method) => (
         <div 
-          key={strategy.id}
+          key={method.id}
           className="flex items-center gap-3 p-2 rounded border border-border hover:bg-muted/50 transition-colors"
         >
           <Target className="w-4 h-4 text-primary flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">{strategy.name}</div>
-            <div className="text-xs text-muted-foreground truncate">{strategy.desc}</div>
+            <div className="text-sm font-medium">{method.name}</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {getMethodDescription(method)} • {getAxesLabel(method.axes)}
+            </div>
           </div>
-          <Button size="sm" variant="secondary" className="h-7 text-xs flex-shrink-0">
+          <MachineActionButton
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machineStatus={machineStatus}
+            onFlashStatus={onFlashStatus}
+            onAction={() => handleRun(method)}
+            requirements={ActionRequirements.jog}
+            variant="secondary"
+            size="sm"
+            className="h-7 text-xs flex-shrink-0"
+          >
             Run
-          </Button>
+          </MachineActionButton>
         </div>
       ))}
     </div>
@@ -2030,12 +2531,14 @@ function SortablePanel({
   id, 
   isCollapsed, 
   onToggle,
-  panelProps
+  panelProps,
+  onStartWizard
 }: { 
   id: string
   isCollapsed: boolean
   onToggle: () => void
   panelProps: PanelProps
+  onStartWizard?: (method: ZeroingMethod) => void
 }) {
   const {
     attributes,
@@ -2087,7 +2590,13 @@ function SortablePanel({
           </div>
         </div>
         {/* Panel content */}
-        {!isCollapsed && <PanelContent {...panelProps} />}
+        {!isCollapsed && (
+          id === 'probe' && onStartWizard ? (
+            <ProbePanel {...panelProps} onStartWizard={onStartWizard} />
+          ) : (
+            <PanelContent {...panelProps} />
+          )
+        )}
       </div>
     </div>
   )
@@ -2160,6 +2669,9 @@ export default function Setup() {
   
   // Hold state
   const [holdReason, setHoldReason] = useState<{ data?: string; msg?: string } | null>(null)
+  
+  // Wizard state
+  const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
   
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineStatus>(machineStatus)
@@ -3364,7 +3876,7 @@ export default function Setup() {
                     : 'Unknown'}
                 </span>
                 {/* Help icon in top right */}
-                <HelpCircle className="absolute top-0.5 right-0.5 w-3 h-3 text-muted-foreground/60 hover:text-muted-foreground cursor-help" />
+                <HelpCircle className="absolute top-0.5 right-0.5 w-3 h-3 text-white cursor-help" />
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">
@@ -3551,6 +4063,7 @@ export default function Setup() {
                       spindleState,
                       spindleSpeed
                     }}
+                    onStartWizard={(method) => setWizardMethod(method)}
                   />
                 ))}
               </div>
@@ -3579,7 +4092,14 @@ export default function Setup() {
         <div className="w-2/3 flex flex-col gap-2 min-h-0">
           {/* Visualizer - 75% height */}
           <div className="flex-[3] min-h-0 bg-card rounded-lg border border-border overflow-hidden shadow-sm">
-            <VisualizerPanel isConnected={isConnected} connectedPort={connectedPort} />
+            <VisualizerPanel 
+              isConnected={isConnected} 
+              connectedPort={connectedPort}
+              wizardMethod={wizardMethod}
+              onWizardClose={() => setWizardMethod(null)}
+              machinePosition={machinePosition}
+              workPosition={workPosition}
+            />
           </div>
           {/* Tools - 25% height */}
           <div className="flex-1 min-h-0 bg-card rounded-lg border border-border overflow-hidden shadow-sm">
