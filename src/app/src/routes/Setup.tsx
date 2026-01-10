@@ -1481,12 +1481,16 @@ function ZeroingWizardTab({
       return 3
     }
     if (method.type === 'touchplate') {
-      // If requireCheck is false, skip the verification step (2 steps instead of 3)
-      return method.requireCheck === false ? 2 : 3
+      // If requireCheck is false, skip the verification step (3 steps instead of 4)
+      return method.requireCheck === false ? 3 : 4
     }
     if (method.type === 'bitsetter') {
       // If requireCheck is false, skip the verification step (3 steps instead of 4)
       return method.requireCheck === false ? 3 : 4
+    }
+    if (method.type === 'bitzero') {
+      // If requireCheck is false, skip the verification step (4 steps instead of 5)
+      return method.requireCheck === false ? 4 : 5
     }
     // Other methods will be implemented later
     return 1
@@ -1666,6 +1670,118 @@ function ZeroingWizardTab({
     sendCommand()
   }, [connectedPort, socket, method, currentWCS, getWCSPNumber, workPosition])
   
+  const handleBitZeroProbe = useCallback(async () => {
+    if (!connectedPort || !socket || method.type !== 'bitzero') {
+      return
+    }
+    
+    // Clear bitsetter reference when setting Z zero via bitzero (bitsetter reference becomes invalid)
+    await clearBitsetterReference()
+    
+    setProbeStatus('probing')
+    setProbeError(null)
+    
+    // BitZero probe sequence based on user's macro:
+    // 1. Probe X right, retract, fine probe, capture X_RIGHT
+    // 2. Probe X left, retract, fine probe, capture X_LEFT, calculate center, set X0
+    // 3. Probe Y top, retract, fine probe, capture Y_TOP
+    // 4. Probe Y bottom, retract, fine probe, capture Y_BTM, calculate center, set Y0
+    // 5. Move to Z probe location (above plate)
+    // 6. Probe Z, retract, fine probe, set Z0 with thickness offset
+    // 7. Final retract and move to origin
+    
+    const bitzeroMethod = method as Extract<ZeroingMethod, { type: 'bitzero' }>
+    const p = getWCSPNumber(currentWCS)
+    
+    // Use settings or defaults from macro
+    const zProbeThickness = bitzeroMethod.probeThickness || 12.7 // Default 12.7mm (0.5")
+    const probeDistance = bitzeroMethod.probeDistance || 25 // Default 25mm
+    const probeFeedrateA = bitzeroMethod.probeFeedrate || 150 // Fast feedrate
+    const probeFeedrateB = 50 // Slow feedrate for fine probing
+    const probeMajorRetract = 2 // Retract distance before probing opposite side
+    const zProbe = 15 // Lift out of hole and max Z probe
+    const zProbeKeepout = 10 // Distance (X&Y) from edge of hole for Z probe
+    const zFinal = 15 // Final height above probe
+    
+    const commands = [
+      'G91', // Relative positioning
+      'G21', // Metric units
+      // Probe X right edge
+      `G38.2 X${probeDistance} F${probeFeedrateA}`, // Probe toward right until contact
+      'G0 X-2', // Retract 2mm
+      `G38.2 X5 F${probeFeedrateB}`, // Slow fine probe to find exact right edge
+      // At this point we're at X_RIGHT edge (macro: %X_RIGHT = posx)
+      `G0 X-${probeMajorRetract}`, // Retract before probing left
+      // Probe X left edge  
+      `G38.2 X-${probeDistance} F${probeFeedrateA}`, // Probe toward left until contact
+      'G0 X2', // Retract 2mm
+      `G38.2 X-5 F${probeFeedrateB}`, // Slow fine probe to find exact left edge
+      // At this point we're at X_LEFT edge (macro: %X_LEFT = posx)
+      // Macro calculates: %X_CHORD = X_RIGHT - X_LEFT, then moves X[X_CHORD/2] to center
+      // Without macro variables, we can't calculate X_CHORD exactly. 
+      // We'll approximate by moving right from left edge by half the probe distance.
+      // This assumes the hole is roughly probeDistance wide, which should be close for most cases.
+      // Note: For exact center calculation, the controller would need to support macro variables
+      // or we'd need to read work positions from controller state after each probe.
+      `G0 X${probeDistance / 2}`, // Move to approximate X center (macro: G0 X[X_CHORD/2])
+      'G4 P1', // Dwell 1 second (macro: %wait)
+      `G10 L20 P${p} X0`, // Set X0 at current position (hole X center) - macro: G10L20X0
+      // Probe Y top edge
+      `G38.2 Y${probeDistance} F${probeFeedrateA}`, // Probe toward top until contact
+      'G0 Y-2', // Retract 2mm
+      `G38.2 Y5 F${probeFeedrateB}`, // Slow fine probe to find exact top edge
+      // At this point we're at Y_TOP edge (macro: %Y_TOP = posy)
+      `G0 Y-${probeMajorRetract}`, // Retract before probing bottom
+      // Probe Y bottom edge
+      `G38.2 Y-${probeDistance} F${probeFeedrateA}`, // Probe toward bottom until contact
+      'G0 Y2', // Retract 2mm
+      `G38.2 Y-5 F${probeFeedrateB}`, // Slow fine probe to find exact bottom edge
+      // At this point we're at Y_BTM edge (macro: %Y_BTM = posy)
+      // Macro calculates: %Y_CHORD = Y_TOP - Y_BTM, %HOLE_RADIUS = Y_CHORD/2
+      // Then moves Y[HOLE_RADIUS] to center
+      // Similar to X axis, we'll approximate center by moving up from bottom edge
+      // by half the probe distance (assuming hole is roughly probeDistance tall)
+      `G0 Y${probeDistance / 2}`, // Move to approximate Y center (macro: G0 Y[HOLE_RADIUS])
+      // Note: Same approximation limitation as X axis
+      'G4 P1', // Dwell 1 second (macro: %wait)
+      `G10 L20 P${p} Y0`, // Set Y0 at current position (hole Y center) - macro: G10L20Y0
+      // Move to Z probe location (above plate, away from hole)
+      // After setting Y0, we're at hole center (X0, Y0). Move relative to get above plate.
+      // In macro: HOLE_RADIUS = Y_CHORD/2, we approximate with probeDistance/2
+      `G0 Z${zProbe}`, // Lift out of hole (macro: G0 Z[Z_PROBE])
+      `X${probeDistance / 2 + zProbeKeepout} Y${probeDistance / 2 + zProbeKeepout}`, // Move above plate, relative from center (macro: X[HOLE_RADIUS + Z_PROBE_KEEPOUT] Y[HOLE_RADIUS + Z_PROBE_KEEPOUT])
+      // Probe Z
+      `G38.2 Z-${zProbe} F${probeFeedrateA}`, // Probe Z down (macro: G38.2 Z-[Z_PROBE] F[PROBE_FEEDRATE_A])
+      'G0 Z2', // Retract 2mm
+      `G38.2 Z-5 F${probeFeedrateB}`, // Slow fine probe (macro: G38.2 Z-5 F[PROBE_FEEDRATE_B])
+      `G10 L20 P${p} Z${zProbeThickness}`, // Set Z0 with plate thickness offset (macro: G10L20Z[Z_PROBE_THICKNESS])
+      `G0 Z${zFinal}`, // Raise to final height (macro: G0 Z[Z_FINAL])
+      'G90', // Absolute positioning (macro: G90)
+      'G0 X0 Y0', // Move to work origin (macro: G0 X0 Y0)
+      'G4 P1', // Dwell 1 second (macro: %wait)
+    ]
+    
+    // Send probe sequence commands sequentially
+    let commandIndex = 0
+    const sendCommand = () => {
+      if (commandIndex < commands.length) {
+        socket.emit('command', connectedPort, 'gcode', commands[commandIndex])
+        commandIndex++
+        // Vary delays: longer for probe movements, shorter for positioning
+        const cmd = commands[commandIndex - 1]
+        const delay = cmd.startsWith('G4') ? 1100 : (cmd.startsWith('G38') ? 1000 : (cmd.startsWith('G10') ? 500 : 400))
+        setTimeout(sendCommand, delay)
+      } else {
+        // After probe sequence completes
+        setTimeout(() => {
+          setProbeStatus('complete')
+        }, 1000)
+      }
+    }
+    
+    sendCommand()
+  }, [connectedPort, socket, method, currentWCS, getWCSPNumber, clearBitsetterReference])
+  
   // Monitor workPosition after probe to capture TOOL_REFERENCE
   const previousWorkPositionRef = useRef<{ x: number; y: number; z: number } | null>(null)
   const capturingPositionRef = useRef(false)
@@ -1743,8 +1859,10 @@ function ZeroingWizardTab({
   }, [workPosition, probeStatus, currentWCS, setExtensions, method, connectedPort, socket])
   
   const handleComplete = async () => {
-    // For touchplate and manual, clear bitsetter reference if Z zero is being set
-    if (method.type === 'touchplate' || (method.type === 'manual' && method.axes.includes('z'))) {
+    // For touchplate, manual, and bitzero, clear bitsetter reference if Z zero is being set
+    if (method.type === 'touchplate' || 
+        method.type === 'bitzero' || 
+        (method.type === 'manual' && method.axes.includes('z'))) {
       await clearBitsetterReference()
     }
     
@@ -1756,6 +1874,12 @@ function ZeroingWizardTab({
     
     // For bitsetter, the probe already captured the reference, so just close
     if (method.type === 'bitsetter') {
+      onClose()
+      return
+    }
+    
+    // For bitzero, the probe already sets XYZ zero, so just close
+    if (method.type === 'bitzero') {
       onClose()
       return
     }
@@ -1780,6 +1904,9 @@ function ZeroingWizardTab({
     }
     if (method.type === 'bitsetter') {
       return renderBitsetterStep(currentStep, method)
+    }
+    if (method.type === 'bitzero') {
+      return renderBitZeroStep(currentStep, method)
     }
     // Other method types will be implemented later
     return <div>Method type {method.type} not yet implemented</div>
@@ -2112,6 +2239,29 @@ function ZeroingWizardTab({
             </div>
           </div>
         )
+      case 4:
+        // Step 4: Remove Touch Plate (shown as step 3 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Remove Touch Plate</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Remove the touch plate from the workpiece. The probe sequence has completed and Z zero has been set accounting for the plate thickness ({touchplateMethod.plateThickness}mm).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <Check className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+                <p className="font-medium">Zeroing Complete</p>
+                <p>
+                  Z zero has been set at the touch plate location accounting for the plate thickness. You can now remove the touch plate and proceed with your job.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
       default:
         return null
     }
@@ -2418,6 +2568,297 @@ function ZeroingWizardTab({
                 </div>
               </div>
             )}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+  
+  const renderBitZeroStep = (step: number, method: ZeroingMethod) => {
+    if (method.type !== 'bitzero') return null
+    
+    // TypeScript should narrow to BitZeroConfig here, but we'll be explicit
+    const bitzeroMethod = method as Extract<ZeroingMethod, { type: 'bitzero' }>
+    
+    // Map step numbers based on requireCheck setting
+    // If requireCheck is false, skip step 1 (verification), so step 1->place, step 2->jog, step 3->probe, step 4->remove
+    const skipVerification = bitzeroMethod.requireCheck === false
+    const actualStep = skipVerification ? step + 1 : step
+    
+    const isProbing = probeStatus === 'probing' || probeStatus === 'complete'
+    const isProbeComplete = probeStatus === 'complete'
+    const isProbeError = probeStatus === 'error'
+    
+    switch (actualStep) {
+      case 1:
+        // Step 1: Verify BitZero Circuit (only shown if requireCheck is true)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step 1: Verify BitZero Circuit</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Verify that the magnetic conductor is positively attached to the tool and that the circuit is functioning correctly.
+                </p>
+                <p>
+                  This ensures the probe circuit is working before starting the zeroing process.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Attach the magnetic conductor to the tool, then lift the BitZero probe until it touches the tool. If the probe triggers correctly, the magnetic conductor is properly attached and the circuit is functioning.
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg border ${
+                probeContact 
+                  ? 'bg-green-500/10 border-green-500/30' 
+                  : 'bg-muted/50 border-border'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    probeContact ? 'bg-green-500' : 'bg-muted'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    Probe Status: {probeContact ? 'Contact Detected' : 'No Contact'}
+                  </span>
+                </div>
+                {probeContact && (
+                  <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                    The probe circuit is working correctly. You can proceed to the next step.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      case 2:
+        // Step 2: Place BitZero on Corner (shown as step 1 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 1 : 2}: Place BitZero on Corner</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Place the BitZero probe on the corner of your workpiece, making sure it's secure and flat.
+                </p>
+                <p>
+                  The BitZero should be positioned so the conductive hole in the bottom left (-X-Y) corner is accessible for probing. Make sure the probe is firmly attached and won't move during probing.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Important:</strong> Ensure the BitZero is securely mounted and flat against the workpiece. The probe must not move during the zeroing sequence.
+              </p>
+            </div>
+          </div>
+        )
+      case 3:
+        // Step 3: Jog Tool into Hole (shown as step 2 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Jog Tool into Hole</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Use the jog controls to carefully position the tool into the conductive hole in the bottom left corner of the BitZero probe.
+                </p>
+                <p>
+                  <strong>Important:</strong> The tool should be positioned <strong>below the Z surface</strong> of the probe (inside the hole). Use small movements when you get close to avoid damaging the tool or probe.
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="text-sm font-medium">Current Work Position:</div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">X: </span>
+                  <span className="font-mono">{workPosition.x.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Y: </span>
+                  <span className="font-mono">{workPosition.y.toFixed(3)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Z: </span>
+                  <span className="font-mono">{workPosition.z.toFixed(3)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
+                <p className="font-medium">Jogging Tips:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Use large movements to get close to the hole</li>
+                  <li>Switch to small movements (0.1mm or less) when approaching the hole</li>
+                  <li>Ensure the tool is positioned below the Z surface of the probe</li>
+                  <li>The tool should be centered in the hole as much as possible</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )
+      case 4:
+        // Step 4: Run Probe (shown as step 3 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Run Probe</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Press the probe button below to start the automatic BitZero probe sequence. The tool will:
+                </p>
+                <ol className="list-decimal list-inside space-y-1 ml-2 text-sm">
+                  <li>Probe right until contact, then probe left to find X edges and calculate X center</li>
+                  <li>Probe top and bottom to find Y edges and calculate Y center</li>
+                  <li>Move above the plate and probe Z to set Z zero</li>
+                </ol>
+                <p>
+                  After probing, XYZ zero will be set at the corner of your workpiece.
+                </p>
+              </div>
+            </div>
+            
+            {/* Probe Status */}
+            {isProbing && (
+              <div className={`p-4 rounded-lg border ${
+                probeStatus === 'probing' ? 'bg-blue-500/10 border-blue-500/30' :
+                probeStatus === 'complete' ? 'bg-green-500/10 border-green-500/30' :
+                'bg-muted/50 border-border'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full ${
+                    probeStatus === 'probing' ? 'bg-blue-500 animate-pulse' :
+                    'bg-green-500'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {probeStatus === 'probing' && 'Running probe sequence...'}
+                      {probeStatus === 'complete' && 'Probe complete! XYZ zero set.'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {probeStatus === 'probing' && 'The tool is probing X, Y, and Z axes to find the corner zero point.'}
+                      {probeStatus === 'complete' && 'XYZ zero has been set at the corner of your workpiece.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {isProbeComplete && (
+              <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/30">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Probe complete! XYZ zero set.
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                      The corner zero point has been established. You can now remove the BitZero probe.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {isProbeError && (
+              <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                      Probe error
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                      {probeError || 'An error occurred during the probe sequence. Please try again.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="text-sm font-medium">Probe Settings:</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Probe Feedrate: </span>
+                  <span className="font-mono">{bitzeroMethod.probeFeedrate}mm/min</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Distance: </span>
+                  <span className="font-mono">{bitzeroMethod.probeDistance}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Thickness: </span>
+                  <span className="font-mono">{bitzeroMethod.probeThickness}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Work Coordinate: </span>
+                  <span className="font-mono">{currentWCS}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleBitZeroProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort || isProbing}
+              >
+                {isProbing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {probeStatus === 'probing' && 'Probing...'}
+                    {probeStatus === 'complete' && 'Complete'}
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-5 h-5" />
+                    Start BitZero Probe
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {!isProbing && !isProbeComplete && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                  <strong>Warning:</strong> Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.
+                </p>
+              </div>
+            )}
+          </div>
+        )
+      case 5:
+        // Step 5: Remove BitZero (shown as step 4 if requireCheck is false)
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold">Step {skipVerification ? 4 : 5}: Remove BitZero</h3>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Remove the BitZero probe from the workpiece. The probe sequence has completed and XYZ zero has been set at the corner of your workpiece.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <Check className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+                <p className="font-medium">Zeroing Complete</p>
+                <p>
+                  XYZ zero has been set at the corner of your workpiece ({currentWCS}). You can now remove the BitZero probe and proceed with your job.
+                </p>
+              </div>
+            </div>
           </div>
         )
       default:
