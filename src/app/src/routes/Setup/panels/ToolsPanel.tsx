@@ -1,21 +1,39 @@
-import React from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Library, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
+import { useGetToolsQuery, useGetControllersQuery, type Tool } from '@/services/api'
+import { socketService } from '@/services/socket'
 
-const MOCK_TOOLS = [
-  { num: 1, name: '1/4" Flat Endmill', diameter: 6.35, type: 'endmill', inUse: true, desc: 'Roughing, pockets, profiles' },
-  { num: 2, name: '1/8" Ballnose', diameter: 3.175, type: 'ballnose', inUse: true, desc: '3D finishing, contours' },
-  { num: 3, name: '60° V-Bit', diameter: 6.35, type: 'vbit', inUse: false, desc: 'Engraving, chamfers, lettering' },
-  { num: 4, name: '1/16" Engraver', diameter: 1.5875, type: 'engraver', inUse: false, desc: 'Fine detail, PCB traces' },
-  { num: 5, name: '1/2" Surfacing', diameter: 12.7, type: 'endmill', inUse: false, desc: 'Spoilboard, large flattening' },
-  { num: 6, name: '1/4" Compression', diameter: 6.35, type: 'endmill', inUse: false, desc: 'Plywood, laminates, clean edges' },
-  { num: 7, name: '90° V-Bit', diameter: 12.7, type: 'vbit', inUse: false, desc: 'Chamfers, signs, inlays' },
-  { num: 8, name: '1/8" Flat Endmill', diameter: 3.175, type: 'endmill', inUse: false, desc: 'Detail work, small pockets' },
-  { num: 9, name: '1/4" Bullnose', diameter: 6.35, type: 'ballnose', inUse: false, desc: 'Rounded edges, soft 3D' },
-  { num: 10, name: '1/8" Drill', diameter: 3.175, type: 'drill', inUse: false, desc: 'Hole drilling, dowel pins' },
-]
+// Helper function to parse T commands from G-code
+// Looks for patterns like: T1, T2, M6 T1, T1 M6, etc.
+function parseToolsFromGcode(gcode: string): Set<number> {
+  const toolIds = new Set<number>()
+  if (!gcode) return toolIds
+  
+  // Match T commands followed by numbers
+  // Pattern: T followed by optional whitespace and a number
+  // Examples: T1, T2, T 1, M6 T1, T1 M6, etc.
+  const toolPattern = /\bT\s*(\d+)\b/gi
+  let match
+  
+  while ((match = toolPattern.exec(gcode)) !== null) {
+    const toolId = parseInt(match[1], 10)
+    if (!isNaN(toolId) && toolId >= 0) {
+      toolIds.add(toolId)
+    }
+  }
+  
+  return toolIds
+}
+
+// Helper function to convert mm to inches for display
+const mmToInches = (mm: number | null | undefined): string => {
+  if (mm == null) return ''
+  const inches = mm / 25.4
+  return inches.toFixed(4).replace(/\.?0+$/, '')
+}
 
 interface PanelHeaderProps {
   title: string
@@ -47,6 +65,116 @@ function PanelHeader({
 }
 
 export function ToolsPanel() {
+  // Fetch tools from API
+  const { data: toolsData } = useGetToolsQuery()
+  const tools: Tool[] = toolsData?.records ?? []
+  
+  // Get connected port from controllers
+  const { data: controllers } = useGetControllersQuery()
+  const connectedPort = controllers?.[0]?.port || null
+  
+  // Track loaded G-code content and filename
+  const [gcodeContent, setGcodeContent] = useState<string | null>(null)
+  const [gcodeLoaded, setGcodeLoaded] = useState(false)
+  const [loadedFileName, setLoadedFileName] = useState<string | null>(null)
+  
+  // Parse tools from G-code
+  const toolsInUse = useMemo(() => {
+    if (!gcodeLoaded || !gcodeContent) {
+      return new Set<number>() // No G-code loaded, no tools in use
+    }
+    return parseToolsFromGcode(gcodeContent)
+  }, [gcodeContent, gcodeLoaded])
+  
+  // Listen for sender:status events to detect loaded G-code
+  useEffect(() => {
+    if (!connectedPort) {
+      setGcodeContent(null)
+      setGcodeLoaded(false)
+      return
+    }
+    
+    const fetchGcodeContent = async () => {
+      if (!connectedPort) return
+      
+      try {
+        const token = localStorage.getItem('axiocnc-token')
+        const response = await fetch(`/api/gcode?port=${encodeURIComponent(connectedPort)}`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.data && data.name) {
+            // G-code is loaded
+            setGcodeContent(data.data)
+            setGcodeLoaded(true)
+            setLoadedFileName(data.name)
+          } else {
+            // No G-code loaded
+            setGcodeContent(null)
+            setGcodeLoaded(false)
+            setLoadedFileName(null)
+          }
+        } else if (response.status === 404 || response.status === 400) {
+          // No G-code loaded for this port
+          setGcodeContent(null)
+          setGcodeLoaded(false)
+          setLoadedFileName(null)
+        }
+      } catch (error) {
+        console.error('Failed to fetch G-code:', error)
+        setGcodeContent(null)
+        setGcodeLoaded(false)
+        setLoadedFileName(null)
+      }
+    }
+    
+    const handleSenderStatus = (...args: unknown[]) => {
+      const senderData = args[0] as {
+        name?: string
+        total?: number
+        size?: number
+      }
+      
+      if (senderData?.name) {
+        // G-code file is loaded (has a name) - fetch content
+        fetchGcodeContent()
+      } else {
+        // No G-code loaded (no name)
+        setGcodeContent(null)
+        setGcodeLoaded(false)
+        setLoadedFileName(null)
+      }
+    }
+    
+    const handleGcodeLoad = (...args: unknown[]) => {
+      // G-code was loaded - fetch content
+      fetchGcodeContent()
+    }
+    
+    const handleGcodeUnload = () => {
+      setGcodeContent(null)
+      setGcodeLoaded(false)
+      setLoadedFileName(null)
+    }
+    
+    // Initial fetch if we have a connected port
+    fetchGcodeContent()
+    
+    socketService.on('sender:status', handleSenderStatus)
+    socketService.on('gcode:load', handleGcodeLoad)
+    socketService.on('gcode:unload', handleGcodeUnload)
+    
+    return () => {
+      socketService.off('sender:status', handleSenderStatus)
+      socketService.off('gcode:load', handleGcodeLoad)
+      socketService.off('gcode:unload', handleGcodeUnload)
+    }
+  }, [connectedPort])
+  
   // Convert vertical wheel to horizontal scroll
   const handleWheel = (e: React.WheelEvent) => {
     if (e.deltaY !== 0) {
@@ -56,6 +184,17 @@ export function ToolsPanel() {
       }
     }
   }
+  
+  // Sort tools by toolId
+  const sortedTools = [...tools].sort((a, b) => a.toolId - b.toolId)
+  
+  // Split tools into "In Use" and "Available"
+  const inUseTools = sortedTools.filter(tool => toolsInUse.has(tool.toolId))
+  const availableTools = sortedTools.filter(tool => !toolsInUse.has(tool.toolId))
+  
+  // If no G-code is loaded, all tools are available
+  const displayInUseTools = gcodeLoaded ? inUseTools : []
+  const displayAvailableTools = gcodeLoaded ? availableTools : sortedTools
 
   return (
     <div className="h-full flex flex-col" onWheel={handleWheel}>
@@ -69,54 +208,86 @@ export function ToolsPanel() {
       >
         <div className="flex gap-2 h-full items-stretch">
           {/* In Use Section */}
-          <div className="flex-shrink-0 flex flex-col h-full">
-            <div className="text-[10px] text-primary font-medium mb-1 px-1">In Use</div>
-            <div className="flex-1 flex gap-2 border-l-2 border-primary pl-2">
-              {MOCK_TOOLS.filter(t => t.inUse).map((tool) => (
-                <div 
-                  key={tool.num}
-                  className="flex-shrink-0 w-44 p-2 rounded border border-primary bg-primary/10 flex flex-col"
-                >
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default" className="w-8 justify-center text-xs">
-                      T{tool.num}
-                    </Badge>
+          {gcodeLoaded && displayInUseTools.length > 0 && (
+            <div className="flex-shrink-0 flex flex-col h-full">
+              <div className="text-[10px] text-primary font-medium mb-1 px-1">In Use</div>
+              <div className="flex-1 flex gap-2 border-l-2 border-primary pl-2">
+                {displayInUseTools.map((tool) => (
+                  <div 
+                    key={tool.id}
+                    className="flex-shrink-0 w-44 p-2 rounded border border-primary bg-primary/10 flex flex-col"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="w-8 justify-center text-xs">
+                        T{tool.toolId}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium mt-1 truncate">{tool.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {tool.diameter != null ? (
+                        <>
+                          Ø{tool.diameter.toFixed(3)}mm
+                          {mmToInches(tool.diameter) && (
+                            <> • {mmToInches(tool.diameter)}in</>
+                          )}
+                        </>
+                      ) : null}
+                      {tool.type && (
+                        <> • {tool.type}</>
+                      )}
+                    </div>
+                    {tool.description && (
+                      <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+                        {tool.description}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm font-medium mt-1 truncate">{tool.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Ø{tool.diameter}mm • {tool.type}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-                    {tool.desc}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Available Section */}
           <div className="flex-shrink-0 flex flex-col h-full">
             <div className="text-[10px] text-muted-foreground font-medium mb-1 px-1">Available</div>
             <div className="flex-1 flex gap-2 border-l-2 border-muted pl-2">
-              {MOCK_TOOLS.filter(t => !t.inUse).map((tool) => (
-                <div 
-                  key={tool.num}
-                  className="flex-shrink-0 w-44 p-2 rounded border border-border bg-card flex flex-col"
-                >
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="w-8 justify-center text-xs">
-                      T{tool.num}
-                    </Badge>
-                  </div>
-                  <div className="text-sm font-medium mt-1 truncate">{tool.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Ø{tool.diameter}mm • {tool.type}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-                    {tool.desc}
-                  </div>
+              {displayAvailableTools.length === 0 ? (
+                <div className="flex-shrink-0 w-44 p-2 rounded border border-border bg-card text-center text-xs text-muted-foreground">
+                  No tools configured
                 </div>
-              ))}
+              ) : (
+                displayAvailableTools.map((tool) => (
+                  <div 
+                    key={tool.id}
+                    className="flex-shrink-0 w-44 p-2 rounded border border-border bg-card flex flex-col"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="w-8 justify-center text-xs">
+                        T{tool.toolId}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium mt-1 truncate">{tool.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {tool.diameter != null ? (
+                        <>
+                          Ø{tool.diameter.toFixed(3)}mm
+                          {mmToInches(tool.diameter) && (
+                            <> • {mmToInches(tool.diameter)}in</>
+                          )}
+                        </>
+                      ) : null}
+                      {tool.type && (
+                        <> • {tool.type}</>
+                      )}
+                    </div>
+                    {tool.description && (
+                      <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+                        {tool.description}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

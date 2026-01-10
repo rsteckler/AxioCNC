@@ -28,5 +28,7 @@ export { MacrosSection } from './MacrosSection'
 export type { Macro } from './MacrosSection'
 export { EventsSection } from './EventsSection'
 export type { EventHandler, EventType, TriggerType } from './EventsSection'
+export { ToolLibrarySection } from './ToolLibrarySection'
+export type { Tool } from './ToolLibrarySection'
 export { AboutSection } from './AboutSection'
 

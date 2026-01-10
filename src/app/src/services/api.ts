@@ -166,6 +166,25 @@ export interface WatchFoldersResponse {
   }
 }
 
+export interface Tool {
+  id: string
+  toolId: number  // Tool number (T0, T1, T2...Tn) - matches CAM software IDs
+  name: string
+  description?: string
+  diameter?: number | null  // Diameter in mm (null if not specified)
+  type?: string  // Tool type (ballnose, straight, vbit, engraver, drill, chamfer, etc.)
+  mtime?: number
+}
+
+export interface ToolsResponse {
+  records: Tool[]
+  pagination?: {
+    page: number
+    pageLength: number
+    totalRecords: number
+  }
+}
+
 export interface BrowseDirectoryResponse {
   path: string
   directories: { name: string; path: string }[]
@@ -232,7 +251,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -540,6 +559,44 @@ export const api = createApi({
     }),
 
     // ==========================================================================
+    // Tools CRUD (Tool Library)
+    // ==========================================================================
+
+    getTools: builder.query<ToolsResponse, void>({
+      query: () => '/tools',
+      providesTags: (result) =>
+        result
+          ? [...result.records.map(({ id }) => ({ type: 'Tools' as const, id })), { type: 'Tools', id: 'LIST' }]
+          : [{ type: 'Tools', id: 'LIST' }],
+    }),
+
+    createTool: builder.mutation<{ id: string; mtime: number }, Omit<Tool, 'id' | 'mtime'>>({
+      query: (tool) => ({
+        url: '/tools',
+        method: 'POST',
+        body: tool,
+      }),
+      invalidatesTags: [{ type: 'Tools', id: 'LIST' }],
+    }),
+
+    updateTool: builder.mutation<{ id: string; mtime: number }, { id: string; updates: Partial<Tool> }>({
+      query: ({ id, updates }) => ({
+        url: `/tools/${id}`,
+        method: 'PUT',
+        body: updates,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Tools', id }, { type: 'Tools', id: 'LIST' }],
+    }),
+
+    deleteTool: builder.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/tools/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Tools', id: 'LIST' }],
+    }),
+
+    // ==========================================================================
     // Watch Folders CRUD
     // ==========================================================================
 
@@ -625,6 +682,11 @@ export const {
   useCreateMacroMutation,
   useUpdateMacroMutation,
   useDeleteMacroMutation,
+  // Tools
+  useGetToolsQuery,
+  useCreateToolMutation,
+  useUpdateToolMutation,
+  useDeleteToolMutation,
   // Watch Folders
   useGetWatchFoldersQuery,
   useCreateWatchFolderMutation,

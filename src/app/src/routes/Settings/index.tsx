@@ -13,6 +13,10 @@ import {
   useCreateMacroMutation,
   useUpdateMacroMutation,
   useDeleteMacroMutation,
+  useGetToolsQuery,
+  useCreateToolMutation,
+  useUpdateToolMutation,
+  useDeleteToolMutation,
   useGetWatchFoldersQuery,
   useCreateWatchFolderMutation,
   useDeleteWatchFolderMutation,
@@ -34,6 +38,7 @@ import {
   JoystickSection,
   MacrosSection,
   EventsSection,
+  ToolLibrarySection,
   AboutSection,
   type MachineConfig,
   type ConnectionConfig,
@@ -42,6 +47,7 @@ import {
   type ZeroingStrategiesConfig,
   type Macro,
   type EventHandler,
+  type Tool,
   type Theme,
   type AccentColor,
   type JoystickConfig,
@@ -224,6 +230,12 @@ export default function Settings() {
   const [updateMacro] = useUpdateMacroMutation()
   const [deleteMacro] = useDeleteMacroMutation()
   
+  // Tools API (Tool Library)
+  const { data: toolsData, isLoading: isLoadingTools } = useGetToolsQuery()
+  const [createTool] = useCreateToolMutation()
+  const [updateTool] = useUpdateToolMutation()
+  const [deleteTool] = useDeleteToolMutation()
+  
   // Watch Folders API
   const { data: watchFoldersData, isLoading: isLoadingWatchFolders } = useGetWatchFoldersQuery()
   const [createWatchFolder] = useCreateWatchFolderMutation()
@@ -233,13 +245,14 @@ export default function Settings() {
   const { data: currentVersionData } = useGetCurrentVersionQuery()
   const { data: latestVersionData } = useGetVersionQuery()
   
-  // Derive events/macros/watchFolders from API data
+  // Derive events/macros/tools/watchFolders from API data
   // Cast event/trigger strings to the expected union types
   const events: EventHandler[] = (eventsData?.records ?? []) as EventHandler[]
   const macros: Macro[] = macrosData?.records ?? []
+  const tools: Tool[] = toolsData?.records ?? []
   const watchFolders: WatchFolder[] = (watchFoldersData?.records ?? []) as WatchFolder[]
   
-  const isLoading = isLoadingSettings || isLoadingEvents || isLoadingMacros || isLoadingWatchFolders
+  const isLoading = isLoadingSettings || isLoadingEvents || isLoadingMacros || isLoadingTools || isLoadingWatchFolders
 
   // Local state for form values
   const [language, setLanguage] = useState('en')
@@ -775,6 +788,31 @@ export default function Settings() {
     }
   }, [deleteMacro])
 
+  // Tools handlers (API-backed)
+  const handleAddTool = useCallback(async (tool: Omit<Tool, 'id' | 'mtime'>) => {
+    try {
+      await createTool(tool).unwrap()
+    } catch (error) {
+      console.error('Failed to create tool:', error)
+    }
+  }, [createTool])
+
+  const handleEditTool = useCallback(async (tool: Tool) => {
+    try {
+      await updateTool({ id: tool.id, updates: { toolId: tool.toolId, name: tool.name, description: tool.description, diameter: tool.diameter, type: tool.type } }).unwrap()
+    } catch (error) {
+      console.error('Failed to update tool:', error)
+    }
+  }, [updateTool])
+
+  const handleDeleteTool = useCallback(async (id: string) => {
+    try {
+      await deleteTool(id).unwrap()
+    } catch (error) {
+      console.error('Failed to delete tool:', error)
+    }
+  }, [deleteTool])
+
   // Joystick handlers
   const handleJoystickConfigChange = useCallback((changes: Partial<JoystickConfig>) => {
     setJoystickConfig(prev => ({ ...prev, ...changes }))
@@ -912,6 +950,13 @@ export default function Settings() {
               detectedGamepads={detectedGamepads}
               onConfigChange={handleJoystickConfigChange}
               onRefreshGamepads={handleRefreshGamepads}
+            />
+
+            <ToolLibrarySection
+              tools={tools}
+              onAdd={handleAddTool}
+              onEdit={handleEditTool}
+              onDelete={handleDeleteTool}
             />
 
             <MacrosSection

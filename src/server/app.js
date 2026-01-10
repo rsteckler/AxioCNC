@@ -312,6 +312,13 @@ const appMain = () => {
     app.put(urljoin(settings.route, 'api/macros/:id'), api.macros.update);
     app.delete(urljoin(settings.route, 'api/macros/:id'), api.macros.__delete);
 
+    // Tools (Tool Library)
+    app.get(urljoin(settings.route, 'api/tools'), api.tools.fetch);
+    app.post(urljoin(settings.route, 'api/tools'), api.tools.create);
+    app.get(urljoin(settings.route, 'api/tools/:id'), api.tools.read);
+    app.put(urljoin(settings.route, 'api/tools/:id'), api.tools.update);
+    app.delete(urljoin(settings.route, 'api/tools/:id'), api.tools.__delete);
+
     // MDI
     app.get(urljoin(settings.route, 'api/mdi'), api.mdi.fetch);
     app.post(urljoin(settings.route, 'api/mdi'), api.mdi.create);

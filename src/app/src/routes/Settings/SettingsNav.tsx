@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route } from 'lucide-react'
+import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route, Wrench } from 'lucide-react'
 
 export interface SettingsSection {
   id: string
@@ -16,6 +16,7 @@ export const settingsSections: SettingsSection[] = [
   { id: 'zeroing-strategies', label: 'Zeroing Strategies', icon: <Route className="w-4 h-4" /> },
   { id: 'camera', label: 'Camera', icon: <Camera className="w-4 h-4" /> },
   { id: 'joystick', label: 'Joystick', icon: <Gamepad2 className="w-4 h-4" /> },
+  { id: 'tool-library', label: 'Tool Library', icon: <Wrench className="w-4 h-4" /> },
   { id: 'macros', label: 'Macros', icon: <Code className="w-4 h-4" /> },
   { id: 'events', label: 'Events', icon: <Zap className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },

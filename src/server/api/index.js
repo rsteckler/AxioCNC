@@ -13,6 +13,7 @@ import * as macros from './api.macros';
 import * as mdi from './api.mdi';
 import * as users from './api.users';
 import * as tool from './api.tool';
+import * as tools from './api.tools';
 import * as themes from './api.themes';
 
 export {
@@ -31,5 +32,6 @@ export {
   mdi,
   users,
   tool,
+  tools,
   themes,
 };
