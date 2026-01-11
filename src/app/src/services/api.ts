@@ -257,6 +257,41 @@ export interface WorkfileContentResponse extends Workfile {
   gcode: string
 }
 
+// =============================================================================
+// Gamepad Types (server-side joystick support)
+// =============================================================================
+
+export interface ServerGamepad {
+  id: string
+  name: string
+  vendorId?: number
+  productId?: number
+  axes: number
+  buttons: number
+}
+
+export interface GamepadsResponse {
+  gamepads: ServerGamepad[]
+}
+
+export interface GamepadSelectedResponse {
+  gamepadId: string | null
+}
+
+export interface GamepadStateResponse {
+  gamepadId: string
+  connected: boolean
+  axes: number[]
+  buttons: boolean[]
+  timestamp: number
+}
+
+export interface GamepadPlatformResponse {
+  supported: boolean
+  platform: string
+  message: string
+}
+
 // RTK Query API definition
 export const api = createApi({
   reducerPath: 'api',
@@ -271,7 +306,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -683,6 +718,53 @@ export const api = createApi({
       query: (filename) => `/workfiles/${encodeURIComponent(filename)}`,
       providesTags: (_result, _error, filename) => [{ type: 'Workfiles', id: filename }],
     }),
+
+    // ==========================================================================
+    // Gamepads (server-side joystick support)
+    // ==========================================================================
+
+    // Get platform support info for server-side gamepads
+    getGamepadPlatform: builder.query<GamepadPlatformResponse, void>({
+      query: () => '/gamepads/platform',
+    }),
+
+    // List connected gamepads on the server
+    getGamepads: builder.query<GamepadsResponse, void>({
+      query: () => '/gamepads',
+      providesTags: ['Gamepads'],
+    }),
+
+    // Refresh the list of connected gamepads
+    refreshGamepads: builder.mutation<GamepadsResponse, void>({
+      query: () => ({
+        url: '/gamepads/refresh',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Gamepads'],
+    }),
+
+    // Get the currently selected gamepad
+    getSelectedGamepad: builder.query<GamepadSelectedResponse, void>({
+      query: () => '/gamepads/selected',
+      providesTags: [{ type: 'Gamepads', id: 'SELECTED' }],
+    }),
+
+    // Set the selected gamepad
+    setSelectedGamepad: builder.mutation<GamepadSelectedResponse, { gamepadId: string | null }>({
+      query: (body) => ({
+        url: '/gamepads/selected',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Gamepads', id: 'SELECTED' }],
+    }),
+
+    // Get the current state of the selected gamepad (for polling)
+    getGamepadState: builder.query<GamepadStateResponse, void>({
+      query: () => '/gamepads/state',
+      // Don't cache - this is for real-time polling
+      keepUnusedDataFor: 0,
+    }),
   }),
 })
 
@@ -742,6 +824,14 @@ export const {
   useUploadWorkfileMutation,
   useGetWorkfileContentQuery,
   useLazyGetWorkfileContentQuery,
+  // Gamepads (server-side, Linux only)
+  useGetGamepadPlatformQuery,
+  useGetGamepadsQuery,
+  useRefreshGamepadsMutation,
+  useGetSelectedGamepadQuery,
+  useSetSelectedGamepadMutation,
+  useGetGamepadStateQuery,
+  useLazyGetGamepadStateQuery,
   // Other
   useGetCurrentVersionQuery,
   useGetVersionQuery,

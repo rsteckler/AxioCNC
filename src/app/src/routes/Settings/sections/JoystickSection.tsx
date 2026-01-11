@@ -88,24 +88,27 @@ export const CNC_ACTIONS: { value: CncAction; label: string; category: string }[
   { value: 'emergency_stop', label: 'Emergency Stop', category: 'Safety' },
 ]
 
-// Standard gamepad buttons (Xbox/PlayStation layout)
+// Standard gamepad buttons (Linux Xbox controller mapping)
+// Note: LT/RT are axes (4 and 5), not buttons
 export const GAMEPAD_BUTTONS = [
-  { index: 0, name: 'A / Cross', icon: <Circle className="w-4 h-4" /> },
-  { index: 1, name: 'B / Circle', icon: <Circle className="w-4 h-4" /> },
-  { index: 2, name: 'X / Square', icon: <Square className="w-4 h-4" /> },
-  { index: 3, name: 'Y / Triangle', icon: <Triangle className="w-4 h-4" /> },
-  { index: 4, name: 'LB / L1', icon: <Hexagon className="w-4 h-4" /> },
-  { index: 5, name: 'RB / R1', icon: <Hexagon className="w-4 h-4" /> },
-  { index: 6, name: 'LT / L2', icon: <Hexagon className="w-4 h-4" /> },
-  { index: 7, name: 'RT / R2', icon: <Hexagon className="w-4 h-4" /> },
-  { index: 8, name: 'Back / Select', icon: <Square className="w-3 h-3" /> },
-  { index: 9, name: 'Start', icon: <Square className="w-3 h-3" /> },
-  { index: 10, name: 'Left Stick Click', icon: <CircleDot className="w-4 h-4" /> },
-  { index: 11, name: 'Right Stick Click', icon: <CircleDot className="w-4 h-4" /> },
-  { index: 12, name: 'D-Pad Up', icon: <ArrowUp className="w-4 h-4" /> },
-  { index: 13, name: 'D-Pad Down', icon: <ArrowDown className="w-4 h-4" /> },
-  { index: 14, name: 'D-Pad Left', icon: <ArrowLeft className="w-4 h-4" /> },
-  { index: 15, name: 'D-Pad Right', icon: <ArrowRight className="w-4 h-4" /> },
+  { index: 0, name: 'A', icon: <Circle className="w-4 h-4" /> },
+  { index: 1, name: 'B', icon: <Circle className="w-4 h-4" /> },
+  // Button 2 is not used on this controller
+  { index: 3, name: 'X', icon: <Square className="w-4 h-4" /> },
+  { index: 4, name: 'Y', icon: <Triangle className="w-4 h-4" /> },
+  // Button 5 is not used on this controller
+  { index: 6, name: 'LB', icon: <Hexagon className="w-4 h-4" /> },
+  { index: 7, name: 'RB', icon: <Hexagon className="w-4 h-4" /> },
+  // Buttons 8, 9 are not shown in UI
+  { index: 10, name: 'Back', icon: <Square className="w-3 h-3" /> },
+  { index: 11, name: 'Start', icon: <Square className="w-3 h-3" /> },
+  { index: 13, name: 'Left Stick Click', icon: <CircleDot className="w-4 h-4" /> },
+  { index: 14, name: 'Right Stick Click', icon: <CircleDot className="w-4 h-4" /> },
+  { index: 12, name: 'D-Pad Up', icon: <ArrowUp className="w-4 h-4" />, isDpad: true },
+  { index: 16, name: 'D-Pad Down', icon: <ArrowDown className="w-4 h-4" />, isDpad: true },
+  { index: 17, name: 'D-Pad Left', icon: <ArrowLeft className="w-4 h-4" />, isDpad: true },
+  { index: 15, name: 'D-Pad Right', icon: <ArrowRight className="w-4 h-4" />, isDpad: true },
+  // Note: D-pad buttons (12=Up, 15=Right, 16=Down, 17=Left) map to axes 6 and 7, not buttons
 ]
 
 export type AnalogAxis = 'left_x' | 'left_y' | 'right_x' | 'right_y'
@@ -113,6 +116,7 @@ export type AnalogMapping = 'none' | 'jog_x' | 'jog_y' | 'jog_z' | 'feed_rate'
 
 export interface JoystickConfig {
   enabled: boolean
+  connectionLocation: 'server' | 'client'
   selectedGamepad: string | null
   buttonMappings: Record<number, CncAction>
   analogMappings: Record<AnalogAxis, AnalogMapping>
@@ -194,10 +198,31 @@ export function JoystickSection({
 
       {config.enabled && (
         <>
+          {/* Connection Location */}
+          <SettingsField
+            label="Gamepad Connection Location"
+            description="Choose which machine the joystick is connected to. If you're running this browser on the same machine that's running the AxioCNC server, choose Server for better reliability. Note: Server-side gamepads only work on Linux servers."
+          >
+            <Select
+              value={config.connectionLocation || 'server'}
+              onValueChange={(value: 'server' | 'client') => onConfigChange({ connectionLocation: value, selectedGamepad: null })}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="server">Server (Machine running AxioCNC)</SelectItem>
+                <SelectItem value="client">Client (Machine running browser)</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
           {/* Gamepad Selection */}
           <SettingsField
             label="Select Gamepad"
-            description="Choose which connected gamepad to use"
+            description={config.connectionLocation === 'server' 
+              ? 'Select a gamepad connected to the server machine'
+              : 'Select a gamepad connected to this browser\'s machine'}
           >
             <div className="flex gap-2">
               <Select
@@ -465,7 +490,7 @@ export function JoystickSection({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {GAMEPAD_BUTTONS.map((button) => (
+                  {GAMEPAD_BUTTONS.filter(b => !(b as any).isDpad).map((button) => (
                     <TableRow 
                       key={button.index}
                       className={cn(
@@ -504,6 +529,46 @@ export function JoystickSection({
                       </TableCell>
                     </TableRow>
                   ))}
+                  {/* D-pad buttons in a single row */}
+                  <TableRow>
+                    <TableCell colSpan={3} className="pt-4">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-medium text-muted-foreground w-20">D-Pad:</span>
+                        {GAMEPAD_BUTTONS.filter(b => (b as any).isDpad).map((button) => (
+                          <div key={button.index} className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="text-muted-foreground">
+                                {button.icon}
+                              </div>
+                              <span className="text-sm font-medium">{button.name}</span>
+                            </div>
+                            <Select
+                              value={config.buttonMappings[button.index] || 'none'}
+                              onValueChange={(v) => handleButtonMappingChange(button.index, v as CncAction)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(actionsByCategory).map(([category, actions]) => (
+                                  <div key={category}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                      {category}
+                                    </div>
+                                    {actions.map((action) => (
+                                      <SelectItem key={action.value} value={action.value}>
+                                        {action.label}
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>

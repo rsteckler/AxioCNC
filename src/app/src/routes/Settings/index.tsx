@@ -24,6 +24,9 @@ import {
   useGetVersionQuery,
   useGetExtensionsQuery,
   useSetExtensionsMutation,
+  useGetGamepadsQuery,
+  useRefreshGamepadsMutation,
+  useSetSelectedGamepadMutation,
   type PartialSettings,
 } from '@/services/api'
 import { socketService } from '@/services/socket'
@@ -192,14 +195,15 @@ const DEFAULT_ADVANCED_CONFIG: AdvancedConfig = {
 
 const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
   enabled: false,
+  connectionLocation: 'server',
   selectedGamepad: null,
   buttonMappings: {
     0: 'zero_all',       // A - Zero all axes
     1: 'emergency_stop', // B - E-Stop (red button = stop)
-    2: 'home_all',       // X - Home all axes
-    3: 'spindle_toggle', // Y - Toggle spindle
-    4: 'speed_slow',     // LB - Slow jog speed
-    5: 'speed_fast',     // RB - Fast jog speed
+    3: 'home_all',       // X - Home all axes
+    4: 'spindle_toggle', // Y - Toggle spindle
+    6: 'speed_slow',     // LB - Slow jog speed
+    7: 'speed_fast',     // RB - Fast jog speed
     12: 'jog_y_pos',     // D-pad Up
     13: 'jog_y_neg',     // D-pad Down
     14: 'jog_x_neg',     // D-pad Left
@@ -257,6 +261,13 @@ export default function Settings() {
   // Extensions API for advanced config
   const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
   const [setExtensions] = useSetExtensionsMutation()
+
+  // Gamepads API (server-side)
+  const { data: serverGamepadsData } = useGetGamepadsQuery(undefined, {
+    skip: true, // Don't auto-fetch - we'll use refresh mutation
+  })
+  const [refreshGamepads] = useRefreshGamepadsMutation()
+  const [setSelectedGamepad] = useSetSelectedGamepadMutation()
   
   // Derive events/macros/tools/watchFolders from API data
   // Cast event/trigger strings to the expected union types
@@ -838,10 +849,21 @@ export default function Settings() {
   }, [deleteTool])
 
   // Joystick handlers
-  const handleJoystickConfigChange = useCallback((changes: Partial<JoystickConfig>) => {
-    setJoystickConfig(prev => ({ ...prev, ...changes }))
+  const handleJoystickConfigChange = useCallback(async (changes: Partial<JoystickConfig>) => {
+    setJoystickConfig(prev => {
+      const updated = { ...prev, ...changes }
+      
+      // If selectedGamepad changed and connectionLocation is 'server', also call the API
+      if ('selectedGamepad' in changes && updated.connectionLocation === 'server') {
+        setSelectedGamepad({ gamepadId: changes.selectedGamepad || null }).catch(err => {
+          console.error('Failed to set selected gamepad on server:', err)
+        })
+      }
+      
+      return updated
+    })
     debouncedSave({ joystick: changes })
-  }, [debouncedSave])
+  }, [debouncedSave, setSelectedGamepad])
 
   // Advanced config handler (stored in extensions API)
   const handleAdvancedConfigChange = useCallback(async (changes: Partial<AdvancedConfig>) => {
@@ -855,20 +877,39 @@ export default function Settings() {
     })
   }, [setExtensions])
 
-  const handleRefreshGamepads = useCallback(() => {
-    // Use the Gamepad API to detect connected gamepads
-    const gamepads = navigator.getGamepads?.() || []
-    const detected = Array.from(gamepads)
-      .filter((gp): gp is Gamepad => gp !== null)
-      .map(gp => ({
-        id: gp.id,
-        index: gp.index,
-        name: gp.id.split('(')[0].trim() || `Gamepad ${gp.index + 1}`,
-        buttons: gp.buttons.length,
-        axes: gp.axes.length,
-      }))
-    setDetectedGamepads(detected)
-  }, [])
+  const handleRefreshGamepads = useCallback(async () => {
+    // Check if using server-side or client-side gamepad
+    if (joystickConfig.connectionLocation === 'server') {
+      // Call server API to refresh gamepads
+      try {
+        const result = await refreshGamepads().unwrap()
+        const detected = result.gamepads.map(gp => ({
+          id: gp.id,
+          index: gp.index || 0,
+          name: gp.name,
+          buttons: gp.buttons || 16,
+          axes: gp.axes || 4,
+        }))
+        setDetectedGamepads(detected)
+      } catch (error) {
+        console.error('Failed to refresh server gamepads:', error)
+      }
+    } else {
+      // Use browser Gamepad API for client-side gamepads
+      const gamepads = navigator.getGamepads?.() || []
+      const detected = Array.from(gamepads)
+        .filter((gp): gp is Gamepad => gp !== null)
+        .map(gp => ({
+          id: gp.id,
+          index: gp.index,
+          name: gp.id.split('(')[0].trim() || `Gamepad ${gp.index + 1}`,
+          buttons: gp.buttons.length,
+          axes: gp.axes.length,
+        }))
+      
+      setDetectedGamepads(detected)
+    }
+  }, [joystickConfig.connectionLocation, refreshGamepads])
 
   if (isLoading) {
     return (
