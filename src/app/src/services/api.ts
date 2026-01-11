@@ -237,6 +237,26 @@ export interface ThemesPathResponse {
   exists: boolean
 }
 
+// =============================================================================
+// Workfiles Types
+// =============================================================================
+
+export interface Workfile {
+  filename: string
+  size: number
+  mtime: number
+  lines: number
+  tools: number[]
+}
+
+export interface WorkfilesResponse {
+  files: Workfile[]
+}
+
+export interface WorkfileContentResponse extends Workfile {
+  gcode: string
+}
+
 // RTK Query API definition
 export const api = createApi({
   reducerPath: 'api',
@@ -251,7 +271,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -640,6 +660,29 @@ export const api = createApi({
         params: { path },
       }),
     }),
+
+    // ==========================================================================
+    // Workfiles (File Storage)
+    // ==========================================================================
+
+    getWorkfiles: builder.query<WorkfilesResponse, void>({
+      query: () => '/workfiles',
+      providesTags: ['Workfiles'],
+    }),
+
+    uploadWorkfile: builder.mutation<Workfile, { name: string; gcode: string }>({
+      query: ({ name, gcode }) => ({
+        url: '/workfiles',
+        method: 'POST',
+        body: { name, gcode },
+      }),
+      invalidatesTags: ['Workfiles'],
+    }),
+
+    getWorkfileContent: builder.query<WorkfileContentResponse, string>({
+      query: (filename) => `/workfiles/${encodeURIComponent(filename)}`,
+      providesTags: (_result, _error, filename) => [{ type: 'Workfiles', id: filename }],
+    }),
   }),
 })
 
@@ -694,6 +737,11 @@ export const {
   useDeleteWatchFolderMutation,
   useBrowseDirectoryQuery,
   useLazyBrowseDirectoryQuery,
+  // Workfiles
+  useGetWorkfilesQuery,
+  useUploadWorkfileMutation,
+  useGetWorkfileContentQuery,
+  useLazyGetWorkfileContentQuery,
   // Other
   useGetCurrentVersionQuery,
   useGetVersionQuery,

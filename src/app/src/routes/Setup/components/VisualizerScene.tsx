@@ -54,7 +54,11 @@ function WorkZeroMarker() {
   )
 }
 
-export function VisualizerScene() {
+interface VisualizerSceneProps {
+  gcode?: string | null
+}
+
+export function VisualizerScene({ gcode }: VisualizerSceneProps = {}) {
   return (
     <Canvas>
       <PerspectiveCamera makeDefault position={[40, 30, 40]} fov={50} />

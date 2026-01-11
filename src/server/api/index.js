@@ -15,6 +15,7 @@ import * as users from './api.users';
 import * as tool from './api.tool';
 import * as tools from './api.tools';
 import * as themes from './api.themes';
+import * as workfiles from './api.workfiles';
 
 export {
   version,
@@ -34,4 +35,5 @@ export {
   tool,
   tools,
   themes,
+  workfiles,
 };

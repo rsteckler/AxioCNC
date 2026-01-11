@@ -277,6 +277,11 @@ const appMain = () => {
     app.get(urljoin(settings.route, 'api/gcode/download'), api.gcode.download);
     app.post(urljoin(settings.route, 'api/gcode/download'), api.gcode.download); // Alias
 
+    // Workfiles (file storage)
+    app.get(urljoin(settings.route, 'api/workfiles'), api.workfiles.list);
+    app.post(urljoin(settings.route, 'api/workfiles'), api.workfiles.upload);
+    app.get(urljoin(settings.route, 'api/workfiles/:filename'), api.workfiles.read);
+
     // Controllers
     app.get(urljoin(settings.route, 'api/controllers'), api.controllers.get);
 

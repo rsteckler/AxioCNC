@@ -150,9 +150,17 @@ export function ToolsPanel() {
       }
     }
     
-    const handleGcodeLoad = (...args: unknown[]) => {
-      // G-code was loaded - fetch content
-      fetchGcodeContent()
+    // gcode:load emits (name, gcode, context) as separate arguments
+    const handleGcodeLoad = (name: string, gcode: string) => {
+      if (name && gcode) {
+        // G-code was loaded - use the content directly from the event
+        setGcodeContent(gcode)
+        setGcodeLoaded(true)
+        setLoadedFileName(name)
+      } else {
+        // Fallback: fetch from API if event didn't include content
+        fetchGcodeContent()
+      }
     }
     
     const handleGcodeUnload = () => {

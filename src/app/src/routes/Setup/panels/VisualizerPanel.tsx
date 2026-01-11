@@ -49,6 +49,9 @@ export function VisualizerPanel({
   const [autoScroll, setAutoScroll] = useState(true)
   const consoleContainerRef = useRef<HTMLDivElement>(null)
   const consoleLinesRef = useRef<ConsoleLine[]>([]) // Track console lines for alarm message lookup
+  
+  // G-code state for visualizer
+  const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const scrollToBottom = useCallback(() => {
     if (!consoleContainerRef.current) return
     
@@ -235,6 +238,28 @@ export function VisualizerPanel({
     return cleanup
   }, [isConnected, connectedPort, settings?.connection?.port, lastAlarmMessageRef])
   
+  // Listen to G-code load/unload events for visualizer
+  useEffect(() => {
+    // gcode:load emits (name, gcode, context) as separate arguments
+    const handleGcodeLoad = (name: string, gcode: string) => {
+      if (name && gcode) {
+        setLoadedGcode({ name, gcode })
+      }
+    }
+
+    const handleGcodeUnload = () => {
+      setLoadedGcode(null)
+    }
+
+    socketService.on('gcode:load', handleGcodeLoad)
+    socketService.on('gcode:unload', handleGcodeUnload)
+
+    return () => {
+      socketService.off('gcode:load', handleGcodeLoad)
+      socketService.off('gcode:unload', handleGcodeUnload)
+    }
+  }, [])
+  
   // Handle command input
   const handleSendCommand = useCallback(() => {
     if (!commandInput.trim() || !isConnected || !connectedPort) return
@@ -314,7 +339,7 @@ export function VisualizerPanel({
         />
       ) : tab === '3d' ? (
         <div className="flex-1 relative">
-          <VisualizerScene />
+          <VisualizerScene gcode={loadedGcode?.gcode} />
           
           {/* View controls overlay */}
           <div className="absolute bottom-3 left-3 flex gap-1">
