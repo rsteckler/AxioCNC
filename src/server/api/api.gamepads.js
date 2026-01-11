@@ -1,15 +1,12 @@
 /**
  * Gamepad API
- * 
+ *
  * Provides server-side gamepad detection and state reading for CNC jogging.
  * Used when the joystick is connected to the server machine rather than the browser.
  */
 
 import fs from 'fs';
 import gamepadService from '../services/gamepad';
-import logger from '../lib/logger';
-
-const log = logger('api:gamepads');
 
 /**
  * GET /api/gamepads
@@ -17,7 +14,7 @@ const log = logger('api:gamepads');
  */
 export const list = (req, res) => {
   const gamepads = gamepadService.list();
-  
+
   res.json({
     gamepads,
   });
@@ -29,7 +26,7 @@ export const list = (req, res) => {
  */
 export const refresh = (req, res) => {
   const gamepads = gamepadService.refresh();
-  
+
   res.json({
     gamepads,
   });
@@ -52,11 +49,11 @@ export const getSelected = (req, res) => {
  */
 export const setSelected = (req, res) => {
   const { gamepadId } = req.body;
-  
+
   if (gamepadId !== null && typeof gamepadId !== 'string') {
     return res.status(400).json({ error: 'gamepadId must be a string or null' });
   }
-  
+
   // Verify the gamepad exists (if not null)
   if (gamepadId !== null) {
     const gamepads = gamepadService.list();
@@ -65,14 +62,14 @@ export const setSelected = (req, res) => {
       return res.status(404).json({ error: 'Gamepad not found' });
     }
   }
-  
+
   const success = gamepadService.setSelected(gamepadId);
-  
+
   if (!success && gamepadId !== null) {
     return res.status(500).json({ error: 'Failed to open gamepad' });
   }
-  
-  res.json({
+
+  return res.json({
     gamepadId: gamepadService.getSelected(),
   });
 };
@@ -84,12 +81,12 @@ export const setSelected = (req, res) => {
  */
 export const getState = (req, res) => {
   const state = gamepadService.getState();
-  
+
   if (!state) {
     return res.status(400).json({ error: 'No gamepad selected' });
   }
-  
-  res.json(state);
+
+  return res.json(state);
 };
 
 /**
@@ -108,24 +105,24 @@ export const getPlatform = (req, res) => {
 export const getDiagnostic = (req, res) => {
   const platform = process.platform;
   const isLinux = platform === 'linux';
-  
+
   const diagnostic = {
     platform,
     isLinux,
     serviceSupported: gamepadService.isSupported,
     joystickDevPath: '/dev/input',
   };
-  
+
   if (isLinux) {
     try {
       diagnostic.devInputExists = fs.existsSync('/dev/input');
-      
+
       if (diagnostic.devInputExists) {
         try {
           const files = fs.readdirSync('/dev/input');
           diagnostic.filesInDevInput = files.length;
           diagnostic.jsFiles = files.filter(f => f.startsWith('js'));
-          
+
           // Check specific js0
           diagnostic.js0Exists = fs.existsSync('/dev/input/js0');
           if (diagnostic.js0Exists) {
@@ -146,9 +143,9 @@ export const getDiagnostic = (req, res) => {
       diagnostic.error = err.message;
     }
   }
-  
+
   diagnostic.cachedGamepads = gamepadService.list();
   diagnostic.selectedGamepad = gamepadService.getSelected();
-  
-  res.json(diagnostic);
+
+  return res.json(diagnostic);
 };
