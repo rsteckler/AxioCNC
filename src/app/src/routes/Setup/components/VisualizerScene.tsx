@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
+import { OrbitControls, Grid, PerspectiveCamera, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface MachineLimits {
@@ -40,66 +40,82 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   const yColor = '#22c55e' // Green
   const zColor = '#3b82f6' // Blue
   
-  // Arrow dimensions for Z edges (full height)
+  // Arrow dimensions for edge arrows
+  const edgeArrowHeadLength = Math.min(width, height) * 0.05
+  const edgeArrowHeadWidth = Math.min(width, height) * 0.03
   const zArrowHeadLength = depth * 0.1
   const zArrowHeadWidth = depth * 0.05
   
   return (
     <group>
-      {/* Grid lines as arrows on the bottom plane (zmin) */}
-      {/* X-axis grid lines - arrows pointing right (positive X) */}
-      {useMemo(() => {
-        const lines: JSX.Element[] = []
-        for (let y = ymin; y <= ymax; y += cellSize) {
-          const isSection = (y - ymin) % sectionSize === 0
-          const arrowLength = width * 0.95 // Almost full width
-          const arrowHeadLength = width * 0.05
-          const arrowHeadWidth = width * 0.03
-          const color = isSection ? xColor : '#404040'
-          
-          lines.push(
-            <primitive
-              key={`x-grid-${y}`}
-              object={new THREE.ArrowHelper(
-                new THREE.Vector3(1, 0, 0), // Direction: +X (right)
-                new THREE.Vector3(xmin, zmin, y), // Origin at left edge
-                arrowLength,
-                color,
-                arrowHeadLength,
-                arrowHeadWidth
-              )}
-            />
-          )
-        }
-        return lines
-      }, [xmin, ymin, ymax, zmin, width, cellSize, sectionSize, xColor])}
+      {/* Grid on the bottom plane (zmin) - regular grid lines */}
+      <Grid
+        args={[width, height]}
+        cellSize={cellSize}
+        cellThickness={0.5}
+        cellColor="#404040"
+        sectionSize={sectionSize}
+        sectionThickness={1}
+        sectionColor="#606060"
+        fadeDistance={Math.max(width, height) * 2}
+        position={[centerX, zmin, centerY]}
+      />
       
-      {/* Y-axis grid lines - arrows pointing up/back (positive Y = +Z in Three.js) */}
-      {useMemo(() => {
-        const lines: JSX.Element[] = []
-        for (let x = xmin; x <= xmax; x += cellSize) {
-          const isSection = (x - xmin) % sectionSize === 0
-          const arrowLength = height * 0.95 // Almost full height
-          const arrowHeadLength = height * 0.05
-          const arrowHeadWidth = height * 0.03
-          const color = isSection ? yColor : '#404040'
-          
-          lines.push(
-            <primitive
-              key={`y-grid-${x}`}
-              object={new THREE.ArrowHelper(
-                new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
-                new THREE.Vector3(x, zmin, ymin), // Origin at front edge
-                arrowLength,
-                color,
-                arrowHeadLength,
-                arrowHeadWidth
-              )}
-            />
-          )
-        }
-        return lines
-      }, [xmin, xmax, ymin, zmin, height, cellSize, sectionSize, yColor])}
+      {/* X-axis edge arrows - front and back edges pointing right (positive X) */}
+      {useMemo(() => [
+        // Front edge (at ymin) - arrow pointing right
+        <primitive
+          key="x-edge-front"
+          object={new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0), // Direction: +X (right)
+            new THREE.Vector3(xmin, zmin, ymin), // Origin at left edge
+            width, // Full width
+            xColor,
+            edgeArrowHeadLength,
+            edgeArrowHeadWidth
+          )}
+        />,
+        // Back edge (at ymax) - arrow pointing right
+        <primitive
+          key="x-edge-back"
+          object={new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0), // Direction: +X (right)
+            new THREE.Vector3(xmin, zmin, ymax), // Origin at left edge
+            width, // Full width
+            xColor,
+            edgeArrowHeadLength,
+            edgeArrowHeadWidth
+          )}
+        />,
+      ], [xmin, ymin, ymax, zmin, width, xColor, edgeArrowHeadLength, edgeArrowHeadWidth])}
+      
+      {/* Y-axis edge arrows - left and right edges pointing up/back (positive Y = +Z in Three.js) */}
+      {useMemo(() => [
+        // Left edge (at xmin) - arrow pointing up/back
+        <primitive
+          key="y-edge-left"
+          object={new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
+            new THREE.Vector3(xmin, zmin, ymin), // Origin at front edge
+            height, // Full height
+            yColor,
+            edgeArrowHeadLength,
+            edgeArrowHeadWidth
+          )}
+        />,
+        // Right edge (at xmax) - arrow pointing up/back
+        <primitive
+          key="y-edge-right"
+          object={new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
+            new THREE.Vector3(xmax, zmin, ymin), // Origin at front edge
+            height, // Full height
+            yColor,
+            edgeArrowHeadLength,
+            edgeArrowHeadWidth
+          )}
+        />,
+      ], [xmin, xmax, ymin, zmin, height, yColor, edgeArrowHeadLength, edgeArrowHeadWidth])}
       
       {/* Z-axis vertical edges - all four as arrows pointing up */}
       {useMemo(() => {
