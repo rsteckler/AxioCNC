@@ -141,26 +141,26 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         ))
       }, [xmin, xmax, ymin, ymax, zmin, depth, zColor, zArrowHeadLength, zArrowHeadWidth])}
       
-      {/* Axis labels */}
-      {/* X-axis label (swapped position with Y) */}
+      {/* Axis labels - all positioned at bottom left of grid plane */}
+      {/* X-axis label */}
       <Text
-        position={[centerX, zmin + 1, ymax + labelOffset]}
+        position={[xmin + labelOffset, zmin + 1, ymin + labelOffset]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={xColor}
-        anchorX="center"
+        anchorX="left"
         anchorY="middle"
       >
         X
       </Text>
       
-      {/* Y-axis label (swapped position with X, Y maps to Z in Three.js coordinates) */}
+      {/* Y-axis label (Y maps to Z in Three.js coordinates) */}
       <Text
-        position={[xmax + labelOffset, zmin + 1, centerY]}
+        position={[xmin + labelOffset, zmin + 1, ymin + labelOffset * 2.5]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={yColor}
-        anchorX="center"
+        anchorX="left"
         anchorY="middle"
       >
         Y
@@ -168,11 +168,11 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
       
       {/* Z-axis label (Z maps to Y in Three.js coordinates) */}
       <Text
-        position={[centerX, zmax + labelOffset, centerY]}
+        position={[xmin + labelOffset, zmin + labelOffset, ymin + labelOffset]}
         fontSize={20}
         color={zColor}
-        anchorX="center"
-        anchorY="middle"
+        anchorX="left"
+        anchorY="bottom"
       >
         Z
       </Text>
