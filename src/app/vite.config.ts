@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       // Output to where the Express server expects to find the app
-      outDir: isProd ? '../../dist/cncjs/app' : '../../output/cncjs/app',
+      outDir: isProd ? '../../dist/axiocnc/app' : '../../output/axiocnc/app',
       emptyOutDir: true,
       // Generate source maps for debugging
       sourcemap: !isProd,

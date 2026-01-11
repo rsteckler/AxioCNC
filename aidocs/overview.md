@@ -56,7 +56,7 @@ See [`docs/frontend-features.md`](../docs/frontend-features.md) for a comprehens
 yarn start-server-dev
 
 # Terminal 2: Start the new frontend dev server
-cd src/app && npm run dev
+cd src/app && yarn dev
 ```
 
 The frontend dev server runs on `http://localhost:5173` and proxies API/Socket.IO requests to the backend on port 8000.
@@ -64,11 +64,11 @@ The frontend dev server runs on `http://localhost:5173` and proxies API/Socket.I
 ### Building
 
 ```bash
-# Development build (outputs to output/cncjs/app)
-cd src/app && npm run build:dev
+# Development build (outputs to output/axiocnc/app)
+cd src/app && yarn build:dev
 
-# Production build (outputs to dist/cncjs/app)
-cd src/app && npm run build
+# Production build (outputs to dist/axiocnc/app)
+cd src/app && yarn build
 ```
 
 ## Current Progress

@@ -25,14 +25,18 @@ babel -d output/axiocnc/shared src/shared
 babel -d output/axiocnc/server src/server
 i18next-scanner --config i18next-scanner.server.config.js "src/server/**/*.{html,js,jsx}" "!src/server/i18n/**" "!**/node_modules/**"
 
-# Build new frontend with Vite
-cd src/app && yarn build:dev && cd ../..
-
+# Ensure output directories exist before vite build
 mkdir -p output/axiocnc/app
 mkdir -p output/axiocnc/server
 
+# Build new frontend with Vite
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "${PROJECT_ROOT}/src/app" && yarn build:dev && cd "${PROJECT_ROOT}"
+
 # Ensure we're in project root for the copy command
-cd "$(dirname "$0")/.." || cd ..
+cd "${PROJECT_ROOT}"
 cp -af src/server/{i18n,views} output/axiocnc/server/
+# Copy index.hbs template to app directory (needed by Express views)
+cp -af index.hbs output/axiocnc/app/ 2>/dev/null || true
 # Copy favicon if it exists
 [ -f src/app/public/favicon.ico ] && cp -af src/app/public/favicon.ico output/axiocnc/app/ || true

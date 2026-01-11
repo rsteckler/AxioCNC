@@ -61,15 +61,15 @@ sudo dpkg -r axiocnc-server || true
 echo "Installing new version..."
 sudo dpkg -i ~/axiocnc-server_${VERSION}-debug_${ARCH}.deb
 echo "Stopping server..."
-pkill -f 'node /usr/bin/cncjs' || pkill -f 'cncjs' || echo "Server was not running"
+pkill -f 'node /usr/bin/axiocnc' || pkill -f 'axiocnc' || echo "Server was not running"
 echo ""
 echo "✅ Deployment complete!"
 echo "Version ${VERSION}-debug installed"
 echo ""
 echo "To start the server:"
-echo "  ssh ${RPI_HOST} 'cncjs'"
+echo "  ssh ${RPI_HOST} 'axiocnc'"
 EOF
 
 echo ""
 echo "🎉 Deployment successful!"
-echo "Server is stopped. Start it with: ssh ${RPI_HOST} 'cncjs'"
+echo "Server is stopped. Start it with: ssh ${RPI_HOST} 'axiocnc'"

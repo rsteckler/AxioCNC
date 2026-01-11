@@ -232,7 +232,7 @@ routes/
 - All API calls go through RTK Query (`src/app/src/services/api.ts`)
 - Base URL: `/api`
 - Auth: Bearer token in Authorization header
-- Token stored in `localStorage` as `cncjs-token`
+- Token stored in `localStorage` as `axiocnc-token`
 
 ### Socket.IO
 
@@ -257,15 +257,15 @@ routes/
 yarn start-server-dev          # Start backend on port 8000
 
 # Frontend
-cd src/app && npm run dev      # Vite dev server on port 5173
-cd src/app && npm run build    # Production build
-cd src/app && npm run build:dev # Development build
+cd src/app && yarn dev      # Vite dev server on port 5173
+cd src/app && yarn build    # Production build
+cd src/app && yarn build:dev # Development build
 ```
 
 ### Output Directories
 
-- **Development**: `output/cncjs/app`
-- **Production**: `dist/cncjs/app`
+- **Development**: `output/axiocnc/app`
+- **Production**: `dist/axiocnc/app`
 
 ### Proxy Configuration
 

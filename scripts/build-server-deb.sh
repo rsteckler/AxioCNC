@@ -59,6 +59,8 @@ cp -r dist/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 # Install production dependencies
 echo "Installing production dependencies..."
 cd "${PACKAGE_ROOT}${INSTALL_DIR}"
+# Create empty yarn.lock to indicate this is a separate project
+touch yarn.lock
 yarn install --production
 # Ensure zod is installed (required by shared/schemas)
 yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
@@ -66,7 +68,7 @@ cd - > /dev/null
 
 # Create launcher script
 echo "Creating launcher script..."
-cat > "${PACKAGE_ROOT}/usr/bin/cncjs" << 'EOF'
+cat > "${PACKAGE_ROOT}/usr/bin/axiocnc" << 'EOF'
 #!/usr/bin/env node
 // AxioCNC Server Launcher
 process.chdir('/opt/axiocnc');
@@ -86,7 +88,7 @@ launchServer().catch(err => {
   process.exit(1);
 });
 EOF
-chmod +x "${PACKAGE_ROOT}/usr/bin/cncjs"
+chmod +x "${PACKAGE_ROOT}/usr/bin/axiocnc"
 
 # Create systemd service file
 echo "Creating systemd service..."
@@ -153,7 +155,7 @@ echo ""
 echo "AxioCNC server installed successfully!"
 echo ""
 echo "To start the server:"
-echo "  cncjs --port 8000 --host 0.0.0.0"
+echo "  axiocnc --port 8000 --host 0.0.0.0"
 echo ""
 echo "Or enable as a service:"
 echo "  sudo systemctl enable axiocnc"

@@ -43,11 +43,11 @@ These are safety-critical G-code sender components. Bugs can cause machine crash
 yarn start-server-dev              # Port 8000
 
 # Frontend  
-cd src/app && npm run dev          # Port 5173 (proxies to backend)
-cd src/app && npm run build        # Production build
+cd src/app && yarn dev     # Port 5173 (proxies to backend)
+cd src/app && yarn build   # Production build
 ```
 
-**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `npm run dev`, `yarn start-server-dev`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
+**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd src/app && yarn dev`, `yarn start-server-dev`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
 
 ---
 

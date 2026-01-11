@@ -285,7 +285,7 @@ yarn install
 yarn start-server-dev
 
 # Terminal 2: Frontend
-cd src/app && npm run dev
+cd src/app && yarn dev
 ```
 
 For more details, see [Development Guide](devdocs/development.md), [Contributing Guide](devdocs/contributing.md), and the [Developer Documentation](../aidocs/overview.md).
