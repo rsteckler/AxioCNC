@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Maximize2, Terminal, Target, ArrowDown } from 'lucide-react'
+import { Maximize2, Terminal, Target, ArrowDown, Move } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
@@ -9,6 +9,10 @@ import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { VisualizerScene } from '../components/VisualizerScene'
 import { parseConsoleMessage, type ConsoleLine } from '../utils/consoleParser'
 import { ZeroingWizardTab } from './ZeroingWizardTab'
+import { processGCode } from '@/lib/gcodeVisualizer'
+import { Vector3 } from 'three'
+import { machineToThree, workToThree, type MachineLimits } from '@/lib/coordinates'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface VisualizerPanelProps {
   isConnected: boolean
@@ -37,6 +41,8 @@ export function VisualizerPanel({
   const { data: settings } = useGetSettingsQuery()
   
   const [tab, setTab] = useState<'3d' | 'console' | 'wizard'>('3d')
+  const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit' | undefined>('iso')
+  const [viewKey, setViewKey] = useState(0)
   
   // Switch to wizard tab when wizard method is set
   useEffect(() => {
@@ -52,6 +58,8 @@ export function VisualizerPanel({
   
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
+  const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
+  const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
   const scrollToBottom = useCallback(() => {
     if (!consoleContainerRef.current) return
     
@@ -243,12 +251,21 @@ export function VisualizerPanel({
     // gcode:load emits (name, gcode, context) as separate arguments
     const handleGcodeLoad = (name: string, gcode: string) => {
       if (name && gcode) {
+        // Only reset if this is a different file than the one we've already placed
+        const isNewFile = placedGcodeRef.current !== name
         setLoadedGcode({ name, gcode })
+        // Reset model offset and placed tracking only if this is a different file
+        if (isNewFile) {
+          setModelOffset(null)
+          placedGcodeRef.current = null
+        }
       }
     }
 
     const handleGcodeUnload = () => {
       setLoadedGcode(null)
+      setModelOffset(null)
+      placedGcodeRef.current = null
     }
 
     socketService.on('gcode:load', handleGcodeLoad)
@@ -259,6 +276,109 @@ export function VisualizerPanel({
       socketService.off('gcode:unload', handleGcodeUnload)
     }
   }, [])
+
+  // Automatically place model at WCS origin when G-code is loaded
+  useEffect(() => {
+    if (!loadedGcode?.gcode) {
+      placedGcodeRef.current = null
+      return
+    }
+
+    if (!settings?.machine?.limits) {
+      return
+    }
+
+    // Only auto-place if we haven't already placed this G-code file
+    if (placedGcodeRef.current === loadedGcode.name) {
+      return
+    }
+
+    const result = processGCode(loadedGcode.gcode)
+    
+    if (!result?.firstVertex) {
+      return
+    }
+
+    const limits: MachineLimits = settings.machine.limits
+    
+    // Calculate work offset: WorkOffset = MPos - WPos
+    const workOffset = {
+      x: machinePosition.x - workPosition.x,
+      y: machinePosition.y - workPosition.y,
+      z: machinePosition.z - workPosition.z
+    }
+    
+    // WCS origin (0,0,0) in machine coordinates is the work offset
+    // Convert WCS origin to Three.js coordinates
+    const wcsOriginThree = machineToThree(workOffset, limits)
+    
+    // G-code coordinates from gcode-toolpath are in WCS coordinates
+    // They are currently being rendered directly as Three.js coordinates (no conversion)
+    // So the G-code origin location in Three.js is just the firstVertex value
+    const gcodeOriginThree = {
+      x: result.firstVertex.x,
+      y: result.firstVertex.y,
+      z: result.firstVertex.z
+    }
+    
+    // Calculate offset to move G-code origin to WCS origin location
+    const offset = new Vector3(
+      wcsOriginThree.x - gcodeOriginThree.x,
+      wcsOriginThree.y - gcodeOriginThree.y,
+      wcsOriginThree.z - gcodeOriginThree.z
+    )
+    
+    setModelOffset({ x: offset.x, y: offset.y, z: offset.z })
+    placedGcodeRef.current = loadedGcode.name
+  }, [loadedGcode, settings, machinePosition, workPosition])
+
+  // Handle "Place Model" button - place toolpath origin at WCS origin (0,0,0)
+  const handlePlaceModel = useCallback(() => {
+    if (!loadedGcode?.gcode) {
+      return
+    }
+
+    if (!settings?.machine?.limits) {
+      return
+    }
+
+    const result = processGCode(loadedGcode.gcode)
+    
+    if (!result?.firstVertex) {
+      return
+    }
+
+    const limits: MachineLimits = settings.machine.limits
+    
+    // Calculate work offset: WorkOffset = MPos - WPos
+    const workOffset = {
+      x: machinePosition.x - workPosition.x,
+      y: machinePosition.y - workPosition.y,
+      z: machinePosition.z - workPosition.z
+    }
+    
+    // WCS origin (0,0,0) in machine coordinates is the work offset
+    // Convert WCS origin to Three.js coordinates
+    const wcsOriginThree = machineToThree(workOffset, limits)
+    
+    // G-code coordinates from gcode-toolpath are in WCS coordinates
+    // They are currently being rendered directly as Three.js coordinates (no conversion)
+    // So the G-code origin location in Three.js is just the firstVertex value
+    const gcodeOriginThree = {
+      x: result.firstVertex.x,
+      y: result.firstVertex.y,
+      z: result.firstVertex.z
+    }
+    
+    // Calculate offset to move G-code origin to WCS origin location
+    const offset = new Vector3(
+      wcsOriginThree.x - gcodeOriginThree.x,
+      wcsOriginThree.y - gcodeOriginThree.y,
+      wcsOriginThree.z - gcodeOriginThree.z
+    )
+    
+    setModelOffset({ x: offset.x, y: offset.y, z: offset.z })
+  }, [loadedGcode, machinePosition, workPosition, settings])
   
   // Handle command input
   const handleSendCommand = useCallback(() => {
@@ -342,15 +462,43 @@ export function VisualizerPanel({
           <VisualizerScene 
             gcode={loadedGcode?.gcode} 
             limits={settings?.machine?.limits}
+            view={view}
+            viewKey={viewKey}
+            machinePosition={machinePosition}
+            modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
           />
           
           {/* View controls overlay */}
           <div className="absolute bottom-3 left-3 flex gap-1">
-            <Button variant="secondary" size="sm" className="h-7 text-xs">Top</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs">Front</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs">Iso</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs">Fit</Button>
+            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('top'); setViewKey(k => k + 1) }}>Top</Button>
+            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('front'); setViewKey(k => k + 1) }}>Front</Button>
+            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('iso'); setViewKey(k => k + 1) }}>Iso</Button>
+            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('fit'); setViewKey(k => k + 1) }}>Fit</Button>
           </div>
+          
+          {/* Place Model button */}
+          {loadedGcode && (
+            <div className="absolute bottom-3 right-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="h-7 text-xs" 
+                      onClick={handlePlaceModel}
+                    >
+                      <Move className="w-3 h-3 mr-1" />
+                      Place Model
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Place the loaded model at the current workspace zero position</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
         </div>
       ) : (
         <div ref={consoleContainerRef} className="flex-1 flex flex-col bg-zinc-950 min-h-0 relative">
