@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, PerspectiveCamera, Text } from '@react-three/drei'
 import * as THREE from 'three'
@@ -27,7 +27,6 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   const depth = zmax - zmin
   const centerX = (xmin + xmax) / 2
   const centerY = (ymin + ymax) / 2
-  const centerZ = (zmin + zmax) / 2
   
   // Grid cell size - use 10mm for cells, 50mm for sections
   const cellSize = 10
@@ -36,14 +35,13 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   // Label offset from edges (in mm)
   const labelOffset = 15
   
+  // Arrow length (in mm)
+  const arrowLength = Math.min(width, height, depth) * 0.3
+  
   // Color scheme: X=red, Y=green, Z=blue
-  // Positive directions use full brightness, negative directions use darker shade
-  const xColorPos = '#ef4444' // Red - positive X
-  const xColorNeg = '#991b1b' // Dark red - negative X
-  const yColorPos = '#22c55e' // Green - positive Y
-  const yColorNeg = '#15803d' // Dark green - negative Y
-  const zColorPos = '#3b82f6' // Blue - positive Z
-  const zColorNeg = '#1e40af' // Dark blue - negative Z
+  const xColor = '#ef4444' // Red
+  const yColor = '#22c55e' // Green
+  const zColor = '#3b82f6' // Blue
   
   // Create boundary edges
   // For Three.js: Grid from drei creates horizontal grid on X-Z plane
@@ -57,57 +55,57 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   // X-axis edges (front and back of bottom face - along Y axis in machine coords)
   edges.push({
     points: [[xmin, zmin, ymin], [xmax, zmin, ymin]], // Front edge (negative Y in machine)
-    color: yColorNeg
+    color: yColor
   })
   edges.push({
     points: [[xmin, zmin, ymax], [xmax, zmin, ymax]], // Back edge (positive Y in machine)
-    color: yColorPos
+    color: yColor
   })
   
   // Y-axis edges (left and right of bottom face - along X axis in machine coords)
   edges.push({
     points: [[xmin, zmin, ymin], [xmin, zmin, ymax]], // Left edge (negative X in machine)
-    color: xColorNeg
+    color: xColor
   })
   edges.push({
     points: [[xmax, zmin, ymin], [xmax, zmin, ymax]], // Right edge (positive X in machine)
-    color: xColorPos
+    color: xColor
   })
   
   // Top face edges (at zmax)
   edges.push({
     points: [[xmin, zmax, ymin], [xmax, zmax, ymin]],
-    color: yColorNeg
+    color: yColor
   })
   edges.push({
     points: [[xmin, zmax, ymax], [xmax, zmax, ymax]],
-    color: yColorPos
+    color: yColor
   })
   edges.push({
     points: [[xmin, zmax, ymin], [xmin, zmax, ymax]],
-    color: xColorNeg
+    color: xColor
   })
   edges.push({
     points: [[xmax, zmax, ymin], [xmax, zmax, ymax]],
-    color: xColorPos
+    color: xColor
   })
   
   // Vertical edges (Z-axis edges)
   edges.push({
     points: [[xmin, zmin, ymin], [xmin, zmax, ymin]], // Front-left
-    color: zColorNeg
+    color: zColor
   })
   edges.push({
     points: [[xmax, zmin, ymin], [xmax, zmax, ymin]], // Front-right
-    color: zColorNeg
+    color: zColor
   })
   edges.push({
     points: [[xmin, zmin, ymax], [xmin, zmax, ymax]], // Back-left
-    color: zColorPos
+    color: zColor
   })
   edges.push({
     points: [[xmax, zmin, ymax], [xmax, zmax, ymax]], // Back-right
-    color: zColorPos
+    color: zColor
   })
   
   return (
@@ -142,69 +140,64 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         </line>
       ))}
       
-      {/* Axis labels on grid plane (at zmin) */}
-      {/* X-axis labels */}
+      {/* Axis arrows and labels - show positive direction */}
+      {/* X-axis arrow and label */}
+      <primitive object={useMemo(() => new THREE.ArrowHelper(
+        new THREE.Vector3(1, 0, 0), // Direction: +X
+        new THREE.Vector3(xmin, zmin, centerY), // Origin
+        arrowLength,
+        xColor,
+        arrowLength * 0.15, // Head length
+        arrowLength * 0.1  // Head width
+      ), [xmin, zmin, centerY, arrowLength, xColor])} />
       <Text
-        position={[xmax + labelOffset, zmin + 1, centerY]}
+        position={[xmin + arrowLength + labelOffset, zmin + 1, centerY]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
-        color={xColorPos}
+        color={xColor}
         anchorX="center"
         anchorY="middle"
       >
-        X+
-      </Text>
-      <Text
-        position={[xmin - labelOffset, zmin + 1, centerY]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={20}
-        color={xColorNeg}
-        anchorX="center"
-        anchorY="middle"
-      >
-        X-
+        X
       </Text>
       
-      {/* Y-axis labels (Y maps to Z in Three.js coordinates) */}
+      {/* Y-axis arrow and label (Y maps to Z in Three.js coordinates) */}
+      <primitive object={useMemo(() => new THREE.ArrowHelper(
+        new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
+        new THREE.Vector3(centerX, zmin, ymin), // Origin
+        arrowLength,
+        yColor,
+        arrowLength * 0.15,
+        arrowLength * 0.1
+      ), [centerX, zmin, ymin, arrowLength, yColor])} />
       <Text
-        position={[centerX, zmin + 1, ymax + labelOffset]}
+        position={[centerX, zmin + 1, ymin + arrowLength + labelOffset]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
-        color={yColorPos}
+        color={yColor}
         anchorX="center"
         anchorY="middle"
       >
-        Y+
-      </Text>
-      <Text
-        position={[centerX, zmin + 1, ymin - labelOffset]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={20}
-        color={yColorNeg}
-        anchorX="center"
-        anchorY="middle"
-      >
-        Y-
+        Y
       </Text>
       
-      {/* Z-axis labels (Z maps to Y in Three.js coordinates, positioned vertically along Z axis) */}
+      {/* Z-axis arrow and label (Z maps to Y in Three.js coordinates) */}
+      <primitive object={useMemo(() => new THREE.ArrowHelper(
+        new THREE.Vector3(0, 1, 0), // Direction: +Y in Three.js (which is +Z in machine)
+        new THREE.Vector3(centerX, zmin, centerY), // Origin
+        arrowLength,
+        zColor,
+        arrowLength * 0.15,
+        arrowLength * 0.1
+      ), [centerX, zmin, centerY, arrowLength, zColor])} />
       <Text
-        position={[centerX, zmax + labelOffset, centerY]}
+        position={[centerX, zmin + arrowLength + labelOffset, centerY]}
         fontSize={20}
-        color={zColorNeg}
+        color={zColor}
         anchorX="center"
         anchorY="middle"
       >
-        Z-
-      </Text>
-      <Text
-        position={[centerX, zmin - labelOffset, centerY]}
-        fontSize={20}
-        color={zColorPos}
-        anchorX="center"
-        anchorY="middle"
-      >
-        Z+
+        Z
       </Text>
     </group>
   )
