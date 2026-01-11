@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, PerspectiveCamera, Text } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface MachineLimits {
@@ -17,7 +17,7 @@ interface VisualizerSceneProps {
   limits?: MachineLimits
 }
 
-// Work envelope grid with RGB-colored edges
+// Work envelope grid with RGB-colored edges and arrows
 function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   const { xmin, xmax, ymin, ymax, zmin, zmax } = limits
   
@@ -35,123 +35,100 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   // Label offset from edges (in mm)
   const labelOffset = 15
   
-  // Arrow length (in mm)
-  const arrowLength = Math.min(width, height, depth) * 0.3
-  
   // Color scheme: X=red, Y=green, Z=blue
   const xColor = '#ef4444' // Red
   const yColor = '#22c55e' // Green
   const zColor = '#3b82f6' // Blue
   
-  // Create boundary edges
-  // For Three.js: Grid from drei creates horizontal grid on X-Z plane
-  // So: Machine X -> Three.js X, Machine Y -> Three.js Z, Machine Z -> Three.js Y
-  const edges: Array<{
-    points: [number, number, number][]  // Three.js coordinates: [x, y, z]
-    color: string
-  }> = []
-  
-  // Bottom face edges (at zmin)
-  // X-axis edges (front and back of bottom face - along Y axis in machine coords)
-  edges.push({
-    points: [[xmin, zmin, ymin], [xmax, zmin, ymin]], // Front edge (negative Y in machine)
-    color: yColor
-  })
-  edges.push({
-    points: [[xmin, zmin, ymax], [xmax, zmin, ymax]], // Back edge (positive Y in machine)
-    color: yColor
-  })
-  
-  // Y-axis edges (left and right of bottom face - along X axis in machine coords)
-  edges.push({
-    points: [[xmin, zmin, ymin], [xmin, zmin, ymax]], // Left edge (negative X in machine)
-    color: xColor
-  })
-  edges.push({
-    points: [[xmax, zmin, ymin], [xmax, zmin, ymax]], // Right edge (positive X in machine)
-    color: xColor
-  })
-  
-  // Top face edges (at zmax)
-  edges.push({
-    points: [[xmin, zmax, ymin], [xmax, zmax, ymin]],
-    color: yColor
-  })
-  edges.push({
-    points: [[xmin, zmax, ymax], [xmax, zmax, ymax]],
-    color: yColor
-  })
-  edges.push({
-    points: [[xmin, zmax, ymin], [xmin, zmax, ymax]],
-    color: xColor
-  })
-  edges.push({
-    points: [[xmax, zmax, ymin], [xmax, zmax, ymax]],
-    color: xColor
-  })
-  
-  // Vertical edges (Z-axis edges)
-  edges.push({
-    points: [[xmin, zmin, ymin], [xmin, zmax, ymin]], // Front-left
-    color: zColor
-  })
-  edges.push({
-    points: [[xmax, zmin, ymin], [xmax, zmax, ymin]], // Front-right
-    color: zColor
-  })
-  edges.push({
-    points: [[xmin, zmin, ymax], [xmin, zmax, ymax]], // Back-left
-    color: zColor
-  })
-  edges.push({
-    points: [[xmax, zmin, ymax], [xmax, zmax, ymax]], // Back-right
-    color: zColor
-  })
+  // Arrow dimensions for Z edges (full height)
+  const zArrowHeadLength = depth * 0.1
+  const zArrowHeadWidth = depth * 0.05
   
   return (
     <group>
-      {/* Grid on the bottom plane (zmin) - drei Grid creates horizontal grid on X-Z plane
-          Grid args=[width, height] creates a grid from -width/2 to +width/2 and -height/2 to +height/2
-          Position at center so edges align with work envelope boundaries */}
-      <Grid
-        args={[width, height]}
-        cellSize={cellSize}
-        cellThickness={0.5}
-        cellColor="#404040"
-        sectionSize={sectionSize}
-        sectionThickness={1}
-        sectionColor="#606060"
-        fadeDistance={Math.max(width, height) * 2}
-        position={[centerX, zmin, centerY]} // Center at [centerX, zmin, centerY] so grid edges align with xmin/xmax and ymin/ymax
-      />
-      
-      {/* Boundary edges */}
-      {edges.map((edge, idx) => (
-        <line key={idx}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={edge.points.length}
-              array={new Float32Array(edge.points.flat())}
-              itemSize={3}
+      {/* Grid lines as arrows on the bottom plane (zmin) */}
+      {/* X-axis grid lines - arrows pointing right (positive X) */}
+      {useMemo(() => {
+        const lines: JSX.Element[] = []
+        for (let y = ymin; y <= ymax; y += cellSize) {
+          const isSection = (y - ymin) % sectionSize === 0
+          const arrowLength = width * 0.95 // Almost full width
+          const arrowHeadLength = width * 0.05
+          const arrowHeadWidth = width * 0.03
+          const color = isSection ? xColor : '#404040'
+          
+          lines.push(
+            <primitive
+              key={`x-grid-${y}`}
+              object={new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0), // Direction: +X (right)
+                new THREE.Vector3(xmin, zmin, y), // Origin at left edge
+                arrowLength,
+                color,
+                arrowHeadLength,
+                arrowHeadWidth
+              )}
             />
-          </bufferGeometry>
-          <lineBasicMaterial color={edge.color} linewidth={2} />
-        </line>
-      ))}
+          )
+        }
+        return lines
+      }, [xmin, ymin, ymax, zmin, width, cellSize, sectionSize, xColor])}
       
-      {/* Axis arrows and labels - show positive direction */}
-      {/* X-axis arrow and label */}
-      <primitive object={useMemo(() => new THREE.ArrowHelper(
-        new THREE.Vector3(1, 0, 0), // Direction: +X
-        new THREE.Vector3(xmin, zmin, centerY), // Origin
-        arrowLength,
-        xColor,
-        arrowLength * 0.15, // Head length
-        arrowLength * 0.1  // Head width
-      ), [xmin, zmin, centerY, arrowLength, xColor])} />
+      {/* Y-axis grid lines - arrows pointing up/back (positive Y = +Z in Three.js) */}
+      {useMemo(() => {
+        const lines: JSX.Element[] = []
+        for (let x = xmin; x <= xmax; x += cellSize) {
+          const isSection = (x - xmin) % sectionSize === 0
+          const arrowLength = height * 0.95 // Almost full height
+          const arrowHeadLength = height * 0.05
+          const arrowHeadWidth = height * 0.03
+          const color = isSection ? yColor : '#404040'
+          
+          lines.push(
+            <primitive
+              key={`y-grid-${x}`}
+              object={new THREE.ArrowHelper(
+                new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
+                new THREE.Vector3(x, zmin, ymin), // Origin at front edge
+                arrowLength,
+                color,
+                arrowHeadLength,
+                arrowHeadWidth
+              )}
+            />
+          )
+        }
+        return lines
+      }, [xmin, xmax, ymin, zmin, height, cellSize, sectionSize, yColor])}
+      
+      {/* Z-axis vertical edges - all four as arrows pointing up */}
+      {useMemo(() => {
+        const corners = [
+          [xmin, ymin], // Front-left
+          [xmax, ymin], // Front-right
+          [xmin, ymax], // Back-left
+          [xmax, ymax], // Back-right
+        ]
+        
+        return corners.map(([x, y], idx) => (
+          <primitive
+            key={`z-edge-${idx}`}
+            object={new THREE.ArrowHelper(
+              new THREE.Vector3(0, 1, 0), // Direction: +Y in Three.js (which is +Z in machine)
+              new THREE.Vector3(x, zmin, y), // Origin at bottom
+              depth, // Full height
+              zColor,
+              zArrowHeadLength,
+              zArrowHeadWidth
+            )}
+          />
+        ))
+      }, [xmin, xmax, ymin, ymax, zmin, depth, zColor, zArrowHeadLength, zArrowHeadWidth])}
+      
+      {/* Axis labels */}
+      {/* X-axis label */}
       <Text
-        position={[xmin + arrowLength + labelOffset, zmin + 1, centerY]}
+        position={[xmax + labelOffset, zmin + 1, centerY]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={xColor}
@@ -161,17 +138,9 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         X
       </Text>
       
-      {/* Y-axis arrow and label (Y maps to Z in Three.js coordinates) */}
-      <primitive object={useMemo(() => new THREE.ArrowHelper(
-        new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
-        new THREE.Vector3(centerX, zmin, ymin), // Origin
-        arrowLength,
-        yColor,
-        arrowLength * 0.15,
-        arrowLength * 0.1
-      ), [centerX, zmin, ymin, arrowLength, yColor])} />
+      {/* Y-axis label (Y maps to Z in Three.js coordinates) */}
       <Text
-        position={[centerX, zmin + 1, ymin + arrowLength + labelOffset]}
+        position={[centerX, zmin + 1, ymax + labelOffset]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={yColor}
@@ -181,17 +150,9 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         Y
       </Text>
       
-      {/* Z-axis arrow and label (Z maps to Y in Three.js coordinates) */}
-      <primitive object={useMemo(() => new THREE.ArrowHelper(
-        new THREE.Vector3(0, 1, 0), // Direction: +Y in Three.js (which is +Z in machine)
-        new THREE.Vector3(centerX, zmin, centerY), // Origin
-        arrowLength,
-        zColor,
-        arrowLength * 0.15,
-        arrowLength * 0.1
-      ), [centerX, zmin, centerY, arrowLength, zColor])} />
+      {/* Z-axis label (Z maps to Y in Three.js coordinates) */}
       <Text
-        position={[centerX, zmin + arrowLength + labelOffset, centerY]}
+        position={[centerX, zmax + labelOffset, centerY]}
         fontSize={20}
         color={zColor}
         anchorX="center"
@@ -203,7 +164,7 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   )
 }
 
-export function VisualizerScene({ gcode, limits }: VisualizerSceneProps = {}) {
+export function VisualizerScene({ limits }: VisualizerSceneProps = {}) {
   // Default limits if not provided
   const defaultLimits: MachineLimits = {
     xmin: 0,
