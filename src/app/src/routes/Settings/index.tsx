@@ -22,6 +22,8 @@ import {
   useDeleteWatchFolderMutation,
   useGetCurrentVersionQuery,
   useGetVersionQuery,
+  useGetExtensionsQuery,
+  useSetExtensionsMutation,
   type PartialSettings,
 } from '@/services/api'
 import { socketService } from '@/services/socket'
@@ -39,12 +41,14 @@ import {
   MacrosSection,
   EventsSection,
   ToolLibrarySection,
+  AdvancedSection,
   AboutSection,
   type MachineConfig,
   type ConnectionConfig,
   type CameraConfig,
   type ZeroingMethodsConfig,
   type ZeroingStrategiesConfig,
+  type AdvancedConfig,
   type Macro,
   type EventHandler,
   type Tool,
@@ -181,6 +185,11 @@ M0 (Touch probe to verify connection, then resume)
 }
 
 // Default joystick configuration (Xbox-style layout)
+const DEFAULT_ADVANCED_CONFIG: AdvancedConfig = {
+  debugMode: false,
+  showAdvancedSettings: false,
+}
+
 const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
   enabled: false,
   selectedGamepad: null,
@@ -245,6 +254,10 @@ export default function Settings() {
   const { data: currentVersionData } = useGetCurrentVersionQuery()
   const { data: latestVersionData } = useGetVersionQuery()
   
+  // Extensions API for advanced config
+  const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
+  const [setExtensions] = useSetExtensionsMutation()
+  
   // Derive events/macros/tools/watchFolders from API data
   // Cast event/trigger strings to the expected union types
   const events: EventHandler[] = (eventsData?.records ?? []) as EventHandler[]
@@ -275,17 +288,28 @@ export default function Settings() {
   // Users, Commands, Events, Macros now come from API (defined above)
   const [joystickConfig, setJoystickConfig] = useState<JoystickConfig>(DEFAULT_JOYSTICK_CONFIG)
   const [detectedGamepads, setDetectedGamepads] = useState<{ id: string; index: number; name: string; buttons: number; axes: number }[]>([])
+  const [advancedConfig, setAdvancedConfig] = useState<AdvancedConfig>(DEFAULT_ADVANCED_CONFIG)
   
   // Saving indicator state
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
-  // Scroll spy for navigation
-  const sectionIds = settingsSections.map(s => s.id)
+  // Scroll spy for navigation - filter out advanced if not enabled
+  const sectionIds = settingsSections
+    .filter(s => s.id !== 'advanced' || advancedConfig.showAdvancedSettings)
+    .map(s => s.id)
   const { activeId, scrollTo } = useScrollSpy(sectionIds, { offset: 100 })
 
   // Track if we've initialized from API to prevent refetch overwrites
   const hasInitialized = useRef(false)
+
+  // Initialize advanced config from extensions API
+  useEffect(() => {
+    if (extensionsData && typeof extensionsData === 'object' && 'debugMode' in extensionsData) {
+      const config = extensionsData as AdvancedConfig
+      setAdvancedConfig(prev => ({ ...prev, ...config }))
+    }
+  }, [extensionsData])
 
   // Initialize local state from API data (only on first load)
   useEffect(() => {
@@ -819,6 +843,18 @@ export default function Settings() {
     debouncedSave({ joystick: changes })
   }, [debouncedSave])
 
+  // Advanced config handler (stored in extensions API)
+  const handleAdvancedConfigChange = useCallback(async (changes: Partial<AdvancedConfig>) => {
+    setAdvancedConfig(prev => {
+      const updated = { ...prev, ...changes }
+      // Store in extensions API
+      setExtensions({ key: 'advanced', data: updated }).catch(err => {
+        console.error('Failed to save advanced config:', err)
+      })
+      return updated
+    })
+  }, [setExtensions])
+
   const handleRefreshGamepads = useCallback(() => {
     // Use the Gamepad API to detect connected gamepads
     const gamepads = navigator.getGamepads?.() || []
@@ -881,7 +917,11 @@ export default function Settings() {
           {/* Sticky sidebar navigation */}
           <aside className="hidden md:block w-48 flex-shrink-0">
             <div className="sticky top-24">
-              <SettingsNav activeId={activeId} onNavigate={scrollTo} />
+              <SettingsNav 
+                activeId={activeId} 
+                onNavigate={scrollTo}
+                showAdvanced={advancedConfig.showAdvancedSettings}
+              />
             </div>
           </aside>
 
@@ -974,9 +1014,17 @@ export default function Settings() {
               onToggleEnabled={handleToggleEventEnabled}
             />
 
+            {advancedConfig.showAdvancedSettings && (
+              <AdvancedSection
+                config={advancedConfig}
+                onConfigChange={handleAdvancedConfigChange}
+              />
+            )}
+
             <AboutSection
               version={currentVersionData?.version ?? 'Unknown'}
               latestVersion={latestVersionData?.latest}
+              onEnableAdvancedSettings={() => handleAdvancedConfigChange({ showAdvancedSettings: true })}
             />
           </main>
         </div>

@@ -7,6 +7,7 @@ interface SettingsSectionProps {
   description?: string
   children: ReactNode
   isLast?: boolean
+  onTitleClick?: () => void
 }
 
 export function SettingsSection({ 
@@ -14,12 +15,16 @@ export function SettingsSection({
   title, 
   description, 
   children, 
-  isLast = false 
+  isLast = false,
+  onTitleClick
 }: SettingsSectionProps) {
   return (
     <section id={id} className="scroll-mt-24">
       <div className="mb-6 pl-4 border-l-4 border-primary">
-        <h2 className="text-2xl font-bold text-foreground">
+        <h2 
+          className={onTitleClick ? "text-2xl font-bold text-foreground cursor-text select-none" : "text-2xl font-bold text-foreground"}
+          onClick={onTitleClick}
+        >
           {title}
         </h2>
         {description && (

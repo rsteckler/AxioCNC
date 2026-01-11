@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route, Wrench } from 'lucide-react'
+import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route, Wrench, Settings2 } from 'lucide-react'
 
 export interface SettingsSection {
   id: string
@@ -19,18 +19,24 @@ export const settingsSections: SettingsSection[] = [
   { id: 'tool-library', label: 'Tool Library', icon: <Wrench className="w-4 h-4" /> },
   { id: 'macros', label: 'Macros', icon: <Code className="w-4 h-4" /> },
   { id: 'events', label: 'Events', icon: <Zap className="w-4 h-4" /> },
+  { id: 'advanced', label: 'Advanced', icon: <Settings2 className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
 ]
 
 interface SettingsNavProps {
   activeId: string
   onNavigate: (id: string) => void
+  showAdvanced?: boolean
 }
 
-export function SettingsNav({ activeId, onNavigate }: SettingsNavProps) {
+export function SettingsNav({ activeId, onNavigate, showAdvanced = false }: SettingsNavProps) {
+  const visibleSections = settingsSections.filter(
+    section => section.id !== 'advanced' || showAdvanced
+  )
+
   return (
     <nav className="space-y-1">
-      {settingsSections.map((section) => (
+      {visibleSections.map((section) => (
         <button
           key={section.id}
           onClick={() => onNavigate(section.id)}

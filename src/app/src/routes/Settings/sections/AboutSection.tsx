@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink, Github, Heart } from 'lucide-react'
@@ -5,10 +6,31 @@ import { ExternalLink, Github, Heart } from 'lucide-react'
 interface AboutSectionProps {
   version: string
   latestVersion?: string
+  onEnableAdvancedSettings?: () => void
 }
 
-export function AboutSection({ version, latestVersion }: AboutSectionProps) {
+export function AboutSection({ version, latestVersion, onEnableAdvancedSettings }: AboutSectionProps) {
   const isUpdateAvailable = latestVersion && version !== latestVersion
+  const clickTimesRef = useRef<number[]>([])
+
+  const handleTitleClick = useCallback(() => {
+    if (!onEnableAdvancedSettings) return
+
+    const now = Date.now()
+    const fiveSecondsAgo = now - 5000
+
+    // Remove clicks older than 5 seconds
+    clickTimesRef.current = clickTimesRef.current.filter(time => time > fiveSecondsAgo)
+
+    // Add current click
+    clickTimesRef.current.push(now)
+
+    // If we have 10 clicks within 5 seconds, enable advanced settings
+    if (clickTimesRef.current.length >= 10) {
+      onEnableAdvancedSettings()
+      clickTimesRef.current = [] // Reset after triggering
+    }
+  }, [onEnableAdvancedSettings])
 
   return (
     <SettingsSection 
@@ -16,6 +38,7 @@ export function AboutSection({ version, latestVersion }: AboutSectionProps) {
       title="About"
       description="Information about AxioCNC"
       isLast
+      onTitleClick={handleTitleClick}
     >
       <div className="space-y-6">
         {/* Version Info */}
