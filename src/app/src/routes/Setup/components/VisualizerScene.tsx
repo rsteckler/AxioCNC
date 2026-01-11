@@ -1,6 +1,6 @@
 import React from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei'
+import { OrbitControls, Grid, PerspectiveCamera, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface MachineLimits {
@@ -32,6 +32,9 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
   // Grid cell size - use 10mm for cells, 50mm for sections
   const cellSize = 10
   const sectionSize = 50
+  
+  // Label offset from edges (in mm)
+  const labelOffset = 15
   
   // Color scheme: X=red, Y=green, Z=blue
   // Positive directions use full brightness, negative directions use darker shade
@@ -138,6 +141,73 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
           <lineBasicMaterial color={edge.color} linewidth={2} />
         </line>
       ))}
+      
+      {/* Axis labels on grid plane (at zmin) */}
+      {/* X-axis labels */}
+      <Text
+        position={[xmax + labelOffset, zmin + 1, centerY]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={xColorPos}
+        anchorX="center"
+        anchorY="middle"
+      >
+        X+
+      </Text>
+      <Text
+        position={[xmin - labelOffset, zmin + 1, centerY]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={xColorNeg}
+        anchorX="center"
+        anchorY="middle"
+      >
+        X-
+      </Text>
+      
+      {/* Y-axis labels (Y maps to Z in Three.js coordinates) */}
+      <Text
+        position={[centerX, zmin + 1, ymax + labelOffset]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={yColorPos}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Y+
+      </Text>
+      <Text
+        position={[centerX, zmin + 1, ymin - labelOffset]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={yColorNeg}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Y-
+      </Text>
+      
+      {/* Z-axis labels (Z maps to Y in Three.js coordinates, show on grid plane at corners) */}
+      <Text
+        position={[xmax + labelOffset * 0.7, zmin + 1, ymax + labelOffset * 0.7]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={zColorPos}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Z+
+      </Text>
+      <Text
+        position={[xmin - labelOffset * 0.7, zmin + 1, ymin - labelOffset * 0.7]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={20}
+        color={zColorNeg}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Z-
+      </Text>
     </group>
   )
 }
