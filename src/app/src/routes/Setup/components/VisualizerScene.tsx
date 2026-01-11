@@ -142,9 +142,9 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
       }, [xmin, xmax, ymin, ymax, zmin, depth, zColor, zArrowHeadLength, zArrowHeadWidth])}
       
       {/* Axis labels */}
-      {/* X-axis label */}
+      {/* X-axis label (swapped position with Y) */}
       <Text
-        position={[xmax + labelOffset, zmin + 1, centerY]}
+        position={[centerX, zmin + 1, ymax + labelOffset]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={xColor}
@@ -154,9 +154,9 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         X
       </Text>
       
-      {/* Y-axis label (Y maps to Z in Three.js coordinates) */}
+      {/* Y-axis label (swapped position with X, Y maps to Z in Three.js coordinates) */}
       <Text
-        position={[centerX, zmin + 1, ymax + labelOffset]}
+        position={[xmax + labelOffset, zmin + 1, centerY]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={20}
         color={yColor}
