@@ -339,7 +339,10 @@ export function VisualizerPanel({
         />
       ) : tab === '3d' ? (
         <div className="flex-1 relative">
-          <VisualizerScene gcode={loadedGcode?.gcode} />
+          <VisualizerScene 
+            gcode={loadedGcode?.gcode} 
+            limits={settings?.machine?.limits}
+          />
           
           {/* View controls overlay */}
           <div className="absolute bottom-3 left-3 flex gap-1">
@@ -347,12 +350,6 @@ export function VisualizerPanel({
             <Button variant="secondary" size="sm" className="h-7 text-xs">Front</Button>
             <Button variant="secondary" size="sm" className="h-7 text-xs">Iso</Button>
             <Button variant="secondary" size="sm" className="h-7 text-xs">Fit</Button>
-          </div>
-          
-          {/* File info overlay */}
-          <div className="absolute top-3 right-3 bg-background/80 backdrop-blur rounded px-2 py-1 text-xs">
-            <span className="text-muted-foreground">Bounds:</span>{' '}
-            <span className="font-mono">450 × 180 × 30 mm</span>
           </div>
         </div>
       ) : (
