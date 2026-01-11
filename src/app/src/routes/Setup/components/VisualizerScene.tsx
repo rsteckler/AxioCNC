@@ -187,26 +187,24 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         Y-
       </Text>
       
-      {/* Z-axis labels (Z maps to Y in Three.js coordinates, show on grid plane at corners) */}
+      {/* Z-axis labels (Z maps to Y in Three.js coordinates, positioned vertically along Z axis) */}
       <Text
-        position={[xmax + labelOffset * 0.7, zmin + 1, ymax + labelOffset * 0.7]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={20}
-        color={zColorPos}
-        anchorX="center"
-        anchorY="middle"
-      >
-        Z+
-      </Text>
-      <Text
-        position={[xmin - labelOffset * 0.7, zmin + 1, ymin - labelOffset * 0.7]}
-        rotation={[-Math.PI / 2, 0, 0]}
+        position={[centerX, zmax + labelOffset, centerY]}
         fontSize={20}
         color={zColorNeg}
         anchorX="center"
         anchorY="middle"
       >
         Z-
+      </Text>
+      <Text
+        position={[centerX, zmin - labelOffset, centerY]}
+        fontSize={20}
+        color={zColorPos}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Z+
       </Text>
     </group>
   )
