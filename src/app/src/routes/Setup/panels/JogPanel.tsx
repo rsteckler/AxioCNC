@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -6,8 +6,10 @@ import { MachineActionButton } from '@/components/MachineActionButton'
 import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements, canPerformAction } from '@/utils/machineState'
 import { DiagonalArrowUpLeft, DiagonalArrowUpRight, DiagonalArrowDownLeft, DiagonalArrowDownRight } from '@/components/icons/DiagonalArrows'
-import { useGcodeCommand } from '@/hooks'
+import { useGcodeCommand, useAnalogJog } from '@/hooks'
 import { buildGoToZeroCommand } from '@/utils/gcode'
+import { normalizeToCircle } from '@/utils/analogNormalize'
+import { useGetExtensionsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
 
 export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
@@ -15,6 +17,12 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   const [distanceIndex, setDistanceIndex] = useState(3) // Default to 10mm
   const distances = [0.01, 0.1, 1, 10, 100, 500, 'Continuous'] as const
   const currentDistance = distances[distanceIndex]
+  
+  // Check debug mode from extensions
+  const { data: advancedConfig } = useGetExtensionsQuery({ key: 'advanced' })
+  const debugMode = (advancedConfig && typeof advancedConfig === 'object' && 'debugMode' in advancedConfig)
+    ? (advancedConfig as { debugMode?: boolean }).debugMode ?? false
+    : false
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)
@@ -58,24 +66,136 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   }, [sendGcode])
   
   // Analog joystick state
+  // joystickPos: visual position (clamped to circle, follows mouse cursor)
+  // jogValues: normalized values for jogging (directionally normalized)
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 })
+  const [jogValues, setJogValues] = useState({ x: 0, y: 0 })
   const [zLevel, setZLevel] = useState(50) // 0-100, 50 = center/stopped
+  const [isDraggingXY, setIsDraggingXY] = useState(false)
+  const [isDraggingZ, setIsDraggingZ] = useState(false)
+  const xyJoystickRef = useRef<HTMLDivElement>(null)
+  const zLeverRef = useRef<HTMLDivElement>(null)
   
-  // Handle joystick drag
-  const handleJoystickMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
+  // Poll analog controls when in analog mode
+  // Use jogValues (normalized) for actual jogging
+  const analogValues = useAnalogJog(
+    {
+      x: jogValues.x,
+      y: jogValues.y,
+      z: zLevel,
+    },
+    mode === 'analog', // enabled when in analog mode
+    0.05, // 5% deadzone
+    60 // 60fps polling rate
+  )
+  
+  // Calculate joystick values from mouse position
+  const updateJoystickFromMouse = useCallback((clientX: number, clientY: number) => {
+    const element = xyJoystickRef.current
+    if (!element) return
+    
+    const rect = element.getBoundingClientRect()
     const centerX = rect.width / 2
     const centerY = rect.height / 2
-    const x = ((e.clientX - rect.left) - centerX) / centerX
-    const y = ((e.clientY - rect.top) - centerY) / centerY
-    // Clamp to circle
-    const dist = Math.sqrt(x * x + y * y)
-    if (dist > 1) {
-      setJoystickPos({ x: x / dist, y: y / dist })
+    const xRaw = ((clientX - rect.left) - centerX) / centerX
+    const yRaw = ((clientY - rect.top) - centerY) / centerY
+    
+    // Calculate magnitude
+    let mag = Math.sqrt(xRaw * xRaw + yRaw * yRaw)
+    
+    // Clamp visual position to circle (for drag target)
+    if (mag > 1) {
+      setJoystickPos({ x: xRaw / mag, y: yRaw / mag })
     } else {
-      setJoystickPos({ x, y })
+      setJoystickPos({ x: xRaw, y: yRaw })
     }
-  }
+    
+    // Normalize for circular input (for jog values)
+    const normalized = normalizeToCircle(xRaw, yRaw)
+    setJogValues(normalized)
+  }, [])
+  
+  // Handle XY joystick mouse down
+  const handleXYMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+    if (!canJog) {
+      e.preventDefault()
+      e.stopPropagation()
+      onFlashStatus()
+      return
+    }
+    setIsDraggingXY(true)
+    updateJoystickFromMouse(e.clientX, e.clientY)
+  }, [isConnected, connectedPort, machineStatus, onFlashStatus, updateJoystickFromMouse])
+  
+  // Document-level mouse move and up handlers for XY joystick
+  useEffect(() => {
+    if (!isDraggingXY) return
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      updateJoystickFromMouse(e.clientX, e.clientY)
+    }
+    
+    const handleMouseUp = () => {
+      setIsDraggingXY(false)
+      setJoystickPos({ x: 0, y: 0 })
+      setJogValues({ x: 0, y: 0 })
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingXY, updateJoystickFromMouse])
+  
+  // Calculate Z level from mouse position
+  const updateZFromMouse = useCallback((clientY: number) => {
+    const element = zLeverRef.current
+    if (!element) return
+    
+    const rect = element.getBoundingClientRect()
+    const y = (clientY - rect.top) / rect.height
+    // Clamp to 0-100, inverted (top = 100, bottom = 0)
+    setZLevel(Math.max(0, Math.min(100, (1 - y) * 100)))
+  }, [])
+  
+  // Handle Z lever mouse down
+  const handleZMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
+    if (!canJog) {
+      e.preventDefault()
+      e.stopPropagation()
+      onFlashStatus()
+      return
+    }
+    setIsDraggingZ(true)
+    updateZFromMouse(e.clientY)
+  }, [isConnected, connectedPort, machineStatus, onFlashStatus, updateZFromMouse])
+  
+  // Document-level mouse move and up handlers for Z lever
+  useEffect(() => {
+    if (!isDraggingZ) return
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      updateZFromMouse(e.clientY)
+    }
+    
+    const handleMouseUp = () => {
+      setIsDraggingZ(false)
+      setZLevel(50) // Return to center
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingZ, updateZFromMouse])
 
   return (
     <div className="p-3 flex flex-col gap-3">
@@ -297,28 +417,9 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           <div className="flex items-center justify-center gap-12">
             {/* XY Joystick */}
             <div 
+              ref={xyJoystickRef}
               className="relative w-36 h-36 rounded-full bg-muted border-2 border-border cursor-crosshair select-none"
-              onMouseMove={(e) => {
-                const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
-                if (!canJog) {
-                  return // Don't flash on hover, just prevent movement
-                }
-                if (e.buttons === 1) {
-                  handleJoystickMove(e)
-                }
-              }}
-              onMouseDown={(e) => {
-                const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
-                if (!canJog) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onFlashStatus()
-                  return
-                }
-                handleJoystickMove(e)
-              }}
-              onMouseUp={() => setJoystickPos({ x: 0, y: 0 })}
-              onMouseLeave={() => setJoystickPos({ x: 0, y: 0 })}
+              onMouseDown={handleXYMouseDown}
             >
               {/* Crosshairs */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -344,32 +445,9 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
             <div className="flex flex-col items-center gap-2">
               <span className="text-[10px] text-blue-500 font-bold">Z+</span>
               <div 
+                ref={zLeverRef}
                 className="relative h-32 w-10 rounded-full bg-muted border-2 border-border cursor-ns-resize select-none"
-                onMouseMove={(e) => {
-                  const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
-                  if (!canJog) {
-                    return // Don't flash on hover, just prevent movement
-                  }
-                  if (e.buttons === 1) {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const y = (e.clientY - rect.top) / rect.height
-                    setZLevel(Math.max(0, Math.min(100, (1 - y) * 100)))
-                  }
-                }}
-                onMouseDown={(e) => {
-                  const canJog = canPerformAction(isConnected, connectedPort, machineStatus, false, ActionRequirements.jog)
-                  if (!canJog) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onFlashStatus()
-                    return
-                  }
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const y = (e.clientY - rect.top) / rect.height
-                  setZLevel(Math.max(0, Math.min(100, (1 - y) * 100)))
-                }}
-                onMouseUp={() => setZLevel(50)}
-                onMouseLeave={() => setZLevel(50)}
+                onMouseDown={handleZMouseDown}
               >
                 {/* Center line */}
                 <div className="absolute top-1/2 left-2 right-2 h-px bg-border" />
@@ -382,6 +460,27 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
               <span className="text-[10px] text-blue-500 font-bold">Z-</span>
             </div>
           </div>
+          
+          {/* Debug panel - shows normalized XYZ values when debug mode is enabled */}
+          {debugMode && (
+            <div className="mt-2 p-2 bg-muted/50 rounded border border-border/50">
+              <div className="text-[10px] text-muted-foreground mb-1 font-medium">Debug: Normalized Values</div>
+              <div className="flex gap-4 text-xs font-mono">
+                <div className="flex items-center gap-1">
+                  <span className="text-red-500 font-bold">X:</span>
+                  <span className="text-foreground">{analogValues.x.toFixed(3)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-green-500 font-bold">Y:</span>
+                  <span className="text-foreground">{analogValues.y.toFixed(3)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-blue-500 font-bold">Z:</span>
+                  <span className="text-foreground">{analogValues.z.toFixed(3)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
