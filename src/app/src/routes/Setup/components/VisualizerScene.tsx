@@ -89,33 +89,33 @@ function WorkEnvelopeGrid({ limits }: { limits: MachineLimits }) {
         />,
       ], [xmin, ymin, ymax, zmin, width, xColor, edgeArrowHeadLength, edgeArrowHeadWidth])}
       
-      {/* Y-axis edge arrows - left and right edges pointing up/back (positive Y = +Z in Three.js) */}
+      {/* Y-axis edge arrows - left and right edges pointing down/front (negative Y = -Z in Three.js) */}
       {useMemo(() => [
-        // Left edge (at xmin) - arrow pointing up/back
+        // Left edge (at xmin) - arrow pointing down/front
         <primitive
           key="y-edge-left"
           object={new THREE.ArrowHelper(
-            new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
-            new THREE.Vector3(xmin, zmin, ymin), // Origin at front edge
+            new THREE.Vector3(0, 0, -1), // Direction: -Z in Three.js (which is -Y in machine)
+            new THREE.Vector3(xmin, zmin, ymax), // Origin at back edge
             height, // Full height
             yColor,
             edgeArrowHeadLength,
             edgeArrowHeadWidth
           )}
         />,
-        // Right edge (at xmax) - arrow pointing up/back
+        // Right edge (at xmax) - arrow pointing down/front
         <primitive
           key="y-edge-right"
           object={new THREE.ArrowHelper(
-            new THREE.Vector3(0, 0, 1), // Direction: +Z in Three.js (which is +Y in machine)
-            new THREE.Vector3(xmax, zmin, ymin), // Origin at front edge
+            new THREE.Vector3(0, 0, -1), // Direction: -Z in Three.js (which is -Y in machine)
+            new THREE.Vector3(xmax, zmin, ymax), // Origin at back edge
             height, // Full height
             yColor,
             edgeArrowHeadLength,
             edgeArrowHeadWidth
           )}
         />,
-      ], [xmin, xmax, ymin, zmin, height, yColor, edgeArrowHeadLength, edgeArrowHeadWidth])}
+      ], [xmin, xmax, ymax, zmin, height, yColor, edgeArrowHeadLength, edgeArrowHeadWidth])}
       
       {/* Z-axis vertical edges - all four as arrows pointing up */}
       {useMemo(() => {
