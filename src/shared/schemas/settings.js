@@ -168,6 +168,7 @@ export const ZeroingStrategiesSettingsSchema = z.object({
 
 export const JoystickSettingsSchema = z.object({
   enabled: z.boolean().default(false),
+  connectionLocation: z.enum(['server', 'client']).default('server'),
   selectedGamepad: z.string().nullable().default(null),
   buttonMappings: z.record(z.string(), z.string()).default({}),
   analogMappings: z.object({

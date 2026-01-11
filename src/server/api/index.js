@@ -16,6 +16,7 @@ import * as tool from './api.tool';
 import * as tools from './api.tools';
 import * as themes from './api.themes';
 import * as workfiles from './api.workfiles';
+import * as gamepads from './api.gamepads';
 
 export {
   version,
@@ -36,4 +37,5 @@ export {
   tools,
   themes,
   workfiles,
+  gamepads,
 };

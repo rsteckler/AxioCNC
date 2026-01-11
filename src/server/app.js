@@ -127,8 +127,10 @@ const appMain = () => {
     // https://github.com/valery-barysok/session-file-store
     const path = settings.middleware.session.path; // Defaults to './axiocnc-sessions'
 
-    rimraf.sync(path);
-    fs.mkdirSync(path);
+    // Ensure session directory exists (don't delete it first - preserve existing sessions)
+    if (!fs.existsSync(path)) {
+      fs.mkdirSync(path, { recursive: true });
+    }
 
     const FileStore = sessionFileStore(session);
     app.use(session({
@@ -324,6 +326,15 @@ const appMain = () => {
     app.put(urljoin(settings.route, 'api/tools/:id'), api.tools.update);
     app.delete(urljoin(settings.route, 'api/tools/:id'), api.tools.__delete);
 
+    // Gamepads (server-side joystick support - Linux only)
+    app.get(urljoin(settings.route, 'api/gamepads'), api.gamepads.list);
+    app.get(urljoin(settings.route, 'api/gamepads/platform'), api.gamepads.getPlatform);
+    app.get(urljoin(settings.route, 'api/gamepads/diagnostic'), api.gamepads.getDiagnostic);
+    app.post(urljoin(settings.route, 'api/gamepads/refresh'), api.gamepads.refresh);
+    app.get(urljoin(settings.route, 'api/gamepads/selected'), api.gamepads.getSelected);
+    app.post(urljoin(settings.route, 'api/gamepads/selected'), api.gamepads.setSelected);
+    app.get(urljoin(settings.route, 'api/gamepads/state'), api.gamepads.getState);
+
     // MDI
     app.get(urljoin(settings.route, 'api/mdi'), api.mdi.fetch);
     app.post(urljoin(settings.route, 'api/mdi'), api.mdi.create);
@@ -362,19 +373,30 @@ const appMain = () => {
     app.delete(urljoin(settings.route, 'api/themes/:id'), api.themes.__delete);
   }
 
-  // page
-  app.get(urljoin(settings.route, '/'), renderPage('index.hbs', (req, res) => {
-    const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
-    const lng = req.language;
-    const t = req.t;
+  // page - serve Vite-built index.html directly
+  app.get(urljoin(settings.route, '/'), (req, res) => {
+    const appPath = _get(settings, 'assets.app.path', '');
+    const indexPath = path.join(appPath, 'index.html');
+    
+    // Check if Vite-built index.html exists, otherwise fall back to template
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // Fallback to template if index.html doesn't exist
+      return renderPage('index.hbs', (req, res) => {
+        const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
+        const lng = req.language;
+        const t = req.t;
 
-    return {
-      webroot: webroot,
-      lang: lng,
-      title: `${t('title')} ${settings.version}`,
-      loading: t('loading')
-    };
-  }));
+        return {
+          webroot: webroot,
+          lang: lng,
+          title: `${t('title')} ${settings.version}`,
+          loading: t('loading')
+        };
+      })(req, res);
+    }
+  });
 
   // SPA catch-all route: serve index.hbs for all client-side routes
   // This allows React Router to handle routing on the client side
@@ -394,19 +416,28 @@ const appMain = () => {
       return next();
     }
 
-    // Serve index.hbs for all other routes (client-side routes) using renderPage helper
-    return renderPage('index.hbs', (req, res) => {
-      const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
-      const lng = req.language;
-      const t = req.t;
+    // Serve Vite-built index.html for all other routes (client-side routes)
+    const appPath = _get(settings, 'assets.app.path', '');
+    const indexPath = path.join(appPath, 'index.html');
+    
+    // Check if Vite-built index.html exists, otherwise fall back to template
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // Fallback to template if index.html doesn't exist
+      return renderPage('index.hbs', (req, res) => {
+        const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
+        const lng = req.language;
+        const t = req.t;
 
-      return {
-        webroot: webroot,
-        lang: lng,
-        title: `${t('title')} ${settings.version}`,
-        loading: t('loading')
-      };
-    })(req, res, next);
+        return {
+          webroot: webroot,
+          lang: lng,
+          title: `${t('title')} ${settings.version}`,
+          loading: t('loading')
+        };
+      })(req, res, next);
+    }
   });
 
   { // Error handling

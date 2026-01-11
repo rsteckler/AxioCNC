@@ -10,6 +10,7 @@ import store from '../../store';
 import config from '../configstore';
 import taskRunner from '../taskrunner';
 import machineStatusManager from '../machinestatus/MachineStatusManager';
+import gamepadService from '../gamepad';
 import {
   GrblController,
   MarlinController,
@@ -138,8 +139,9 @@ class CNCEngine {
         path: '/socket.io'
       });
 
-      // Set Socket.IO instance for status manager
+      // Set Socket.IO instance for status manager and gamepad service
       machineStatusManager.setIO(this.io);
+      gamepadService.setIO(this.io);
 
       this.io.use(socketioJwt.authorize({
         secret: settings.secret,
