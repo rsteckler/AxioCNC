@@ -550,9 +550,9 @@ test('api.macros', (t) => {
     const req = createMockRequest({
       params: { id: 'macro-1' },
       body: {
-        name: 123,  // Number
-        description: null,  // null
-        content: undefined  // undefined
+        name: 123, // Number
+        description: null, // null
+        content: undefined // undefined
       }
     });
     const res = createMockResponse();

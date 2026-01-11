@@ -609,10 +609,10 @@ test('api.machines', (t) => {
       params: { id: 'machine-1' },
       body: {
         limits: {
-          xmin: '123',  // String
-          xmax: '456',  // String
-          ymin: null,   // null
-          ymax: undefined  // undefined
+          xmin: '123', // String
+          xmax: '456', // String
+          ymin: null, // null
+          ymax: undefined // undefined
         }
       }
     });

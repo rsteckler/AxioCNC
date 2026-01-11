@@ -552,9 +552,9 @@ test('api.mdi', (t) => {
     const req = createMockRequest({
       params: { id: 'mdi-1' },
       body: {
-        name: 123,  // Number
-        command: null,  // null
-        grid: 'not an object'  // Not an object
+        name: 123, // Number
+        command: null, // null
+        grid: 'not an object' // Not an object
       }
     });
     const res = createMockResponse();
@@ -629,7 +629,7 @@ test('api.mdi', (t) => {
         records: [
           { id: 'new-1', name: 'New 1', command: 'G0 X10', grid: { x: 10 } },
           { id: 'new-2', name: 'New 2', command: 'G0 Y10', grid: { y: 10 } },
-          { name: 'New 3', command: 'G28', grid: {} }  // Missing ID - should be generated
+          { name: 'New 3', command: 'G28', grid: {} } // Missing ID - should be generated
         ]
       }
     });
@@ -656,9 +656,9 @@ test('api.mdi', (t) => {
       body: {
         records: [
           { id: 'valid-1', name: 'Valid 1', command: 'G0', grid: {} },
-          ['not', 'an', 'object'],  // Should be filtered out
+          ['not', 'an', 'object'], // Should be filtered out
           { id: 'valid-2', name: 'Valid 2', command: 'G28', grid: {} },
-          null,  // Should be filtered out
+          null, // Should be filtered out
           { id: 'valid-3', name: 'Valid 3', command: 'G90', grid: {} }
         ]
       }
@@ -706,9 +706,9 @@ test('api.mdi', (t) => {
         records: [
           {
             id: 'mdi-1',
-            name: 123,  // Number
-            command: null,  // null
-            grid: 'not an object'  // Not an object
+            name: 123, // Number
+            command: null, // null
+            grid: 'not an object' // Not an object
           }
         ]
       }
