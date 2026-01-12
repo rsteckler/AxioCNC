@@ -1,0 +1,57 @@
+[
+  {
+    "id": "test-machine",
+    "name": "Test Machine",
+    "manufacturer": "Test",
+    "dimensions": {
+      "width": 500,
+      "depth": 500,
+      "height": 50
+    },
+    "homingCorner": "front-left"
+  },
+  {
+    "id": "shapeoko-3",
+    "name": "Shapeoko 3",
+    "manufacturer": "Carbide 3D",
+    "dimensions": {
+      "width": 425,
+      "depth": 425,
+      "height": 75
+    },
+    "homingCorner": "front-left"
+  },
+  {
+    "id": "shapeoko-4",
+    "name": "Shapeoko 4",
+    "manufacturer": "Carbide 3D",
+    "dimensions": {
+      "width": 425,
+      "depth": 425,
+      "height": 75
+    },
+    "homingCorner": "front-left"
+  },
+  {
+    "id": "shapeoko-5-pro",
+    "name": "Shapeoko 5 Pro",
+    "manufacturer": "Carbide 3D",
+    "dimensions": {
+      "width": 1250,
+      "depth": 1250,
+      "height": 155
+    },
+    "homingCorner": "back-right"
+  },
+  {
+    "id": "longmill-12x12",
+    "name": "LongMill 12x12",
+    "manufacturer": "Sienci Labs",
+    "dimensions": {
+      "width": 307,
+      "depth": 307,
+      "height": 114
+    },
+    "homingCorner": "front-left"
+  }
+]

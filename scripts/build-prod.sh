@@ -29,4 +29,6 @@ cd src/app && yarn build && cd ../..
 mkdir -p dist/axiocnc/app
 mkdir -p dist/axiocnc/server
 
-cp -af src/server/{i18n,views} dist/axiocnc/server/
+cp -af src/server/{i18n,views,config} dist/axiocnc/server/
+# Copy index.hbs template to app directory (needed by Express views)
+cp -af index.hbs dist/axiocnc/app/ 2>/dev/null || true

@@ -9,6 +9,7 @@ import * as commands from './api.commands';
 import * as events from './api.events';
 import * as machines from './api.machines';
 import * as machine from './api.machine';
+import * as machinePresets from './api.machine-presets';
 import * as macros from './api.macros';
 import * as mdi from './api.mdi';
 import * as users from './api.users';
@@ -30,6 +31,7 @@ export {
   events,
   machines,
   machine,
+  machinePresets,
   macros,
   mdi,
   users,

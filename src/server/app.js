@@ -307,6 +307,9 @@ const appMain = () => {
 
     // Machines
     app.get(urljoin(settings.route, 'api/machines'), api.machines.fetch);
+    
+    // Machine Presets
+    app.get(urljoin(settings.route, 'api/machine-presets'), api.machinePresets.fetch);
     app.post(urljoin(settings.route, 'api/machines'), api.machines.create);
     app.get(urljoin(settings.route, 'api/machines/:id'), api.machines.read);
     app.put(urljoin(settings.route, 'api/machines/:id'), api.machines.update);

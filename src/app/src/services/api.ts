@@ -292,6 +292,26 @@ export interface GamepadPlatformResponse {
   message: string
 }
 
+// =============================================================================
+// Machine Presets Types
+// =============================================================================
+
+export interface MachinePreset {
+  id: string
+  name: string
+  manufacturer: string
+  dimensions: {
+    width: number
+    depth: number
+    height: number
+  }
+  homingCorner: 'back-left' | 'back-right' | 'front-left' | 'front-right'
+}
+
+export interface MachinePresetsResponse {
+  presets: MachinePreset[]
+}
+
 // RTK Query API definition
 export const api = createApi({
   reducerPath: 'api',
@@ -306,7 +326,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads', 'MachinePresets'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -765,6 +785,15 @@ export const api = createApi({
       // Don't cache - this is for real-time polling
       keepUnusedDataFor: 0,
     }),
+
+    // ==========================================================================
+    // Machine Presets
+    // ==========================================================================
+
+    getMachinePresets: builder.query<MachinePresetsResponse, void>({
+      query: () => '/machine-presets',
+      providesTags: ['MachinePresets'],
+    }),
   }),
 })
 
@@ -832,6 +861,8 @@ export const {
   useSetSelectedGamepadMutation,
   useGetGamepadStateQuery,
   useLazyGetGamepadStateQuery,
+  // Machine Presets
+  useGetMachinePresetsQuery,
   // Other
   useGetCurrentVersionQuery,
   useGetVersionQuery,

@@ -35,7 +35,7 @@ cd "${PROJECT_ROOT}/src/app" && yarn build:dev && cd "${PROJECT_ROOT}"
 
 # Ensure we're in project root for the copy command
 cd "${PROJECT_ROOT}"
-cp -af src/server/{i18n,views} output/axiocnc/server/
+cp -af src/server/{i18n,views,config} output/axiocnc/server/
 # Copy index.hbs template to app directory (needed by Express views)
 cp -af index.hbs output/axiocnc/app/ 2>/dev/null || true
 # Copy favicon if it exists

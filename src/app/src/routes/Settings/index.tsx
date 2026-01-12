@@ -93,6 +93,7 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
     zmin: -80,                 // 80mm Z travel
     zmax: 0,
   },
+  homingCorner: 'front-left',  // Most common homing position
   ignoreErrors: false,         // Safer to halt on errors
 }
 
@@ -704,6 +705,9 @@ export default function Settings() {
       if (changes.name !== undefined) updated.name = changes.name
       if (changes.limits) {
         updated.limits = { ...prev.limits, ...changes.limits }
+      }
+      if (changes.homingCorner !== undefined) {
+        updated.homingCorner = changes.homingCorner
       }
       if (changes.ignoreErrors !== undefined) {
         updated.ignoreErrors = changes.ignoreErrors
