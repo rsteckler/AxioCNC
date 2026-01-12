@@ -42,11 +42,11 @@ import { JoystickTestDialog } from './JoystickTestDialog'
 export type CncAction = 
   | 'none'
   | 'jog_x_pos' | 'jog_x_neg' | 'jog_y_pos' | 'jog_y_neg' | 'jog_z_pos' | 'jog_z_neg'
-  | 'home_all' | 'home_x' | 'home_y' | 'home_z'
+  | 'home_all'
   | 'zero_all' | 'zero_x' | 'zero_y' | 'zero_z'
   | 'start' | 'stop' | 'pause' | 'resume'
-  | 'feed_hold' | 'cycle_start'
-  | 'spindle_on' | 'spindle_off' | 'spindle_toggle'
+  | 'feed_hold'
+  | 'spindle_on' | 'spindle_off'
   | 'speed_slow' | 'speed_medium' | 'speed_fast'
   | 'emergency_stop'
 
@@ -61,9 +61,6 @@ export const CNC_ACTIONS: { value: CncAction; label: string; category: string }[
   { value: 'jog_z_neg', label: 'Jog Z-', category: 'Jogging' },
   // Homing
   { value: 'home_all', label: 'Home All', category: 'Homing' },
-  { value: 'home_x', label: 'Home X', category: 'Homing' },
-  { value: 'home_y', label: 'Home Y', category: 'Homing' },
-  { value: 'home_z', label: 'Home Z', category: 'Homing' },
   // Zeroing
   { value: 'zero_all', label: 'Zero All', category: 'Zeroing' },
   { value: 'zero_x', label: 'Zero X', category: 'Zeroing' },
@@ -75,11 +72,9 @@ export const CNC_ACTIONS: { value: CncAction; label: string; category: string }[
   { value: 'pause', label: 'Pause Job', category: 'Job Control' },
   { value: 'resume', label: 'Resume Job', category: 'Job Control' },
   { value: 'feed_hold', label: 'Feed Hold', category: 'Job Control' },
-  { value: 'cycle_start', label: 'Cycle Start', category: 'Job Control' },
   // Spindle
   { value: 'spindle_on', label: 'Spindle On', category: 'Spindle' },
   { value: 'spindle_off', label: 'Spindle Off', category: 'Spindle' },
-  { value: 'spindle_toggle', label: 'Spindle Toggle', category: 'Spindle' },
   // Speed
   { value: 'speed_slow', label: 'Jog Speed: Slow', category: 'Speed' },
   { value: 'speed_medium', label: 'Jog Speed: Medium', category: 'Speed' },

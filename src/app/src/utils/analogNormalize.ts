@@ -19,21 +19,22 @@
  */
 export function normalizeToCircle(xRaw: number, yRaw: number): { x: number; y: number } {
   // Calculate magnitude
-  let mag = Math.sqrt(xRaw * xRaw + yRaw * yRaw)
+  const mag = Math.sqrt(xRaw * xRaw + yRaw * yRaw)
   
-  // Clamp magnitude to 1.0
+  // Only normalize if magnitude exceeds 1.0 (outside the circle)
+  // For inputs inside the circle (mag <= 1.0), pass through unchanged
   if (mag > 1.0) {
-    mag = 1.0
-  }
-  
-  // Normalize: divide by magnitude
-  if (mag > 0) {
+    // Normalize: divide by magnitude (clamps to circle edge)
     const x = Math.max(-1, Math.min(1, xRaw / mag))
     const y = Math.max(-1, Math.min(1, yRaw / mag))
     return { x, y }
   }
   
-  return { x: 0, y: 0 }
+  // Input is within the circle, pass through unchanged
+  return { 
+    x: Math.max(-1, Math.min(1, xRaw)), 
+    y: Math.max(-1, Math.min(1, yRaw)) 
+  }
 }
 
 /**

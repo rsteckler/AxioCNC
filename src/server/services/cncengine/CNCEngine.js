@@ -11,6 +11,8 @@ import config from '../configstore';
 import taskRunner from '../taskrunner';
 import machineStatusManager from '../machinestatus/MachineStatusManager';
 import gamepadService from '../gamepad';
+import joystickService from '../joystick';
+import jogLoop from '../joystick/jogloop';
 import {
   GrblController,
   MarlinController,
@@ -142,6 +144,42 @@ class CNCEngine {
       // Set Socket.IO instance for status manager and gamepad service
       machineStatusManager.setIO(this.io);
       gamepadService.setIO(this.io);
+      joystickService.initialize(this.io, gamepadService, config);
+      
+      // Initialize jog loop with config
+      const joystickConfig = config.get('settings.joystick', {})
+      jogLoop.initialize(joystickConfig)
+      
+      // Listen for config changes to update jog loop
+      config.on('change', () => {
+        const updatedConfig = config.get('settings.joystick', {})
+        jogLoop.updateConfig(updatedConfig)
+      })
+      
+      // Listen for joystick actions and dispatch them
+      const dispatcher = require('../joystick/dispatcher')
+      joystickService.on('actions', (actions, source) => {
+        log.debug(`[joystick:${source}] dispatching ${actions.length} action(s)`)
+        actions.forEach(action => {
+          if (action.type === 'analog') {
+            log.debug(`[joystick:${source}] → analog jog: x=${action.x.toFixed(3)}, y=${action.y.toFixed(3)}, z=${action.z.toFixed(3)}`)
+            // Route to jog loop for continuous jogging
+            jogLoop.handleAnalogInput(action.x, action.y, action.z)
+          } else if (action.type === 'button') {
+            log.debug(`[joystick:${source}] → button action: ${action.buttonId}=${action.action} (pressed=${action.pressed})`)
+            
+            // Check if this is a button jog action
+            const isButtonJog = action.action.match(/^jog_[xyz]_(pos|neg)$/)
+            if (isButtonJog) {
+              // Route button jog to jog loop
+              jogLoop.handleButtonJog(action.action, action.pressed)
+            } else if (action.pressed) {
+              // Dispatch other button actions to controller (only on press)
+              dispatcher.dispatchButtonAction(action.action)
+            }
+          }
+        })
+      });
 
       this.io.use(socketioJwt.authorize({
         secret: settings.secret,
@@ -203,8 +241,20 @@ class CNCEngine {
             controller.removeConnection(socket);
           });
 
+          // Remove client inputs from joystick service
+          joystickService.removeClient(socket.id);
+
           // Remove from socket pool
           this.sockets.splice(this.sockets.indexOf(socket), 1);
+        });
+
+        // Joystick input handlers
+        socket.on('joystick:gamepad', (axes, buttons, timestamp) => {
+          joystickService.handleClientGamepadInput(socket.id, axes, buttons, timestamp);
+        });
+
+        socket.on('joystick:jog', (x, y, z, timestamp) => {
+          joystickService.handleClientJogControlInput(socket.id, x, y, z, timestamp);
         });
 
         // List the available serial ports

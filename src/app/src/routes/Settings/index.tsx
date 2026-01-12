@@ -339,6 +339,7 @@ export default function Settings() {
           ...prev,
           name: settings.machine?.name ?? prev.name,
           limits: settings.machine?.limits ?? prev.limits,
+          homingCorner: settings.machine?.homingCorner ?? prev.homingCorner,
         }))
       }
       
@@ -717,10 +718,11 @@ export default function Settings() {
     
     // Save to backend
     const saveData: PartialSettings = {}
-    if (changes.name !== undefined || changes.limits) {
+    if (changes.name !== undefined || changes.limits || changes.homingCorner !== undefined) {
       saveData.machine = {}
       if (changes.name !== undefined) saveData.machine.name = changes.name
       if (changes.limits) saveData.machine.limits = changes.limits
+      if (changes.homingCorner !== undefined) saveData.machine.homingCorner = changes.homingCorner
     }
     if (changes.ignoreErrors !== undefined) {
       saveData.controller = { exception: { ignoreErrors: changes.ignoreErrors } }

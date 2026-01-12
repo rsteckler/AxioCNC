@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { Gamepad2, CircleDot } from 'lucide-react'
-import { expandCircleToSquare } from '@/utils/analogNormalize'
+import { normalizeToCircle } from '@/utils/analogNormalize'
 import { socketService } from '@/services/socket'
 import type { JoystickConfig, CncAction, AnalogMapping } from './JoystickSection'
 import { CNC_ACTIONS, GAMEPAD_BUTTONS } from './JoystickSection'
@@ -257,14 +257,13 @@ export function JoystickTestDialog({
     return ((value + 1) / 2) * 100
   }
 
-  // Expand circular gamepad input to fill a square for both sticks
-  // Both sticks have circular physical limits, so always expand to square
-  const leftXY = expandCircleToSquare(
+  // Normalize gamepad input to circle (same as jog control panel)
+  const leftXY = normalizeToCircle(
     gamepadState.axes[0] || 0,
     gamepadState.axes[1] || 0
   )
 
-  const rightXY = expandCircleToSquare(
+  const rightXY = normalizeToCircle(
     gamepadState.axes[2] || 0,
     gamepadState.axes[3] || 0
   )
@@ -310,7 +309,7 @@ export function JoystickTestDialog({
             </div>
             
             {/* Visual stick representation */}
-            <div className="relative w-32 h-32 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
+            <div className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
                 className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
                 style={{
@@ -360,7 +359,7 @@ export function JoystickTestDialog({
             </div>
             
             {/* Visual stick representation */}
-            <div className="relative w-32 h-32 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
+            <div className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
                 className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
                 style={{
