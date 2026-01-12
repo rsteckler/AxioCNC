@@ -83,18 +83,7 @@ cd src/app && yarn build
 - [x] Backend decoupling (serves static frontend, no template rendering)
 - [x] i18n setup with bundled English, lazy-loaded other languages
 
-### In Progress
-- [ ] Main workspace/control interface
-- [ ] G-code viewer and visualizer
-- [ ] Widget system
-- [ ] Full API integration for all settings
-
-### Pending
-- [ ] All widgets from legacy app
-- [ ] Keyboard shortcuts
-- [ ] File management
-- [ ] Macro system
-- [ ] Complete i18n coverage
+> **Note:** Active todos and pending work are tracked in [`aidocs/todos.md`](./todos.md)
 
 ## Related Documentation
 
