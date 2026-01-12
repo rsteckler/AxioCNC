@@ -156,10 +156,10 @@ export function CameraSection({
                         className="font-mono text-sm"
                       />
                       <div className="text-xs text-muted-foreground">
-                        The URL should point to a stream in one of the following formats:{' '}
-                        <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG</Badge>
-                        <Badge variant="secondary" className="text-xs mx-0.5">RTSP</Badge>
-                        <Badge variant="secondary" className="text-xs mx-0.5">H264 (MP4)</Badge>
+                        Only HTTP-based streams are supported. The URL must start with <code className="px-1 py-0.5 bg-muted rounded text-xs">http://</code> or <code className="px-1 py-0.5 bg-muted rounded text-xs">https://</code>. Supported formats:{' '}
+                        <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG (MJPEG)</Badge>
+                        <Badge variant="secondary" className="text-xs mx-0.5">MP4 (H.264)</Badge>
+                        <Badge variant="outline" className="text-xs mx-0.5 border-destructive text-destructive">RTSP not supported</Badge>
                       </div>
                     </div>
                   )}
