@@ -5,7 +5,7 @@ import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
 import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as MachineStatusType } from '@/services/api'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
-import { useGcodeCommand } from '@/hooks'
+import { useGcodeCommand, useJoystickInput } from '@/hooks'
 import {
   Dialog,
   DialogContent,
@@ -38,7 +38,7 @@ import {
   Crosshair, RotateCcw, RotateCw, GripVertical,
   Zap, Target, FileCode,
   Move, Navigation, Bell, AlertCircle, X,
-  HelpCircle,
+  HelpCircle, Camera,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -55,6 +55,7 @@ import { RapidPanel } from './panels/RapidPanel'
 import { FilePanel } from './panels/FilePanel'
 import { ToolsPanel } from './panels/ToolsPanel'
 import { VisualizerPanel } from './panels/VisualizerPanel'
+import { CameraPanel } from './panels/CameraPanel'
 import type { PanelProps } from './types'
 
 // ============================================================================
@@ -74,6 +75,7 @@ const panelConfig: Record<string, {
   macros: { title: 'Macros', icon: Zap, component: MacrosPanel },
   file: { title: 'File', icon: FileCode, component: FilePanel },
   spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
+  camera: { title: 'Camera', icon: Camera, component: CameraPanel },
 }
 
 // Sortable Panel Component
@@ -180,10 +182,40 @@ export default function Setup() {
   const navigate = useNavigate()
   
   // Panel order - just an array of IDs
-  const [panelOrder, setPanelOrder] = useState(['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros'])
+  // Load from localStorage or use default
+  const [panelOrder, setPanelOrder] = useState<string[]>(() => {
+    const stored = localStorage.getItem('axiocnc-setup-panel-order')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        // Validate it's an array with valid panel IDs
+        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera']
+        if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
+          return parsed
+        }
+      } catch {
+        // Invalid JSON, use default
+      }
+    }
+    return ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera']
+  })
   
   // Track which panels are collapsed
-  const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>({})
+  // Load from localStorage or use default
+  const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem('axiocnc-setup-panel-collapsed')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed
+        }
+      } catch {
+        // Invalid JSON, use default
+      }
+    }
+    return {}
+  })
   
   // Track active drag item
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -1131,14 +1163,32 @@ export default function Setup() {
       setPanelOrder((items) => {
         const oldIndex = items.indexOf(active.id as string)
         const newIndex = items.indexOf(over.id as string)
-        return arrayMove(items, oldIndex, newIndex)
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        // Persist to localStorage
+        localStorage.setItem('axiocnc-setup-panel-order', JSON.stringify(newOrder))
+        return newOrder
       })
     }
   }
   
   const togglePanel = (panelId: string) => {
-    setCollapsedPanels(prev => ({ ...prev, [panelId]: !prev[panelId] }))
+    setCollapsedPanels(prev => {
+      const updated = { ...prev, [panelId]: !prev[panelId] }
+      // Persist to localStorage
+      localStorage.setItem('axiocnc-setup-panel-collapsed', JSON.stringify(updated))
+      return updated
+    })
   }
+  
+  // Persist panel order changes (in case setPanelOrder is called elsewhere)
+  useEffect(() => {
+    localStorage.setItem('axiocnc-setup-panel-order', JSON.stringify(panelOrder))
+  }, [panelOrder])
+  
+  // Persist collapsed panels changes
+  useEffect(() => {
+    localStorage.setItem('axiocnc-setup-panel-collapsed', JSON.stringify(collapsedPanels))
+  }, [collapsedPanels])
 
   return (
     <div className="h-screen flex flex-col bg-background">

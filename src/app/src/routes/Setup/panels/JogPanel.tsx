@@ -6,14 +6,21 @@ import { MachineActionButton } from '@/components/MachineActionButton'
 import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements, canPerformAction } from '@/utils/machineState'
 import { DiagonalArrowUpLeft, DiagonalArrowUpRight, DiagonalArrowDownLeft, DiagonalArrowDownRight } from '@/components/icons/DiagonalArrows'
-import { useGcodeCommand, useAnalogJog } from '@/hooks'
+import { useGcodeCommand, useAnalogJog, sendJogControlInput } from '@/hooks'
 import { buildGoToZeroCommand } from '@/utils/gcode'
 import { normalizeToCircle } from '@/utils/analogNormalize'
-import { useGetExtensionsQuery } from '@/services/api'
+import { useGetExtensionsQuery, useGetSettingsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
 
 export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
-  const [mode, setMode] = useState<'steps' | 'analog'>('steps')
+  // Load mode from localStorage or use default
+  const [mode, setMode] = useState<'steps' | 'analog'>(() => {
+    const stored = localStorage.getItem('axiocnc-setup-jog-mode')
+    if (stored === 'steps' || stored === 'analog') {
+      return stored
+    }
+    return 'steps'
+  })
   const [distanceIndex, setDistanceIndex] = useState(3) // Default to 10mm
   const distances = [0.01, 0.1, 1, 10, 100, 500, 'Continuous'] as const
   const currentDistance = distances[distanceIndex]
@@ -23,6 +30,9 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   const debugMode = (advancedConfig && typeof advancedConfig === 'object' && 'debugMode' in advancedConfig)
     ? (advancedConfig as { debugMode?: boolean }).debugMode ?? false
     : false
+  
+  // Get settings for joystick config
+  const { data: settings } = useGetSettingsQuery()
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)
@@ -88,6 +98,13 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     0.05, // 5% deadzone
     60 // 60fps polling rate
   )
+  
+  // Send jog control inputs to server when in analog mode and joystick is enabled
+  useEffect(() => {
+    if (mode === 'analog' && settings?.joystick?.enabled) {
+      sendJogControlInput(analogValues.x, analogValues.y, analogValues.z)
+    }
+  }, [mode, settings?.joystick?.enabled, analogValues.x, analogValues.y, analogValues.z])
   
   // Calculate joystick values from mouse position
   const updateJoystickFromMouse = useCallback((clientX: number, clientY: number) => {
@@ -205,7 +222,10 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           variant={mode === 'steps' ? 'default' : 'ghost'} 
           size="sm" 
           className="flex-1 h-7 text-xs"
-          onClick={() => setMode('steps')}
+          onClick={() => {
+            setMode('steps')
+            localStorage.setItem('axiocnc-setup-jog-mode', 'steps')
+          }}
         >
           Steps
         </Button>
@@ -213,7 +233,10 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           variant={mode === 'analog' ? 'default' : 'ghost'} 
           size="sm" 
           className="flex-1 h-7 text-xs"
-          onClick={() => setMode('analog')}
+          onClick={() => {
+            setMode('analog')
+            localStorage.setItem('axiocnc-setup-jog-mode', 'analog')
+          }}
         >
           Analog
         </Button>
