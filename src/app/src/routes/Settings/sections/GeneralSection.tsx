@@ -31,7 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Download, Upload, RotateCcw, FolderOpen, Plus, Trash2, HardDrive, Cloud, CheckCircle2, XCircle, Loader2, LogIn, LogOut } from 'lucide-react'
+import { Download, Upload, RotateCcw, FolderOpen, Plus, Trash2, HardDrive, Cloud, CheckCircle2, XCircle, Loader2, LogIn, LogOut, ExternalLink } from 'lucide-react'
 
 // Watch folder types
 export type WatchFolderType = 'local' | 'google-drive'
@@ -324,11 +324,29 @@ export function GeneralSection({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                
+                {/* Google Drive Not Available Notice */}
+                {newFolderType === 'google-drive' && (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-muted">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      This feature is not yet implemented. Upvote it to be included in a future release.
+                    </p>
+                    <a
+                      href="https://github.com/rsteckler/AxioCNC/issues/1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Upvote Google Drive support
+                    </a>
+                  </div>
+                )}
               </div>
 
-              {/* Google Drive Connection Status */}
+              {/* Google Drive Connection Status - Disabled */}
               {newFolderType === 'google-drive' && (
-                <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+                <div className="p-4 rounded-lg border bg-muted/30 space-y-3 opacity-50 pointer-events-none">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Cloud className="w-5 h-5 text-blue-500" />
@@ -376,7 +394,7 @@ export function GeneralSection({
                         size="sm"
                         onClick={onDisconnectGoogleDrive}
                         className="gap-2"
-                        disabled={googleDriveStatus.isConnecting}
+                        disabled={true}
                       >
                         <LogOut className="w-4 h-4" />
                         Disconnect
@@ -387,7 +405,7 @@ export function GeneralSection({
                         size="sm"
                         onClick={onConnectGoogleDrive}
                         className="gap-2"
-                        disabled={googleDriveStatus.isConnecting}
+                        disabled={true}
                       >
                         {googleDriveStatus.isConnecting ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,14 +438,12 @@ export function GeneralSection({
                     : 'My Drive/CNC Projects'
                   }
                   className="font-mono text-sm"
-                  disabled={newFolderType === 'google-drive' && !googleDriveStatus.isConnected}
+                  disabled={newFolderType === 'google-drive'}
                 />
                 <p className="text-xs text-muted-foreground">
                   {newFolderType === 'local' 
                     ? 'Enter the full path to the folder on your local machine'
-                    : googleDriveStatus.isConnected
-                      ? 'Enter the Google Drive folder path (e.g., My Drive/CNC Projects)'
-                      : 'Connect to Google Drive first to add folders'
+                    : 'Feature not yet implemented'
                   }
                 </p>
               </div>
@@ -439,6 +455,7 @@ export function GeneralSection({
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="My G-code Files"
+                  disabled={newFolderType === 'google-drive'}
                 />
                 <p className="text-xs text-muted-foreground">
                   A friendly name to identify this folder
@@ -454,7 +471,7 @@ export function GeneralSection({
                 onClick={handleAddFolder} 
                 disabled={
                   !newFolderPath.trim() || 
-                  (newFolderType === 'google-drive' && !googleDriveStatus.isConnected)
+                  newFolderType === 'google-drive'
                 }
               >
                 Add Folder
