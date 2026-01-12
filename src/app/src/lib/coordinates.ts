@@ -9,16 +9,19 @@
  *    - Range: (0, 0, 0) to (xSize, ySize, zSize)
  * 
  * 2. Machine Coordinates (MPos):
- *    - Origin at right-top-highest corner of work envelope
+ *    - Origin (0,0,0) is at the homing corner at maximum Z
  *    - Machine (0,0,0) is the home position
- *    - Values are typically 0 or negative within work envelope
- *    - Range: (-xSize, -ySize, -zSize) to (0, 0, 0)
+ *    - The homing corner can be any of the four corners: back-left, back-right, front-left, front-right
+ *    - Machine limits determine where (0,0,0) is located within the work envelope
  * 
  * 3. Work Coordinates (WPos / WCS):
  *    - User-defined offset from machine coordinates
  *    - WPos = MPos - WorkOffset
  *    - Set via G54-G59 coordinate systems
  */
+
+import type { HomingCorner } from './machineLimits'
+import { getHomingPosition } from './machineLimits'
 
 export interface Coordinate {
   x: number
@@ -46,6 +49,34 @@ export function getEnvelopeDimensions(limits: MachineLimits) {
   }
 }
 
+/**
+ * Get the Three.js coordinates for the machine home position (0,0,0)
+ * 
+ * Three.js origin is always at (0, 0, 0) which is the left-bottom-lowest corner.
+ * Machine home (0,0,0) can be at any of the four corners at max Z, depending on homingCorner.
+ */
+function getMachineHomeInThreeSpace(
+  limits: MachineLimits,
+  homingCorner: HomingCorner
+): Coordinate {
+  const { xSize, ySize, zSize } = getEnvelopeDimensions(limits)
+  const machineHome = getHomingPosition(limits, homingCorner)
+  
+  // Machine home position in machine coordinates is (0, 0, 0)
+  // But limits tell us where that (0,0,0) is in the envelope
+  // Three.js origin is at (0, 0, 0) which is always the left-bottom-lowest
+  
+  // Convert machine home position to Three.js coordinates
+  // Three.js x = machine x - xmin (shifts to make xmin = 0)
+  // Three.js y = machine y - ymin (shifts to make ymin = 0)
+  // Three.js z = machine z - zmin (shifts to make zmin = 0)
+  return {
+    x: machineHome.x - limits.xmin,
+    y: machineHome.y - limits.ymin,
+    z: machineHome.z - limits.zmin,
+  }
+}
+
 // =============================================================================
 // Three.js ↔ Machine Coordinate Conversions
 // =============================================================================
@@ -53,36 +84,48 @@ export function getEnvelopeDimensions(limits: MachineLimits) {
 /**
  * Convert Three.js scene coordinates to Machine coordinates
  * 
- * Three.js (0,0,0) → Machine (-xSize, -ySize, -zSize)
- * Three.js (xSize, ySize, zSize) → Machine (0, 0, 0)
+ * @param three - Three.js coordinate
+ * @param limits - Machine limits
+ * @param homingCorner - Which corner is the home position (defaults to 'back-right' for backward compatibility)
  */
 export function threeToMachine(
   three: Coordinate,
-  limits: MachineLimits
+  limits: MachineLimits,
+  homingCorner: HomingCorner = 'back-right'
 ): Coordinate {
-  const { xSize, ySize, zSize } = getEnvelopeDimensions(limits)
+  const threeHome = getMachineHomeInThreeSpace(limits, homingCorner)
+  
+  // Relative to Three.js home position
+  // machineCoord = machineHome + (threeCoord - threeHome)
+  // But machineHome in machine coords is (0,0,0), so:
+  // machineCoord = threeCoord - threeHome
   return {
-    x: three.x - xSize,
-    y: three.y - ySize,
-    z: three.z - zSize,
+    x: three.x - threeHome.x,
+    y: three.y - threeHome.y,
+    z: three.z - threeHome.z,
   }
 }
 
 /**
  * Convert Machine coordinates to Three.js scene coordinates
  * 
- * Machine (0, 0, 0) → Three.js (xSize, ySize, zSize)
- * Machine (-xSize, -ySize, -zSize) → Three.js (0, 0, 0)
+ * @param machine - Machine coordinate
+ * @param limits - Machine limits
+ * @param homingCorner - Which corner is the home position (defaults to 'back-right' for backward compatibility)
  */
 export function machineToThree(
   machine: Coordinate,
-  limits: MachineLimits
+  limits: MachineLimits,
+  homingCorner: HomingCorner = 'back-right'
 ): Coordinate {
-  const { xSize, ySize, zSize } = getEnvelopeDimensions(limits)
+  const threeHome = getMachineHomeInThreeSpace(limits, homingCorner)
+  
+  // Machine (0,0,0) maps to threeHome
+  // So: threeCoord = threeHome + machineCoord
   return {
-    x: machine.x + xSize,
-    y: machine.y + ySize,
-    z: machine.z + zSize,
+    x: threeHome.x + machine.x,
+    y: threeHome.y + machine.y,
+    z: threeHome.z + machine.z,
   }
 }
 
@@ -132,9 +175,10 @@ export function workToMachine(
 export function threeToWork(
   three: Coordinate,
   limits: MachineLimits,
-  workOffset: Coordinate
+  workOffset: Coordinate,
+  homingCorner: HomingCorner = 'back-right'
 ): Coordinate {
-  const machine = threeToMachine(three, limits)
+  const machine = threeToMachine(three, limits, homingCorner)
   return machineToWork(machine, workOffset)
 }
 
@@ -144,10 +188,11 @@ export function threeToWork(
 export function workToThree(
   work: Coordinate,
   limits: MachineLimits,
-  workOffset: Coordinate
+  workOffset: Coordinate,
+  homingCorner: HomingCorner = 'back-right'
 ): Coordinate {
   const machine = workToMachine(work, workOffset)
-  return machineToThree(machine, limits)
+  return machineToThree(machine, limits, homingCorner)
 }
 
 // =============================================================================
@@ -169,9 +214,10 @@ export function tupleToCoord(tuple: CoordTuple): Coordinate {
  */
 export function machineToThreeTuple(
   machine: Coordinate,
-  limits: MachineLimits
+  limits: MachineLimits,
+  homingCorner: HomingCorner = 'back-right'
 ): CoordTuple {
-  return coordToTuple(machineToThree(machine, limits))
+  return coordToTuple(machineToThree(machine, limits, homingCorner))
 }
 
 /**
@@ -180,7 +226,8 @@ export function machineToThreeTuple(
 export function workToThreeTuple(
   work: Coordinate,
   limits: MachineLimits,
-  workOffset: Coordinate
+  workOffset: Coordinate,
+  homingCorner: HomingCorner = 'back-right'
 ): CoordTuple {
-  return coordToTuple(workToThree(work, limits, workOffset))
+  return coordToTuple(workToThree(work, limits, workOffset, homingCorner))
 }

@@ -12,6 +12,7 @@ import { ZeroingWizardTab } from './ZeroingWizardTab'
 import { processGCode } from '@/lib/gcodeVisualizer'
 import { Vector3 } from 'three'
 import { machineToThree, workToThree, type MachineLimits } from '@/lib/coordinates'
+import type { HomingCorner } from '@/lib/machineLimits'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { CameraConfig } from '../../Settings/sections/CameraSection'
 
@@ -435,6 +436,7 @@ export function VisualizerPanel({
     }
 
     const limits: MachineLimits = settings.machine.limits
+    const homingCorner: HomingCorner = settings.machine.homingCorner ?? 'front-left'
     
     // Calculate work offset: WorkOffset = MPos - WPos
     const workOffset = {
@@ -445,7 +447,7 @@ export function VisualizerPanel({
     
     // WCS origin (0,0,0) in machine coordinates is the work offset
     // Convert WCS origin to Three.js coordinates
-    const wcsOriginThree = machineToThree(workOffset, limits)
+    const wcsOriginThree = machineToThree(workOffset, limits, homingCorner)
     
     // G-code coordinates from gcode-toolpath are in WCS coordinates
     // They are currently being rendered directly as Three.js coordinates (no conversion)
@@ -484,6 +486,7 @@ export function VisualizerPanel({
     }
 
     const limits: MachineLimits = settings.machine.limits
+    const homingCorner: HomingCorner = settings.machine.homingCorner ?? 'front-left'
     
     // Calculate work offset: WorkOffset = MPos - WPos
     const workOffset = {
@@ -494,7 +497,7 @@ export function VisualizerPanel({
     
     // WCS origin (0,0,0) in machine coordinates is the work offset
     // Convert WCS origin to Three.js coordinates
-    const wcsOriginThree = machineToThree(workOffset, limits)
+    const wcsOriginThree = machineToThree(workOffset, limits, homingCorner)
     
     // G-code coordinates from gcode-toolpath are in WCS coordinates
     // They are currently being rendered directly as Three.js coordinates (no conversion)

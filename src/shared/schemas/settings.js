@@ -40,6 +40,7 @@ export const MachineLimitsSchema = z.object({
 export const MachineSettingsSchema = z.object({
   name: z.string().default('My CNC Machine'),
   limits: MachineLimitsSchema.default({}),
+  homingCorner: z.enum(['back-left', 'back-right', 'front-left', 'front-right']).optional(),
 });
 
 // =============================================================================

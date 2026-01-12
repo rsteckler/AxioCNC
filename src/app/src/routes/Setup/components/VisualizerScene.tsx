@@ -6,6 +6,7 @@ import type { Vector3 as Vector3Type } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
 import { machineToThree, type MachineLimits, type Coordinate } from '@/lib/coordinates'
+import type { HomingCorner } from '@/lib/machineLimits'
 import { processGCode } from '@/lib/gcodeVisualizer'
 
 interface VisualizerSceneProps {
@@ -427,9 +428,10 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
 }
 
 export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset }: VisualizerSceneProps = {}) {
-  // Get machine limits from settings
+  // Get machine limits and homing corner from settings
   const { data: settings } = useGetSettingsQuery()
   const machineLimits = settings?.machine?.limits
+  const homingCorner: HomingCorner = settings?.machine?.homingCorner ?? 'front-left'
   
   // Get debug mode from extensions
   const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
@@ -443,7 +445,7 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
   const zSize = machineLimits ? (machineLimits.zmax - machineLimits.zmin) : 100
   
   // Convert machine position to Three.js coordinates
-  // Machine (0,0,0) is at top-right-highest, Three.js (0,0,0) is at bottom-left-lowest
+  // Machine (0,0,0) is at the homing corner at max Z, Three.js (0,0,0) is at bottom-left-lowest
   const toolPosition = useMemo((): [number, number, number] => {
     if (!machinePosition || !machineLimits) {
       // Default to center of grid if no position available
@@ -456,9 +458,9 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
       z: machinePosition.z
     }
     
-    const threeCoord = machineToThree(machineCoord, machineLimits)
+    const threeCoord = machineToThree(machineCoord, machineLimits, homingCorner)
     return [threeCoord.x, threeCoord.y, threeCoord.z]
-  }, [machinePosition, machineLimits, xSize, ySize, zSize])
+  }, [machinePosition, machineLimits, homingCorner, xSize, ySize, zSize])
   
   // Use the larger of X or Y for camera positioning
   const maxGridSize = Math.max(xSize, ySize)
