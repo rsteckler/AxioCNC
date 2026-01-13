@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Button } from '@/components/ui/button'
@@ -34,9 +34,18 @@ import {
   Triangle,
   Hexagon,
   Play,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JoystickTestDialog } from './JoystickTestDialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // CNC Actions that can be mapped to gamepad buttons
 export type CncAction = 
@@ -179,6 +188,49 @@ export function JoystickSection({
 }: JoystickSectionProps) {
   const [activeButtonIndex] = useState<number | null>(null)
   const [testDialogOpen, setTestDialogOpen] = useState(false)
+  const [isGamepadConnected, setIsGamepadConnected] = useState(false)
+
+  // Check if selected gamepad is currently connected
+  const checkGamepadConnection = useCallback(() => {
+    if (!config.selectedGamepad) {
+      setIsGamepadConnected(false)
+      return
+    }
+
+    if (config.connectionLocation === 'client') {
+      // Check browser Gamepad API
+      const gamepads = navigator.getGamepads?.() || []
+      const isConnected = Array.from(gamepads).some(
+        gp => gp && gp.id === config.selectedGamepad
+      )
+      setIsGamepadConnected(isConnected)
+    } else {
+      // Check if gamepad is in detectedGamepads list (server-side)
+      const isConnected = detectedGamepads.some(
+        gp => gp.id === config.selectedGamepad
+      )
+      setIsGamepadConnected(isConnected)
+    }
+  }, [config.selectedGamepad, config.connectionLocation, detectedGamepads])
+
+  // Check connection status periodically and when dependencies change
+  useEffect(() => {
+    checkGamepadConnection()
+    
+    if (config.connectionLocation === 'client' && config.selectedGamepad) {
+      // For client-side, check more frequently (gamepads can connect/disconnect)
+      const interval = setInterval(checkGamepadConnection, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [checkGamepadConnection, config.connectionLocation, config.selectedGamepad])
+
+  // Also check when detectedGamepads changes (for server-side)
+  useEffect(() => {
+    if (config.connectionLocation === 'server') {
+      checkGamepadConnection()
+    }
+  }, [detectedGamepads, config.connectionLocation, checkGamepadConnection])
+
 
   const handleButtonMappingChange = (buttonIndex: number, action: CncAction) => {
     onConfigChange({
@@ -246,12 +298,39 @@ export function JoystickSection({
 
           {/* Gamepad Selection */}
           <SettingsField
-            label="Select Gamepad"
+            label={
+              <div className="flex items-center gap-2">
+                <span>Select Gamepad</span>
+                {config.selectedGamepad && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex items-center">
+                          <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p className="font-medium">
+                            {isGamepadConnected ? 'Connected' : 'Disconnected'}
+                          </p>
+                          {config.connectionLocation === 'client' && (
+                            <p className="text-xs text-muted-foreground">
+                              Press a button on your gamepad while this webpage is focused to connect.
+                            </p>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            }
             description={config.connectionLocation === 'server' 
               ? 'Select a gamepad connected to the server machine'
               : 'Select a gamepad connected to this browser\'s machine'}
           >
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Select
                 value={config.selectedGamepad || 'none'}
                 onValueChange={(value) => onConfigChange({ selectedGamepad: value === 'none' ? null : value })}
@@ -274,24 +353,53 @@ export function JoystickSection({
                       </div>
                     </SelectItem>
                   ))}
+                  {/* Show selected gamepad even if not detected */}
+                  {config.selectedGamepad && !detectedGamepads.find(gp => gp.id === config.selectedGamepad) && (
+                    <SelectItem value={config.selectedGamepad}>
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="w-4 h-4" />
+                        <span className="text-muted-foreground">
+                          {config.selectedGamepad.split('(')[0].trim() || 'Gamepad'} (not detected)
+                        </span>
+                      </div>
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <Button variant="outline" size="icon" onClick={onRefreshGamepads}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
+              {config.selectedGamepad && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card">
+                  {isGamepadConnected ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-sm text-red-600 dark:text-red-400">Disconnected</span>
+                    </>
+                  )}
+                </div>
+              )}
               <Button 
                 variant="outline" 
                 onClick={() => setTestDialogOpen(true)}
                 className="gap-2"
+                disabled={!config.selectedGamepad}
               >
                 <Play className="w-4 h-4" />
                 Test
               </Button>
             </div>
-            {detectedGamepads.length === 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Connect a gamepad and press any button to detect it
-              </p>
+            {config.connectionLocation === 'client' && (
+              <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  For browser-connected gamepads, you must press a button on your gamepad while this webpage is focused to connect.
+                </p>
+              </div>
             )}
           </SettingsField>
 

@@ -983,7 +983,10 @@ export default function Settings() {
         }))
       
       setDetectedGamepads(detected)
+      
+      return detected
     }
+    return []
   }, [joystickConfig.connectionLocation, refreshGamepads])
 
   // Auto-refresh gamepads when joystick config is initialized or connectionLocation changes
@@ -1000,6 +1003,78 @@ export default function Settings() {
       }
     }
   }, [joystickConfig.connectionLocation, joystickConfig.enabled, joystickConfig.selectedGamepad, detectedGamepads.length, handleRefreshGamepads])
+
+  // Listen for gamepad connection events (client-side only)
+  // This allows automatic reconnection when a gamepad is plugged in
+  useEffect(() => {
+    if (joystickConfig.connectionLocation !== 'client' || !joystickConfig.enabled) {
+      return
+    }
+
+    const handleGamepadConnected = async (e: GamepadEvent) => {
+      const gamepad = e.gamepad
+      if (!gamepad) return
+
+      console.log('[Settings] Gamepad connected:', gamepad.id)
+      
+      // Always refresh the list first to ensure it's up to date
+      // This will update detectedGamepads state
+      const detected = await handleRefreshGamepads()
+      
+      // Check if the gamepad is now in the detected list
+      const isInList = detected.some(gp => gp.id === gamepad.id)
+      
+      // Wait for React state to update after refresh, then check if we should auto-select
+      // Use requestAnimationFrame + setTimeout to ensure state has propagated
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          // Check the current selected gamepad
+          const currentSelected = joystickConfig.selectedGamepad
+          if (currentSelected === gamepad.id) {
+            // Gamepad is already selected, nothing to do
+            return
+          } else if (!currentSelected && isInList) {
+            // No gamepad selected yet, and this one is now detected - auto-select it
+            handleJoystickConfigChange({ selectedGamepad: gamepad.id })
+          }
+          // If a different gamepad is selected, don't change it
+        }, 100)
+      })
+    }
+
+    const handleGamepadDisconnected = (e: GamepadEvent) => {
+      const gamepad = e.gamepad
+      if (!gamepad) return
+
+      console.log('[Settings] Gamepad disconnected:', gamepad.id)
+      
+      // Refresh the list to update connection status
+      handleRefreshGamepads()
+    }
+
+    // Add event listeners
+    window.addEventListener('gamepadconnected', handleGamepadConnected)
+    window.addEventListener('gamepaddisconnected', handleGamepadDisconnected)
+
+    // Also check for already-connected gamepads on mount
+    // (browsers require user interaction, but we can check if one is already connected)
+    if (joystickConfig.selectedGamepad) {
+      const gamepads = navigator.getGamepads?.() || []
+      const isConnected = Array.from(gamepads).some(
+        gp => gp && gp.id === joystickConfig.selectedGamepad
+      )
+      
+      if (isConnected) {
+        // Gamepad is already connected, refresh the list
+        handleRefreshGamepads()
+      }
+    }
+
+    return () => {
+      window.removeEventListener('gamepadconnected', handleGamepadConnected)
+      window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected)
+    }
+  }, [joystickConfig.connectionLocation, joystickConfig.enabled, joystickConfig.selectedGamepad, handleRefreshGamepads, handleJoystickConfigChange])
 
   if (isLoading) {
     return (

@@ -298,6 +298,19 @@ export function JoystickTestDialog({
         buttons,
         timestamp: gamepad.timestamp,
       })
+      
+      // Update visual indicators immediately (don't wait for useEffect)
+      const leftX = axes[0] || 0
+      const leftY = axes[1] || 0
+      const rightX = axes[2] || 0
+      const rightY = axes[3] || 0
+      
+      if (leftStickDotRef.current && leftStickContainerRef.current) {
+        setDotPosition(leftStickDotRef.current, leftStickContainerRef.current, leftX, -leftY)
+      }
+      if (rightStickDotRef.current && rightStickContainerRef.current) {
+        setDotPosition(rightStickDotRef.current, rightStickContainerRef.current, rightX, -rightY)
+      }
     } else {
       setGamepadState(prev => ({
         ...prev,
@@ -336,6 +349,19 @@ export function JoystickTestDialog({
           buttons: state.buttons,
           timestamp: state.timestamp,
         })
+        
+        // Update visual indicators immediately (don't wait for useEffect)
+        const leftX = state.axes[0] || 0
+        const leftY = state.axes[1] || 0
+        const rightX = state.axes[2] || 0
+        const rightY = state.axes[3] || 0
+        
+        if (leftStickDotRef.current && leftStickContainerRef.current) {
+          setDotPosition(leftStickDotRef.current, leftStickContainerRef.current, leftX, -leftY)
+        }
+        if (rightStickDotRef.current && rightStickContainerRef.current) {
+          setDotPosition(rightStickDotRef.current, rightStickContainerRef.current, rightX, -rightY)
+        }
       } else {
         console.log('[GamepadTestDialog] Ignoring state - gamepadId mismatch:', { received: state.gamepadId, expected: gamepadId })
       }
@@ -423,7 +449,8 @@ export function JoystickTestDialog({
 
   const commands = generateCommand(config, gamepadState.axes, gamepadState.buttons)
   
-  // Update visual indicator positions
+  // Note: Visual indicator positions are now updated directly in pollGamepad and handleGamepadState
+  // to avoid lag from useEffect dependencies. This useEffect is kept as a fallback for initial render.
   useEffect(() => {
     if (leftStickDotRef.current && leftStickContainerRef.current) {
       setDotPosition(leftStickDotRef.current, leftStickContainerRef.current, leftXYRaw.x, -leftXYRaw.y)
@@ -478,7 +505,7 @@ export function JoystickTestDialog({
             <div ref={leftStickContainerRef} className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
                 ref={leftStickDotRef}
-                className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
+                className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2"
               />
               {/* Deadzone indicator */}
               <div 
@@ -525,7 +552,7 @@ export function JoystickTestDialog({
             <div ref={rightStickContainerRef} className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
                 ref={rightStickDotRef}
-                className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
+                className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2"
               />
               {/* Deadzone indicator */}
               <div 
