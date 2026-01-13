@@ -9,11 +9,7 @@ module.exports = (api) => {
     plugins.push('@babel/plugin-transform-runtime');
   }
 
-  if (typeof env === 'function' && env('development')) {
-    plugins.push('react-refresh/babel');
-  }
-
-  return {
+  const baseConfig = {
     extends: '@trendmicro/babel-config',
     presets: [
       '@babel/preset-env',
@@ -21,4 +17,23 @@ module.exports = (api) => {
     ],
     plugins,
   };
+
+  // Only add React Fast Refresh for non-server code in development
+  if (typeof env === 'function' && env('development')) {
+    // Use overrides to apply React Fast Refresh only to non-server files
+    baseConfig.overrides = [
+      {
+        test: (filename) => {
+          if (!filename) return false;
+          // Only apply to files that are NOT server code
+          return !filename.includes('src/server') &&
+                 !filename.includes('output/axiocnc/server') &&
+                 !filename.includes('dist/axiocnc/server');
+        },
+        plugins: ['react-refresh/babel'],
+      }
+    ];
+  }
+
+  return baseConfig;
 };
