@@ -24,22 +24,24 @@ const findProjectRoot = () => {
   for (let i = 0; i < 10; i++) {
     const themesDir = path.join(current, 'themes');
     const packageJson = path.join(current, 'package.json');
-    
+
     // Check if themes directory exists (most reliable indicator of project root)
     if (fs.existsSync(themesDir) && fs.statSync(themesDir).isDirectory()) {
       return current;
     }
-    
+
     // Also check for package.json and themes/ together
     if (fs.existsSync(packageJson) && fs.existsSync(themesDir)) {
       return current;
     }
-    
+
     const parent = path.dirname(current);
-    if (parent === current) break; // Reached filesystem root
+    if (parent === current) {
+      break; // Reached filesystem root
+    }
     current = parent;
   }
-  
+
   // Fallback: try process.cwd() and go up if needed
   let fallback = process.cwd();
   for (let i = 0; i < 5; i++) {
@@ -48,10 +50,12 @@ const findProjectRoot = () => {
       return fallback;
     }
     const parent = path.dirname(fallback);
-    if (parent === fallback) break;
+    if (parent === fallback) {
+      break;
+    }
     fallback = parent;
   }
-  
+
   // Last resort: use process.cwd()
   return process.cwd();
 };
@@ -77,7 +81,7 @@ const copyBundledThemes = () => {
     log.info(`Looking for bundled themes at: ${BUNDLED_THEMES_DIR}`);
     log.info(`Project root: ${PROJECT_ROOT}`);
     log.info(`Current working directory: ${process.cwd()}`);
-    
+
     if (!fs.existsSync(BUNDLED_THEMES_DIR)) {
       log.warn(`No bundled themes directory found at: ${BUNDLED_THEMES_DIR}`);
       return;
