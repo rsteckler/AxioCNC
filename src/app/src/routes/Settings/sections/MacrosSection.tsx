@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import CodeMirror from '@uiw/react-codemirror'
+import { gcodeLanguage, gcodeHighlightStyle } from './gcodeLanguage'
+import { drawSelection, EditorView } from '@codemirror/view'
 import {
   Table,
   TableBody,
@@ -32,7 +34,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, Code, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Code, Pencil, Trash2, ChevronDown, AlertCircle } from 'lucide-react'
+import { macroVariables } from './macroVariables'
+import { validateMacroParameters } from './macroParameters'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 export interface Macro {
   id: string
@@ -57,16 +63,144 @@ export function MacrosSection({
 }: MacrosSectionProps) {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingMacro, setEditingMacro] = useState<Macro | null>(null)
+  const [variablesDropdownOpen, setVariablesDropdownOpen] = useState(false)
+  const [variablesDropdownAnchor, setVariablesDropdownAnchor] = useState<HTMLButtonElement | null>(null)
   
   // Form state
   const [formName, setFormName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formContent, setFormContent] = useState('')
+  
+  // Refs for CodeMirror views to insert variables
+  const addEditorViewRef = useRef<EditorView | null>(null)
+  const editEditorViewRef = useRef<EditorView | null>(null)
+  
+  // Shared CodeMirror theme - all styling in one place
+  const cmTheme = useMemo(() => EditorView.theme({
+    // Base editor styling - must set height for scrolling to work
+    '&': {
+      fontSize: '0.875rem',
+      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+      height: '100%',
+    },
+    '&.cm-focused': {
+      outline: 'none',
+    },
+    '.cm-scroller': {
+      backgroundColor: 'hsl(var(--background))',
+      overflow: 'auto !important',
+    },
+    '.cm-content': {
+      backgroundColor: 'transparent',
+      color: 'hsl(var(--foreground))',
+      padding: '0.75rem',
+      caretColor: 'hsl(var(--foreground))',
+    },
+    '.cm-cursor': {
+      borderLeftColor: 'hsl(var(--foreground))',
+    },
+    
+    // Editor border and focus
+    '&.cm-editor': {
+      backgroundColor: 'hsl(var(--background))',
+      border: '1px solid hsl(var(--input))',
+      borderRadius: 'calc(var(--radius) - 2px)',
+      height: '100%',
+    },
+    '&.cm-editor.cm-focused': {
+      borderColor: 'hsl(var(--ring))',
+      boxShadow: '0 0 0 2px hsl(var(--ring) / 0.2)',
+    },
+    
+    // Gutters (line numbers)
+    '.cm-gutters': {
+      backgroundColor: 'hsl(var(--background))',
+      borderRight: '1px solid hsl(var(--border))',
+      color: 'hsl(var(--muted-foreground))',
+    },
+    '.cm-gutters .cm-gutterElement': {
+      padding: '0 0.75rem',
+    },
+    '.cm-lineNumbers .cm-gutterElement': {
+      color: 'hsl(var(--muted-foreground))',
+      minWidth: '2.5rem',
+      textAlign: 'right',
+    },
+    '.cm-foldGutter': {
+      width: '1rem',
+    },
+    
+    // Active line
+    '.cm-activeLine': {
+      backgroundColor: 'transparent',
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: 'transparent',
+      color: 'hsl(var(--foreground))',
+    },
+    
+    // Selection - drawn selection from drawSelection()
+    '.cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'hsl(var(--primary) / 0.3) !important',
+    },
+    '&.cm-focused .cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'hsl(var(--primary) / 0.4) !important',
+    },
+    
+    // Same-word highlight (when you double-click a word)
+    '.cm-selectionMatch': {
+      backgroundColor: 'hsl(var(--primary) / 0.15)',
+    },
+    
+    // Scrollbar styling
+    '.cm-scroller::-webkit-scrollbar': {
+      width: '8px',
+      height: '8px',
+    },
+    '.cm-scroller::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent',
+    },
+    '.cm-scroller::-webkit-scrollbar-thumb': {
+      backgroundColor: 'hsl(var(--muted-foreground) / 0.3)',
+      borderRadius: '4px',
+    },
+    '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+      backgroundColor: 'hsl(var(--muted-foreground) / 0.5)',
+    },
+  }), [])
+
+  // CodeMirror extensions for add dialog
+  const addCodeMirrorExtensions = useMemo(() => [
+    gcodeLanguage,
+    gcodeHighlightStyle,
+    drawSelection(),
+    cmTheme,
+    EditorView.updateListener.of((update) => {
+      if (update.view) {
+        addEditorViewRef.current = update.view
+      }
+    }),
+  ], [cmTheme])
+  
+  // CodeMirror extensions for edit dialog
+  const editCodeMirrorExtensions = useMemo(() => [
+    gcodeLanguage,
+    gcodeHighlightStyle,
+    drawSelection(),
+    cmTheme,
+    EditorView.updateListener.of((update) => {
+      if (update.view) {
+        editEditorViewRef.current = update.view
+      }
+    }),
+  ], [cmTheme])
 
   const resetForm = () => {
     setFormName('')
     setFormDescription('')
     setFormContent('')
+    setVariablesDropdownOpen(false)
+    setVariablesDropdownAnchor(null)
   }
 
   const handleAdd = () => {
@@ -115,6 +249,27 @@ export function MacrosSection({
     return lines.slice(0, maxLines).join('\n') + '\n...'
   }
 
+  const handleInsertVariable = (variable: string, isEdit: boolean = false) => {
+    const view = isEdit ? editEditorViewRef.current : addEditorViewRef.current
+    if (view) {
+      const { state } = view
+      const selection = state.selection.main
+      const from = selection.from
+      const to = selection.to
+      
+      // Insert the variable at cursor position
+      view.dispatch({
+        changes: { from, to, insert: variable },
+        selection: { anchor: from + variable.length },
+      })
+      
+      // Update form state
+      const newValue = state.doc.toString()
+      setFormContent(newValue)
+    }
+    setVariablesDropdownOpen(false)
+  }
+
   return (
     <SettingsSection
       id="macros"
@@ -134,14 +289,15 @@ export function MacrosSection({
                 Add Macro
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
+            <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col overflow-hidden">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>Add Macro</DialogTitle>
                 <DialogDescription>
                   Create a new macro with G-code commands.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin py-4">
+                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="macro-name">Name</Label>
                   <Input
@@ -160,22 +316,146 @@ export function MacrosSection({
                     placeholder="Optional description of what this macro does"
                   />
                 </div>
+                {/* Parameters Display */}
+                {formContent && (() => {
+                  const validation = validateMacroParameters(formContent)
+                  const hasParams = validation.declared.length > 0
+                  const hasWarnings = !validation.valid && validation.undeclared.length > 0
+                  return (hasParams || hasWarnings) ? (
+                    <Card className="border-muted">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm font-medium">Parameters</CardTitle>
+                          {hasWarnings && (
+                            <Badge variant="destructive" className="text-xs">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Validation
+                            </Badge>
+                          )}
+                        </div>
+                        <CardDescription className="text-xs">
+                          Parameters declared with <code className="text-xs">; @param name:type</code>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {validation.declared.length > 0 && (
+                          <div>
+                            <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {validation.declared.map((param) => (
+                                <Badge key={param.name} variant="secondary" className="font-mono text-xs">
+                                  {param.name}:{param.type}
+                                  {param.defaultValue && (
+                                    <span className="text-muted-foreground ml-1">= {param.defaultValue}</span>
+                                  )}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {hasWarnings && (
+                          <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium text-destructive mb-1">
+                                  Undeclared parameters used:
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {validation.undeclared.map((param) => (
+                                    <code key={param} className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">
+                                      [{param}]
+                                    </code>
+                                  ))}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  Add parameter declarations: <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ) : null
+                })()}
                 <div className="space-y-2">
-                  <Label htmlFor="macro-content">G-code Commands</Label>
-                  <Textarea
-                    id="macro-content"
-                    value={formContent}
-                    onChange={(e) => setFormContent(e.target.value)}
-                    placeholder="$H&#10;G0 X0 Y0 Z0"
-                    rows={5}
-                    className="font-mono text-sm"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="macro-content">G-code Commands</Label>
+                    <div className="relative">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={(e) => {
+                          setVariablesDropdownAnchor(e.currentTarget)
+                          setVariablesDropdownOpen(!variablesDropdownOpen)
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Macro Variables
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                      {variablesDropdownOpen && variablesDropdownAnchor && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setVariablesDropdownOpen(false)}
+                          />
+                          <div
+                            className="absolute right-0 top-full mt-1 z-50 bg-popover border rounded-md shadow-lg max-h-[400px] overflow-y-auto min-w-[320px]"
+                            style={{
+                              maxHeight: '400px',
+                            }}
+                          >
+                            {macroVariables.map((item, index) => (
+                              item.type === 'header' ? (
+                                <div
+                                  key={`header-${index}`}
+                                  className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase bg-muted/50"
+                                >
+                                  {item.text}
+                                </div>
+                              ) : (
+                                <button
+                                  key={`var-${index}`}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground font-mono whitespace-pre"
+                                  onClick={() => handleInsertVariable(item.value || '', false)}
+                                >
+                                  {item.value}
+                                </button>
+                              )
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-[50vh] min-h-0 border rounded-md overflow-hidden">
+                    <CodeMirror
+                      value={formContent}
+                      onChange={(value) => setFormContent(value)}
+                      extensions={addCodeMirrorExtensions}
+                      placeholder="$H&#10;G0 X0 Y0 Z0"
+                      height="100%"
+                      style={{ height: '100%' }}
+                      basicSetup={{
+                        lineNumbers: true,
+                        foldGutter: true,
+                        dropCursor: false,
+                        allowMultipleSelections: false,
+                      }}
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Enter one command per line. Commands will be sent in sequence.
                   </p>
                 </div>
               </div>
-              <DialogFooter>
+              </div>
+              <DialogFooter className="flex-shrink-0">
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
                   Cancel
                 </Button>
@@ -243,14 +523,15 @@ export function MacrosSection({
                               <Pencil className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
+                          <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col overflow-hidden">
+                            <DialogHeader className="flex-shrink-0">
                               <DialogTitle>Edit Macro</DialogTitle>
                               <DialogDescription>
                                 Modify the macro name or G-code commands.
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
+                            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin py-4">
+                              <div className="space-y-4">
                               <div className="space-y-2">
                                 <Label htmlFor="edit-macro-name">Name</Label>
                                 <Input
@@ -269,18 +550,142 @@ export function MacrosSection({
                                   placeholder="Optional description"
                                 />
                               </div>
+                              {/* Parameters Display */}
+                              {formContent && (() => {
+                                const validation = validateMacroParameters(formContent)
+                                const hasParams = validation.declared.length > 0
+                                const hasWarnings = !validation.valid && validation.undeclared.length > 0
+                                return (hasParams || hasWarnings) ? (
+                                  <Card className="border-muted">
+                                    <CardHeader className="pb-3">
+                                      <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm font-medium">Parameters</CardTitle>
+                                        {hasWarnings && (
+                                          <Badge variant="destructive" className="text-xs">
+                                            <AlertCircle className="w-3 h-3 mr-1" />
+                                            Validation
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <CardDescription className="text-xs">
+                                        Parameters declared with <code className="text-xs">; @param name:type</code>
+                                      </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                      {validation.declared.length > 0 && (
+                                        <div>
+                                          <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
+                                          <div className="flex flex-wrap gap-2">
+                                            {validation.declared.map((param) => (
+                                              <Badge key={param.name} variant="secondary" className="font-mono text-xs">
+                                                {param.name}:{param.type}
+                                                {param.defaultValue && (
+                                                  <span className="text-muted-foreground ml-1">= {param.defaultValue}</span>
+                                                )}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {hasWarnings && (
+                                        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
+                                          <div className="flex items-start gap-2">
+                                            <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-xs font-medium text-destructive mb-1">
+                                                Undeclared parameters used:
+                                              </div>
+                                              <div className="flex flex-wrap gap-1">
+                                                {validation.undeclared.map((param) => (
+                                                  <code key={param} className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">
+                                                    [{param}]
+                                                  </code>
+                                                ))}
+                                              </div>
+                                              <div className="text-xs text-muted-foreground mt-2">
+                                                Add parameter declarations: <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                ) : null
+                              })()}
                               <div className="space-y-2">
-                                <Label htmlFor="edit-macro-content">G-code Commands</Label>
-                                <Textarea
-                                  id="edit-macro-content"
-                                  value={formContent}
-                                  onChange={(e) => setFormContent(e.target.value)}
-                                  rows={5}
-                                  className="font-mono text-sm"
-                                />
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor="edit-macro-content">G-code Commands</Label>
+                                  <div className="relative">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-2"
+                                      onClick={(e) => {
+                                        setVariablesDropdownAnchor(e.currentTarget)
+                                        setVariablesDropdownOpen(!variablesDropdownOpen)
+                                      }}
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      Macro Variables
+                                      <ChevronDown className="w-4 h-4" />
+                                    </Button>
+                                    {variablesDropdownOpen && variablesDropdownAnchor && (
+                                      <>
+                                        <div
+                                          className="fixed inset-0 z-40"
+                                          onClick={() => setVariablesDropdownOpen(false)}
+                                        />
+                                        <div
+                                          className="absolute right-0 top-full mt-1 z-50 bg-popover border rounded-md shadow-lg max-h-[400px] overflow-y-auto min-w-[320px]"
+                                          style={{
+                                            maxHeight: '400px',
+                                          }}
+                                        >
+                                          {macroVariables.map((item, index) => (
+                                            item.type === 'header' ? (
+                                              <div
+                                                key={`header-${index}`}
+                                                className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase bg-muted/50"
+                                              >
+                                                {item.text}
+                                              </div>
+                                            ) : (
+                                              <button
+                                                key={`var-${index}`}
+                                                type="button"
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground font-mono whitespace-pre"
+                                                onClick={() => handleInsertVariable(item.value || '', true)}
+                                              >
+                                                {item.value}
+                                              </button>
+                                            )
+                                          ))}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="h-[50vh] min-h-0 border rounded-md overflow-hidden">
+                                  <CodeMirror
+                                    value={formContent}
+                                    onChange={(value) => setFormContent(value)}
+                                    extensions={editCodeMirrorExtensions}
+                                    height="100%"
+                                    style={{ height: '100%' }}
+                                    basicSetup={{
+                                      lineNumbers: true,
+                                      foldGutter: true,
+                                      dropCursor: false,
+                                      allowMultipleSelections: false,
+                                    }}
+                                  />
+                                </div>
+                              </div>
                               </div>
                             </div>
-                            <DialogFooter>
+                            <DialogFooter className="flex-shrink-0">
                               <Button variant="outline" onClick={() => setEditingMacro(null)}>
                                 Cancel
                               </Button>
