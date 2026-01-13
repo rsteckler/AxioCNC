@@ -40,6 +40,8 @@ export class JoystickService {
   private browserPollingRef: number | null = null
   private lastBrowserGamepadIndex: number | null = null
   private selectedGamepadId: string | null = null
+  private lastButtonStates: boolean[] = [] // Track previous button states for change detection
+  private frameCounter = 0 // For throttling debug logs
   
   // Server gamepad listener state
   private serverListenerActive = false
@@ -120,6 +122,9 @@ export class JoystickService {
     }
     
     this.browserPollingActive = true
+    this.frameCounter = 0
+    this.lastButtonStates = []
+    console.log('[Joystick Debug] Started client-side gamepad polling')
     this.pollBrowserGamepad()
   }
 
@@ -145,14 +150,81 @@ export class JoystickService {
     const gamepad = this.findBrowserGamepad()
     
     if (gamepad) {
+      // Log gamepad info on first detection
+      if (this.frameCounter === 0) {
+        console.log(`[Joystick Debug] Gamepad detected: ${gamepad.id}`)
+        console.log(`[Joystick Debug] Total buttons: ${gamepad.buttons.length}, Total axes: ${gamepad.axes.length}`)
+        console.log(`[Joystick Debug] Current button mappings:`, this.config?.buttonMappings)
+      }
+      
       const state: BrowserGamepadState = {
         axes: Array.from(gamepad.axes),
         buttons: gamepad.buttons.map(b => b.pressed),
         timestamp: gamepad.timestamp,
       }
       
+      // DEBUG: Log button state changes (press/release)
+      const buttonChanges: string[] = []
+      state.buttons.forEach((pressed, index) => {
+        const wasPressed = this.lastButtonStates[index] || false
+        if (pressed && !wasPressed) {
+          // Button just pressed
+          const mapping = this.config?.buttonMappings[index]
+          buttonChanges.push(`PRESSED: Button ${index}${mapping ? ` → ${mapping}` : ' (unmapped)'}`)
+        } else if (!pressed && wasPressed) {
+          // Button just released
+          buttonChanges.push(`RELEASED: Button ${index}`)
+        }
+      })
+      
+      // Update last button states
+      this.lastButtonStates = [...state.buttons]
+      
+      // Log button changes
+      if (buttonChanges.length > 0) {
+        console.log(`[Joystick Debug] ${buttonChanges.join(' | ')}`)
+      }
+      
+      // Log all currently pressed buttons (less verbose, only when buttons are held)
+      const currentlyPressed = state.buttons
+        .map((pressed, index) => pressed ? index : -1)
+        .filter(idx => idx >= 0)
+      
+      // Increment frame counter for throttling
+      this.frameCounter++
+      
+      if (currentlyPressed.length > 0 && buttonChanges.length === 0) {
+        // Buttons are held but no changes (reduce spam - only log every 60 frames ~1 second at 60fps)
+        if (this.frameCounter % 60 === 0) {
+          const buttonInfo = currentlyPressed.map(idx => {
+            const mapping = this.config?.buttonMappings[idx]
+            return `B${idx}${mapping ? `→${mapping}` : ''}`
+          }).join(', ')
+          console.log(`[Joystick Debug] Buttons held: ${buttonInfo}`)
+        }
+      }
+      
+      // Log axes when they have significant movement (reduce spam)
+      const activeAxes = state.axes
+        .map((value, index) => Math.abs(value) > 0.1 ? { index, value } : null)
+        .filter((a): a is { index: number; value: number } => a !== null)
+      
+      if (activeAxes.length > 0 && buttonChanges.length === 0) {
+        // Only log axes occasionally to reduce spam (every 30 frames ~0.5 seconds at 60fps)
+        if (this.frameCounter % 30 === 0) {
+          const axesInfo = activeAxes.map(a => `A${a.index}:${a.value.toFixed(2)}`).join(', ')
+          console.log(`[Joystick Debug] Active axes: ${axesInfo}`)
+        }
+      }
+      
       // Map to actions
       const actions = this.mapper.mapBrowserGamepad(state)
+      
+      if (actions.length > 0) {
+        console.log(`[Joystick Debug] Mapped actions:`, actions.map(a => 
+          a.type === 'button' ? `${a.action} (button ${a.buttonId})` : `analog (x:${a.x.toFixed(2)}, y:${a.y.toFixed(2)}, z:${a.z.toFixed(2)})`
+        ).join(', '))
+      }
       
       // Route to callback
       if (actions.length > 0) {

@@ -298,6 +298,13 @@ export default function Setup() {
   // G-code command hook for main component handlers
   const { sendCommand } = useGcodeCommand(connectedPort)
   
+  // Client-side joystick input hook
+  useJoystickInput({
+    enabled: settings?.joystick?.enabled ?? false,
+    connectionLocation: settings?.joystick?.connectionLocation ?? 'server',
+    selectedGamepadId: settings?.joystick?.selectedGamepad ?? null,
+  })
+  
   // Show error notification
   const showErrorNotification = useCallback((title: string, message: string) => {
     const notification = {

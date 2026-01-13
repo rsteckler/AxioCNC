@@ -189,6 +189,48 @@ M0 (Touch probe to verify connection, then resume)
 }
 
 // Default joystick configuration (Xbox-style layout)
+
+// Server-side (Linux) Xbox controller button mappings
+const SERVER_BUTTON_MAPPINGS: Record<number, string> = {
+  0: 'zero_all',       // A - Zero all axes
+  1: 'emergency_stop', // B - E-Stop (red button = stop)
+  3: 'home_all',       // X - Home all axes
+  4: 'spindle_toggle', // Y - Toggle spindle
+  6: 'speed_slow',     // LB - Slow jog speed
+  7: 'speed_fast',     // RB - Fast jog speed
+  12: 'jog_y_pos',     // D-pad Up
+  13: 'jog_y_neg',     // D-pad Down
+  14: 'jog_x_neg',     // D-pad Left
+  15: 'jog_x_pos',     // D-pad Right
+}
+
+// Client-side (browser) Xbox controller button mappings
+const CLIENT_BUTTON_MAPPINGS: Record<number, string> = {
+  0: 'zero_all',       // A - Zero all axes
+  1: 'emergency_stop', // B - E-Stop (red button = stop)
+  2: 'home_all',       // X - Home all axes
+  3: 'spindle_toggle', // Y - Toggle spindle
+  4: 'speed_slow',     // LB - Slow jog speed
+  5: 'speed_fast',     // RB - Fast jog speed
+  6: 'none',           // LT (usually axis, but mapped as button in browser)
+  7: 'none',           // RT (usually axis, but mapped as button in browser)
+  8: 'none',           // Back
+  9: 'none',           // Start
+  10: 'none',          // Left Stick Click
+  11: 'none',          // Right Stick Click
+  12: 'jog_y_pos',     // D-pad Up
+  13: 'jog_y_neg',     // D-pad Down
+  14: 'jog_x_neg',     // D-pad Left
+  15: 'jog_x_pos',     // D-pad Right
+}
+
+/**
+ * Get default button mappings based on connection location
+ */
+function getDefaultButtonMappings(connectionLocation: 'server' | 'client'): Record<number, string> {
+  return connectionLocation === 'client' ? CLIENT_BUTTON_MAPPINGS : SERVER_BUTTON_MAPPINGS
+}
+
 const DEFAULT_ADVANCED_CONFIG: AdvancedConfig = {
   debugMode: false,
   showAdvancedSettings: false,
@@ -198,18 +240,7 @@ const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
   enabled: false,
   connectionLocation: 'server',
   selectedGamepad: null,
-  buttonMappings: {
-    0: 'zero_all',       // A - Zero all axes
-    1: 'emergency_stop', // B - E-Stop (red button = stop)
-    3: 'home_all',       // X - Home all axes
-    4: 'spindle_toggle', // Y - Toggle spindle
-    6: 'speed_slow',     // LB - Slow jog speed
-    7: 'speed_fast',     // RB - Fast jog speed
-    12: 'jog_y_pos',     // D-pad Up
-    13: 'jog_y_neg',     // D-pad Down
-    14: 'jog_x_neg',     // D-pad Left
-    15: 'jog_x_pos',     // D-pad Right
-  },
+  buttonMappings: SERVER_BUTTON_MAPPINGS, // Default to server mappings
   analogMappings: {
     left_x: 'jog_x',     // Left stick X = jog X axis
     left_y: 'jog_y',     // Left stick Y = jog Y axis
@@ -370,7 +401,19 @@ export default function Settings() {
       
       // Joystick config
       if (settings.joystick) {
-        setJoystickConfig(prev => ({ ...prev, ...settings.joystick }))
+        setJoystickConfig(prev => {
+          const loaded = { ...prev, ...settings.joystick }
+          
+          // If buttonMappings are empty or incomplete, apply defaults based on connectionLocation
+          const connectionLocation = loaded.connectionLocation || 'server'
+          const defaultMappings = getDefaultButtonMappings(connectionLocation)
+          
+          if (!loaded.buttonMappings || Object.keys(loaded.buttonMappings).length === 0) {
+            loaded.buttonMappings = { ...defaultMappings }
+          }
+          
+          return loaded
+        })
       }
     }
   }, [settings])
@@ -859,6 +902,32 @@ export default function Settings() {
     setJoystickConfig(prev => {
       const updated = { ...prev, ...changes }
       
+      // If connectionLocation changed, apply appropriate default button mappings
+      // (only if current mappings match the old defaults, to preserve user customizations)
+      if ('connectionLocation' in changes && changes.connectionLocation) {
+        const oldDefaults = getDefaultButtonMappings(prev.connectionLocation)
+        const newDefaults = getDefaultButtonMappings(changes.connectionLocation)
+        
+        // Check if current mappings match old defaults
+        // Compare all keys in old defaults and all keys in current mappings
+        const oldDefaultKeys = Object.keys(oldDefaults).map(Number).sort()
+        const currentMappingKeys = Object.keys(prev.buttonMappings).map(Number).sort()
+        
+        // Check if keys match and values match
+        const keysMatch = oldDefaultKeys.length === currentMappingKeys.length &&
+          oldDefaultKeys.every((key, i) => key === currentMappingKeys[i])
+        
+        const valuesMatch = keysMatch && oldDefaultKeys.every(key => {
+          return prev.buttonMappings[key] === oldDefaults[key]
+        })
+        
+        // If mappings match old defaults (or are empty), apply new defaults
+        if (valuesMatch || Object.keys(prev.buttonMappings).length === 0) {
+          updated.buttonMappings = { ...newDefaults }
+        }
+        // Otherwise, keep existing mappings (user has customizations)
+      }
+      
       // If selectedGamepad changed and connectionLocation is 'server', also call the API
       if ('selectedGamepad' in changes && updated.connectionLocation === 'server') {
         setSelectedGamepad({ gamepadId: changes.selectedGamepad || null }).catch(err => {
@@ -916,6 +985,21 @@ export default function Settings() {
       setDetectedGamepads(detected)
     }
   }, [joystickConfig.connectionLocation, refreshGamepads])
+
+  // Auto-refresh gamepads when joystick config is initialized or connectionLocation changes
+  // This ensures the gamepad list is populated so the Select can match the saved selectedGamepad
+  useEffect(() => {
+    // Refresh gamepads when:
+    // 1. Settings have been initialized
+    // 2. Joystick is enabled
+    // 3. No gamepads are detected yet (or connectionLocation changed)
+    // This ensures the saved selectedGamepad can be matched in the Select dropdown
+    if (hasInitialized.current && joystickConfig.enabled) {
+      if (detectedGamepads.length === 0 || joystickConfig.selectedGamepad) {
+        handleRefreshGamepads()
+      }
+    }
+  }, [joystickConfig.connectionLocation, joystickConfig.enabled, joystickConfig.selectedGamepad, detectedGamepads.length, handleRefreshGamepads])
 
   if (isLoading) {
     return (

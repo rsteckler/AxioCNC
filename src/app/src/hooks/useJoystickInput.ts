@@ -69,6 +69,19 @@ export function useJoystickInput({
         const buttons = gamepad.buttons.map(b => b.pressed)
         const timestamp = gamepad.timestamp
 
+        // DEBUG: Log button presses
+        const pressedButtons: number[] = []
+        buttons.forEach((pressed, index) => {
+          if (pressed) {
+            pressedButtons.push(index)
+          }
+        })
+        
+        if (pressedButtons.length > 0) {
+          console.log(`[useJoystickInput] Buttons pressed: ${pressedButtons.map(idx => `Button ${idx}`).join(', ')}`)
+          console.log(`[useJoystickInput] Full button array:`, buttons.map((p, i) => p ? `B${i}:✓` : `B${i}:✗`).join(' '))
+        }
+
         // Send to server
         socket.emit('joystick:gamepad', axes, buttons, timestamp)
       }
@@ -84,10 +97,12 @@ export function useJoystickInput({
   useEffect(() => {
     if (enabled && connectionLocation === 'client' && selectedGamepadId) {
       // Start polling
+      console.log(`[useJoystickInput] Starting client-side gamepad polling for: ${selectedGamepadId}`)
       pollingRef.current = requestAnimationFrame(pollAndSend)
     } else {
       // Stop polling
       if (pollingRef.current !== null) {
+        console.log(`[useJoystickInput] Stopping client-side gamepad polling`)
         cancelAnimationFrame(pollingRef.current)
         pollingRef.current = null
       }

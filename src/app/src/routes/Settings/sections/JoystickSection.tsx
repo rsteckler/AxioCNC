@@ -83,9 +83,9 @@ export const CNC_ACTIONS: { value: CncAction; label: string; category: string }[
   { value: 'emergency_stop', label: 'Emergency Stop', category: 'Safety' },
 ]
 
-// Standard gamepad buttons (Linux Xbox controller mapping)
+// Server-side (Linux) gamepad buttons mapping
 // Note: LT/RT are axes (4 and 5), not buttons
-export const GAMEPAD_BUTTONS = [
+const SERVER_GAMEPAD_BUTTONS = [
   { index: 0, name: 'A', icon: <Circle className="w-4 h-4" /> },
   { index: 1, name: 'B', icon: <Circle className="w-4 h-4" /> },
   // Button 2 is not used on this controller
@@ -105,6 +105,38 @@ export const GAMEPAD_BUTTONS = [
   { index: 15, name: 'D-Pad Right', icon: <ArrowRight className="w-4 h-4" />, isDpad: true },
   // Note: D-pad buttons (12=Up, 15=Right, 16=Down, 17=Left) map to axes 6 and 7, not buttons
 ]
+
+// Client-side (browser) gamepad buttons mapping
+// Note: LT/RT are buttons (6 and 7) in browser Gamepad API
+const CLIENT_GAMEPAD_BUTTONS = [
+  { index: 0, name: 'A', icon: <Circle className="w-4 h-4" /> },
+  { index: 1, name: 'B', icon: <Circle className="w-4 h-4" /> },
+  { index: 2, name: 'X', icon: <Square className="w-4 h-4" /> },
+  { index: 3, name: 'Y', icon: <Triangle className="w-4 h-4" /> },
+  { index: 4, name: 'LB', icon: <Hexagon className="w-4 h-4" /> },
+  { index: 5, name: 'RB', icon: <Hexagon className="w-4 h-4" /> },
+  { index: 6, name: 'LT', icon: <Hexagon className="w-4 h-4" /> },
+  { index: 7, name: 'RT', icon: <Hexagon className="w-4 h-4" /> },
+  { index: 8, name: 'Back', icon: <Square className="w-3 h-3" /> },
+  { index: 9, name: 'Start', icon: <Square className="w-3 h-3" /> },
+  { index: 10, name: 'Left Stick Click', icon: <CircleDot className="w-4 h-4" /> },
+  { index: 11, name: 'Right Stick Click', icon: <CircleDot className="w-4 h-4" /> },
+  { index: 12, name: 'D-Pad Up', icon: <ArrowUp className="w-4 h-4" />, isDpad: true },
+  { index: 13, name: 'D-Pad Down', icon: <ArrowDown className="w-4 h-4" />, isDpad: true },
+  { index: 14, name: 'D-Pad Left', icon: <ArrowLeft className="w-4 h-4" />, isDpad: true },
+  { index: 15, name: 'D-Pad Right', icon: <ArrowRight className="w-4 h-4" />, isDpad: true },
+  // Note: D-pad buttons are actual buttons (12-15) in browser Gamepad API, not axes
+]
+
+// Legacy export for backwards compatibility (defaults to server)
+export const GAMEPAD_BUTTONS = SERVER_GAMEPAD_BUTTONS
+
+/**
+ * Get the appropriate gamepad button array based on connection location
+ */
+export function getGamepadButtons(connectionLocation: 'server' | 'client' = 'server') {
+  return connectionLocation === 'client' ? CLIENT_GAMEPAD_BUTTONS : SERVER_GAMEPAD_BUTTONS
+}
 
 export type AnalogAxis = 'left_x' | 'left_y' | 'right_x' | 'right_y'
 export type AnalogMapping = 'none' | 'jog_x' | 'jog_y' | 'jog_z' | 'feed_rate'

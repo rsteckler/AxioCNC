@@ -10,10 +10,34 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { Gamepad2, CircleDot } from 'lucide-react'
-import { normalizeToCircle } from '@/utils/analogNormalize'
+// Clamp values to unit circle
+function clampToUnitCircle(x: number, y: number): { x: number; y: number } {
+  const r = Math.hypot(x, y)
+  if (r <= 1) return { x, y }
+  return { x: x / r, y: y / r }
+}
+
+// Convert circular input to square output (for displayed values)
+function circleToSquare(x: number, y: number): { x: number; y: number } {
+  // x,y expected in [-1,1] and (usually) within the unit circle
+  const r = Math.hypot(x, y)
+  if (r === 0) return { x: 0, y: 0 }
+
+  const theta = Math.atan2(y, x)
+  const c = Math.cos(theta)
+  const s = Math.sin(theta)
+
+  // Distance from origin to square boundary along this angle
+  const rBoundary = 1 / Math.max(Math.abs(c), Math.abs(s))
+
+  // Keep same "percent of max deflection" (r) but in square space
+  const scale = r * rBoundary
+
+  return { x: c * scale, y: s * scale }
+}
 import { socketService } from '@/services/socket'
 import type { JoystickConfig, CncAction, AnalogMapping } from './JoystickSection'
-import { CNC_ACTIONS, GAMEPAD_BUTTONS } from './JoystickSection'
+import { CNC_ACTIONS, getGamepadButtons } from './JoystickSection'
 
 interface JoystickTestDialogProps {
   open: boolean
@@ -58,40 +82,44 @@ function generateCommand(
     if (pressed) {
       const action = config.buttonMappings[index]
       if (action && action !== 'none') {
-        commands.push(`Button ${index}: ${getActionLabel(action)}`)
+        commands.push(getActionLabel(action))
       }
     }
   })
   
-  // Check D-pad buttons (map to axes 6 and 7)
-  // D-pad Up (button 12) = axis 7 < -0.5
-  if (axes[7] < -0.5) {
-    const action = config.buttonMappings[12]
-    if (action && action !== 'none') {
-      commands.push(`D-Pad Up: ${getActionLabel(action)}`)
+  // Check D-pad buttons (behavior depends on connection location)
+  if (config.connectionLocation === 'server') {
+    // Server-side: D-pad buttons map to axes 6 and 7
+    // D-pad Up (button 12) = axis 7 < -0.5
+    if (axes[7] < -0.5) {
+      const action = config.buttonMappings[12]
+      if (action && action !== 'none') {
+        commands.push(`D-Pad Up: ${getActionLabel(action)}`)
+      }
+    }
+    // D-pad Down (button 16) = axis 7 > 0.5
+    if (axes[7] > 0.5) {
+      const action = config.buttonMappings[16]
+      if (action && action !== 'none') {
+        commands.push(`D-Pad Down: ${getActionLabel(action)}`)
+      }
+    }
+    // D-pad Left (button 17) = axis 6 < -0.5
+    if (axes[6] < -0.5) {
+      const action = config.buttonMappings[17]
+      if (action && action !== 'none') {
+        commands.push(`D-Pad Left: ${getActionLabel(action)}`)
+      }
+    }
+    // D-pad Right (button 15) = axis 6 > 0.5
+    if (axes[6] > 0.5) {
+      const action = config.buttonMappings[15]
+      if (action && action !== 'none') {
+        commands.push(`D-Pad Right: ${getActionLabel(action)}`)
+      }
     }
   }
-  // D-pad Down (button 16) = axis 7 > 0.5
-  if (axes[7] > 0.5) {
-    const action = config.buttonMappings[16]
-    if (action && action !== 'none') {
-      commands.push(`D-Pad Down: ${getActionLabel(action)}`)
-    }
-  }
-  // D-pad Left (button 17) = axis 6 < -0.5
-  if (axes[6] < -0.5) {
-    const action = config.buttonMappings[17]
-    if (action && action !== 'none') {
-      commands.push(`D-Pad Left: ${getActionLabel(action)}`)
-    }
-  }
-  // D-pad Right (button 15) = axis 6 > 0.5
-  if (axes[6] > 0.5) {
-    const action = config.buttonMappings[15]
-    if (action && action !== 'none') {
-      commands.push(`D-Pad Right: ${getActionLabel(action)}`)
-    }
-  }
+  // Client-side: D-pad buttons are actual buttons (12-15), already handled in the buttons loop above
   
   // Check analog axes
   const deadzone = config.deadzone
@@ -143,6 +171,35 @@ export function JoystickTestDialog({
   
   const animationRef = useRef<number | null>(null)
   const lastGamepadIndex = useRef<number | null>(null)
+  const lastButtonStates = useRef<boolean[]>([]) // Track previous button states for change detection
+  const frameCounter = useRef(0) // For throttling debug logs
+  
+  // Refs for visual indicator positioning
+  const leftStickContainerRef = useRef<HTMLDivElement>(null)
+  const leftStickDotRef = useRef<HTMLDivElement>(null)
+  const rightStickContainerRef = useRef<HTMLDivElement>(null)
+  const rightStickDotRef = useRef<HTMLDivElement>(null)
+  
+  // Set dot position in circle (for visual indicator)
+  const setDotPosition = (dotEl: HTMLDivElement | null, containerEl: HTMLDivElement | null, xCircle: number, yCircle: number) => {
+    if (!dotEl || !containerEl) return
+    
+    const rect = containerEl.getBoundingClientRect()
+    const radius = rect.width / 2
+
+    // Keep inside unit circle just in case input is noisy/out-of-range
+    const r = Math.hypot(xCircle, yCircle)
+    if (r > 1) {
+      xCircle /= r
+      yCircle /= r
+    }
+
+    const px = radius + xCircle * radius
+    const py = radius - yCircle * radius // minus because DOM y grows downward
+
+    dotEl.style.left = `${px}px`
+    dotEl.style.top = `${py}px`
+  }
 
   // Find the gamepad by ID
   const findGamepad = useCallback((): Gamepad | null => {
@@ -165,10 +222,80 @@ export function JoystickTestDialog({
     const gamepad = findGamepad()
     
     if (gamepad) {
+      const buttons = gamepad.buttons.map(b => b.pressed)
+      let axes = Array.from(gamepad.axes)
+      
+      // For client-side gamepads, convert LT/RT buttons to axes
+      if (config.connectionLocation === 'client') {
+        // Ensure axes array has at least 6 elements (indices 0-5)
+        while (axes.length < 6) {
+          axes.push(0)
+        }
+        // LT (button 6) -> axis 5 (0 when not pressed, 1.0 when pressed)
+        axes[5] = buttons[6] ? 1.0 : 0
+        // RT (button 7) -> axis 4 (0 when not pressed, 1.0 when pressed)
+        axes[4] = buttons[7] ? 1.0 : 0
+      } else {
+        // For server-side, ensure axes 4 and 5 exist and default to 0 if not present
+        while (axes.length < 6) {
+          axes.push(0)
+        }
+        // Server-side axes 4 and 5 might be -1 to 1, normalize to 0-1 for display
+        if (axes[4] !== undefined && axes[4] < 0) {
+          axes[4] = 0 // Clamp to 0 minimum
+        }
+        if (axes[5] !== undefined && axes[5] < 0) {
+          axes[5] = 0 // Clamp to 0 minimum
+        }
+      }
+      
+      // Increment frame counter for throttling
+      frameCounter.current++
+      
+      // DEBUG: Log button state changes (press/release)
+      const buttonChanges: string[] = []
+      buttons.forEach((pressed, index) => {
+        const wasPressed = lastButtonStates.current[index] || false
+        if (pressed && !wasPressed) {
+          // Button just pressed
+          const mapping = config.buttonMappings[index]
+          buttonChanges.push(`PRESSED: Button ${index}${mapping ? ` → ${mapping}` : ' (unmapped)'}`)
+        } else if (!pressed && wasPressed) {
+          // Button just released
+          buttonChanges.push(`RELEASED: Button ${index}`)
+        }
+      })
+      
+      // Update last button states
+      lastButtonStates.current = [...buttons]
+      
+      // Log button changes
+      if (buttonChanges.length > 0) {
+        console.log(`[JoystickTestDialog] ${buttonChanges.join(' | ')}`)
+        console.log(`[JoystickTestDialog] Full button array:`, buttons.map((p, i) => p ? `B${i}:✓` : `B${i}:✗`).join(' '))
+        console.log(`[JoystickTestDialog] Axes values:`, axes.map((v, i) => `A${i}:${v.toFixed(3)}`).join(' '))
+      }
+      
+      // Log all currently pressed buttons (less verbose, only when buttons are held)
+      const currentlyPressed = buttons
+        .map((pressed, index) => pressed ? index : -1)
+        .filter(idx => idx >= 0)
+      
+      if (currentlyPressed.length > 0 && buttonChanges.length === 0) {
+        // Buttons are held but no changes (reduce spam - only log every 60 frames ~1 second)
+        if (frameCounter.current % 60 === 0) {
+          const buttonInfo = currentlyPressed.map(idx => {
+            const mapping = config.buttonMappings[idx]
+            return `B${idx}${mapping ? `→${mapping}` : ''}`
+          }).join(', ')
+          console.log(`[JoystickTestDialog] Buttons held: ${buttonInfo}`)
+        }
+      }
+      
       setGamepadState({
         connected: true,
-        axes: Array.from(gamepad.axes),
-        buttons: gamepad.buttons.map(b => b.pressed),
+        axes,
+        buttons,
         timestamp: gamepad.timestamp,
       })
     } else {
@@ -181,7 +308,7 @@ export function JoystickTestDialog({
     if (open) {
       animationRef.current = requestAnimationFrame(pollGamepad)
     }
-  }, [open, findGamepad])
+  }, [open, findGamepad, config.buttonMappings])
 
   // Handle server-side gamepad state updates (Socket.IO)
   useEffect(() => {
@@ -231,6 +358,14 @@ export function JoystickTestDialog({
     }
 
     if (open) {
+      console.log(`[JoystickTestDialog] Starting client-side gamepad polling for: ${gamepadId}`)
+      console.log(`[JoystickTestDialog] Connection location: ${config.connectionLocation}`)
+      console.log(`[JoystickTestDialog] Current button mappings:`, config.buttonMappings)
+      
+      // Reset state tracking
+      lastButtonStates.current = []
+      frameCounter.current = 0
+      
       pollGamepad()
     } else {
       if (animationRef.current) {
@@ -243,7 +378,7 @@ export function JoystickTestDialog({
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [open, pollGamepad, config.connectionLocation])
+  }, [open, pollGamepad, config.connectionLocation, gamepadId, config.buttonMappings])
 
   // Get axis value with deadzone applied (for display)
   const getAxisDisplay = (value: number): number => {
@@ -256,19 +391,50 @@ export function JoystickTestDialog({
   const axisToProgress = (value: number): number => {
     return ((value + 1) / 2) * 100
   }
+  
+  // Convert trigger axis value to percentage (handles both 0-1 and -1-1 ranges)
+  const triggerToProgress = (value: number, connectionLocation: 'server' | 'client'): number => {
+    if (connectionLocation === 'client') {
+      // Client-side: axes are 0 to 1, map directly to 0-100%
+      return Math.max(0, Math.min(100, value * 100))
+    } else {
+      // Server-side: axes are -1 to 1, map to 0-100%
+      return Math.max(0, Math.min(100, ((value + 1) / 2) * 100))
+    }
+  }
 
-  // Normalize gamepad input to circle (same as jog control panel)
-  const leftXY = normalizeToCircle(
-    gamepadState.axes[0] || 0,
-    gamepadState.axes[1] || 0
-  )
+  // Raw circular values (for visual indicator positioning)
+  const leftXYRaw = {
+    x: gamepadState.axes[0] || 0,
+    y: gamepadState.axes[1] || 0
+  }
+  const rightXYRaw = {
+    x: gamepadState.axes[2] || 0,
+    y: gamepadState.axes[3] || 0
+  }
 
-  const rightXY = normalizeToCircle(
-    gamepadState.axes[2] || 0,
-    gamepadState.axes[3] || 0
-  )
+  // Clamp to unit circle before converting to square
+  const leftXYClamped = clampToUnitCircle(leftXYRaw.x, leftXYRaw.y)
+  const rightXYClamped = clampToUnitCircle(rightXYRaw.x, rightXYRaw.y)
+
+  // Convert circular to square for displayed values
+  const leftXY = circleToSquare(leftXYClamped.x, leftXYClamped.y)
+  const rightXY = circleToSquare(rightXYClamped.x, rightXYClamped.y)
 
   const commands = generateCommand(config, gamepadState.axes, gamepadState.buttons)
+  
+  // Update visual indicator positions
+  useEffect(() => {
+    if (leftStickDotRef.current && leftStickContainerRef.current) {
+      setDotPosition(leftStickDotRef.current, leftStickContainerRef.current, leftXYRaw.x, -leftXYRaw.y)
+    }
+    if (rightStickDotRef.current && rightStickContainerRef.current) {
+      setDotPosition(rightStickDotRef.current, rightStickContainerRef.current, rightXYRaw.x, -rightXYRaw.y)
+    }
+  }, [leftXYRaw.x, leftXYRaw.y, rightXYRaw.x, rightXYRaw.y])
+  
+  // Get the correct button array based on connection location
+  const gamepadButtons = getGamepadButtons(config.connectionLocation)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -309,13 +475,10 @@ export function JoystickTestDialog({
             </div>
             
             {/* Visual stick representation */}
-            <div className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
+            <div ref={leftStickContainerRef} className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
+                ref={leftStickDotRef}
                 className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
-                style={{
-                  left: `${50 + (getAxisDisplay(leftXY.x) * 40)}%`,
-                  top: `${50 + (getAxisDisplay(leftXY.y) * 40)}%`,
-                }}
               />
               {/* Deadzone indicator */}
               <div 
@@ -359,13 +522,10 @@ export function JoystickTestDialog({
             </div>
             
             {/* Visual stick representation */}
-            <div className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
+            <div ref={rightStickContainerRef} className="relative w-36 h-36 mx-auto mb-4 rounded-full border-2 border-muted bg-muted/20">
               <div 
+                ref={rightStickDotRef}
                 className="absolute w-6 h-6 rounded-full bg-primary shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all duration-75"
-                style={{
-                  left: `${50 + (getAxisDisplay(rightXY.x) * 40)}%`,
-                  top: `${50 + (getAxisDisplay(rightXY.y) * 40)}%`,
-                }}
               />
               {/* Deadzone indicator */}
               <div 
@@ -407,12 +567,9 @@ export function JoystickTestDialog({
           <div className="p-3 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">LT</span>
-              <span className="text-xs text-muted-foreground">
-                Axis 5
-              </span>
             </div>
             <Progress 
-              value={Math.max(0, (gamepadState.axes[5] || 0) * 50 + 50)} 
+              value={triggerToProgress(gamepadState.axes[5] || 0, config.connectionLocation)} 
               className="h-3"
             />
             <div className="text-xs text-muted-foreground mt-1 text-right">
@@ -422,12 +579,9 @@ export function JoystickTestDialog({
           <div className="p-3 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">RT</span>
-              <span className="text-xs text-muted-foreground">
-                Axis 4
-              </span>
             </div>
             <Progress 
-              value={Math.max(0, (gamepadState.axes[4] || 0) * 50 + 50)} 
+              value={triggerToProgress(gamepadState.axes[4] || 0, config.connectionLocation)} 
               className="h-3"
             />
             <div className="text-xs text-muted-foreground mt-1 text-right">
@@ -440,7 +594,7 @@ export function JoystickTestDialog({
         <div className="mb-6">
           <h4 className="text-sm font-medium mb-3">Buttons</h4>
           <div className="grid grid-cols-4 gap-2">
-            {GAMEPAD_BUTTONS.filter(b => !(b as any).isDpad).map((button) => {
+            {gamepadButtons.filter(b => !(b as any).isDpad).map((button) => {
               const isPressed = gamepadState.buttons[button.index]
               const action = config.buttonMappings[button.index]
               
@@ -456,7 +610,6 @@ export function JoystickTestDialog({
                 >
                   <div className="flex items-center justify-center gap-1 mb-1">
                     {button.icon}
-                    <span className="text-xs font-medium">{button.index}</span>
                   </div>
                   <div className="text-[10px] truncate">
                     {button.name.split('/')[0].trim()}
@@ -478,22 +631,30 @@ export function JoystickTestDialog({
           <div className="mt-4">
             <h5 className="text-xs font-medium text-muted-foreground mb-2">D-Pad</h5>
             <div className="grid grid-cols-4 gap-2">
-              {GAMEPAD_BUTTONS.filter(b => (b as any).isDpad).map((button) => {
-                // D-pad buttons map to axes 6 and 7 instead of buttons
+              {gamepadButtons.filter(b => (b as any).isDpad).map((button) => {
+                // D-pad button detection depends on connection location
                 let isPressed = false
-                if (button.index === 12) {
-                  // D-pad Up = axis 7 < -0.5
-                  isPressed = (gamepadState.axes[7] || 0) < -0.5
-                } else if (button.index === 16) {
-                  // D-pad Down = axis 7 > 0.5
-                  isPressed = (gamepadState.axes[7] || 0) > 0.5
-                } else if (button.index === 17) {
-                  // D-pad Left = axis 6 < -0.5
-                  isPressed = (gamepadState.axes[6] || 0) < -0.5
-                } else if (button.index === 15) {
-                  // D-pad Right = axis 6 > 0.5
-                  isPressed = (gamepadState.axes[6] || 0) > 0.5
+                
+                if (config.connectionLocation === 'client') {
+                  // Client-side: D-pad buttons are actual buttons (12-15)
+                  isPressed = gamepadState.buttons[button.index] || false
+                } else {
+                  // Server-side: D-pad buttons map to axes 6 and 7
+                  if (button.index === 12) {
+                    // D-pad Up = axis 7 < -0.5
+                    isPressed = (gamepadState.axes[7] || 0) < -0.5
+                  } else if (button.index === 16) {
+                    // D-pad Down = axis 7 > 0.5
+                    isPressed = (gamepadState.axes[7] || 0) > 0.5
+                  } else if (button.index === 17) {
+                    // D-pad Left = axis 6 < -0.5
+                    isPressed = (gamepadState.axes[6] || 0) < -0.5
+                  } else if (button.index === 15) {
+                    // D-pad Right = axis 6 > 0.5
+                    isPressed = (gamepadState.axes[6] || 0) > 0.5
+                  }
                 }
+                
                 const action = config.buttonMappings[button.index]
                 
                 return (
