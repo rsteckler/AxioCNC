@@ -320,7 +320,9 @@ export function MacrosSection({
                 {formContent && (() => {
                   const validation = validateMacroParameters(formContent)
                   const hasParams = validation.declared.length > 0
-                  const hasWarnings = !validation.valid && validation.undeclared.length > 0
+                  const hasUndeclared = validation.undeclared.length > 0
+                  const hasDuplicates = validation.duplicates.length > 0
+                  const hasWarnings = hasUndeclared || hasDuplicates
                   return (hasParams || hasWarnings) ? (
                     <Card className="border-muted">
                       <CardHeader className="pb-3">
@@ -342,8 +344,8 @@ export function MacrosSection({
                           <div>
                             <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
                             <div className="flex flex-wrap gap-2">
-                              {validation.declared.map((param) => (
-                                <Badge key={param.name} variant="secondary" className="font-mono text-xs">
+                              {validation.declared.map((param, index) => (
+                                <Badge key={`${param.name}-${index}`} variant="secondary" className="font-mono text-xs">
                                   {param.name}:{param.type}
                                   {param.defaultValue && (
                                     <span className="text-muted-foreground ml-1">= {param.defaultValue}</span>
@@ -353,7 +355,29 @@ export function MacrosSection({
                             </div>
                           </div>
                         )}
-                        {hasWarnings && (
+                        {hasDuplicates && (
+                          <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium text-destructive mb-1">
+                                  Duplicate variable names:
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {validation.duplicates.map((param) => (
+                                    <code key={param} className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">
+                                      {param}
+                                    </code>
+                                  ))}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  Each variable name should only be declared once.
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {hasUndeclared && (
                           <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
                             <div className="flex items-start gap-2">
                               <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
@@ -554,7 +578,9 @@ export function MacrosSection({
                               {formContent && (() => {
                                 const validation = validateMacroParameters(formContent)
                                 const hasParams = validation.declared.length > 0
-                                const hasWarnings = !validation.valid && validation.undeclared.length > 0
+                                const hasUndeclared = validation.undeclared.length > 0
+                                const hasDuplicates = validation.duplicates.length > 0
+                                const hasWarnings = hasUndeclared || hasDuplicates
                                 return (hasParams || hasWarnings) ? (
                                   <Card className="border-muted">
                                     <CardHeader className="pb-3">
@@ -576,8 +602,8 @@ export function MacrosSection({
                                         <div>
                                           <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
                                           <div className="flex flex-wrap gap-2">
-                                            {validation.declared.map((param) => (
-                                              <Badge key={param.name} variant="secondary" className="font-mono text-xs">
+                                            {validation.declared.map((param, index) => (
+                                              <Badge key={`${param.name}-${index}`} variant="secondary" className="font-mono text-xs">
                                                 {param.name}:{param.type}
                                                 {param.defaultValue && (
                                                   <span className="text-muted-foreground ml-1">= {param.defaultValue}</span>
@@ -587,7 +613,29 @@ export function MacrosSection({
                                           </div>
                                         </div>
                                       )}
-                                      {hasWarnings && (
+                                      {hasDuplicates && (
+                                        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
+                                          <div className="flex items-start gap-2">
+                                            <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-xs font-medium text-destructive mb-1">
+                                                Duplicate variable names:
+                                              </div>
+                                              <div className="flex flex-wrap gap-1">
+                                                {validation.duplicates.map((param) => (
+                                                  <code key={param} className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">
+                                                    {param}
+                                                  </code>
+                                                ))}
+                                              </div>
+                                              <div className="text-xs text-muted-foreground mt-2">
+                                                Each variable name should only be declared once.
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {hasUndeclared && (
                                         <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2">
                                           <div className="flex items-start gap-2">
                                             <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
