@@ -14,6 +14,51 @@ const log = logger('api:themes');
 const getUserHome = () => (process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']);
 const THEMES_DIR = path.resolve(getUserHome(), '.axiocnc', 'themes');
 
+// Get the bundled themes directory (shipped with the app)
+// Find project root by looking for the themes/ directory or package.json
+// In dev: output/axiocnc/server/api/ -> go up to find themes/ in project root
+// In prod: dist/axiocnc/server/api/ -> go up to find themes/ in project root
+const findProjectRoot = () => {
+  let current = __dirname;
+  // Start from __dirname and go up until we find themes/ directory or package.json with themes/
+  for (let i = 0; i < 10; i++) {
+    const themesDir = path.join(current, 'themes');
+    const packageJson = path.join(current, 'package.json');
+    
+    // Check if themes directory exists (most reliable indicator of project root)
+    if (fs.existsSync(themesDir) && fs.statSync(themesDir).isDirectory()) {
+      return current;
+    }
+    
+    // Also check for package.json and themes/ together
+    if (fs.existsSync(packageJson) && fs.existsSync(themesDir)) {
+      return current;
+    }
+    
+    const parent = path.dirname(current);
+    if (parent === current) break; // Reached filesystem root
+    current = parent;
+  }
+  
+  // Fallback: try process.cwd() and go up if needed
+  let fallback = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const themesDir = path.join(fallback, 'themes');
+    if (fs.existsSync(themesDir) && fs.statSync(themesDir).isDirectory()) {
+      return fallback;
+    }
+    const parent = path.dirname(fallback);
+    if (parent === fallback) break;
+    fallback = parent;
+  }
+  
+  // Last resort: use process.cwd()
+  return process.cwd();
+};
+
+const PROJECT_ROOT = findProjectRoot();
+const BUNDLED_THEMES_DIR = path.resolve(PROJECT_ROOT, 'themes');
+
 // Ensure themes directory exists
 const ensureThemesDir = () => {
   try {
@@ -26,8 +71,61 @@ const ensureThemesDir = () => {
   }
 };
 
-// Initialize themes directory on module load
+// Copy bundled themes to user themes directory (only if they don't exist)
+const copyBundledThemes = () => {
+  try {
+    log.info(`Looking for bundled themes at: ${BUNDLED_THEMES_DIR}`);
+    log.info(`Project root: ${PROJECT_ROOT}`);
+    log.info(`Current working directory: ${process.cwd()}`);
+    
+    if (!fs.existsSync(BUNDLED_THEMES_DIR)) {
+      log.warn(`No bundled themes directory found at: ${BUNDLED_THEMES_DIR}`);
+      return;
+    }
+
+    const bundledFiles = fs.readdirSync(BUNDLED_THEMES_DIR);
+    log.info(`Found ${bundledFiles.length} files in bundled themes directory`);
+    let copiedCount = 0;
+    let skippedCount = 0;
+
+    for (const file of bundledFiles) {
+      if (!file.endsWith('.json')) {
+        continue;
+      }
+
+      const srcPath = path.join(BUNDLED_THEMES_DIR, file);
+      const destPath = path.join(THEMES_DIR, file);
+
+      // Only copy if destination doesn't exist (don't overwrite user modifications)
+      if (!fs.existsSync(destPath)) {
+        try {
+          fs.copyFileSync(srcPath, destPath);
+          copiedCount++;
+          log.info(`Copied bundled theme: ${file}`);
+        } catch (err) {
+          log.error(`Failed to copy bundled theme ${file}: ${err.message}`);
+        }
+      } else {
+        skippedCount++;
+        log.debug(`Skipped ${file} (already exists)`);
+      }
+    }
+
+    if (copiedCount > 0) {
+      log.info(`Copied ${copiedCount} bundled theme(s) to ${THEMES_DIR}`);
+    }
+    if (skippedCount > 0) {
+      log.info(`Skipped ${skippedCount} theme(s) (already exist)`);
+    }
+  } catch (err) {
+    log.error(`Failed to copy bundled themes: ${err.message}`);
+    log.error(err.stack);
+  }
+};
+
+// Initialize themes directory and copy bundled themes on module load
 ensureThemesDir();
+copyBundledThemes();
 
 // Validate theme structure
 const validateTheme = (theme) => {
