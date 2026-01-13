@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
-import { Camera, Webcam, Globe, RotateCw, FlipHorizontal, FlipVertical } from 'lucide-react'
+import { Camera, Webcam, Globe, RotateCw, FlipHorizontal, FlipVertical, ExternalLink } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -155,11 +155,27 @@ export function CameraSection({
                         placeholder="http://192.168.1.100:8080/?action=stream"
                         className="font-mono text-sm"
                       />
-                      <div className="text-xs text-muted-foreground">
-                        Only HTTP-based streams are supported. The URL must start with <code className="px-1 py-0.5 bg-muted rounded text-xs">http://</code> or <code className="px-1 py-0.5 bg-muted rounded text-xs">https://</code>. Supported formats:{' '}
-                        <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG (MJPEG)</Badge>
-                        <Badge variant="secondary" className="text-xs mx-0.5">MP4 (H.264)</Badge>
-                        <Badge variant="outline" className="text-xs mx-0.5 border-destructive text-destructive">RTSP not supported</Badge>
+                      <div className="text-xs text-muted-foreground space-y-2">
+                        <div>
+                          Only HTTP-based streams are supported. The URL must start with <code className="px-1 py-0.5 bg-muted rounded text-xs">http://</code> or <code className="px-1 py-0.5 bg-muted rounded text-xs">https://</code>. Supported formats:{' '}
+                          <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG (MJPEG)</Badge>
+                          <Badge variant="secondary" className="text-xs mx-0.5">MP4 (H.264)</Badge>
+                          <Badge variant="outline" className="text-xs mx-0.5 border-destructive text-destructive">RTSP not supported</Badge>
+                        </div>
+                        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                          <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
+                            Want RTSP support? Help us prioritize this feature by upvoting the issue.
+                          </p>
+                          <a
+                            href="https://github.com/rsteckler/AxioCNC/issues/3"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Upvote RTSP support
+                          </a>
+                        </div>
                       </div>
                     </div>
                   )}
