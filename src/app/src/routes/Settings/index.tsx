@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
 import { 
@@ -257,7 +257,11 @@ const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
 }
 
 export default function Settings() {
+  const navigate = useNavigate()
   const { theme, accentColor, customThemeId, setTheme, setAccentColor, setCustomTheme } = useTheme()
+  
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true)
   
   // RTK Query hooks
   const { data: settings, isLoading: isLoadingSettings } = useGetSettingsQuery()
@@ -899,6 +903,9 @@ export default function Settings() {
 
   // Joystick handlers
   const handleJoystickConfigChange = useCallback(async (changes: Partial<JoystickConfig>) => {
+    if (!isMountedRef.current) {
+      return
+    }
     setJoystickConfig(prev => {
       const updated = { ...prev, ...changes }
       
@@ -953,6 +960,9 @@ export default function Settings() {
   }, [setExtensions])
 
   const handleRefreshGamepads = useCallback(async () => {
+    if (!isMountedRef.current) {
+      return []
+    }
     // Check if using server-side or client-side gamepad
     if (joystickConfig.connectionLocation === 'server') {
       // Call server API to refresh gamepads
@@ -965,7 +975,9 @@ export default function Settings() {
           buttons: gp.buttons || 16,
           axes: gp.axes || 4,
         }))
-        setDetectedGamepads(detected)
+        if (isMountedRef.current) {
+          setDetectedGamepads(detected)
+        }
       } catch (error) {
         console.error('Failed to refresh server gamepads:', error)
       }
@@ -982,7 +994,9 @@ export default function Settings() {
           axes: gp.axes.length,
         }))
       
-      setDetectedGamepads(detected)
+      if (isMountedRef.current) {
+        setDetectedGamepads(detected)
+      }
       
       return detected
     }
@@ -1015,11 +1029,15 @@ export default function Settings() {
       const gamepad = e.gamepad
       if (!gamepad) return
 
-      console.log('[Settings] Gamepad connected:', gamepad.id)
-      
       // Always refresh the list first to ensure it's up to date
       // This will update detectedGamepads state
       const detected = await handleRefreshGamepads()
+      
+      // Check if component is still mounted before proceeding
+      // This prevents state updates after navigation/unmount
+      if (!isMountedRef.current) {
+        return
+      }
       
       // Check if the gamepad is now in the detected list
       const isInList = detected.some(gp => gp.id === gamepad.id)
@@ -1028,6 +1046,11 @@ export default function Settings() {
       // Use requestAnimationFrame + setTimeout to ensure state has propagated
       requestAnimationFrame(() => {
         setTimeout(() => {
+          // Check if component is still mounted before updating state
+          if (!isMountedRef.current) {
+            return
+          }
+          
           // Check the current selected gamepad
           const currentSelected = joystickConfig.selectedGamepad
           if (currentSelected === gamepad.id) {
@@ -1046,7 +1069,10 @@ export default function Settings() {
       const gamepad = e.gamepad
       if (!gamepad) return
 
-      console.log('[Settings] Gamepad disconnected:', gamepad.id)
+      // Check if component is still mounted before updating state
+      if (!isMountedRef.current) {
+        return
+      }
       
       // Refresh the list to update connection status
       handleRefreshGamepads()
@@ -1076,6 +1102,13 @@ export default function Settings() {
     }
   }, [joystickConfig.connectionLocation, joystickConfig.enabled, joystickConfig.selectedGamepad, handleRefreshGamepads, handleJoystickConfigChange])
 
+  // Mark component as unmounted on cleanup
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1090,12 +1123,17 @@ export default function Settings() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                navigate('/')
+              }}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
             <div className="h-6 w-px bg-border" />
             <h1 className="text-xl font-semibold">Settings</h1>
           </div>

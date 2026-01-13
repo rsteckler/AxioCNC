@@ -38,7 +38,7 @@ import {
   Crosshair, RotateCcw, RotateCw, GripVertical,
   Zap, Target, FileCode,
   Move, Navigation, Bell, AlertCircle, X,
-  HelpCircle, Camera,
+  HelpCircle, Camera, Gamepad2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -56,6 +56,7 @@ import { FilePanel } from './panels/FilePanel'
 import { ToolsPanel } from './panels/ToolsPanel'
 import { VisualizerPanel } from './panels/VisualizerPanel'
 import { CameraPanel } from './panels/CameraPanel'
+import { JoystickPanel } from './panels/JoystickPanel'
 import type { PanelProps } from './types'
 
 // ============================================================================
@@ -76,6 +77,7 @@ const panelConfig: Record<string, {
   file: { title: 'File', icon: FileCode, component: FilePanel },
   spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
   camera: { title: 'Camera', icon: Camera, component: CameraPanel },
+  joystick: { title: 'Joystick', icon: Gamepad2, component: JoystickPanel },
 }
 
 // Sortable Panel Component
@@ -181,16 +183,27 @@ function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isColla
 export default function Setup() {
   const navigate = useNavigate()
   
+  // Get connection settings from API
+  const { data: settings } = useGetSettingsQuery()
+  
   // Panel order - just an array of IDs
   // Load from localStorage or use default
+  // Store the last known position of joystick panel before it was removed
+  const joystickPositionRef = useRef<number | null>(null)
+
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem('axiocnc-setup-panel-order')
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
         // Validate it's an array with valid panel IDs
-        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera']
+        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick']
         if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
+          // Store joystick position if it exists in the saved order
+          const joystickIndex = parsed.indexOf('joystick')
+          if (joystickIndex !== -1) {
+            joystickPositionRef.current = joystickIndex
+          }
           return parsed
         }
       } catch {
@@ -199,6 +212,32 @@ export default function Setup() {
     }
     return ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera']
   })
+  
+  // Add/remove joystick panel to order when joystick is enabled/disabled
+  // Preserve its position when re-adding
+  useEffect(() => {
+    if (settings?.joystick?.enabled && !panelOrder.includes('joystick')) {
+      setPanelOrder(prev => {
+        // If we have a saved position, restore it there
+        if (joystickPositionRef.current !== null && joystickPositionRef.current < prev.length) {
+          const newOrder = [...prev]
+          newOrder.splice(joystickPositionRef.current, 0, 'joystick')
+          return newOrder
+        }
+        // Otherwise add to end
+        return [...prev, 'joystick']
+      })
+    } else if (!settings?.joystick?.enabled && panelOrder.includes('joystick')) {
+      setPanelOrder(prev => {
+        // Save the position before removing
+        const joystickIndex = prev.indexOf('joystick')
+        if (joystickIndex !== -1) {
+          joystickPositionRef.current = joystickIndex
+        }
+        return prev.filter(id => id !== 'joystick')
+      })
+    }
+  }, [settings?.joystick?.enabled, panelOrder])
   
   // Track which panels are collapsed
   // Load from localStorage or use default
@@ -279,9 +318,6 @@ export default function Setup() {
     read: boolean
   }>>([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  
-  // Get connection settings from API
-  const { data: settings } = useGetSettingsQuery()
   
   // Get active controllers to check if we're already connected when remounting
   // Refetch on mount to ensure we have fresh data when navigating back
@@ -1573,27 +1609,35 @@ export default function Setup() {
           >
             <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2">
-                {panelOrder.map((panelId) => (
-                  <SortablePanel
-                    key={panelId}
-                    id={panelId}
-                    isCollapsed={collapsedPanels[panelId] ?? false}
-                    onToggle={() => togglePanel(panelId)}
-                    panelProps={{
-                      isConnected,
-                      connectedPort,
-                      machineStatus,
-                      onFlashStatus: flashStatus,
-                      machinePosition,
-                      workPosition,
-                      currentWCS,
-                      isJobRunning,
-                      spindleState,
-                      spindleSpeed
-                    }}
-                    onStartWizard={(method) => setWizardMethod(method)}
-                  />
-                ))}
+                {panelOrder
+                  .filter((panelId) => {
+                    // Filter out joystick panel if joystick is not enabled
+                    if (panelId === 'joystick') {
+                      return settings?.joystick?.enabled ?? false
+                    }
+                    return true
+                  })
+                  .map((panelId) => (
+                    <SortablePanel
+                      key={panelId}
+                      id={panelId}
+                      isCollapsed={collapsedPanels[panelId] ?? false}
+                      onToggle={() => togglePanel(panelId)}
+                      panelProps={{
+                        isConnected,
+                        connectedPort,
+                        machineStatus,
+                        onFlashStatus: flashStatus,
+                        machinePosition,
+                        workPosition,
+                        currentWCS,
+                        isJobRunning,
+                        spindleState,
+                        spindleSpeed
+                      }}
+                      onStartWizard={(method) => setWizardMethod(method)}
+                    />
+                  ))}
               </div>
             </SortableContext>
             <DragOverlay>
