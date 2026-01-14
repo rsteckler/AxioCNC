@@ -41,6 +41,7 @@
     "clsx": "^2.1.1",
     "colornames": "^1.1.1",
     "gcode-toolpath": "^3.0.0",
+    "hls.js": "^1.6.15",
     "i18next": "^24.0.5",
     "i18next-browser-languagedetector": "^8.0.2",
     "lucide-react": "^0.468.0",
