@@ -67,6 +67,8 @@ export const CameraSettingsSchema = z.object({
   autoDetect: z.boolean().default(true),
   selectedDeviceId: z.string().nullable().default(null),
   ipCameraUrl: z.string().default(''),
+  username: z.string().optional(),
+  password: z.string().optional(),
   flipHorizontal: z.boolean().default(false),
   flipVertical: z.boolean().default(false),
   rotation: z.number().default(0),
