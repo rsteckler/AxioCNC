@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
         },
+        '/streams': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        },
       },
     },
     optimizeDeps: {

@@ -171,8 +171,10 @@ export interface Tool {
   toolId: number  // Tool number (T0, T1, T2...Tn) - matches CAM software IDs
   name: string
   description?: string
-  diameter?: number | null  // Diameter in mm (null if not specified)
+  diameter?: number | null  // Diameter value (null if not specified)
+  diameterUnit?: 'mm' | 'in'  // Unit for diameter (defaults to 'mm' if not specified)
   type?: string  // Tool type (ballnose, straight, vbit, engraver, drill, chamfer, etc.)
+  flutes?: number | null  // Number of flutes (null if not specified)
   mtime?: number
 }
 
@@ -293,6 +295,36 @@ export interface GamepadPlatformResponse {
 }
 
 // =============================================================================
+// Cameras Types
+// =============================================================================
+
+export interface Camera {
+  id: string
+  name: string
+  inputUrl: string
+  username?: string
+  password?: string
+  type?: 'rtsp' | 'mjpeg' | 'hls'
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CamerasResponse {
+  records: Camera[]
+  pagination?: {
+    page: number
+    pageLength: number
+    totalRecords: number
+  }
+}
+
+export interface StreamMetadata {
+  type: 'hls' | 'mjpeg'
+  src: string
+}
+
+// =============================================================================
 // Machine Presets Types
 // =============================================================================
 
@@ -326,7 +358,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads', 'MachinePresets'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads', 'MachinePresets', 'Cameras', 'Streams'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -794,6 +826,58 @@ export const api = createApi({
       query: () => '/machine-presets',
       providesTags: ['MachinePresets'],
     }),
+
+    // ==========================================================================
+    // Cameras
+    // ==========================================================================
+
+    getCameras: builder.query<CamerasResponse, void>({
+      query: () => '/cameras',
+      providesTags: (result) =>
+        result
+          ? [...result.records.map(({ id }) => ({ type: 'Cameras' as const, id })), { type: 'Cameras', id: 'LIST' }]
+          : [{ type: 'Cameras', id: 'LIST' }],
+    }),
+
+    getCamera: builder.query<Camera, string>({
+      query: (id) => `/cameras/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Cameras', id }],
+    }),
+
+    createCamera: builder.mutation<Camera, Omit<Camera, 'id' | 'createdAt' | 'updatedAt'>>({
+      query: (camera) => ({
+        url: '/cameras',
+        method: 'POST',
+        body: camera,
+      }),
+      invalidatesTags: [{ type: 'Cameras', id: 'LIST' }],
+    }),
+
+    updateCamera: builder.mutation<Camera, { id: string; updates: Partial<Camera> }>({
+      query: ({ id, updates }) => ({
+        url: `/cameras/${id}`,
+        method: 'PUT',
+        body: updates,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Cameras', id }, { type: 'Cameras', id: 'LIST' }],
+    }),
+
+    deleteCamera: builder.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/cameras/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Cameras', id: 'LIST' }],
+    }),
+
+    // ==========================================================================
+    // Streams
+    // ==========================================================================
+
+    getStreamMetadata: builder.query<StreamMetadata, string>({
+      query: (id) => `/streams/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Streams', id }],
+    }),
   }),
 })
 
@@ -863,6 +947,14 @@ export const {
   useLazyGetGamepadStateQuery,
   // Machine Presets
   useGetMachinePresetsQuery,
+  // Cameras
+  useGetCamerasQuery,
+  useGetCameraQuery,
+  useCreateCameraMutation,
+  useUpdateCameraMutation,
+  useDeleteCameraMutation,
+  // Streams
+  useGetStreamMetadataQuery,
   // Other
   useGetCurrentVersionQuery,
   useGetVersionQuery,
