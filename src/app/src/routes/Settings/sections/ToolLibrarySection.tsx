@@ -46,8 +46,10 @@ export interface Tool {
   toolId: number  // Tool number (T0, T1, T2...Tn) - matches CAM software IDs
   name: string
   description?: string
-  diameter?: number | null  // Diameter in mm (null if not specified)
+  diameter?: number | null  // Diameter value (null if not specified)
+  diameterUnit?: 'mm' | 'in'  // Unit for diameter (defaults to 'mm' if not specified)
   type?: string  // Tool type (ballnose, straight, vbit, engraver, drill, chamfer, etc.)
+  flutes?: number | null  // Number of flutes (null if not specified)
   mtime?: number
 }
 
@@ -99,6 +101,7 @@ export function ToolLibrarySection({
   const [formDiameter, setFormDiameter] = useState('')
   const [formDiameterUnit, setFormDiameterUnit] = useState<'mm' | 'in'>('mm')
   const [formType, setFormType] = useState<string>('')
+  const [formFlutes, setFormFlutes] = useState('')
   const [isTypeCustom, setIsTypeCustom] = useState(false)
 
   const resetForm = () => {
@@ -108,6 +111,7 @@ export function ToolLibrarySection({
     setFormDiameter('')
     setFormDiameterUnit('mm')
     setFormType('')
+    setFormFlutes('')
     setIsTypeCustom(false)
   }
 
@@ -117,12 +121,21 @@ export function ToolLibrarySection({
       return
     }
 
-    // Convert diameter to mm if needed
-    let diameterMm: number | null = null
+    // Store diameter in the selected unit (don't convert)
+    let diameterValue: number | null = null
     if (formDiameter.trim()) {
-      const diameterValue = parseFloat(formDiameter)
-      if (!isNaN(diameterValue)) {
-        diameterMm = formDiameterUnit === 'in' ? inchesToMm(diameterValue) : diameterValue
+      const parsed = parseFloat(formDiameter)
+      if (!isNaN(parsed)) {
+        diameterValue = parsed
+      }
+    }
+
+    // Parse flutes
+    let flutesNum: number | null = null
+    if (formFlutes.trim()) {
+      const flutesValue = parseInt(formFlutes, 10)
+      if (!isNaN(flutesValue) && flutesValue > 0) {
+        flutesNum = flutesValue
       }
     }
 
@@ -130,8 +143,10 @@ export function ToolLibrarySection({
       toolId: toolIdNum,
       name: formName.trim(),
       description: formDescription.trim() || undefined,
-      diameter: diameterMm,
+      diameter: diameterValue,
+      diameterUnit: diameterValue != null ? formDiameterUnit : undefined,
       type: formType.trim() || undefined,
+      flutes: flutesNum,
     })
     resetForm()
     setIsAddOpen(false)
@@ -144,12 +159,21 @@ export function ToolLibrarySection({
         return
       }
 
-      // Convert diameter to mm if needed
-      let diameterMm: number | null = null
+      // Store diameter in the selected unit (don't convert)
+      let diameterValue: number | null = null
       if (formDiameter.trim()) {
-        const diameterValue = parseFloat(formDiameter)
-        if (!isNaN(diameterValue)) {
-          diameterMm = formDiameterUnit === 'in' ? inchesToMm(diameterValue) : diameterValue
+        const parsed = parseFloat(formDiameter)
+        if (!isNaN(parsed)) {
+          diameterValue = parsed
+        }
+      }
+
+      // Parse flutes
+      let flutesNum: number | null = null
+      if (formFlutes.trim()) {
+        const flutesValue = parseInt(formFlutes, 10)
+        if (!isNaN(flutesValue) && flutesValue > 0) {
+          flutesNum = flutesValue
         }
       }
 
@@ -158,8 +182,10 @@ export function ToolLibrarySection({
         toolId: toolIdNum,
         name: formName.trim(),
         description: formDescription.trim() || undefined,
-        diameter: diameterMm,
+        diameter: diameterValue,
+        diameterUnit: diameterValue != null ? formDiameterUnit : undefined,
         type: formType.trim() || undefined,
+        flutes: flutesNum,
       })
       resetForm()
       setEditingTool(null)
@@ -170,12 +196,12 @@ export function ToolLibrarySection({
     setFormToolId(tool.toolId.toString())
     setFormName(tool.name)
     setFormDescription(tool.description || '')
-    // When editing, show diameter in mm (stored format) by default
-    // User can switch unit and it will convert appropriately
+    // When editing, use the stored unit (don't convert)
     setFormDiameter(tool.diameter?.toString() || '')
-    setFormDiameterUnit('mm')  // Always start with mm since that's how it's stored
+    setFormDiameterUnit(tool.diameterUnit || 'mm')  // Use stored unit, default to mm
     const toolType = tool.type || ''
     setFormType(toolType)
+    setFormFlutes(tool.flutes?.toString() || '')
     setIsTypeCustom(!TOOL_TYPE_OPTIONS.includes(toolType as ToolTypeOption))
     setEditingTool(tool)
   }
@@ -307,7 +333,7 @@ export function ToolLibrarySection({
                       {formDiameter && !isNaN(parseFloat(formDiameter)) ? (
                         formDiameterUnit === 'mm' 
                           ? `${mmToInches(parseFloat(formDiameter))} in` 
-                          : `${(parseFloat(formDiameter) * 25.4).toFixed(3)} mm`
+                          : `${inchesToMm(parseFloat(formDiameter)).toFixed(3)} mm`
                       ) : (
                         `Enter diameter in ${formDiameterUnit === 'mm' ? 'millimeters' : 'inches'}`
                       )}
@@ -316,7 +342,11 @@ export function ToolLibrarySection({
                   <div className="space-y-2">
                     <Label htmlFor="tool-type">Type</Label>
                     {!isTypeCustom ? (
-                      <Select value={formType || undefined} onValueChange={handleTypeChange}>
+                      <Select 
+                        value={formType.trim() === '' ? undefined : formType} 
+                        onValueChange={handleTypeChange}
+                        key={isAddOpen ? 'add-select' : undefined}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -343,6 +373,21 @@ export function ToolLibrarySection({
                     )}
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tool-flutes">Number of Flutes</Label>
+                  <Input
+                    id="tool-flutes"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formFlutes}
+                    onChange={(e) => setFormFlutes(e.target.value)}
+                    placeholder="e.g., 2, 4"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of cutting edges on the tool
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -368,6 +413,7 @@ export function ToolLibrarySection({
                 <TableHead className="w-48">Name</TableHead>
                 <TableHead className="w-32">Diameter</TableHead>
                 <TableHead className="w-32">Type</TableHead>
+                <TableHead className="w-24">Flutes</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-28">Modified</TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
@@ -376,7 +422,7 @@ export function ToolLibrarySection({
             <TableBody>
               {sortedTools.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No tools configured</p>
                     <p className="text-xs mt-1">Add tools to build your tool library</p>
@@ -394,10 +440,19 @@ export function ToolLibrarySection({
                     <TableCell>
                       {tool.diameter != null ? (
                         <div className="text-sm">
-                          <div>{tool.diameter.toFixed(3)} mm</div>
-                          <div className="text-muted-foreground text-xs">
-                            {mmToInches(tool.diameter)} in
+                          <div>
+                            {tool.diameter.toFixed(3)} {tool.diameterUnit || 'mm'}
                           </div>
+                          {tool.diameterUnit === 'in' && (
+                            <div className="text-muted-foreground text-xs">
+                              {inchesToMm(tool.diameter).toFixed(3)} mm
+                            </div>
+                          )}
+                          {(!tool.diameterUnit || tool.diameterUnit === 'mm') && (
+                            <div className="text-muted-foreground text-xs">
+                              {mmToInches(tool.diameter)} in
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -406,6 +461,13 @@ export function ToolLibrarySection({
                     <TableCell>
                       {tool.type ? (
                         <span className="text-sm">{tool.type}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {tool.flutes != null ? (
+                        <span className="text-sm">{tool.flutes}</span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -519,7 +581,7 @@ export function ToolLibrarySection({
                                     {formDiameter && !isNaN(parseFloat(formDiameter)) ? (
                                       formDiameterUnit === 'mm' 
                                         ? `${mmToInches(parseFloat(formDiameter))} in` 
-                                        : `${(parseFloat(formDiameter) * 25.4).toFixed(3)} mm`
+                                        : `${inchesToMm(parseFloat(formDiameter)).toFixed(3)} mm`
                                     ) : (
                                       `Enter diameter in ${formDiameterUnit === 'mm' ? 'millimeters' : 'inches'}`
                                     )}
@@ -528,7 +590,11 @@ export function ToolLibrarySection({
                                 <div className="space-y-2">
                                   <Label htmlFor="edit-tool-type">Type</Label>
                                   {!isTypeCustom ? (
-                                    <Select value={formType || undefined} onValueChange={handleTypeChange}>
+                                    <Select 
+                                      value={formType.trim() === '' ? undefined : formType} 
+                                      onValueChange={handleTypeChange}
+                                      key={editingTool?.id}
+                                    >
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
                                       </SelectTrigger>
@@ -549,6 +615,21 @@ export function ToolLibrarySection({
                                     />
                                   )}
                                 </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-tool-flutes">Number of Flutes</Label>
+                                <Input
+                                  id="edit-tool-flutes"
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  value={formFlutes}
+                                  onChange={(e) => setFormFlutes(e.target.value)}
+                                  placeholder="e.g., 2, 4"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Number of cutting edges on the tool
+                                </p>
                               </div>
                             </div>
                             <DialogFooter>
