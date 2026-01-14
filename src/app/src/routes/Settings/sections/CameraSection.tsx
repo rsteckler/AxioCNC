@@ -1,3 +1,4 @@
+import React from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Input } from '@/components/ui/input'
@@ -5,7 +6,8 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
-import { Camera, Webcam, Globe, RotateCw, FlipHorizontal, FlipVertical, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Camera, Webcam, Globe, RotateCw, FlipHorizontal, FlipVertical, ExternalLink, Eye, EyeOff } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -22,6 +24,9 @@ export interface CameraConfig {
   autoDetect: boolean
   selectedDeviceId: string | null
   ipCameraUrl: string
+  // Authentication (optional)
+  username?: string
+  password?: string
   // Display options
   flipHorizontal: boolean
   flipVertical: boolean
@@ -48,6 +53,8 @@ export function CameraSection({
   onConfigChange,
   onRefreshCameras,
 }: CameraSectionProps) {
+  const [showPassword, setShowPassword] = React.useState(false)
+
   return (
     <SettingsSection
       id="camera"
@@ -148,33 +155,80 @@ export function CameraSection({
                   </Label>
                   
                   {config.mediaSource === 'ip-camera' && (
-                    <div className="space-y-2">
-                      <Input
-                        value={config.ipCameraUrl}
-                        onChange={(e) => onConfigChange({ ipCameraUrl: e.target.value })}
-                        placeholder="http://192.168.1.100:8080/?action=stream"
-                        className="font-mono text-sm"
-                      />
+                    <div className="space-y-3">
+                      <SettingsField
+                        label="Camera URL"
+                        description="RTSP or HTTP(S) URL for your IP camera"
+                      >
+                        <Input
+                          value={config.ipCameraUrl}
+                          onChange={(e) => onConfigChange({ ipCameraUrl: e.target.value })}
+                          placeholder="rtsp://192.168.1.100:554/stream or http://192.168.1.100:8080/?action=stream"
+                          className="font-mono text-sm"
+                        />
+                      </SettingsField>
+                      
+                      <SettingsField
+                        label="Authentication (Optional)"
+                        description="Username and password if your camera requires authentication"
+                      >
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label htmlFor="camera-username" className="text-xs text-muted-foreground">
+                              Username
+                            </Label>
+                            <Input
+                              id="camera-username"
+                              type="text"
+                              value={config.username || ''}
+                              onChange={(e) => onConfigChange({ username: e.target.value || undefined })}
+                              placeholder="admin"
+                              className="font-mono text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="camera-password" className="text-xs text-muted-foreground">
+                              Password
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="camera-password"
+                                type={showPassword ? 'text' : 'password'}
+                                value={config.password || ''}
+                                onChange={(e) => onConfigChange({ password: e.target.value || undefined })}
+                                placeholder="••••••••"
+                                className="font-mono text-sm pr-10"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </SettingsField>
+                      
                       <div className="text-xs text-muted-foreground space-y-2">
                         <div>
-                          Only HTTP-based streams are supported. The URL must start with <code className="px-1 py-0.5 bg-muted rounded text-xs">http://</code> or <code className="px-1 py-0.5 bg-muted rounded text-xs">https://</code>. Supported formats:{' '}
+                          Supported formats:{' '}
+                          <Badge variant="secondary" className="text-xs mx-0.5">RTSP</Badge>
                           <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG (MJPEG)</Badge>
-                          <Badge variant="secondary" className="text-xs mx-0.5">MP4 (H.264)</Badge>
-                          <Badge variant="outline" className="text-xs mx-0.5 border-destructive text-destructive">RTSP not supported</Badge>
+                          <Badge variant="secondary" className="text-xs mx-0.5">HLS</Badge>
                         </div>
-                        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                          <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
-                            Want RTSP support? Help us prioritize this feature by upvoting the issue.
-                          </p>
-                          <a
-                            href="https://github.com/rsteckler/AxioCNC/issues/3"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Upvote RTSP support
-                          </a>
+                        <div className="text-xs">
+                          <strong>RTSP cameras:</strong> Streams are converted to HLS for browser playback. MediaMTX must be running.
+                          <br />
+                          <strong>MJPEG cameras:</strong> Streams are proxied through the server. Credentials are handled securely and not exposed to the browser.
                         </div>
                       </div>
                     </div>

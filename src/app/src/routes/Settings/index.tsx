@@ -27,6 +27,9 @@ import {
   useGetGamepadsQuery,
   useRefreshGamepadsMutation,
   useSetSelectedGamepadMutation,
+  useGetCamerasQuery,
+  useCreateCameraMutation,
+  useUpdateCameraMutation,
   type PartialSettings,
 } from '@/services/api'
 import { socketService } from '@/services/socket'
@@ -305,6 +308,11 @@ export default function Settings() {
   const [refreshGamepads] = useRefreshGamepadsMutation()
   const [setSelectedGamepad] = useSetSelectedGamepadMutation()
   
+  // Cameras API
+  const { data: camerasData } = useGetCamerasQuery()
+  const [createCamera] = useCreateCameraMutation()
+  const [updateCamera] = useUpdateCameraMutation()
+  
   // Derive events/macros/tools/watchFolders from API data
   // Cast event/trigger strings to the expected union types
   const events: EventHandler[] = (eventsData?.records ?? []) as EventHandler[]
@@ -421,6 +429,73 @@ export default function Settings() {
       }
     }
   }, [settings])
+  
+  // Track which camera we've loaded to prevent overwriting user input
+  const lastLoadedCameraId = useRef<string | null>(null)
+  
+  // Load camera from cameras API into local state (only when camera ID changes, not on every data update)
+  useEffect(() => {
+    if (camerasData?.records && cameraConfig.mediaSource === 'ip-camera') {
+      const camera = camerasData.records.find(c => c.enabled) || camerasData.records[0]
+      const currentCameraId = camera?.id
+      
+      // Only load if this is a different camera (by ID) - this prevents overwriting user input
+      if (camera && currentCameraId && lastLoadedCameraId.current !== currentCameraId) {
+        // Strip credentials from URL - they should be in separate username/password fields
+        // IMPORTANT: Preserve the original protocol (rtsp://, http://, https://)
+        let cleanUrl = camera.inputUrl || ''
+        
+        if (cleanUrl) {
+          try {
+            const url = new URL(cleanUrl)
+            // Remove credentials from URL but preserve protocol
+            url.username = ''
+            url.password = ''
+            cleanUrl = url.toString()
+          } catch (err) {
+            // If URL parsing fails, try to remove credentials manually
+            // Preserve protocol by only replacing the auth part
+            cleanUrl = cleanUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
+            cleanUrl = cleanUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//')
+          }
+        }
+        
+        // Try to load password from localStorage (password not returned from API for security)
+        const storedPasswordKey = `camera_password_${currentCameraId}`
+        const storedPassword = localStorage.getItem(storedPasswordKey)
+        
+        setCameraConfig(prev => {
+          // Only update if the URL actually changed (to prevent overwriting user input)
+          // Compare the clean URL (without credentials) to the current URL (without credentials)
+          const prevUrlClean = prev.ipCameraUrl ? (() => {
+            try {
+              const u = new URL(prev.ipCameraUrl);
+              u.username = '';
+              u.password = '';
+              return u.toString();
+            } catch {
+              return prev.ipCameraUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//').replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//');
+            }
+          })() : '';
+          
+          // Only update if URLs are different (ignoring credentials)
+          if (prevUrlClean !== cleanUrl || prev.username !== camera.username || prev.enabled !== camera.enabled) {
+            return {
+              ...prev,
+              ipCameraUrl: cleanUrl, // This should preserve rtsp://, http://, https://
+              username: camera.username,
+              // Load password from localStorage if available, otherwise keep existing (user may have typed it)
+              password: storedPassword || prev.password,
+              enabled: camera.enabled,
+            };
+          }
+          return prev; // No change needed
+        })
+        
+        lastLoadedCameraId.current = currentCameraId
+      }
+    }
+  }, [camerasData?.records?.find(c => c.enabled)?.id, cameraConfig.mediaSource]) // Only trigger when enabled camera ID changes or mediaSource changes, not on every update
 
   // Accumulate pending changes for debounced save
   const pendingChanges = useRef<PartialSettings>({})
@@ -779,11 +854,84 @@ export default function Settings() {
     }
   }, [debouncedSave])
 
-  // Camera config handler
-  const handleCameraConfigChange = useCallback((changes: Partial<CameraConfig>) => {
-    setCameraConfig(prev => ({ ...prev, ...changes }))
-    debouncedSave({ camera: changes })
-  }, [debouncedSave])
+  // Camera config handler - directly uses cameras API
+  const handleCameraConfigChange = useCallback(async (changes: Partial<CameraConfig>) => {
+    const updated = { ...cameraConfig, ...changes }
+    
+    // Update local state
+    setCameraConfig(updated)
+    
+    // If password is being set/changed, store it in localStorage (API doesn't return it for security)
+    if (changes.password !== undefined) {
+      const existingCamera = camerasData?.records?.find(c => c.name === 'Camera 1')
+      if (existingCamera?.id) {
+        const storedPasswordKey = `camera_password_${existingCamera.id}`
+        if (changes.password) {
+          localStorage.setItem(storedPasswordKey, changes.password)
+        } else {
+          localStorage.removeItem(storedPasswordKey)
+        }
+      }
+    }
+    
+    // If this is an IP camera with a URL, create/update in cameras API
+    if (updated.mediaSource === 'ip-camera' && updated.ipCameraUrl) {
+      const existingCamera = camerasData?.records?.find(c => c.name === 'Camera 1')
+      
+      // Strip any credentials from the URL - they should be in separate username/password fields
+      let cleanInputUrl = updated.ipCameraUrl
+      try {
+        const url = new URL(cleanInputUrl)
+        // Remove credentials from URL
+        url.username = ''
+        url.password = ''
+        cleanInputUrl = url.toString()
+      } catch (err) {
+        // If URL parsing fails, try to remove credentials manually
+        cleanInputUrl = cleanInputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
+        cleanInputUrl = cleanInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//')
+      }
+      
+      const cameraData = {
+        name: 'Camera 1',
+        inputUrl: cleanInputUrl, // URL without credentials
+        username: updated.username,
+        password: updated.password,
+        enabled: updated.enabled !== false, // Default to true
+      }
+      
+      // Show saving indicator
+      setIsSaving(true)
+      
+      try {
+        if (existingCamera) {
+          // Update existing camera
+          await updateCamera({ id: existingCamera.id, updates: cameraData }).unwrap()
+        } else {
+          // Create new camera
+          await createCamera(cameraData).unwrap()
+        }
+        // Show saved indicator
+        setLastSaved(new Date())
+      } catch (err) {
+        console.error('Failed to save camera:', err)
+      } finally {
+        setIsSaving(false)
+      }
+    }
+    
+    // Only save display options (flip, rotation, crosshair) to settings.camera
+    const displayOptions: Partial<CameraConfig> = {}
+    if (changes.flipHorizontal !== undefined) displayOptions.flipHorizontal = changes.flipHorizontal
+    if (changes.flipVertical !== undefined) displayOptions.flipVertical = changes.flipVertical
+    if (changes.rotation !== undefined) displayOptions.rotation = changes.rotation
+    if (changes.crosshair !== undefined) displayOptions.crosshair = changes.crosshair
+    if (changes.crosshairColor !== undefined) displayOptions.crosshairColor = changes.crosshairColor
+    
+    if (Object.keys(displayOptions).length > 0) {
+      debouncedSave({ camera: displayOptions })
+    }
+  }, [cameraConfig, camerasData, createCamera, updateCamera, debouncedSave])
 
   const handleRefreshCameras = useCallback(async () => {
     try {
@@ -887,7 +1035,7 @@ export default function Settings() {
 
   const handleEditTool = useCallback(async (tool: Tool) => {
     try {
-      await updateTool({ id: tool.id, updates: { toolId: tool.toolId, name: tool.name, description: tool.description, diameter: tool.diameter, type: tool.type } }).unwrap()
+      await updateTool({ id: tool.id, updates: { toolId: tool.toolId, name: tool.name, description: tool.description, diameter: tool.diameter, diameterUnit: tool.diameterUnit, type: tool.type, flutes: tool.flutes } }).unwrap()
     } catch (error) {
       console.error('Failed to update tool:', error)
     }
