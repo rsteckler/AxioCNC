@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as MachineStatusType } from '@/services/api'
+import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as ApiMachineStatus } from '@/services/api'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
 import {
@@ -42,6 +42,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
+import { MachineStatusBar, type MachineStatus as MachineStatusType } from '@/components/MachineStatusBar'
+import { JobStatusBar } from '@/components/JobStatusBar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ActionRequirements } from '@/utils/machineState'
 
@@ -329,7 +331,7 @@ export default function Setup() {
   const [getMachineStatus] = useLazyGetMachineStatusQuery()
 
   // Store backend machine status
-  const [backendMachineStatus, setBackendMachineStatus] = useState<MachineStatusType | null>(null)
+  const [backendMachineStatus, setBackendMachineStatus] = useState<ApiMachineStatus | null>(null)
   
   // G-code command hook for main component handlers
   const { sendCommand } = useGcodeCommand(connectedPort)
@@ -992,7 +994,7 @@ export default function Setup() {
 
     const handleMachineStatus: (...args: unknown[]) => void = (...args) => {
       const port = args[0] as string
-      const status = args[1] as MachineStatusType
+      const status = args[1] as ApiMachineStatus
       if (typeof port !== 'string' || !status || typeof status !== 'object') return
 
       // Update backend status
@@ -1317,7 +1319,7 @@ export default function Setup() {
         {/* Mode tabs */}
         <div className="flex gap-1 ml-6">
           <Button variant="default" size="sm">Setup</Button>
-          <Button variant="ghost" size="sm">Monitor</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
           <Button variant="ghost" size="sm">Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
         </div>
@@ -1379,219 +1381,18 @@ export default function Setup() {
       
       {/* Setup control bar - screen-specific controls */}
       <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
-        <span className="text-sm text-muted-foreground mr-2">Machine:</span>
-        {/* Machine status - rectangular badge */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div 
-                className={`
-                  relative px-3 py-1.5 rounded border flex items-center gap-2 min-w-[140px] justify-center
-                  transition-all duration-200
-                  ${
-                    machineStatus === 'connected_post_home' || machineStatus === 'running'
-                      ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400' 
-                      : machineStatus === 'connected_pre_home'
-                      ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400'
-                      : machineStatus === 'hold'
-                      ? 'bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-400'
-                      : machineStatus === 'alarm'
-                      ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
-                      : machineStatus === 'error'
-                      ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
-                      : 'bg-muted border-border text-muted-foreground'
-                  }
-                `}
-                style={isFlashing ? {
-                  animation: 'flash-bright 450ms ease-in-out'
-                } : {}}
-              >
-                <div 
-                  className={`
-                    w-2 h-2 rounded-full
-                    ${
-                      machineStatus === 'connected_post_home' || machineStatus === 'running'
-                        ? 'bg-green-500' 
-                        : machineStatus === 'connected_pre_home'
-                        ? 'bg-yellow-500'
-                        : machineStatus === 'hold'
-                        ? 'bg-orange-500'
-                        : machineStatus === 'alarm' || machineStatus === 'error'
-                        ? 'bg-red-500'
-                        : 'bg-zinc-500'
-                    }
-                  `} 
-                />
-                <span className="text-xs font-medium pr-3">
-                  {machineStatus === 'not_connected'
-                    ? 'Not connected'
-                    : machineStatus === 'connected_pre_home'
-                    ? 'Ready (Run Home)'
-                    : machineStatus === 'connected_post_home'
-                    ? 'Ready'
-                    : machineStatus === 'alarm'
-                    ? 'Alarm'
-                    : machineStatus === 'running'
-                    ? 'Busy'
-                    : machineStatus === 'hold'
-                    ? 'Hold'
-                    : machineStatus === 'error'
-                    ? 'Error'
-                    : 'Unknown'}
-                </span>
-                {/* Help icon in top right */}
-                <HelpCircle className="absolute top-0.5 right-0.5 w-3 h-3 text-white cursor-help" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs">
-              <p className="text-sm">
-                {machineStatus === 'not_connected'
-                  ? 'AxioCNC is not connected to your machine.'
-                  : machineStatus === 'connected_pre_home'
-                  ? 'Your machine is connected, but AxioCNC can\'t verify that the displayed position matches the physical machine. Home your machine to establish truth of position.'
-                  : machineStatus === 'connected_post_home'
-                  ? 'Your machine is connected and ready.'
-                  : machineStatus === 'hold'
-                  ? 'Your machine is paused and motion is disabled for safety. This can happen during a tool change, or because a job was paused. Click Resume to enable machine motion.'
-                  : machineStatus === 'alarm'
-                  ? 'The machine is in an error state and motion has been disabled. Hit Reset to clear the alarm. If the machine is still in alarm state after a reset, it may need to be unlocked to complete the reset. In all cases, the machine should be rehomed after clearing the alarm to establish truth of position. AxioCNC can\'t verify that the displayed position matches the physical machine until it is rehomed.'
-                  : machineStatus === 'running'
-                  ? 'Your machine is running a job.'
-                  : machineStatus === 'error'
-                  ? 'An error has occurred.'
-                  : 'Unknown machine status.'}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <MachineStatusBar
+          machineStatus={machineStatus as MachineStatusType}
+          isFlashing={isFlashing}
+          isConnecting={isConnecting}
+          onConnect={handleConnect}
+          onHome={handleHome}
+          onResume={handleResume}
+          onStop={handleStop}
+          onUnlock={handleUnlock}
+        />
         
-        {/* Action buttons - context-aware based on machine status */}
-        {machineStatus === 'hold' && (
-          <>
-            <div className="ml-3">
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                Disconnect
-              </Button>
-            </div>
-            <Button variant="default" size="sm" onClick={handleResume}>
-              <Play className="w-4 h-4 mr-1" /> Resume
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleStop}>
-              <Square className="w-4 h-4 mr-1" /> Stop
-            </Button>
-          </>
-        )}
-        
-        {machineStatus === 'not_connected' && (
-          <div className="ml-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleConnect}
-              disabled={isConnecting}
-            >
-              {isConnecting ? 'Connecting...' : 'Connect'}
-            </Button>
-          </div>
-        )}
-        
-        {/* Connected pre-home: Yellow Ready (Run Home) - Show Disconnect and Home */}
-        {machineStatus === 'connected_pre_home' && (
-          <>
-            <div className="ml-3">
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                Disconnect
-              </Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleHome}>
-              <Home className="w-4 h-4 mr-1" /> Run Home
-            </Button>
-          </>
-        )}
-        
-        {/* Connected post-home: Green Ready - Show Disconnect and Home */}
-        {machineStatus === 'connected_post_home' && (
-          <>
-            <div className="ml-3">
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                Disconnect
-              </Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleHome}>
-              <Home className="w-4 h-4 mr-1" /> Home
-            </Button>
-          </>
-        )}
-        
-        {/* Running: Green Busy - Show Disconnect and Home */}
-        {machineStatus === 'running' && (
-          <>
-            <div className="ml-3">
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                Disconnect
-              </Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleHome} disabled>
-              <Home className="w-4 h-4 mr-1" /> Home
-            </Button>
-          </>
-        )}
-        
-        {/* Alarm: Red Alarm - Show Unlock and Home */}
-        {machineStatus === 'alarm' && (
-          <>
-            <div className="ml-3">
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleConnect}
-                disabled={isConnecting}
-              >
-                Disconnect
-              </Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleUnlock}>
-              <Unlock className="w-4 h-4 mr-1" /> Unlock
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleHome}>
-              <Home className="w-4 h-4 mr-1" /> Home
-            </Button>
-          </>
-        )}
-        
-        <div className="flex-1" />
-        
-        <div className="w-px h-6 bg-border mx-2" />
-        
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground mr-2">Job:</span>
-          <Button variant="outline" size="sm">
-            <Play className="w-4 h-4 mr-1" /> Start
-          </Button>
-          <Button variant="outline" size="sm">
-            <Pause className="w-4 h-4 mr-1" /> Pause
-          </Button>
-        </div>
+        <JobStatusBar />
       </div>
       
       {/* Dashboard - Two column flex layout */}

@@ -35,6 +35,11 @@ const mmToInches = (mm: number | null | undefined): string => {
   return inches.toFixed(4).replace(/\.?0+$/, '')
 }
 
+// Helper function to convert inches to mm for display
+const inchesToMm = (inches: number): number => {
+  return inches * 25.4
+}
+
 interface PanelHeaderProps {
   title: string
   icon: React.ElementType
@@ -234,14 +239,20 @@ export function ToolsPanel() {
                     <div className="text-xs text-muted-foreground">
                       {tool.diameter != null ? (
                         <>
-                          Ø{tool.diameter.toFixed(3)}mm
-                          {mmToInches(tool.diameter) && (
+                          Ø{tool.diameter.toFixed(3)}{tool.diameterUnit || 'mm'}
+                          {tool.diameterUnit === 'in' && (
+                            <> • {inchesToMm(tool.diameter).toFixed(3)}mm</>
+                          )}
+                          {(!tool.diameterUnit || tool.diameterUnit === 'mm') && mmToInches(tool.diameter) && (
                             <> • {mmToInches(tool.diameter)}in</>
                           )}
                         </>
                       ) : null}
                       {tool.type && (
                         <> • {tool.type}</>
+                      )}
+                      {tool.flutes != null && (
+                        <> • {tool.flutes} fl{tool.flutes === 1 ? 'ute' : 'utes'}</>
                       )}
                     </div>
                     {tool.description && (
@@ -278,14 +289,20 @@ export function ToolsPanel() {
                     <div className="text-xs text-muted-foreground">
                       {tool.diameter != null ? (
                         <>
-                          Ø{tool.diameter.toFixed(3)}mm
-                          {mmToInches(tool.diameter) && (
+                          Ø{tool.diameter.toFixed(3)}{tool.diameterUnit || 'mm'}
+                          {tool.diameterUnit === 'in' && (
+                            <> • {inchesToMm(tool.diameter).toFixed(3)}mm</>
+                          )}
+                          {(!tool.diameterUnit || tool.diameterUnit === 'mm') && mmToInches(tool.diameter) && (
                             <> • {mmToInches(tool.diameter)}in</>
                           )}
                         </>
                       ) : null}
                       {tool.type && (
                         <> • {tool.type}</>
+                      )}
+                      {tool.flutes != null && (
+                        <> • {tool.flutes} fl{tool.flutes === 1 ? 'ute' : 'utes'}</>
                       )}
                     </div>
                     {tool.description && (
