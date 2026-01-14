@@ -570,6 +570,16 @@ export default function Setup() {
     setHoldReason(null)
   }, [connectedPort, sendCommand])
   
+  // Handle Pause button
+  const handlePause = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      console.warn('Cannot pause: not connected')
+      flashStatus()
+      return
+    }
+    sendCommand('gcode:pause')
+  }, [isConnected, connectedPort, flashStatus, sendCommand])
+  
   // Handle Resume button (sends ~ to resume from hold and resets feeder/sender state)
   const handleResume = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -577,7 +587,7 @@ export default function Setup() {
       flashStatus()
       return
     }
-    // Send gcode:resume command (sends ~ AND resets feeder/sender hold state)
+    // Send gcode:resume command (sends ! AND resets feeder/sender hold state)
     // This is better than cyclestart which only sends ~ without resetting feeder state
     sendCommand('gcode:resume')
   }, [isConnected, connectedPort, flashStatus, sendCommand])
@@ -1392,7 +1402,14 @@ export default function Setup() {
           onUnlock={handleUnlock}
         />
         
-        <JobStatusBar />
+        <JobStatusBar
+          workflowState={backendMachineStatus?.workflowState || null}
+          isJobRunning={isJobRunning}
+          onStop={handleStop}
+          onPause={handlePause}
+          onResume={handleResume}
+          disabled={!isConnected || machineStatus === 'alarm'}
+        />
       </div>
       
       {/* Dashboard - Two column flex layout */}

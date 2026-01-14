@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, useGetCamerasQuery, useGetStreamMetadataQuery, type MachineStatus as ApiMachineStatus } from '@/services/api'
+import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery, type MachineStatus as ApiMachineStatus } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from '@/hooks'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -141,21 +141,21 @@ function CameraView() {
   }
   
   return (
-    <div className="flex-1 relative bg-black">
+    <div className="absolute inset-0 bg-black flex items-center justify-center">
       {streamMetadata.type === 'hls' ? (
         <video
           ref={videoRef}
           autoPlay
           muted
           playsInline
-          className="w-full h-full object-contain"
+          className="max-w-full max-h-full object-contain"
           style={{ transform: transformStyle }}
         />
       ) : (
         <img
           src={streamMetadata.src}
           alt={`${enabledCamera.name} Feed`}
-          className="w-full h-full object-contain"
+          className="max-w-full max-h-full object-contain"
           style={{ transform: transformStyle }}
         />
       )}
@@ -195,14 +195,83 @@ function CameraView() {
 
 type ViewMode = 'side-by-side' | 'visual-only' | 'camera-only' | 'pip-visual' | 'pip-camera'
 
-function VisualizerCameraView() {
+interface VisualizerCameraViewProps {
+  machinePosition: { x: number; y: number; z: number }
+}
+
+function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('side-by-side')
   const { data: settings } = useGetSettingsQuery()
   
-  // Mock data - will be replaced with real state
-  const loadedGcode = null
-  const machinePosition = { x: 0, y: 0, z: 0 }
-  const modelOffset = undefined
+  // G-code state for visualizer
+  const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
+  const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
+  
+  // Get connection port for querying loaded G-code (settings is already declared above)
+  const connectedPort = settings?.connection?.port
+  
+  // Query currently loaded G-code on mount (to restore when navigating between pages)
+  const { data: gcodeData } = useGetGcodeQuery(connectedPort || '', {
+    skip: !connectedPort,
+  })
+  
+  // Restore loaded G-code from API on mount
+  useEffect(() => {
+    if (gcodeData && gcodeData.name && (gcodeData.data || gcodeData.gcode)) {
+      setLoadedGcode({
+        name: gcodeData.name,
+        gcode: gcodeData.data || gcodeData.gcode || '',
+      })
+    } else if (gcodeData && !gcodeData.name) {
+      // No file loaded
+      setLoadedGcode(null)
+    }
+  }, [gcodeData])
+  
+  // Listen to G-code load/unload events for visualizer
+  useEffect(() => {
+    // gcode:load emits (name, gcode, context) as separate arguments
+    const handleGcodeLoad = (name: string, gcode: string) => {
+      if (name && gcode) {
+        setLoadedGcode({ name, gcode })
+        // Try to restore saved offset from localStorage
+        const savedOffsetKey = `modelOffset_${name}`
+        const savedOffset = localStorage.getItem(savedOffsetKey)
+        if (savedOffset) {
+          try {
+            const offset = JSON.parse(savedOffset)
+            if (offset && typeof offset.x === 'number' && typeof offset.y === 'number' && typeof offset.z === 'number') {
+              setModelOffset(offset)
+            } else {
+              setModelOffset(null)
+            }
+          } catch (err) {
+            setModelOffset(null)
+          }
+        } else {
+          setModelOffset(null)
+        }
+      }
+    }
+
+    const handleGcodeUnload = () => {
+      // Clear saved offset when unloading
+      if (loadedGcode?.name) {
+        localStorage.removeItem(`modelOffset_${loadedGcode.name}`)
+      }
+      setLoadedGcode(null)
+      setModelOffset(null)
+    }
+
+    socketService.on('gcode:load', handleGcodeLoad)
+    socketService.on('gcode:unload', handleGcodeUnload)
+
+    return () => {
+      socketService.off('gcode:load', handleGcodeLoad)
+      socketService.off('gcode:unload', handleGcodeUnload)
+    }
+  }, [])
+  
   const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit'>('iso')
   const [viewKey, setViewKey] = useState(0)
 
@@ -250,7 +319,7 @@ function VisualizerCameraView() {
         {(viewMode === 'side-by-side' || viewMode === 'camera-only' || viewMode === 'pip-camera') && (
           <div className={`
             ${viewMode === 'side-by-side' ? 'w-1/2 border-l border-border' : 'w-full'}
-            flex-1 relative
+            flex-1 relative min-h-0 overflow-hidden
           `}>
             <CameraView />
             {/* PiP visualizer overlay when camera is full screen */}
@@ -742,6 +811,7 @@ export default function Monitor() {
   const [isFlashing, setIsFlashing] = useState(false)
   const [isHomed, setIsHomed] = useState(false)
   const [isJobRunning, setIsJobRunning] = useState(false)
+  const [workflowState, setWorkflowState] = useState<'idle' | 'running' | 'paused' | null>(null)
   
   // Position state
   const [machinePosition, setMachinePosition] = useState({ x: 0, y: 0, z: 0 })
@@ -831,6 +901,15 @@ export default function Monitor() {
     sendCommand('homing')
   }, [isConnected, connectedPort, flashStatus, sendCommand])
   
+  // Handle Pause button
+  const handlePause = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      flashStatus()
+      return
+    }
+    sendCommand('gcode:pause')
+  }, [isConnected, connectedPort, flashStatus, sendCommand])
+  
   // Handle Resume button
   const handleResume = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -902,6 +981,18 @@ export default function Monitor() {
       }
     }
     
+    const handleWorkflowState = (...args: unknown[]) => {
+      const state = args[0] as string
+      if (typeof state === 'string') {
+        setWorkflowState(state as 'idle' | 'running' | 'paused')
+        if (state === 'running') {
+          setIsJobRunning(true)
+        } else if (state === 'idle') {
+          setIsJobRunning(false)
+        }
+      }
+    }
+    
     const handleControllerState = (...args: unknown[]) => {
       const state = args[1] as { 
         status?: { activeState?: string }
@@ -950,6 +1041,7 @@ export default function Monitor() {
         setMachineStatus(status.machineStatus)
         setIsHomed(status.isHomed)
         setIsJobRunning(status.isJobRunning)
+        setWorkflowState(status.workflowState || null)
         
         if (status.controllerState) {
           setMachinePosition({
@@ -970,6 +1062,7 @@ export default function Monitor() {
     socket.on('serialport:close', handleSerialPortClose)
     socket.on('controller:state', handleControllerState)
     socket.on('machine:status', handleMachineStatus)
+    socket.on('workflow:state', handleWorkflowState)
     
     // Request current status
     if (settings?.connection?.port) {
@@ -983,6 +1076,7 @@ export default function Monitor() {
       socket.off('serialport:close', handleSerialPortClose)
       socket.off('controller:state', handleControllerState)
       socket.off('machine:status', handleMachineStatus)
+      socket.off('workflow:state', handleWorkflowState)
     }
   }, [settings?.connection?.port, connectedPort, machineStatus])
   
@@ -1008,6 +1102,7 @@ export default function Monitor() {
               setMachineStatus(status.machineStatus)
               setIsHomed(status.isHomed)
               setIsJobRunning(status.isJobRunning)
+              setWorkflowState(status.workflowState || null)
               
               // Join port room if socket is connected
               const socket = socketService.getSocket()
@@ -1174,7 +1269,14 @@ export default function Monitor() {
           onUnlock={handleUnlock}
         />
         
-        <JobStatusBar />
+        <JobStatusBar
+          workflowState={workflowState}
+          isJobRunning={isJobRunning}
+          onStop={handleStop}
+          onPause={handlePause}
+          onResume={handleResume}
+          disabled={!isConnected || machineStatus === 'alarm'}
+        />
       </div>
 
       {/* Main content area */}
@@ -1212,7 +1314,7 @@ export default function Monitor() {
             
             {/* Tab content */}
             <div className="flex-1 flex flex-col min-h-0">
-              {tab === 'visualizer' && <VisualizerCameraView />}
+              {tab === 'visualizer' && <VisualizerCameraView machinePosition={machinePosition} />}
               {tab === 'console' && <Console isConnected={isConnected} connectedPort={connectedPort} />}
             </div>
           </div>
