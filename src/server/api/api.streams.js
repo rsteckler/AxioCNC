@@ -1,17 +1,15 @@
 /**
  * Streams API
- * 
+ *
  * Provides metadata about camera streams (HLS/MJPEG)
  */
 import find from 'lodash/find';
 import castArray from 'lodash/castArray';
 import config from '../services/configstore';
-import logger from '../lib/logger';
 import {
   ERR_NOT_FOUND,
 } from '../constants';
 
-const log = logger('api:streams');
 const CAMERAS_CONFIG_KEY = 'cameras';
 
 /**
@@ -28,21 +26,21 @@ const getCameraById = (id) => {
  */
 export const get = (req, res) => {
   const streamId = req.params.id;
-  
+
   // Get camera by ID
   const camera = getCameraById(streamId);
-  
+
   if (!camera || !camera.enabled) {
     res.status(ERR_NOT_FOUND).send({
       msg: 'Stream not found',
     });
     return;
   }
-  
+
   const cameraType = camera.type;
   let streamType = null;
   let streamSrc = null;
-  
+
   if (cameraType === 'rtsp') {
     // RTSP stream converted to HLS via MediaMTX
     streamType = 'hls';
@@ -57,7 +55,7 @@ export const get = (req, res) => {
     });
     return;
   }
-  
+
   res.send({
     type: streamType,
     src: streamSrc,
