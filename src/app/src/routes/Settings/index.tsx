@@ -103,9 +103,7 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
 // Default camera configuration
 const DEFAULT_CAMERA_CONFIG: CameraConfig = {
   enabled: false,
-  mediaSource: 'webcam',
-  autoDetect: true,
-  selectedDeviceId: null,
+  mediaSource: 'ip-camera',
   ipCameraUrl: '',
   flipHorizontal: false,
   flipVertical: false,
@@ -337,7 +335,6 @@ export default function Settings() {
   const [detectedPorts, setDetectedPorts] = useState<{ path: string; manufacturer?: string }[]>([])
   const [machineConfig, setMachineConfig] = useState<MachineConfig>(DEFAULT_MACHINE_CONFIG)
   const [cameraConfig, setCameraConfig] = useState<CameraConfig>(DEFAULT_CAMERA_CONFIG)
-  const [detectedCameras, setDetectedCameras] = useState<{ deviceId: string; label: string }[]>([])
   const [zeroingMethodsConfig, setZeroingMethodsConfig] = useState<ZeroingMethodsConfig>(DEFAULT_ZEROING_METHODS_CONFIG)
   const [zeroingStrategiesConfig, setZeroingStrategiesConfig] = useState<ZeroingStrategiesConfig>(DEFAULT_ZEROING_STRATEGIES_CONFIG)
   // Users, Commands, Events, Macros now come from API (defined above)
@@ -933,20 +930,6 @@ export default function Settings() {
     }
   }, [cameraConfig, camerasData, createCamera, updateCamera, debouncedSave])
 
-  const handleRefreshCameras = useCallback(async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const cameras = devices
-        .filter(device => device.kind === 'videoinput')
-        .map(device => ({
-          deviceId: device.deviceId,
-          label: device.label || `Camera ${device.deviceId.slice(0, 8)}...`,
-        }))
-      setDetectedCameras(cameras)
-    } catch (error) {
-      console.error('Failed to enumerate cameras:', error)
-    }
-  }, [])
 
   // Zeroing methods config handler
   const handleZeroingMethodsConfigChange = useCallback((changes: Partial<ZeroingMethodsConfig>) => {
@@ -1372,9 +1355,7 @@ export default function Settings() {
 
             <CameraSection
               config={cameraConfig}
-              detectedCameras={detectedCameras}
               onConfigChange={handleCameraConfigChange}
-              onRefreshCameras={handleRefreshCameras}
             />
 
             <JoystickSection

@@ -63,9 +63,7 @@ export const ConnectionSettingsSchema = z.object({
 
 export const CameraSettingsSchema = z.object({
   enabled: z.boolean().default(false),
-  mediaSource: z.enum(['webcam', 'ip-camera']).default('webcam'),
-  autoDetect: z.boolean().default(true),
-  selectedDeviceId: z.string().nullable().default(null),
+  mediaSource: z.enum(['ip-camera']).default('ip-camera'),
   ipCameraUrl: z.string().default(''),
   username: z.string().optional(),
   password: z.string().optional(),
