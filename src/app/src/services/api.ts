@@ -375,6 +375,15 @@ export const api = createApi({
       providesTags: ['Controllers'],
     }),
 
+    // Get currently loaded G-code file
+    getGcode: builder.query<{ name?: string; data?: string; gcode?: string }, string>({
+      query: (port) => ({
+        url: '/gcode',
+        params: { port },
+      }),
+      providesTags: ['GCode'],
+    }),
+
     // ==========================================================================
     // System Settings (Zod-validated)
     // ==========================================================================
@@ -955,6 +964,8 @@ export const {
   useDeleteCameraMutation,
   // Streams
   useGetStreamMetadataQuery,
+  // G-code
+  useGetGcodeQuery,
   // Other
   useGetCurrentVersionQuery,
   useGetVersionQuery,

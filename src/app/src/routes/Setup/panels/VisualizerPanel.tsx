@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Maximize2, Terminal, Target, Move, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery } from '@/services/api'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { VisualizerScene } from '../components/VisualizerScene'
 import { Console } from '@/components/Console'
@@ -223,6 +223,45 @@ export function VisualizerPanel({
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
   const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
   
+  // Query currently loaded G-code on mount (to restore when navigating between pages)
+  const { data: gcodeData } = useGetGcodeQuery(connectedPort || '', {
+    skip: !connectedPort,
+  })
+  
+  // Restore loaded G-code from API on mount
+  useEffect(() => {
+    if (gcodeData && gcodeData.name && (gcodeData.data || gcodeData.gcode)) {
+      const gcode = gcodeData.data || gcodeData.gcode || ''
+      // Only set if it's a different file than what we already have
+      if (!loadedGcode || loadedGcode.name !== gcodeData.name) {
+        setLoadedGcode({ name: gcodeData.name, gcode })
+        // Try to restore model offset from localStorage
+        const savedOffsetKey = `modelOffset_${gcodeData.name}`
+        const savedOffset = localStorage.getItem(savedOffsetKey)
+        if (savedOffset) {
+          try {
+            const offset = JSON.parse(savedOffset)
+            if (offset && typeof offset.x === 'number' && typeof offset.y === 'number' && typeof offset.z === 'number') {
+              setModelOffset(offset)
+              placedGcodeRef.current = gcodeData.name
+            }
+          } catch (err) {
+            // Invalid saved offset, ignore
+          }
+        } else {
+          // No saved offset, reset
+          setModelOffset(null)
+          placedGcodeRef.current = null
+        }
+      }
+    } else if (gcodeData && !gcodeData.name) {
+      // No file loaded
+      setLoadedGcode(null)
+      setModelOffset(null)
+      placedGcodeRef.current = null
+    }
+  }, [gcodeData])
+  
   // Listen to G-code load/unload events for visualizer
   useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
@@ -240,6 +279,10 @@ export function VisualizerPanel({
     }
 
     const handleGcodeUnload = () => {
+      // Clear saved offset when unloading
+      if (loadedGcode?.name) {
+        localStorage.removeItem(`modelOffset_${loadedGcode.name}`)
+      }
       setLoadedGcode(null)
       setModelOffset(null)
       placedGcodeRef.current = null
@@ -306,8 +349,13 @@ export function VisualizerPanel({
       wcsOriginThree.z - gcodeOriginThree.z
     )
     
-    setModelOffset({ x: offset.x, y: offset.y, z: offset.z })
+    const offsetValue = { x: offset.x, y: offset.y, z: offset.z }
+    setModelOffset(offsetValue)
     placedGcodeRef.current = loadedGcode.name
+    // Save offset to localStorage for persistence across views
+    if (loadedGcode.name) {
+      localStorage.setItem(`modelOffset_${loadedGcode.name}`, JSON.stringify(offsetValue))
+    }
   }, [loadedGcode, settings, machinePosition, workPosition])
 
   // Handle "Place Model" button - place toolpath origin at WCS origin (0,0,0)
@@ -356,7 +404,13 @@ export function VisualizerPanel({
       wcsOriginThree.z - gcodeOriginThree.z
     )
     
-    setModelOffset({ x: offset.x, y: offset.y, z: offset.z })
+    const offsetValue = { x: offset.x, y: offset.y, z: offset.z }
+    setModelOffset(offsetValue)
+    placedGcodeRef.current = loadedGcode.name
+    // Save offset to localStorage for persistence across views
+    if (loadedGcode.name) {
+      localStorage.setItem(`modelOffset_${loadedGcode.name}`, JSON.stringify(offsetValue))
+    }
   }, [loadedGcode, machinePosition, workPosition, settings])
   
 
