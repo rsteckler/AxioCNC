@@ -18,6 +18,8 @@ import * as tools from './api.tools';
 import * as themes from './api.themes';
 import * as workfiles from './api.workfiles';
 import * as gamepads from './api.gamepads';
+import * as streams from './api.streams';
+import * as cameras from './api.cameras';
 
 export {
   version,
@@ -40,4 +42,6 @@ export {
   themes,
   workfiles,
   gamepads,
+  streams,
+  cameras,
 };

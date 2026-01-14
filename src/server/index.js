@@ -22,6 +22,7 @@ import app from './app';
 import cncengine from './services/cncengine';
 import monitor from './services/monitor';
 import config from './services/configstore';
+import mediamtxService from './services/mediamtx';
 import logger, { setLevel } from './lib/logger';
 import urljoin from './lib/urljoin';
 
@@ -236,6 +237,17 @@ const createServer = (options, callback) => {
     .on('ready', (server) => {
       // cncengine service
       cncengine.start(server, options.controller || config.get('controller', ''));
+
+      // MediaMTX service (camera streaming)
+      mediamtxService.start();
+
+      // Reload MediaMTX when cameras array changes
+      config.on('change', (configData) => {
+        if (configData.cameras !== undefined) {
+          log.debug('Cameras array changed, reloading MediaMTX');
+          mediamtxService.reload();
+        }
+      });
 
       const address = server.address().address;
       const port = server.address().port;
