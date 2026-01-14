@@ -1,15 +1,8 @@
-import React, { useMemo } from 'react'
-import { useGetSettingsQuery } from '@/services/api'
+import React, { useMemo, useEffect, useRef } from 'react'
+import { useGetCamerasQuery, useGetStreamMetadataQuery, useGetSettingsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
 import type { CameraConfig } from '../../Settings/sections/CameraSection'
-
-// Map 0.0.0.0 to current hostname (like legacy app)
-const mapMetaAddressToHostname = (url: string): string => {
-  const hostname = window.location.hostname
-  return String(url).trim().replace(/((?:https?:)?\/\/)?(0\.0\.0\.0)/i, (match, p1) => {
-    return [p1 || 'http://', hostname].join('')
-  })
-}
+import Hls from 'hls.js'
 
 export function CameraPanel({ 
   isConnected, 
@@ -17,21 +10,39 @@ export function CameraPanel({
   machineStatus, 
   onFlashStatus 
 }: PanelProps) {
-  const { data: settings, isLoading } = useGetSettingsQuery()
+  const { data: camerasData, isLoading: isLoadingCameras, refetch: refetchCameras } = useGetCamerasQuery(undefined, {
+    // Refetch every 5 seconds to catch new cameras
+    pollingInterval: 5000,
+  })
+  const { data: settings } = useGetSettingsQuery()
   
+  // Get first enabled camera
+  const enabledCamera = useMemo(() => {
+    if (!camerasData?.records) {
+      return null
+    }
+    return camerasData.records.find(c => c.enabled) || null
+  }, [camerasData])
+  
+  // Get stream metadata for the enabled camera
+  const { data: streamMetadata, isLoading: isLoadingStream, error: streamError } = useGetStreamMetadataQuery(
+    enabledCamera?.id || '',
+    { 
+      skip: !enabledCamera?.id,
+      // Retry on failure
+      retry: 2,
+    }
+  )
+  
+  // Log errors for debugging
+  React.useEffect(() => {
+    if (streamError) {
+      console.error('[CameraPanel] Stream metadata error:', streamError)
+    }
+  }, [streamError])
+  
+  // Get display options from settings (still stored in settings.camera)
   const cameraConfig: CameraConfig | undefined = settings?.camera
-  const isIPCamera = cameraConfig?.enabled && cameraConfig?.mediaSource === 'ip-camera' && cameraConfig?.ipCameraUrl
-  
-  // Map URL if needed
-  const cameraUrl = useMemo(() => {
-    if (!isIPCamera || !cameraConfig?.ipCameraUrl) return null
-    return mapMetaAddressToHostname(cameraConfig.ipCameraUrl)
-  }, [isIPCamera, cameraConfig?.ipCameraUrl])
-  
-  // Determine if it's a video stream (MP4)
-  const isVideoStream = useMemo(() => {
-    return cameraUrl?.endsWith('.mp4') || false
-  }, [cameraUrl])
   
   // Build transform style for display options
   const transformStyle = useMemo(() => {
@@ -51,41 +62,79 @@ export function CameraPanel({
     return transforms.length > 0 ? transforms.join(' ') : ''
   }, [cameraConfig])
   
-  if (isLoading) {
+  // HLS video ref
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const hlsRef = useRef<Hls | null>(null)
+  
+  // Setup HLS player for HLS streams
+  useEffect(() => {
+    if (streamMetadata?.type === 'hls' && videoRef.current) {
+      const video = videoRef.current
+      const streamUrl = streamMetadata.src
+      
+      if (Hls.isSupported()) {
+        // Use hls.js for non-Safari browsers
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        })
+        hls.loadSource(streamUrl)
+        hls.attachMedia(video)
+        hlsRef.current = hls
+        
+        return () => {
+          hls.destroy()
+          hlsRef.current = null
+        }
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = streamUrl
+      }
+    }
+    
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy()
+        hlsRef.current = null
+      }
+    }
+  }, [streamMetadata])
+  
+  if (isLoadingCameras) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Loading camera settings...
+          Loading cameras...
         </div>
       </div>
     )
   }
   
-  if (!cameraConfig?.enabled) {
+  if (!enabledCamera) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Camera is disabled. Enable it in Settings.
+          No enabled camera found. Configure a camera in Settings.
         </div>
       </div>
     )
   }
   
-  if (!isIPCamera) {
+  if (isLoadingStream) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Webcam support coming soon. Configure an IP camera in Settings.
+          Loading stream...
         </div>
       </div>
     )
   }
   
-  if (!cameraUrl) {
+  if (!streamMetadata) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          No IP camera URL configured. Set it in Settings.
+          Stream not available. Check camera configuration.
         </div>
       </div>
     )
@@ -94,27 +143,26 @@ export function CameraPanel({
   return (
     <div className="p-3 space-y-2">
       <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-        {isVideoStream ? (
+        {streamMetadata.type === 'hls' ? (
           <video
-            src={cameraUrl}
+            ref={videoRef}
             autoPlay
             muted
-            loop
             playsInline
             className="w-full h-full object-contain"
             style={{ transform: transformStyle }}
           />
         ) : (
           <img
-            src={cameraUrl}
-            alt="IP Camera Feed"
+            src={streamMetadata.src}
+            alt={`${enabledCamera.name} Feed`}
             className="w-full h-full object-contain"
             style={{ transform: transformStyle }}
           />
         )}
         
         {/* Crosshair overlay */}
-        {cameraConfig.crosshair && (
+        {cameraConfig?.crosshair && (
           <div className="absolute inset-0 pointer-events-none">
             {/* Horizontal line */}
             <div 
