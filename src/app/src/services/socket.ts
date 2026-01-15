@@ -68,12 +68,17 @@ export type SocketEvents = {
   'disconnect': [reason: unknown]
   'error': [error: unknown]
   'socket:ready': []
+  'reconnect': [attemptNumber: number]
 }
 
 // Socket.IO v2 client singleton with strongly-typed events
 class SocketService {
   private socket: SocketIOClient.Socket | null = null
   private token: string | null = null
+  
+  // Store all registered listeners so we can re-apply them after reconnection
+  // Map<eventName, Set<callback>>
+  private listenerRegistry = new Map<string, Set<(...args: any[]) => void>>()
 
   connect(token?: string) {
     if (this.socket?.connected) {
@@ -97,16 +102,30 @@ class SocketService {
 
     console.log('[SocketService] Creating new socket connection...')
     // Socket.IO v2 connection with JWT auth in query string
+    // Enable automatic reconnection (default behavior)
     this.socket = io('', {
       transports: ['websocket', 'polling'],
-      query: { token: this.token }
+      query: { token: this.token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     })
 
     this.socket.on('connect', () => {
       console.log('[SocketService] Socket connected:', this.socket?.id)
       
+      // Re-apply all registered listeners after connection/reconnection
+      this.reapplyListeners()
+      
       // Emit a custom event to notify that socket is ready
       this.socket?.emit('socket:ready')
+    })
+
+    this.socket.on('reconnect', (attemptNumber: number) => {
+      console.log('[SocketService] Socket reconnected after', attemptNumber, 'attempts')
+      // Re-apply all registered listeners after reconnection
+      this.reapplyListeners()
     })
 
     this.socket.on('disconnect', (reason: unknown) => {
@@ -120,11 +139,33 @@ class SocketService {
     return this.socket
   }
 
+  /**
+   * Re-apply all registered listeners to the current socket
+   * This is called after connection or reconnection to ensure
+   * all event handlers are still active
+   */
+  private reapplyListeners() {
+    if (!this.socket) {
+      return
+    }
+
+    console.log('[SocketService] Re-applying', this.listenerRegistry.size, 'event listener(s)')
+    
+    for (const [eventName, callbacks] of this.listenerRegistry.entries()) {
+      for (const callback of callbacks) {
+        // Re-register the listener
+        this.socket.on(eventName, callback)
+      }
+    }
+  }
+
   disconnect() {
     if (this.socket) {
       this.socket.disconnect()
       this.socket = null
     }
+    // Clear listener registry on explicit disconnect
+    this.listenerRegistry.clear()
   }
 
   isConnected() {
@@ -209,6 +250,7 @@ class SocketService {
 
   /**
    * Type-safe event subscription
+   * Stores the listener so it can be re-applied after reconnection
    * @param event Event name from SocketEvents
    * @param callback Callback function with typed arguments matching the event
    */
@@ -221,12 +263,19 @@ class SocketService {
       return
     }
 
-    // Socket.IO expects (...args: any[]), so we cast the callback
+    // Store the listener in our registry
+    if (!this.listenerRegistry.has(event)) {
+      this.listenerRegistry.set(event, new Set())
+    }
+    this.listenerRegistry.get(event)!.add(callback as (...args: any[]) => void)
+
+    // Register with Socket.IO
     this.socket.on(event, callback as (...args: any[]) => void)
   }
 
   /**
    * Type-safe event unsubscription
+   * Removes the listener from both Socket.IO and our registry
    * @param event Event name from SocketEvents
    * @param callback Optional callback to remove specific listener, or undefined to remove all listeners for the event
    */
@@ -235,8 +284,20 @@ class SocketService {
     callback?: (...args: SocketEvents[E]) => void
   ) {
     if (callback) {
+      // Remove specific listener from registry
+      const callbacks = this.listenerRegistry.get(event)
+      if (callbacks) {
+        callbacks.delete(callback as (...args: any[]) => void)
+        if (callbacks.size === 0) {
+          this.listenerRegistry.delete(event)
+        }
+      }
+      
+      // Remove from Socket.IO
       this.socket?.off(event, callback as (...args: any[]) => void)
     } else {
+      // Remove all listeners for this event
+      this.listenerRegistry.delete(event)
       this.socket?.off(event)
     }
   }
@@ -244,6 +305,7 @@ class SocketService {
   /**
    * Type-safe one-time event subscription
    * Listens for an event once and then automatically removes the listener
+   * Note: one-time listeners are NOT stored in the registry and will NOT be re-applied after reconnection
    * @param event Event name from SocketEvents
    * @param callback Callback function with typed arguments matching the event
    */
@@ -256,7 +318,8 @@ class SocketService {
       return
     }
 
-    // Socket.IO expects (...args: any[]), so we cast the callback
+    // Don't store one-time listeners - they're meant to fire once
+    // Socket.IO will handle cleanup automatically
     this.socket.once(event, callback as (...args: any[]) => void)
   }
 }
