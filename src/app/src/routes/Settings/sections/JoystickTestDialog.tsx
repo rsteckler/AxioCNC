@@ -326,7 +326,6 @@ export function JoystickTestDialog({
   // Handle server-side gamepad state updates (Socket.IO)
   useEffect(() => {
     if (!open || config.connectionLocation !== 'server') {
-      console.log('[GamepadTestDialog] Skipping server-side setup:', { open, connectionLocation: config.connectionLocation })
       return
     }
 
