@@ -1,8 +1,8 @@
-import React, { useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { Home, Play, Square, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineStatusBadge, type MachineStatus } from './MachineStatusBadge'
-import { useMachineState, useAppDispatch } from '@/store/hooks'
+import { useAppSelector, useAppDispatch } from '@/store/hooks'
 import { useGetSettingsQuery } from '@/services/api'
 import { useGcodeCommand } from '@/hooks'
 import { socketService } from '@/services/socket'
@@ -24,22 +24,24 @@ interface MachineStatusBarProps {
 
 export function MachineStatusBar({ onError }: MachineStatusBarProps) {
   const dispatch = useAppDispatch()
-  const machineState = useMachineState()
-  const { data: settings } = useGetSettingsQuery()
   
-  // Extract values from Redux state
-  const isConnected = machineState.isConnected
-  const isConnecting = machineState.isConnecting
-  const connectedPort = machineState.connectedPort
-  const machineStatus = machineState.machineStatus
-  const isFlashing = machineState.isFlashing
+  // Only select the specific properties we need - this prevents re-renders
+  // when position updates come in during jogging
+  const isConnected = useAppSelector((state) => state.machine.isConnected)
+  const isConnecting = useAppSelector((state) => state.machine.isConnecting)
+  const connectedPort = useAppSelector((state) => state.machine.connectedPort)
+  const machineStatus = useAppSelector((state) => state.machine.machineStatus)
+  const isFlashing = useAppSelector((state) => state.machine.isFlashing)
+  const isHomed = useAppSelector((state) => state.machine.isHomed)
+  
+  const { data: settings } = useGetSettingsQuery()
   
   // Get G-code command hook
   const { sendCommand } = useGcodeCommand(connectedPort)
   
   // Refs to track state in event handlers
-  const isHomedRef = useRef(machineState.isHomed)
-  isHomedRef.current = machineState.isHomed
+  const isHomedRef = useRef(isHomed)
+  isHomedRef.current = isHomed
   
   // Error notification helper
   const showError = useCallback((title: string, message: string) => {
