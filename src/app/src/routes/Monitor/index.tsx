@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, HelpCircle, Columns3, Maximize, PictureInPicture, ArrowLeftRight, RotateCcw, Square, Home } from 'lucide-react'
+import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, Maximize, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, Home, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -11,13 +11,42 @@ import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQue
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from '@/hooks'
 import { MachineActionButton } from '@/components/MachineActionButton'
-import { MachineStatusBar, type MachineStatus as MachineStatusType } from '@/components/MachineStatusBar'
+import { MachineStatusBar } from '@/components/MachineStatusBar'
 import { JobStatusBar } from '@/components/JobStatusBar'
 import { Console } from '@/components/Console'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
+import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
+import { machineStateSync } from '@/services/machineStateSync'
+import { setJobState } from '@/store/jobSlice'
+import { processGCode } from '@/lib/gcodeVisualizer'
+import { Vector3 } from 'three'
+import { machineToThree, type MachineLimits } from '@/lib/coordinates'
+import type { HomingCorner } from '@/lib/machineLimits'
 import type { CameraConfig } from '../Settings/sections/CameraSection'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { CurrentStatsPanel } from './panels/CurrentStatsPanel'
+import { ToolsUsedPanel } from './panels/ToolsUsedPanel'
+import { formatTime } from '@/utils/formatTime'
 
 // ============================================================================
 // CAMERA COMPONENT
@@ -197,60 +226,122 @@ type ViewMode = 'side-by-side' | 'visual-only' | 'camera-only' | 'pip-visual' | 
 
 interface VisualizerCameraViewProps {
   machinePosition: { x: number; y: number; z: number }
+  processedLines?: number
 }
 
-function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
+function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCameraViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('side-by-side')
   const { data: settings } = useGetSettingsQuery()
+  const dispatch = useAppDispatch()
+  
+  // Get shared machine state for positions
+  const machineState = useMachineState()
+  const workPosition = machineState.workPosition
+  const connectedPort = machineState.connectedPort // Use Redux state instead of settings
   
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
-  
-  // Get connection port for querying loaded G-code (settings is already declared above)
-  const connectedPort = settings?.connection?.port
+  const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
+  const processedGcodeRef = useRef<string | null>(null) // Track which G-code we've already processed from API
+  const loadedFromApiRef = useRef<string | null>(null) // Track which file was loaded from API (not Socket.IO)
   
   // Query currently loaded G-code on mount (to restore when navigating between pages)
-  const { data: gcodeData } = useGetGcodeQuery(connectedPort || '', {
+  // Use refetchOnMountOrArgChange to ensure fresh data when navigating
+  const { data: gcodeData, isLoading: isLoadingGcode } = useGetGcodeQuery(connectedPort || '', {
     skip: !connectedPort,
+    refetchOnMountOrArgChange: true, // Always refetch when navigating to this page
   })
   
   // Restore loaded G-code from API on mount
   useEffect(() => {
-    if (gcodeData && gcodeData.name && (gcodeData.data || gcodeData.gcode)) {
-      setLoadedGcode({
-        name: gcodeData.name,
-        gcode: gcodeData.data || gcodeData.gcode || '',
-      })
-    } else if (gcodeData && !gcodeData.name) {
-      // No file loaded
-      setLoadedGcode(null)
+    console.log('[Monitor] API restoration effect:', { isLoadingGcode, hasGcodeData: !!gcodeData, gcodeDataName: gcodeData?.name })
+    
+    // Don't do anything while the query is still loading
+    if (isLoadingGcode) {
+      return
     }
-  }, [gcodeData])
+
+    // Only process if we have gcodeData (query completed)
+    // If query was skipped (no connectedPort), don't do anything - preserve existing state
+    if (!gcodeData) {
+      return
+    }
+
+    // Skip if we've already processed this exact file from API
+    if (loadedFromApiRef.current === gcodeData.name) {
+      console.log('[Monitor] Already processed this file from API, skipping')
+      return
+    }
+
+    // Check if we have a valid file name and G-code data
+    const hasValidFile = gcodeData.name && gcodeData.name.trim() && (gcodeData.data || gcodeData.gcode)
+    
+    if (hasValidFile) {
+      const gcode = gcodeData.data || gcodeData.gcode || ''
+      console.log('[Monitor] Restoring G-code from API:', gcodeData.name, 'gcode length:', gcode.length)
+      processedGcodeRef.current = gcodeData.name
+      loadedFromApiRef.current = gcodeData.name // Mark as loaded from API
+      
+      setLoadedGcode({ name: gcodeData.name, gcode })
+      // Try to restore model offset from localStorage
+      const savedOffsetKey = `modelOffset_${gcodeData.name}`
+      const savedOffset = localStorage.getItem(savedOffsetKey)
+      if (savedOffset) {
+        try {
+          const offset = JSON.parse(savedOffset)
+          if (offset && typeof offset.x === 'number' && typeof offset.y === 'number' && typeof offset.z === 'number') {
+            setModelOffset(offset)
+            placedGcodeRef.current = gcodeData.name
+          }
+        } catch (err) {
+          // Invalid saved offset, ignore
+        }
+      } else {
+        // No saved offset, reset
+        setModelOffset(null)
+        placedGcodeRef.current = null
+      }
+      
+      // Note: Job state (name, size, total, etc.) is restored by machineStateSync.restoreGcodeStateFromAPI
+      // which is called from restoreStateFromAPI, so we don't need to duplicate it here
+    } else if (!gcodeData.name || !gcodeData.name.trim()) {
+      // Query completed and API explicitly says no file loaded (name is empty or missing)
+      // Only clear if we loaded this file from the API (not from Socket.IO)
+      if (loadedGcode && loadedFromApiRef.current === loadedGcode.name) {
+        console.log('[Monitor] API says no file, clearing loaded G-code (was loaded from API)')
+        processedGcodeRef.current = null
+        loadedFromApiRef.current = null
+        setLoadedGcode(null)
+        setModelOffset(null)
+        placedGcodeRef.current = null
+      } else if (loadedGcode) {
+        console.log('[Monitor] API says no file, but keeping loaded G-code (was loaded from Socket.IO, API may be stale)')
+      }
+    }
+  }, [gcodeData, isLoadingGcode, dispatch, loadedGcode])
   
   // Listen to G-code load/unload events for visualizer
   useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
-    const handleGcodeLoad = (name: string, gcode: string) => {
+    const handleGcodeLoad = (name: string, gcode: string, context?: unknown) => {
+      console.log('[Monitor VisualizerCameraView] gcode:load event received:', { name, gcodeLength: gcode?.length, hasGcode: !!gcode })
       if (name && gcode) {
+        // Only reset if this is a different file than the one we've already placed
+        const isNewFile = placedGcodeRef.current !== name
+        console.log('[Monitor VisualizerCameraView] Setting loaded G-code:', { name, isNewFile })
         setLoadedGcode({ name, gcode })
-        // Try to restore saved offset from localStorage
-        const savedOffsetKey = `modelOffset_${name}`
-        const savedOffset = localStorage.getItem(savedOffsetKey)
-        if (savedOffset) {
-          try {
-            const offset = JSON.parse(savedOffset)
-            if (offset && typeof offset.x === 'number' && typeof offset.y === 'number' && typeof offset.z === 'number') {
-              setModelOffset(offset)
-            } else {
-              setModelOffset(null)
-            }
-          } catch (err) {
-            setModelOffset(null)
-          }
-        } else {
+        // Update processed ref to match
+        processedGcodeRef.current = name
+        // Don't mark as loaded from API - this came from Socket.IO
+        // This prevents API restoration from clearing it if API returns stale data
+        // Reset model offset and placed tracking only if this is a different file
+        if (isNewFile) {
           setModelOffset(null)
+          placedGcodeRef.current = null
         }
+      } else {
+        console.warn('[Monitor VisualizerCameraView] gcode:load event missing name or gcode:', { name, hasGcode: !!gcode })
       }
     }
 
@@ -261,6 +352,9 @@ function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
       }
       setLoadedGcode(null)
       setModelOffset(null)
+      placedGcodeRef.current = null
+      processedGcodeRef.current = null
+      loadedFromApiRef.current = null
     }
 
     socketService.on('gcode:load', handleGcodeLoad)
@@ -271,6 +365,67 @@ function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
       socketService.off('gcode:unload', handleGcodeUnload)
     }
   }, [])
+  
+  // Automatically place model at WCS origin when G-code is loaded (same logic as Setup page)
+  useEffect(() => {
+    if (!loadedGcode?.gcode) {
+      placedGcodeRef.current = null
+      return
+    }
+
+    if (!settings?.machine?.limits) {
+      return
+    }
+
+    // Only auto-place if we haven't already placed this G-code file
+    if (placedGcodeRef.current === loadedGcode.name) {
+      return
+    }
+
+    const result = processGCode(loadedGcode.gcode)
+    
+    if (!result?.firstVertex) {
+      return
+    }
+
+    const limits: MachineLimits = settings.machine.limits
+    const homingCorner: HomingCorner = settings.machine.homingCorner ?? 'front-left'
+    
+    // Calculate work offset: WorkOffset = MPos - WPos
+    const workOffset = {
+      x: machinePosition.x - workPosition.x,
+      y: machinePosition.y - workPosition.y,
+      z: machinePosition.z - workPosition.z
+    }
+    
+    // WCS origin (0,0,0) in machine coordinates is the work offset
+    // Convert WCS origin to Three.js coordinates
+    const wcsOriginThree = machineToThree(workOffset, limits, homingCorner)
+    
+    // G-code coordinates from gcode-toolpath are in WCS coordinates
+    // They are currently being rendered directly as Three.js coordinates (no conversion)
+    // So the G-code origin location in Three.js is just the firstVertex value
+    const gcodeOriginThree = {
+      x: result.firstVertex.x,
+      y: result.firstVertex.y,
+      z: result.firstVertex.z
+    }
+    
+    // Calculate offset to move G-code origin to WCS origin location
+    const offset = new Vector3(
+      wcsOriginThree.x - gcodeOriginThree.x,
+      wcsOriginThree.y - gcodeOriginThree.y,
+      wcsOriginThree.z - gcodeOriginThree.z
+    )
+    
+    const offsetValue = { x: offset.x, y: offset.y, z: offset.z }
+    setModelOffset(offsetValue)
+    placedGcodeRef.current = loadedGcode.name
+    // Save offset to localStorage for persistence across views
+    if (loadedGcode.name) {
+      localStorage.setItem(`modelOffset_${loadedGcode.name}`, JSON.stringify(offsetValue))
+    }
+  }, [loadedGcode, settings, machinePosition, workPosition])
   
   const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit'>('iso')
   const [viewKey, setViewKey] = useState(0)
@@ -300,6 +455,7 @@ function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
               viewKey={viewKey}
               machinePosition={machinePosition}
               modelOffset={modelOffset}
+              processedLines={processedLines}
             />
             {/* PiP camera overlay when visualizer is full screen */}
             {viewMode === 'pip-visual' && (
@@ -336,6 +492,7 @@ function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
                     viewKey={viewKey}
                     machinePosition={machinePosition}
                     modelOffset={modelOffset}
+                    processedLines={processedLines}
                   />
                 </div>
               </div>
@@ -399,12 +556,25 @@ function VisualizerCameraView({ machinePosition }: VisualizerCameraViewProps) {
 }
 
 
-function ProgressPanel({ panelProps }: { panelProps: PanelProps }) {
+function ProgressPanel({ 
+  panelProps,
+  plannerQueueDepth = 0,
+  plannerQueueMax = 15,
+  maxSpindleSpeed = 3000,
+}: { 
+  panelProps: PanelProps
+  plannerQueueDepth?: number
+  plannerQueueMax?: number
+  maxSpindleSpeed?: number
+}) {
   const {
     machinePosition = { x: 0, y: 0, z: 0 },
     workPosition = { x: 0, y: 0, z: 0 },
     spindleState = 'M5',
     spindleSpeed = 0,
+    senderState,
+    feedrate = 0,
+    rxBufferSize = 0,
   } = panelProps
 
   // Spindle direction from state
@@ -418,50 +588,20 @@ function ProgressPanel({ panelProps }: { panelProps: PanelProps }) {
     { axis: 'Z' as const, color: 'text-blue-500', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30', mpos: machinePosition.z, wpos: workPosition.z },
   ]
 
-  // Mock tool data - tools in order of use (can repeat)
-  const toolsInOrder = [
-    { id: 1, number: 1, name: 'End Mill 1/4"', diameter: 6.35, isCurrent: false },
-    { id: 2, number: 2, name: 'Drill 1/8"', diameter: 3.175, isCurrent: false },
-    { id: 3, number: 1, name: 'End Mill 1/4"', diameter: 6.35, isCurrent: true }, // Tool 1 used again, currently active
-    { id: 4, number: 3, name: 'Chamfer Bit', diameter: 4.0, isCurrent: false },
-  ]
-
-  // Mock progress data
-  const elapsedSeconds = 1247 // 20:47
-  const remainingSeconds = 1853 // 30:53
-  const remainingConfidenceSeconds = 135 // ± 2:15
-  const totalSeconds = elapsedSeconds + remainingSeconds
-  const fileProgressPercent = 67.3
-  const linesSent = 12450
-  const linesTotal = 18500
-  const bytesSent = 245000
-  const bytesTotal = 364000
-  const plannerQueueDepth = 14
-  const plannerQueueMax = 16
-  const feedRate = 1200 // mm/min
-  const feedRateMax = 3000
-  const totalTravelXY = 12450.5 // mm
-  const totalTravelZ = 234.8 // mm
-  const chiploadEnabled = true // Mock: whether tool library is set up
-  const chiploadValue = 0.0025 // Mock: current chipload in mm (0.001 = too low, 0.002-0.004 = ideal, 0.005+ = too high)
-
-  // Operation type breakdown (for pie chart)
-  const operationTypes = [
-    { type: 'Cutting', percent: 45, color: 'rgb(59 130 246)', bgColor: 'bg-blue-500' },
-    { type: 'Positioning', percent: 30, color: 'rgb(34 197 94)', bgColor: 'bg-green-500' },
-    { type: 'Retracting/Plunging', percent: 25, color: 'rgb(249 115 22)', bgColor: 'bg-orange-500' },
-  ]
-
-  // Format time helper
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  // Time data from backend (in milliseconds)
+  const elapsedMs = senderState?.elapsedTime ?? 0
+  const remainingMs = senderState?.remainingTime ?? 0
+  const totalMs = elapsedMs + remainingMs
+  
+  // File progress data from backend
+  const linesSent = senderState?.sent ?? 0
+  const linesTotal = senderState?.total ?? 0
+  const fileProgressPercent = linesTotal > 0 ? (linesSent / linesTotal) * 100 : 0
+  const fileSize = senderState?.size ?? 0
+  const fileName = senderState?.name ?? ''
+  
+  // Feedrate from backend (mm/min)
+  const feedRateMax = 3000 // Default max, could be made configurable
 
   // Format file size helper
   const formatBytes = (bytes: number): string => {
@@ -471,46 +611,86 @@ function ProgressPanel({ panelProps }: { panelProps: PanelProps }) {
   }
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-2">
           {/* Left side - Position readouts and Spindle info */}
-          <div className="bg-muted/30 rounded-lg border border-border p-4 flex flex-col gap-4 flex-shrink-0">
-            {/* Position readouts */}
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground mb-1">Position</div>
-              {/* Column headers */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="w-5" /> {/* Axis label spacer */}
-                <div className="w-24 text-center">WCS</div>
-                <div className="w-20 text-center">Machine</div>
-              </div>
-              
-              {/* Axis readouts */}
-              {axes.map(({ axis, color, bgColor, borderColor, mpos, wpos }) => (
-                <div key={axis} className="flex items-center gap-2">
-                  {/* Axis label */}
-                  <span className={`text-sm font-bold w-5 ${color}`}>{axis}</span>
-                  
-                  {/* Work position */}
-                  <div className={`w-24 ${bgColor} ${borderColor} border rounded px-2 py-1.5 font-mono text-right text-sm font-medium`}>
-                    {wpos.toFixed(3)}
+          <div className="bg-muted/30 rounded-lg border border-border flex flex-col flex-1">
+            {/* Machine Status header */}
+            <div className="flex items-center gap-2 px-3 py-2 pl-10 border-b border-border bg-muted/30">
+              <ActivitySquare className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium flex-1">Machine Status</span>
+            </div>
+            <div className="p-4 flex flex-col gap-4">
+            {/* Position readouts and Spindle info - side by side */}
+            <div className="flex gap-4">
+              {/* Position readouts */}
+              <div className="flex-1 space-y-2">
+                {/* Column headers */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-5" /> {/* Axis label spacer */}
+                  <div className="w-24 text-center">WCS</div>
+                  <div className="w-20 text-center">Machine</div>
+                </div>
+                
+                {/* Axis readouts */}
+                {axes.map(({ axis, color, bgColor, borderColor, mpos, wpos }) => (
+                  <div key={axis} className="flex items-center gap-2">
+                    {/* Axis label */}
+                    <span className={`text-sm font-bold w-5 ${color}`}>{axis}</span>
+                    
+                    {/* Work position */}
+                    <div className={`w-24 ${bgColor} ${borderColor} border rounded px-2 py-1.5 font-mono text-right text-sm font-medium`}>
+                      {wpos.toFixed(3)}
+                    </div>
+                    
+                    {/* Machine position */}
+                    <div className="w-20 bg-muted/30 border border-border rounded px-2 py-1.5 font-mono text-right text-xs text-muted-foreground">
+                      {mpos.toFixed(2)}
+                    </div>
                   </div>
-                  
-                  {/* Machine position */}
-                  <div className="w-20 bg-muted/30 border border-border rounded px-2 py-1.5 font-mono text-right text-xs text-muted-foreground">
-                    {mpos.toFixed(2)}
+                ))}
+              </div>
+
+              {/* Vertical separator */}
+              <div className="w-px bg-border" />
+
+              {/* Spindle info */}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  {isOn ? (
+                    direction === 'CW' ? (
+                      <RotateCw className={`w-3.5 h-3.5 text-green-500 ${isOn ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
+                    ) : (
+                      <RotateCcw className={`w-3.5 h-3.5 text-green-500 ${isOn ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
+                    )
+                  ) : (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground" />
+                  )}
+                  <span>Spindle</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Direction:</span>
+                    <span className={`font-medium ${isOn ? 'text-green-500' : 'text-muted-foreground'}`}>
+                      {isOn ? direction : 'Off'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Speed:</span>
+                      <span className={`font-mono font-medium ${isOn ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {spindleSpeed.toLocaleString()} RPM
+                      </span>
+                    </div>
+                    <Progress 
+                      value={maxSpindleSpeed > 0 ? Math.min(100, (spindleSpeed / maxSpindleSpeed) * 100) : 0} 
+                      className={`h-2 ${isOn ? '' : 'opacity-50'}`}
+                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground text-[10px]">0</span>
+                      <span className="text-muted-foreground text-[10px]">max {maxSpindleSpeed.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Spindle info */}
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground mb-1">Spindle</div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="text-muted-foreground">Direction:</span>
-                <span className="font-medium">{isOn ? direction : 'Off'}</span>
-                <span className="text-muted-foreground">Speed:</span>
-                <span className="font-mono font-medium">{spindleSpeed} RPM</span>
               </div>
             </div>
 
@@ -522,262 +702,223 @@ function ProgressPanel({ panelProps }: { panelProps: PanelProps }) {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono font-medium">{feedRate} mm/min</span>
-                  <span className="text-muted-foreground">max {feedRateMax}</span>
+                  <span className="font-mono font-medium">{feedrate.toLocaleString()} mm/min</span>
+                  <span className="text-muted-foreground">max {feedRateMax.toLocaleString()}</span>
                 </div>
                 <Progress 
-                  value={(feedRate / feedRateMax) * 100} 
+                  value={feedRateMax > 0 ? Math.min(100, (feedrate / feedRateMax) * 100) : 0} 
                   className="h-1.5"
                 />
               </div>
             </div>
+            </div>
           </div>
 
           {/* Center - Work progress */}
-          <div className="flex-1 bg-muted/30 rounded-lg border border-border p-4 flex flex-col gap-4">
+          <div className="flex-1 bg-muted/30 rounded-lg border border-border flex flex-col">
+            {/* Job Status header */}
+            <div className="flex items-center gap-2 px-3 py-2 pl-10 border-b border-border bg-muted/30">
+              <ClipboardList className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium flex-1">Job Status</span>
+            </div>
+            <div className="p-4 flex flex-col gap-4">
+            {/* Job filename */}
+            {fileName && (
+              <div className="text-sm font-medium text-foreground truncate" title={fileName}>
+                {fileName}
+              </div>
+            )}
             {/* Time and File progress - side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Time indicators */}
-              <div className="space-y-1.5">
+            <div className="space-y-1.5">
+              {/* Headers */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />
                   <span>Time</span>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Elapsed</span>
-                    <span className="font-mono font-medium">{formatTime(elapsedSeconds)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Remaining</span>
-                    <span className="font-mono font-medium text-orange-500">
-                      {formatTime(remainingSeconds)}
-                      <span className="text-[10px] text-muted-foreground ml-1">
-                        ± {formatTime(remainingConfidenceSeconds)}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-mono font-medium">{formatTime(totalSeconds)}</span>
-                  </div>
-                </div>
-                <Progress value={(elapsedSeconds / totalSeconds) * 100} className="h-1.5" />
-              </div>
-
-              {/* File progress */}
-              <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="w-3.5 h-3.5" />
                   <span>File Progress</span>
                 </div>
+              </div>
+              
+              {/* Content rows - aligned */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Elapsed</span>
+                    <span className="font-mono font-medium">
+                      {elapsedMs > 0 ? formatTime(elapsedMs) : '--:--'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Remaining</span>
+                    {remainingMs > 0 ? (
+                      <span className="font-mono font-medium text-orange-500">
+                        {formatTime(remainingMs)}
+                      </span>
+                    ) : (
+                      <span className="font-mono font-medium text-muted-foreground">--:--</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-mono font-medium">{totalMs > 0 ? formatTime(totalMs) : '--:--'}</span>
+                  </div>
+                  <Progress 
+                    value={totalMs > 0 ? Math.min(100, (elapsedMs / totalMs) * 100) : 0} 
+                    className="h-1.5" 
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Lines</span>
-                    <span className="font-medium">{fileProgressPercent.toFixed(1)}%</span>
+                    <span className="font-medium">{linesSent.toLocaleString()} / {linesTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Size</span>
+                    <span className="font-medium">{formatBytes(fileSize)}</span>
                   </div>
                   <Progress value={fileProgressPercent} className="h-1.5" />
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{linesSent.toLocaleString()} / {linesTotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{formatBytes(bytesSent)} / {formatBytes(bytesTotal)}</span>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Operation type pie chart and travel distances */}
+            {/* Planner queue */}
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">Operation Types & Travel</div>
-              <div className="flex items-center gap-3">
-                {/* Simple pie chart visualization - condensed */}
-                <div className="relative w-14 h-14 flex-shrink-0">
-                  <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                    {operationTypes.reduce((acc, { percent, color }, index) => {
-                      const prevPercent = acc.prev
-                      const offset = prevPercent * 3.6 // Convert to degrees
-                      const length = percent * 3.6
-                      return {
-                        prev: prevPercent + percent,
-                        elements: [
-                          ...acc.elements,
-                          <circle
-                            key={index}
-                            cx="50"
-                            cy="50"
-                            r="45"
-                            fill="none"
-                            stroke={color}
-                            strokeWidth="10"
-                            strokeDasharray={`${length} ${360 - length}`}
-                            strokeDashoffset={-offset}
-                            className="transition-all"
-                          />
-                        ]
-                      }
-                    }, { prev: 0, elements: [] as JSX.Element[] }).elements}
-                  </svg>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Planner Queue</span>
+                  <span className="font-medium">{plannerQueueDepth} / {plannerQueueMax}</span>
                 </div>
-                <div className="flex-1 space-y-0.5">
-                  {operationTypes.map(({ type, percent, bgColor }) => (
-                    <div key={type} className="flex items-center gap-2 text-xs">
-                      <div className={`w-2.5 h-2.5 rounded ${bgColor}`} />
-                      <span className="flex-1 text-muted-foreground truncate">{type}</span>
-                      <span className="font-medium">{percent}%</span>
-                    </div>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: plannerQueueMax }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded ${
+                        i < plannerQueueDepth 
+                          ? i < plannerQueueMax * 0.7 
+                            ? 'bg-green-500' 
+                            : i < plannerQueueMax * 0.9 
+                              ? 'bg-yellow-500' 
+                              : 'bg-red-500'
+                          : 'bg-muted'
+                      }`}
+                    />
                   ))}
                 </div>
-                {/* Travel distances */}
-                <div className="flex-shrink-0 space-y-1.5 border-l border-border pl-3">
-                  <div className="text-xs text-muted-foreground">Travel</div>
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">XY:</span>
-                      <span className="text-xs font-mono font-medium">{totalTravelXY.toFixed(1)} mm</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">Z:</span>
-                      <span className="text-xs font-mono font-medium">{totalTravelZ.toFixed(1)} mm</span>
-                    </div>
-                  </div>
+                {/* RX Buffer */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="text-muted-foreground">RX Buffer</span>
+                  <span className="font-medium">{rxBufferSize}</span>
                 </div>
               </div>
             </div>
-
-            {/* Planner queue and Chipload - side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Planner queue */}
-              <div className="space-y-2">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Planner Queue</span>
-                    <span className="font-medium">{plannerQueueDepth} / {plannerQueueMax}</span>
-                  </div>
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: plannerQueueMax }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded ${
-                          i < plannerQueueDepth 
-                            ? i < plannerQueueMax * 0.7 
-                              ? 'bg-green-500' 
-                              : i < plannerQueueMax * 0.9 
-                                ? 'bg-yellow-500' 
-                                : 'bg-red-500'
-                            : 'bg-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Chipload indicator */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>Chipload</span>
-                  <TooltipProvider delayDuration={300}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs">
-                        {chiploadEnabled ? (
-                          <p>This is the chip load estimate based on current feed rate, spindle speed, and tool geometry from the tool library.</p>
-                        ) : (
-                          <p>Chipload indicator requires the tool library to be set up with tool geometry information.</p>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                {chiploadEnabled ? (
-                  <div className="relative">
-                    {/* Gauge background with zones */}
-                    <div className="relative h-6 bg-muted rounded border overflow-hidden">
-                      {/* Too low zone (left) */}
-                      <div className="absolute left-0 top-0 h-full w-1/3 bg-orange-500/20" />
-                      {/* Ideal zone (center) */}
-                      <div className="absolute left-1/3 top-0 h-full w-1/3 bg-green-500/20" />
-                      {/* Too high zone (right) */}
-                      <div className="absolute right-0 top-0 h-full w-1/3 bg-red-500/20" />
-                      
-                      {/* Zone labels */}
-                      <div className="absolute inset-0 flex items-center justify-between px-1.5 text-[9px] text-muted-foreground">
-                        <span>Low</span>
-                        <span>Ideal</span>
-                        <span>High</span>
-                      </div>
-                      
-                      {/* Needle indicator */}
-                      <div 
-                        className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10 transition-all"
-                        style={{
-                          left: `${Math.min(100, Math.max(0, ((chiploadValue - 0.001) / (0.006 - 0.001)) * 100))}%`,
-                          transform: 'translateX(-50%)'
-                        }}
-                      >
-                        <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 border-2 border-foreground bg-background rounded-full" />
-                      </div>
-                    </div>
-                    <div className="mt-0.5 text-[10px] text-center font-mono text-muted-foreground">
-                      {chiploadValue.toFixed(4)} mm
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-6 bg-muted/50 rounded border border-dashed flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground">Not available</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right side - Tools used in order */}
-          <div className="ml-auto bg-muted/30 rounded-lg border border-border p-4 flex-shrink-0 flex flex-col" style={{ minHeight: 0, maxHeight: '100%' }}>
-            <div className="text-xs text-muted-foreground mb-2">Tools Used</div>
-            {/* Scrollable tool list - top half */}
-            <div className="flex-1 min-h-0">
-              <OverlayScrollbarsComponent 
-                className="h-full"
-                options={{ scrollbars: { autoHide: 'scroll', autoHideDelay: 400 } }}
-              >
-                <div className="space-y-1.5 pr-2">
-                  {toolsInOrder.map((tool, index) => {
-                    // Find the index of the current tool
-                    const currentToolIndex = toolsInOrder.findIndex(t => t.isCurrent)
-                    const isUsed = currentToolIndex !== -1 && index < currentToolIndex
-                    
-                    return (
-                      <div
-                        key={tool.id}
-                        className={`
-                          px-3 py-2 rounded border text-sm
-                          ${tool.isCurrent 
-                            ? 'bg-primary/10 border-primary/30 text-primary font-medium' 
-                            : isUsed
-                              ? 'bg-background border-border text-muted-foreground opacity-50'
-                              : 'bg-background border-border text-foreground'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs">T{tool.number}</span>
-                            <span className="text-xs">{tool.name}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">Ø{tool.diameter}mm</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </OverlayScrollbarsComponent>
             </div>
           </div>
         </div>
+  )
+}
+
+// ============================================================================
+// PANEL CONFIGURATION
+// ============================================================================
+
+// Panel configuration with metadata
+const panelConfig: Record<string, { 
+  title: string
+  icon: React.ElementType
+  component: React.FC<PanelProps>
+}> = {
+  currentStats: { title: 'Current Stats', icon: BarChart3, component: CurrentStatsPanel },
+  toolsUsed: { title: 'Tools Used', icon: Wrench, component: ToolsUsedPanel },
+}
+
+// Sortable Panel Component
+function SortablePanel({ 
+  id, 
+  isCollapsed, 
+  onToggle,
+  panelProps,
+}: { 
+  id: string
+  isCollapsed: boolean
+  onToggle: () => void
+  panelProps: PanelProps
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : 1,
+  }
+
+  const config = panelConfig[id]
+  if (!config) return null
+  const PanelContent = config.component
+  const Icon = config.icon
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      {isDragging && (
+        <div className="absolute inset-0 rounded-lg border-2 border-dashed border-primary bg-primary/10" />
+      )}
+      <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+        <div className="flex items-center border-b border-border bg-muted/30">
+          <div 
+            {...attributes}
+            {...listeners}
+            className="p-2 cursor-grab hover:bg-muted/50 transition-colors touch-none"
+          >
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div 
+            className="flex-1 flex items-center gap-2 pr-3 py-2 cursor-pointer" 
+            onClick={onToggle}
+          >
+            <Icon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium flex-1">{config.title}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+          </div>
+        </div>
+        {!isCollapsed && (
+          <PanelContent {...panelProps} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Drag overlay panel (shown while dragging)
+function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isCollapsed: boolean; panelProps: PanelProps }) {
+  const config = panelConfig[id]
+  if (!config) return null
+  const Icon = config.icon
+  const PanelContent = config.component
+
+  return (
+    <div className="bg-card rounded-lg border-2 border-primary overflow-hidden shadow-2xl scale-[0.96]">
+      <div className="flex items-center border-b border-border bg-muted/30">
+        <div className="p-2 cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 flex items-center gap-2 pr-3 py-2">
+          <Icon className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium">{config.title}</span>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+        </div>
+      </div>
+      {!isCollapsed && <PanelContent {...panelProps} />}
+    </div>
   )
 }
 
@@ -793,113 +934,129 @@ export default function Monitor() {
   const { data: controllersData } = useGetControllersQuery()
   const [getMachineStatus] = useLazyGetMachineStatusQuery()
   
-  // Machine status type
-  type MachineStatus = 
-    | 'not_connected'
-    | 'connected_pre_home'
-    | 'connected_post_home'
-    | 'alarm'
-    | 'running'
-    | 'hold'
-    | 'error'
+  // Get shared machine and job state from Redux
+  const dispatch = useAppDispatch()
+  const machineState = useMachineState()
+  const jobState = useJobState()
   
-  // Connection state
-  const [isConnected, setIsConnected] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [connectedPort, setConnectedPort] = useState<string | null>(null)
-  const [machineStatus, setMachineStatus] = useState<MachineStatus>('not_connected')
-  const [isFlashing, setIsFlashing] = useState(false)
-  const [isHomed, setIsHomed] = useState(false)
-  const [isJobRunning, setIsJobRunning] = useState(false)
-  const [workflowState, setWorkflowState] = useState<'idle' | 'running' | 'paused' | null>(null)
+  // Extract values from Redux state
+  const isConnected = machineState.isConnected
+  const connectedPort = machineState.connectedPort
+  const machineStatus = machineState.machineStatus
+  const isJobRunning = machineState.isJobRunning
+  const workflowState = machineState.workflowState
+  const machinePosition = machineState.machinePosition
+  const workPosition = machineState.workPosition
+  const spindleState = machineState.spindleState
+  const spindleSpeed = machineState.spindleSpeed
+  const maxSpindleSpeed = machineState.maxSpindleSpeed
+  const currentTool = machineState.currentTool
+  const plannerQueueDepth = machineState.plannerQueueDepth
+  const plannerQueueMax = machineState.plannerQueueMax
+  const rxBufferSize = machineState.rxBufferSize
+  const feedrate = machineState.feedrate
   
-  // Position state
-  const [machinePosition, setMachinePosition] = useState({ x: 0, y: 0, z: 0 })
-  const [workPosition, setWorkPosition] = useState({ x: 0, y: 0, z: 0 })
+  // Job state (sender state)
+  const senderState = jobState
   
-  // Spindle state
-  const [spindleState, setSpindleState] = useState('M5')
-  const [spindleSpeed, setSpindleSpeed] = useState(0)
+  // Debug log to verify job state
+  React.useEffect(() => {
+    console.log('[Monitor] jobState changed:', jobState)
+    console.log('[Monitor] senderState values:', {
+      name: jobState.name,
+      size: jobState.size,
+      total: jobState.total,
+      sent: jobState.sent,
+      received: jobState.received,
+      elapsedTime: jobState.elapsedTime,
+      remainingTime: jobState.remainingTime,
+    })
+  }, [jobState])
+  
+  // Panel order - load from localStorage or use default
+  const [panelOrder, setPanelOrder] = useState<string[]>(() => {
+    const stored = localStorage.getItem('axiocnc-monitor-panel-order')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        const validPanels = ['currentStats', 'toolsUsed']
+        if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
+          return parsed
+        }
+      } catch {
+        // Invalid JSON, use default
+      }
+    }
+    return ['currentStats', 'toolsUsed']
+  })
+  
+  // Track which panels are collapsed
+  const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem('axiocnc-monitor-panel-collapsed')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed
+        }
+      } catch {
+        // Invalid JSON, use default
+      }
+    }
+    return {}
+  })
+  
+  // Track active drag item
+  const [activeId, setActiveId] = useState<string | null>(null)
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+  
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }, [])
+  
+  // Handle drag end
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      setPanelOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        // Save to localStorage
+        localStorage.setItem('axiocnc-monitor-panel-order', JSON.stringify(newOrder))
+        return newOrder
+      })
+    }
+    
+    setActiveId(null)
+  }, [])
+  
+  // Toggle panel collapse
+  const togglePanel = useCallback((id: string) => {
+    setCollapsedPanels((prev) => {
+      const newState = { ...prev, [id]: !prev[id] }
+      // Save to localStorage
+      localStorage.setItem('axiocnc-monitor-panel-collapsed', JSON.stringify(newState))
+      return newState
+    })
+  }, [])
   
   const { sendCommand } = useGcodeCommand(connectedPort)
   
   // Flash status when action attempted while disconnected
   const flashStatus = useCallback(() => {
-    setIsFlashing(true)
-    setTimeout(() => setIsFlashing(false), 450)
+    // Note: Flash status is handled by Redux, but we can trigger it here if needed
+    // For now, we'll keep this as a no-op since flashing is managed by components
   }, [])
-  
-  // Handle Connect/Disconnect button
-  const handleConnect = useCallback(() => {
-    if (isConnecting) return
-    
-    if (isConnected && connectedPort) {
-      // Disconnect
-      const socket = socketService.getSocket()
-      if (socket) {
-        socket.emit('close', connectedPort)
-      }
-      setIsConnected(false)
-      setConnectedPort(null)
-      setMachineStatus('not_connected')
-      setIsHomed(false)
-      setIsJobRunning(false)
-    } else {
-      // Connect
-      if (!settings?.connection?.port) {
-        flashStatus()
-        return
-      }
-      
-      setIsConnecting(true)
-      const socket = socketService.getSocket()
-      if (!socket || !socketService.isConnected()) {
-        socketService.connect()
-      }
-      
-      const port = settings.connection.port
-      const connectionOptions = {
-        baudrate: settings.connection.baudRate || 115200,
-        controllerType: settings.connection.controllerType || 'Grbl',
-        rtscts: settings.connection.rtscts || false,
-      }
-      
-      const connectionTimeout = setTimeout(() => {
-        setIsConnecting(false)
-      }, 10000)
-      
-      setTimeout(() => {
-        const socket = socketService.getSocket()
-        if (!socket) {
-          clearTimeout(connectionTimeout)
-          setIsConnecting(false)
-          return
-        }
-        
-        socket.emit('open', port, connectionOptions, (err: Error | null) => {
-          clearTimeout(connectionTimeout)
-          setIsConnecting(false)
-          if (err) {
-            console.error('Connection error:', err)
-          } else {
-            setIsConnected(true)
-            setConnectedPort(port)
-            setMachineStatus('connected_pre_home')
-            setIsHomed(false)
-          }
-        })
-      }, 100)
-    }
-  }, [settings, isConnected, isConnecting, connectedPort, flashStatus])
-  
-  // Handle Home button
-  const handleHome = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('homing')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
   
   // Handle Pause button
   const handlePause = useCallback(() => {
@@ -908,6 +1065,15 @@ export default function Monitor() {
       return
     }
     sendCommand('gcode:pause')
+  }, [isConnected, connectedPort, flashStatus, sendCommand])
+  
+  // Handle Start button
+  const handleStart = useCallback(() => {
+    if (!isConnected || !connectedPort) {
+      flashStatus()
+      return
+    }
+    sendCommand('gcode:start')
   }, [isConnected, connectedPort, flashStatus, sendCommand])
   
   // Handle Resume button
@@ -925,27 +1091,15 @@ export default function Monitor() {
       flashStatus()
       return
     }
-    sendCommand('gcode:stop')
+    sendCommand('gcode:stop', { force: true })
   }, [isConnected, connectedPort, flashStatus, sendCommand])
   
-  // Handle Unlock button
-  const handleUnlock = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('unlock')
-    setMachineStatus('connected_pre_home')
-    setIsHomed(false)
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
   
   // Handle Reset button
   const handleReset = useCallback(() => {
     if (!connectedPort) return
     sendCommand('reset')
-    setMachineStatus('connected_pre_home')
-    setIsHomed(false)
-    setIsJobRunning(false)
+    // State updates are handled by machineStateSync
   }, [connectedPort, sendCommand])
   
   // Handle E-Stop button
@@ -953,196 +1107,21 @@ export default function Monitor() {
     if (!connectedPort) return
     sendCommand('gcode:stop', { force: true })
     sendCommand('reset')
-    setIsJobRunning(false)
-    setIsHomed(false)
-    setMachineStatus('connected_pre_home')
+    // State updates are handled by machineStateSync
   }, [connectedPort, sendCommand])
   
-  // Listen for connection events
+  // Restore state from API on mount (handles navigation from other pages)
+  // This ensures file state is restored when navigating from Setup or on page reload
   useEffect(() => {
-    const socket = socketService.getSocket()
-    if (!socket) return
-    
-    const handleSerialPortOpen = (...args: unknown[]) => {
-      const data = args[0] as { port: string }
-      setIsConnected(true)
-      setConnectedPort(data.port)
-      setIsConnecting(false)
-    }
-    
-    const handleSerialPortClose = (...args: unknown[]) => {
-      const data = args[0] as { port: string }
-      if (data.port === connectedPort) {
-        setIsConnected(false)
-        setConnectedPort(null)
-        setMachineStatus('not_connected')
-        setIsHomed(false)
-        setIsJobRunning(false)
-      }
-    }
-    
-    const handleWorkflowState = (...args: unknown[]) => {
-      const state = args[0] as string
-      if (typeof state === 'string') {
-        setWorkflowState(state as 'idle' | 'running' | 'paused')
-        if (state === 'running') {
-          setIsJobRunning(true)
-        } else if (state === 'idle') {
-          setIsJobRunning(false)
-        }
-      }
-    }
-    
-    const handleControllerState = (...args: unknown[]) => {
-      const state = args[1] as { 
-        status?: { activeState?: string }
-        parserstate?: { mpos?: { x?: string, y?: string, z?: string }, wpos?: { x?: string, y?: string, z?: string } }
-      }
-      
-      if (state.status?.activeState === 'Alarm') {
-        setMachineStatus('alarm')
-      } else if (state.status?.activeState === 'Run') {
-        setMachineStatus('running')
-      } else if (state.status?.activeState === 'Hold') {
-        setMachineStatus('hold')
-      } else if (state.status?.activeState === 'Idle') {
-        if (machineStatus === 'running') {
-          setMachineStatus('connected_post_home')
-        }
-      }
-      
-      if (state.parserstate) {
-        if (state.parserstate.mpos) {
-          setMachinePosition({
-            x: parseFloat(state.parserstate.mpos.x || '0'),
-            y: parseFloat(state.parserstate.mpos.y || '0'),
-            z: parseFloat(state.parserstate.mpos.z || '0'),
-          })
-        }
-        if (state.parserstate.wpos) {
-          setWorkPosition({
-            x: parseFloat(state.parserstate.wpos.x || '0'),
-            y: parseFloat(state.parserstate.wpos.y || '0'),
-            z: parseFloat(state.parserstate.wpos.z || '0'),
-          })
-        }
-      }
-    }
-    
-    const handleMachineStatus: (...args: unknown[]) => void = (...args) => {
-      const port = args[0] as string
-      const status = args[1] as ApiMachineStatus
-      if (typeof port !== 'string' || !status || typeof status !== 'object') return
-
-      // Only update local state if this is for the configured port
-      if (status.port === settings?.connection?.port) {
-        setIsConnected(status.connected)
-        setConnectedPort(status.connected ? status.port : null)
-        setMachineStatus(status.machineStatus)
-        setIsHomed(status.isHomed)
-        setIsJobRunning(status.isJobRunning)
-        setWorkflowState(status.workflowState || null)
-        
-        if (status.controllerState) {
-          setMachinePosition({
-            x: parseFloat(status.controllerState.mpos?.x || '0'),
-            y: parseFloat(status.controllerState.mpos?.y || '0'),
-            z: parseFloat(status.controllerState.mpos?.z || '0')
-          })
-          setWorkPosition({
-            x: parseFloat(status.controllerState.wpos?.x || '0'),
-            y: parseFloat(status.controllerState.wpos?.y || '0'),
-            z: parseFloat(status.controllerState.wpos?.z || '0')
-          })
-        }
-      }
-    }
-    
-    socket.on('serialport:open', handleSerialPortOpen)
-    socket.on('serialport:close', handleSerialPortClose)
-    socket.on('controller:state', handleControllerState)
-    socket.on('machine:status', handleMachineStatus)
-    socket.on('workflow:state', handleWorkflowState)
-    
-    // Request current status
     if (settings?.connection?.port) {
-      socket.emit('machine:status:request', settings.connection.port)
-    } else {
-      socket.emit('machine:status:request')
+      machineStateSync.restoreStateFromAPI(settings.connection.port)
     }
-    
-    return () => {
-      socket.off('serialport:open', handleSerialPortOpen)
-      socket.off('serialport:close', handleSerialPortClose)
-      socket.off('controller:state', handleControllerState)
-      socket.off('machine:status', handleMachineStatus)
-      socket.off('workflow:state', handleWorkflowState)
-    }
-  }, [settings?.connection?.port, connectedPort, machineStatus])
-  
-  // Separate effect to restore connection state when component mounts
-  // This handles navigation from Setup page where connection already exists
-  useEffect(() => {
-    const checkAndRestore = () => {
-      // Only run if we're not already connected
-      if (isConnected) {
-        return
-      }
-      
-      // Try to get machine status from API
-      if (settings?.connection?.port) {
-        getMachineStatus({ port: settings.connection.port })
-          .unwrap()
-          .then((response) => {
-            if (response.status && response.status.connected) {
-              const status = response.status
-              
-              setIsConnected(true)
-              setConnectedPort(status.port)
-              setMachineStatus(status.machineStatus)
-              setIsHomed(status.isHomed)
-              setIsJobRunning(status.isJobRunning)
-              setWorkflowState(status.workflowState || null)
-              
-              // Join port room if socket is connected
-              const socket = socketService.getSocket()
-              if (socket?.connected) {
-                // Request current status via Socket.IO
-                socket.emit('machine:status:request', status.port)
-                
-                // Also join the port room to receive console events
-                const connectionOptions = settings.connection ? {
-                  controllerType: settings.connection.controllerType || 'Grbl',
-                  baudrate: settings.connection.baudRate || 115200,
-                  rtscts: settings.connection.rtscts || false,
-                } : {
-                  controllerType: 'Grbl',
-                  baudrate: 115200,
-                  rtscts: false,
-                }
-                
-                socket.emit('open', status.port, connectionOptions, (err: Error | null) => {
-                  if (err) {
-                    console.error('[Monitor] Error joining port room:', err)
-                  }
-                })
-              }
-            }
-          })
-          .catch((err) => {
-            console.warn('[Monitor] Failed to get machine status from API:', err)
-          })
-      }
-    }
-    
-    // Check immediately on mount
-    checkAndRestore()
-  }, [settings?.connection?.port, isConnected, getMachineStatus])
+  }, [settings?.connection?.port])
   
   // Tab state for visualizer/console
   const [tab, setTab] = useState<'visualizer' | 'console'>('visualizer')
   
-  // Panel props with real state
+  // Panel props with real state from Redux
   const panelProps: PanelProps = {
     isConnected,
     connectedPort,
@@ -1152,6 +1131,17 @@ export default function Monitor() {
     workPosition,
     spindleState,
     spindleSpeed,
+    senderState: jobState, // Use jobState from Redux
+    currentTool,
+    feedrate,
+    rxBufferSize,
+  }
+  
+  // Progress panel props with additional planner queue data
+  const progressPanelProps = {
+    ...panelProps,
+    plannerQueueDepth,
+    plannerQueueMax,
   }
 
   return (
@@ -1258,20 +1248,12 @@ export default function Monitor() {
 
       {/* Monitor control bar - screen-specific controls */}
       <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
-        <MachineStatusBar
-          machineStatus={machineStatus as MachineStatusType}
-          isFlashing={isFlashing}
-          isConnecting={isConnecting}
-          onConnect={handleConnect}
-          onHome={handleHome}
-          onResume={handleResume}
-          onStop={handleStop}
-          onUnlock={handleUnlock}
-        />
+        <MachineStatusBar />
         
         <JobStatusBar
           workflowState={workflowState}
           isJobRunning={isJobRunning}
+          onStart={handleStart}
           onStop={handleStop}
           onPause={handlePause}
           onResume={handleResume}
@@ -1280,9 +1262,45 @@ export default function Monitor() {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-        {/* Main content - full width */}
-        <div className="w-full flex flex-col gap-4 overflow-hidden">
+      <div className="flex-1 flex gap-2 p-2 min-h-0 overflow-hidden">
+        {/* Left column - panels (33%) */}
+        <OverlayScrollbarsComponent 
+          className="w-1/3"
+          options={{ scrollbars: { autoHide: 'scroll', autoHideDelay: 400 } }}
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-2">
+                {panelOrder.map((panelId) => (
+                  <SortablePanel
+                    key={panelId}
+                    id={panelId}
+                    isCollapsed={collapsedPanels[panelId] ?? false}
+                    onToggle={() => togglePanel(panelId)}
+                    panelProps={panelProps}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay>
+              {activeId ? (
+                <DragOverlayPanel 
+                  id={activeId} 
+                  isCollapsed={collapsedPanels[activeId] ?? false}
+                  panelProps={panelProps}
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </OverlayScrollbarsComponent>
+        
+        {/* Right column - existing content (66%) */}
+        <div className="w-2/3 flex flex-col gap-2 min-h-0">
           {/* Visualizer/Console/Camera tabs */}
           <div className="flex-1 bg-card rounded-lg border border-border overflow-hidden shadow-sm flex flex-col min-h-0">
             {/* Tab buttons */}
@@ -1314,13 +1332,18 @@ export default function Monitor() {
             
             {/* Tab content */}
             <div className="flex-1 flex flex-col min-h-0">
-              {tab === 'visualizer' && <VisualizerCameraView machinePosition={machinePosition} />}
+              {tab === 'visualizer' && <VisualizerCameraView machinePosition={machinePosition} processedLines={jobState?.received} />}
               {tab === 'console' && <Console isConnected={isConnected} connectedPort={connectedPort} />}
             </div>
           </div>
 
           {/* Progress panel */}
-          <ProgressPanel panelProps={panelProps} />
+          <ProgressPanel 
+            panelProps={panelProps} 
+            plannerQueueDepth={plannerQueueDepth}
+            plannerQueueMax={plannerQueueMax}
+            maxSpindleSpeed={maxSpindleSpeed}
+          />
         </div>
       </div>
     </div>
