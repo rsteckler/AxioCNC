@@ -1042,9 +1042,6 @@ export default function Settings() {
 
   // Joystick handlers
   const handleJoystickConfigChange = useCallback(async (changes: Partial<JoystickConfig>) => {
-    if (!isMountedRef.current) {
-      return
-    }
     setJoystickConfig(prev => {
       const updated = { ...prev, ...changes }
       
