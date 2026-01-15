@@ -1110,13 +1110,24 @@ export default function Monitor() {
     // State updates are handled by machineStateSync
   }, [connectedPort, sendCommand])
   
-  // Restore state from API on mount (handles navigation from other pages)
-  // This ensures file state is restored when navigating from Setup or on page reload
+  // Restore state from API on mount (only when needed - not on every navigation)
+  // Only restore if:
+  // 1. Redux doesn't have valid connection state (page refresh), OR
+  // 2. The connected port doesn't match the settings port (port changed)
+  // If Redux already has valid connection state, trust it (it persists across navigation)
   useEffect(() => {
-    if (settings?.connection?.port) {
+    if (!settings?.connection?.port) {
+      return
+    }
+
+    const needsRestore = 
+      !isConnected || // Redux doesn't have connection state (page refresh)
+      connectedPort !== settings.connection.port // Port changed
+
+    if (needsRestore) {
       machineStateSync.restoreStateFromAPI(settings.connection.port)
     }
-  }, [settings?.connection?.port])
+  }, [settings?.connection?.port, isConnected, connectedPort])
   
   // Tab state for visualizer/console
   const [tab, setTab] = useState<'visualizer' | 'console'>('visualizer')
