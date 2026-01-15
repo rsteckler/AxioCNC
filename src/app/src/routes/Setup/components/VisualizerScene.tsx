@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef } from 'react'
+import { Color } from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
 import { BufferGeometry, BufferAttribute, ArrowHelper, Vector3, LineBasicMaterial, Line, LineDashedMaterial, PlaneGeometry, EdgesGeometry, Group } from 'three'
@@ -16,6 +17,7 @@ interface VisualizerSceneProps {
   viewKey?: number // Key to force re-trigger when same view is selected
   machinePosition?: { x: number; y: number; z: number }
   modelOffset?: Vector3Type // Offset to apply to model (for "Place Model" feature)
+  processedLines?: number // Number of G-code lines that have been processed (for animation)
 }
 
 // Grid component - draws a grid on the z=0 plane, starting at origin and extending in positive X and Y
@@ -209,12 +211,28 @@ function ZTopRectangle({ length, gridSizeX, gridSizeY }: { length: number; gridS
 }
 
 // G-code toolpath visualization component
-function GCodeToolpath({ gcode, offset }: { gcode?: string | null; offset?: Vector3Type }) {
+function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string | null; offset?: Vector3Type; processedLines?: number }) {
+  const geometryRef = useRef<BufferGeometry | null>(null)
+  const framesRef = useRef<Array<{ data: string; vertexIndex: number }>>([])
+  const originalColorsRef = useRef<Float32Array | null>(null)
+  const redColor = useMemo(() => new Color(1, 0, 0), []) // Red color for processed lines
+
   const geometry = useMemo(() => {
+    console.log('[GCodeToolpath] Processing G-code:', { hasGcode: !!gcode, gcodeLength: gcode?.length })
     const result = processGCode(gcode)
+    console.log('[GCodeToolpath] Process result:', { hasResult: !!result, hasGeometry: !!result?.geometry, framesCount: result?.frames?.length })
     if (!result?.geometry) {
+      console.warn('[GCodeToolpath] No geometry from processGCode')
+      geometryRef.current = null
+      framesRef.current = []
+      originalColorsRef.current = null
       return null
     }
+
+    // Store frames and original colors for animation
+    framesRef.current = result.frames
+    const colorAttr = result.geometry.getAttribute('color') as BufferAttribute
+    originalColorsRef.current = colorAttr ? (colorAttr.array as Float32Array).slice() : null
 
     // Apply offset if provided
     if (offset && (offset.x !== 0 || offset.y !== 0 || offset.z !== 0)) {
@@ -230,16 +248,69 @@ function GCodeToolpath({ gcode, offset }: { gcode?: string | null; offset?: Vect
 
       const newGeometry = result.geometry.clone()
       newGeometry.setAttribute('position', new BufferAttribute(newPositions, 3))
+      // Clone color attribute as well to ensure we can update it
+      const colorAttr = result.geometry.getAttribute('color') as BufferAttribute
+      if (colorAttr) {
+        const colors = colorAttr.array as Float32Array
+        const clonedColors = colors.slice()
+        newGeometry.setAttribute('color', new BufferAttribute(clonedColors, 3))
+        // Update originalColorsRef to point to the cloned colors
+        originalColorsRef.current = new Float32Array(clonedColors)
+      }
+      geometryRef.current = newGeometry
       return newGeometry
     }
 
+    geometryRef.current = result.geometry
     return result.geometry
   }, [gcode, offset])
 
+  // Update colors based on processed lines
+  useEffect(() => {
+    if (!geometryRef.current || !originalColorsRef.current || framesRef.current.length === 0) {
+      return
+    }
+
+    const geometry = geometryRef.current
+    const originalColors = originalColorsRef.current
+    const frames = framesRef.current
+    const colorAttr = geometry.getAttribute('color') as BufferAttribute
+
+    if (!colorAttr) {
+      return
+    }
+
+    const colors = colorAttr.array as Float32Array
+
+    // Reset all colors to original
+    colors.set(originalColors)
+
+    // Turn processed lines red
+    // processedLines is the number of lines that have been received/processed
+    for (let i = 0; i < Math.min(processedLines, frames.length); i++) {
+      const frame = frames[i]
+      const startVertexIndex = frame.vertexIndex
+      // Find the end vertex index (next frame's vertexIndex, or end of geometry)
+      const endVertexIndex = i < frames.length - 1 ? frames[i + 1].vertexIndex : colors.length / 3
+
+      // Update colors for all vertices in this line segment
+      for (let v = startVertexIndex; v < endVertexIndex; v++) {
+        const colorIndex = v * 3
+        colors[colorIndex] = redColor.r
+        colors[colorIndex + 1] = redColor.g
+        colors[colorIndex + 2] = redColor.b
+      }
+    }
+
+    colorAttr.needsUpdate = true
+  }, [processedLines, redColor])
+
   if (!geometry) {
+    console.log('[GCodeToolpath] No geometry, returning null')
     return null
   }
 
+  console.log('[GCodeToolpath] Rendering geometry with', geometry.attributes.position.count / 3, 'vertices')
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial
@@ -427,7 +498,17 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
   )
 }
 
-export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset }: VisualizerSceneProps = {}) {
+export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines }: VisualizerSceneProps = {}) {
+  // Debug logging
+  useEffect(() => {
+    console.log('[VisualizerScene] Props received:', { 
+      hasGcode: !!gcode, 
+      gcodeLength: gcode?.length,
+      hasModelOffset: !!modelOffset,
+      modelOffset: modelOffset ? { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z } : null
+    })
+  }, [gcode, modelOffset])
+  
   // Get machine limits and homing corner from settings
   const { data: settings } = useGetSettingsQuery()
   const machineLimits = settings?.machine?.limits
@@ -545,7 +626,7 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
         </mesh>
         
         {/* G-code toolpath visualization */}
-        <GCodeToolpath gcode={gcode} offset={modelOffset} />
+        <GCodeToolpath gcode={gcode} offset={modelOffset} processedLines={processedLines} />
         
         {/* Tool/endmill indicator - positioned at current machine coordinates */}
         <ToolIndicator position={toolPosition} />
