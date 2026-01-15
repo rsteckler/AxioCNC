@@ -136,7 +136,11 @@ class Sender extends events.EventEmitter {
       startTime: 0,
       finishTime: 0,
       elapsedTime: 0,
-      remainingTime: 0
+      remainingTime: 0,
+      m6Indices: [],
+      nextM6Index: -1,
+      remainingTimeToNextM6: 0,
+      nextM6ToolNumber: -1
     };
 
     stateChanged = false;
@@ -236,7 +240,10 @@ class Sender extends events.EventEmitter {
         startTime: this.state.startTime,
         finishTime: this.state.finishTime,
         elapsedTime: this.state.elapsedTime,
-        remainingTime: this.state.remainingTime
+        remainingTime: this.state.remainingTime,
+        nextM6Index: this.state.nextM6Index,
+        nextM6ToolNumber: this.state.nextM6ToolNumber,
+        remainingTimeToNextM6: this.state.remainingTimeToNextM6
       };
     }
 
@@ -286,6 +293,35 @@ class Sender extends events.EventEmitter {
       this.state.elapsedTime = 0;
       this.state.remainingTime = 0;
 
+      // Scan for M6 tool change commands and extract tool numbers
+      const m6Pattern = /\bM0*6\b/i;
+      const toolPattern = /\bT(\d+)\b/i;
+      this.state.m6Indices = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Remove comments (everything after ;)
+        const codePart = line.split(';')[0].trim();
+        if (m6Pattern.test(codePart)) {
+          // Try to find tool number on the same line
+          let toolNumber = -1;
+          const toolMatch = codePart.match(toolPattern);
+          if (toolMatch) {
+            toolNumber = parseInt(toolMatch[1], 10);
+          } else if (i > 0) {
+            // Check previous line for tool number
+            const prevLine = lines[i - 1].split(';')[0].trim();
+            const prevToolMatch = prevLine.match(toolPattern);
+            if (prevToolMatch) {
+              toolNumber = parseInt(prevToolMatch[1], 10);
+            }
+          }
+          this.state.m6Indices.push({ index: i, toolNumber });
+        }
+      }
+      this.state.nextM6Index = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].index : -1;
+      this.state.nextM6ToolNumber = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].toolNumber : -1;
+      this.state.remainingTimeToNextM6 = 0;
+
       this.emit('load', name, gcode, context);
       this.emit('change');
 
@@ -309,6 +345,10 @@ class Sender extends events.EventEmitter {
       this.state.finishTime = 0;
       this.state.elapsedTime = 0;
       this.state.remainingTime = 0;
+      this.state.m6Indices = [];
+      this.state.nextM6Index = -1;
+      this.state.nextM6ToolNumber = -1;
+      this.state.remainingTimeToNextM6 = 0;
 
       this.emit('unload');
       this.emit('change');
@@ -345,6 +385,9 @@ class Sender extends events.EventEmitter {
         this.state.finishTime = 0;
         this.state.elapsedTime = 0;
         this.state.remainingTime = 0;
+        this.state.nextM6Index = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].index : -1;
+        this.state.nextM6ToolNumber = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].toolNumber : -1;
+        this.state.remainingTimeToNextM6 = 0;
         this.emit('start', this.state.startTime);
         this.emit('change');
       }
@@ -360,6 +403,21 @@ class Sender extends events.EventEmitter {
       if (this.state.elapsedTime >= 1000 && this.state.received > 0) {
         const timePerCode = this.state.elapsedTime / this.state.received;
         this.state.remainingTime = (timePerCode * this.state.total - this.state.elapsedTime);
+
+        // Update next M6 index and calculate remaining time to next M6
+        this.state.nextM6Index = -1;
+        this.state.nextM6ToolNumber = -1;
+        this.state.remainingTimeToNextM6 = 0;
+        for (let i = 0; i < this.state.m6Indices.length; i++) {
+          const m6Entry = this.state.m6Indices[i];
+          if (m6Entry.index >= this.state.received) {
+            this.state.nextM6Index = m6Entry.index;
+            this.state.nextM6ToolNumber = m6Entry.toolNumber;
+            const remainingLines = m6Entry.index - this.state.received;
+            this.state.remainingTimeToNextM6 = timePerCode * remainingLines;
+            break;
+          }
+        }
       }
 
       if (this.state.received >= this.state.total) {
@@ -388,6 +446,9 @@ class Sender extends events.EventEmitter {
       this.state.holdReason = null;
       this.state.sent = 0;
       this.state.received = 0;
+      this.state.nextM6Index = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].index : -1;
+      this.state.nextM6ToolNumber = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].toolNumber : -1;
+      this.state.remainingTimeToNextM6 = 0;
       this.emit('change');
 
       return true;
