@@ -38,6 +38,29 @@ export interface MachineStatus {
     activeState: string
     mpos: { x: string; y: string; z: string } | null
     wpos: { x: string; y: string; z: string } | null
+    pinState?: string | null // Grbl v1.1: probe pin state ('P' indicates probe triggered)
+  } | null
+  parserstate?: {
+    modal?: {
+      spindle?: string
+      coolant?: string
+      motion?: string
+      wcs?: string // Work Coordinate System (G54, G55, etc.)
+      plane?: string
+      units?: string
+      distance?: string
+      feedrate?: string
+      program?: string
+    }
+    spindle?: string
+    tool?: string
+    feedrate?: string
+  } | null
+  status?: {
+    buf?: {
+      planner?: number
+      rx?: number
+    }
   } | null
   workflowState: 'idle' | 'running' | 'paused' | null
   lastUpdate: number

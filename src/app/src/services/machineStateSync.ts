@@ -29,33 +29,40 @@ import type { MachineStatus as ApiMachineStatus } from '@/services/api'
  */
 class MachineStateSyncService {
   private initialized = false
+  private handleSerialPortOpenBound?: (...args: unknown[]) => void
+  private handleSerialPortCloseBound?: (...args: unknown[]) => void
+  private handleMachineStatusBound?: (...args: unknown[]) => void
+  private handleWorkflowStateBound?: (...args: unknown[]) => void
+  private handleSenderStatusBound?: (...args: unknown[]) => void
 
   /**
    * Initialize the service - set up Socket.IO listeners
    */
   init() {
-    
     if (this.initialized) {
       console.log('[machineStateSync] Already initialized, skipping')
       return
     }
 
+    // Store bound handlers so we can remove them in cleanup
+    this.handleSerialPortOpenBound = this.handleSerialPortOpen.bind(this)
+    this.handleSerialPortCloseBound = this.handleSerialPortClose.bind(this)
+    this.handleMachineStatusBound = this.handleMachineStatus.bind(this)
+    this.handleWorkflowStateBound = this.handleWorkflowState.bind(this)
+    this.handleSenderStatusBound = this.handleSenderStatus.bind(this)
 
     // Listen to connection events
-    socketService.on('serialport:open', this.handleSerialPortOpen.bind(this))
-    socketService.on('serialport:close', this.handleSerialPortClose.bind(this))
+    socketService.on('serialport:open', this.handleSerialPortOpenBound)
+    socketService.on('serialport:close', this.handleSerialPortCloseBound)
 
-    // Listen to controller state updates
-    socketService.on('controller:state', this.handleControllerState.bind(this))
-
-    // Listen to machine status updates
-    socketService.on('machine:status', this.handleMachineStatus.bind(this))
+    // Listen to machine status updates (now includes full controller state including parserstate)
+    socketService.on('machine:status', this.handleMachineStatusBound)
 
     // Listen to workflow state updates
-    socketService.on('workflow:state', this.handleWorkflowState.bind(this))
+    socketService.on('workflow:state', this.handleWorkflowStateBound)
 
     // Listen to sender status updates (job progress)
-    socketService.on('sender:status', this.handleSenderStatus.bind(this))
+    socketService.on('sender:status', this.handleSenderStatusBound)
 
     
     // NOTE: We don't listen to gcode:load/unload here because:
@@ -64,7 +71,6 @@ class MachineStateSyncService {
     // 3. Job state is managed via sender:status events, not gcode:load/unload
 
     this.initialized = true
-
     }
 
   /**
@@ -75,12 +81,22 @@ class MachineStateSyncService {
       return
     }
 
-    socketService.off('serialport:open', this.handleSerialPortOpen.bind(this))
-    socketService.off('serialport:close', this.handleSerialPortClose.bind(this))
-    socketService.off('controller:state', this.handleControllerState.bind(this))
-    socketService.off('machine:status', this.handleMachineStatus.bind(this))
-    socketService.off('workflow:state', this.handleWorkflowState.bind(this))
-    socketService.off('sender:status', this.handleSenderStatus.bind(this))
+
+    if (this.handleSerialPortOpenBound) {
+      socketService.off('serialport:open', this.handleSerialPortOpenBound)
+    }
+    if (this.handleSerialPortCloseBound) {
+      socketService.off('serialport:close', this.handleSerialPortCloseBound)
+    }
+    if (this.handleMachineStatusBound) {
+      socketService.off('machine:status', this.handleMachineStatusBound)
+    }
+    if (this.handleWorkflowStateBound) {
+      socketService.off('workflow:state', this.handleWorkflowStateBound)
+    }
+    if (this.handleSenderStatusBound) {
+      socketService.off('sender:status', this.handleSenderStatusBound)
+    }
     // NOTE: We don't listen to gcode:load/unload, so no cleanup needed
 
     this.initialized = false
@@ -173,100 +189,20 @@ class MachineStateSyncService {
     store.dispatch(setConnecting(false))
   }
 
-  private handleControllerState(...args: unknown[]) {
-    const state = args[1] as {
-      status?: {
-        activeState?: string
-        mpos?: { x?: string; y?: string; z?: string }
-        wpos?: { x?: string; y?: string; z?: string }
-        buf?: {
-          planner?: number
-          rx?: number
-        }
-      }
-      parserstate?: {
-        modal?: {
-          spindle?: string
-        }
-        spindle?: string
-        tool?: string
-        feedrate?: string
-      }
-    }
-
-    // Update machine status based on activeState
-    if (state.status?.activeState === 'Alarm') {
-      store.dispatch(setMachineStatus('alarm'))
-    } else if (state.status?.activeState === 'Run') {
-      store.dispatch(setMachineStatus('running'))
-    } else if (state.status?.activeState === 'Hold') {
-      store.dispatch(setMachineStatus('hold'))
-    }
-
-    // Update positions
-    if (state.status?.mpos) {
-      store.dispatch(setMachinePosition({
-        x: parseFloat(state.status.mpos.x || '0'),
-        y: parseFloat(state.status.mpos.y || '0'),
-        z: parseFloat(state.status.mpos.z || '0'),
-      }))
-    }
-    if (state.status?.wpos) {
-      store.dispatch(setWorkPosition({
-        x: parseFloat(state.status.wpos.x || '0'),
-        y: parseFloat(state.status.wpos.y || '0'),
-        z: parseFloat(state.status.wpos.z || '0'),
-      }))
-    }
-
-    // Update planner queue
-    if (state.status?.buf?.planner !== undefined) {
-      const availableBlocks = state.status.buf.planner
-      const maxBlocks = 15
-      const usedBlocks = Math.max(0, maxBlocks - availableBlocks)
-      store.dispatch(setPlannerQueue({ depth: usedBlocks, max: maxBlocks }))
-    }
-
-    // Update RX buffer
-    if (state.status?.buf?.rx !== undefined) {
-      store.dispatch(setRxBufferSize(state.status.buf.rx))
-    }
-
-    // Update parserstate values
-    if (state.parserstate) {
-      // Spindle state
-      if (state.parserstate.modal?.spindle) {
-        const spindle = state.parserstate.modal.spindle
-        if (spindle === 'M3' || spindle === 'M4' || spindle === 'M5') {
-          store.dispatch(setSpindleState(spindle))
-        }
-      }
-
-      // Spindle speed
-      if (state.parserstate.spindle !== undefined) {
-        const speed = parseFloat(state.parserstate.spindle || '0')
-        store.dispatch(setSpindleSpeed(speed))
-      }
-
-      // Current tool
-      if (state.parserstate.tool !== undefined) {
-        const tool = parseFloat(state.parserstate.tool || '0')
-        store.dispatch(setCurrentTool(tool > 0 ? tool : undefined))
-      }
-
-      // Feedrate
-      if (state.parserstate.feedrate !== undefined) {
-        const feed = parseFloat(state.parserstate.feedrate || '0')
-        store.dispatch(setFeedrate(feed))
-      }
-    }
-  }
 
   private handleMachineStatus(...args: unknown[]) {
     const port = args[0] as string
     const status = args[1] as ApiMachineStatus
 
     if (!status) return
+
+    console.log('[machineStateSync] machine:status received:', {
+      port,
+      machineStatus: status.machineStatus,
+      activeState: status.controllerState?.activeState,
+      parserstate: status.parserstate,
+      status: status.status,
+    })
 
     // Update connection state
     store.dispatch(setConnectionState({
@@ -311,6 +247,55 @@ class MachineStateSyncService {
       }))
     }
 
+    // Update planner queue from status buffer
+    if (status.status?.buf?.planner !== undefined) {
+      const availableBlocks = status.status.buf.planner
+      const maxBlocks = 15
+      const usedBlocks = Math.max(0, maxBlocks - availableBlocks)
+      store.dispatch(setPlannerQueue({ depth: usedBlocks, max: maxBlocks }))
+    }
+
+    // Update RX buffer
+    if (status.status?.buf?.rx !== undefined) {
+      store.dispatch(setRxBufferSize(status.status.buf.rx))
+    }
+
+    // Update parserstate values (spindle, tool, feedrate)
+    if (status.parserstate) {
+      // Spindle state from modal.spindle
+      if (status.parserstate.modal?.spindle) {
+        const spindle = status.parserstate.modal.spindle
+        console.log('[machineStateSync] Spindle state from machine:status modal.spindle:', spindle)
+        if (spindle === 'M3' || spindle === 'M4' || spindle === 'M5') {
+          console.log('[machineStateSync] Dispatching setSpindleState:', spindle)
+          store.dispatch(setSpindleState(spindle))
+        } else {
+          console.warn('[machineStateSync] Unexpected spindle state value:', spindle)
+        }
+      } else {
+        console.log('[machineStateSync] No modal.spindle found in machine:status parserstate')
+      }
+
+      // Spindle speed
+      if (status.parserstate.spindle !== undefined) {
+        const speed = parseFloat(status.parserstate.spindle || '0')
+        console.log('[machineStateSync] Spindle speed from machine:status parserstate.spindle:', speed)
+        store.dispatch(setSpindleSpeed(speed))
+      }
+
+      // Current tool
+      if (status.parserstate.tool !== undefined) {
+        const tool = parseFloat(status.parserstate.tool || '0')
+        store.dispatch(setCurrentTool(tool > 0 ? tool : undefined))
+      }
+
+      // Feedrate
+      if (status.parserstate.feedrate !== undefined) {
+        const feed = parseFloat(status.parserstate.feedrate || '0')
+        store.dispatch(setFeedrate(feed))
+      }
+    }
+
     // Update workflow state
     if (status.workflowState) {
       const workflowMap: Record<string, ReturnType<typeof setWorkflowState>['payload']> = {
@@ -323,8 +308,6 @@ class MachineStateSyncService {
         store.dispatch(setWorkflowState(mappedWorkflow))
       }
     }
-
-    this.hasReceivedInitialState = true
   }
 
   private handleWorkflowState(...args: unknown[]) {

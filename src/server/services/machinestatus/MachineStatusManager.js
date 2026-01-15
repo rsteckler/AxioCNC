@@ -22,6 +22,8 @@ class MachineStatusManager extends events.EventEmitter {
      * - isJobRunning: boolean
      * - homingInProgress: boolean
      * - controllerState: { activeState, mpos, wpos } | null
+     * - parserstate: { modal: { spindle, coolant, motion, ... }, spindle, tool, feedrate } | null
+     * - status: { buf: { planner, rx } } | null (full status buffer info)
      * - workflowState: 'idle' | 'running' | 'paused' | null
      * - lastUpdate: number (timestamp)
      */
@@ -296,7 +298,7 @@ class MachineStatusManager extends events.EventEmitter {
             log.debug(`Preserving homed state for ${port} (isHomed: ${isHomed}, activeState: ${currentActiveState})`);
         }
 
-        // Update controller state
+        // Update controller state - include FULL controller state including parserstate
         this.updateStatus(port, {
             controllerType: controllerType,
             isHomed: isHomed, // Preserve existing homed state unless transition detected
@@ -304,8 +306,15 @@ class MachineStatusManager extends events.EventEmitter {
             controllerState: {
                 activeState: currentActiveState,
                 mpos: state.status?.mpos || null,
-                wpos: state.status?.wpos || null
-            }
+                wpos: state.status?.wpos || null,
+                pinState: state.status?.pinState || null // Grbl v1.1: probe pin state ('P' indicates probe triggered)
+            },
+            // Include full parserstate (spindle, tool, feedrate, modal groups, WCS, etc.)
+            parserstate: state.parserstate || null,
+            // Include status buffer information (planner queue, rx buffer)
+            status: state.status ? {
+                buf: state.status.buf || null
+            } : null
         });
     }
 
@@ -404,6 +413,8 @@ class MachineStatusManager extends events.EventEmitter {
             isJobRunning: status.isJobRunning,
             homingInProgress: status.homingInProgress,
             controllerState: status.controllerState,
+            parserstate: status.parserstate || null,
+            status: status.status || null,
             workflowState: status.workflowState,
             lastUpdate: status.lastUpdate
         };

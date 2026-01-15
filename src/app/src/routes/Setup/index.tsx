@@ -462,49 +462,45 @@ export default function Setup() {
     
     // Listen for controller state changes to detect alarm, running, and homing states
     // This is called on initial connection (page refresh) AND on state changes
-    const handleControllerState = (...args: unknown[]) => {
-      // Backend sends: controller:state(GRBL, state)
-      // State structure: { status: { activeState: 'Idle'|'Run'|'Alarm'|... }, parserstate: {...} }
-      // Note: args[0] is controllerType (e.g., 'GRBL'), but we don't need it for state processing
-      const state = args[1] as { 
-        status?: {
-          activeState?: string
-          mpos?: { x?: string; y?: string; z?: string }
-          wpos?: { x?: string; y?: string; z?: string }
-          pinState?: string // Grbl v1.1: 'P' indicates probe triggered, e.g., 'PZ' = probe + Z limit
-        }
+    const handleMachineStatus = (...args: unknown[]) => {
+      // Backend sends: machine:status(port, status)
+      // Status now includes full controller state including parserstate
+      const port = args[0] as string
+      const status = args[1] as {
         parserstate?: {
           modal?: {
-            wcs?: string
-            spindle?: string // 'M3', 'M4', or 'M5'
+            wcs?: string // Work Coordinate System (G54, G55, etc.)
           }
-          spindle?: string // Speed value as string (e.g., "1000.0")
         }
+        controllerState?: {
+          activeState?: string
+          pinState?: string | null // Grbl v1.1: 'P' indicates probe triggered
+        }
+        machineStatus?: string
       }
+      
+      if (!status || !isConnectedRef.current) return
       
       // Machine state (positions, spindle) is handled by machineStateSync
       // Only update page-specific state here
       
       // Update WCS from parserstate (page-specific)
-      if (state.parserstate?.modal?.wcs) {
-        setCurrentWCS(state.parserstate.modal.wcs)
+      if (status.parserstate?.modal?.wcs) {
+        setCurrentWCS(status.parserstate.modal.wcs)
       }
       
       // Update probe contact status from pinState (Grbl v1.1) - page-specific
       // pinState contains 'P' when probe is triggered
-      if (state.status?.pinState !== undefined) {
-        const pinState = state.status.pinState || ''
+      if (status.controllerState?.pinState !== undefined) {
+        const pinState = status.controllerState.pinState || ''
         setProbeContact(pinState.includes('P'))
       }
-      
-      // Only update status if we're actually connected
-      if (!isConnectedRef.current) return
       
       // Mark that we've received initial state from backend (for page refresh handling)
       hasReceivedInitialStateRef.current = true
       
       // Extract activeState from nested structure
-      const activeState = state.status?.activeState || ''
+      const activeState = status.controllerState?.activeState || ''
       const isAlarm = activeState === 'Alarm'
       const isHold = activeState === 'Hold'
       const isHoming = activeState === 'Home'
@@ -541,7 +537,7 @@ export default function Setup() {
           let alarmMessage = lastAlarmMessageRef.current
           
           // If still no message found, wait a short time for the alarm message to arrive via serialport:read
-          // This handles the case where controller:state arrives before serialport:read
+          // This handles the case where machine:status arrives before serialport:read
           if (!alarmMessage) {
             // Wait up to 100ms for alarm message to arrive
             setTimeout(() => {
@@ -644,13 +640,13 @@ export default function Setup() {
       }
     }
     
-    // Note: controller:state, workflow:state, sender:status are handled by machineStateSync
-    // We only listen to these for page-specific logic (WCS, probe, notifications, hold reason)
+    // Note: machine:status is handled by machineStateSync for global state
+    // We listen here for page-specific logic (WCS, probe, notifications, hold reason)
     socketService.on('serialport:open', handleSerialPortOpen)
     socketService.on('serialport:close', handleSerialPortClose)
     socketService.on('error', handleSocketError)
     socketService.on('disconnect', handleSocketDisconnect)
-    socketService.on('controller:state', handleControllerState) // For WCS, probe, alarm notifications
+    socketService.on('machine:status', handleMachineStatus) // For WCS, probe, alarm notifications (page-specific)
     socketService.on('workflow:state', handleWorkflowState) // Kept for potential page-specific logic
     socketService.on('sender:status', handleSenderStatus) // For hold reason tracking
     socketService.on('feeder:status', handleFeederStatus)
@@ -665,7 +661,7 @@ export default function Setup() {
       socketService.off('serialport:close', handleSerialPortClose)
       socketService.off('error', handleSocketError)
       socketService.off('disconnect', handleSocketDisconnect)
-      socketService.off('controller:state', handleControllerState)
+      socketService.off('machine:status', handleMachineStatus)
       socketService.off('workflow:state', handleWorkflowState)
       socketService.off('sender:status', handleSenderStatus)
       socketService.off('feeder:status', handleFeederStatus)
