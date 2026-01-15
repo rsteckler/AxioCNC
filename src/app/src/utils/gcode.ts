@@ -93,3 +93,34 @@ export function buildGoToZeroCommand(axes: 'X' | 'Y' | 'Z' | 'XY' | 'XYZ'): stri
   
   return `G0 ${parts.join(' ')}`
 }
+
+/**
+ * Parse T commands from G-code to extract tool IDs
+ * Looks for patterns like: T1, T2, M6 T1, T1 M6, etc.
+ * 
+ * @param gcode - The G-code string to parse
+ * @returns Set of tool IDs found in the G-code
+ * 
+ * @example
+ * parseToolsFromGcode('T1 M6\nG0 X0\nT2 M6') // Set([1, 2])
+ * parseToolsFromGcode('T 5 M6') // Set([5])
+ */
+export function parseToolsFromGcode(gcode: string): Set<number> {
+  const toolIds = new Set<number>()
+  if (!gcode) return toolIds
+  
+  // Match T commands followed by numbers
+  // Pattern: T followed by optional whitespace and a number
+  // Examples: T1, T2, T 1, M6 T1, T1 M6, etc.
+  const toolPattern = /\bT\s*(\d+)\b/gi
+  let match
+  
+  while ((match = toolPattern.exec(gcode)) !== null) {
+    const toolId = parseInt(match[1], 10)
+    if (!isNaN(toolId) && toolId >= 0) {
+      toolIds.add(toolId)
+    }
+  }
+  
+  return toolIds
+}

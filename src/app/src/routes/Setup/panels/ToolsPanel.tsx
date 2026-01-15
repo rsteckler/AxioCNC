@@ -5,40 +5,8 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { useGetToolsQuery, useGetControllersQuery, type Tool } from '@/services/api'
 import { socketService } from '@/services/socket'
-
-// Helper function to parse T commands from G-code
-// Looks for patterns like: T1, T2, M6 T1, T1 M6, etc.
-function parseToolsFromGcode(gcode: string): Set<number> {
-  const toolIds = new Set<number>()
-  if (!gcode) return toolIds
-  
-  // Match T commands followed by numbers
-  // Pattern: T followed by optional whitespace and a number
-  // Examples: T1, T2, T 1, M6 T1, T1 M6, etc.
-  const toolPattern = /\bT\s*(\d+)\b/gi
-  let match
-  
-  while ((match = toolPattern.exec(gcode)) !== null) {
-    const toolId = parseInt(match[1], 10)
-    if (!isNaN(toolId) && toolId >= 0) {
-      toolIds.add(toolId)
-    }
-  }
-  
-  return toolIds
-}
-
-// Helper function to convert mm to inches for display
-const mmToInches = (mm: number | null | undefined): string => {
-  if (mm == null) return ''
-  const inches = mm / 25.4
-  return inches.toFixed(4).replace(/\.?0+$/, '')
-}
-
-// Helper function to convert inches to mm for display
-const inchesToMm = (inches: number): number => {
-  return inches * 25.4
-}
+import { parseToolsFromGcode } from '@/utils/gcode'
+import { mmToInches, inchesToMm } from '@/utils/units'
 
 interface PanelHeaderProps {
   title: string
@@ -91,6 +59,44 @@ export function ToolsPanel() {
     return parseToolsFromGcode(gcodeContent)
   }, [gcodeContent, gcodeLoaded])
   
+  const fetchGcodeContent = async () => {
+    if (!connectedPort) return
+    
+    try {
+      const token = localStorage.getItem('axiocnc-token')
+      const response = await fetch(`/api/gcode?port=${encodeURIComponent(connectedPort)}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.data && data.name) {
+          // G-code is loaded
+          setGcodeContent(data.data)
+          setGcodeLoaded(true)
+          setLoadedFileName(data.name)
+        } else {
+          // No G-code loaded
+          setGcodeContent(null)
+          setGcodeLoaded(false)
+          setLoadedFileName(null)
+        }
+      } else if (response.status === 404 || response.status === 400) {
+        // No G-code loaded for this port
+        setGcodeContent(null)
+        setGcodeLoaded(false)
+        setLoadedFileName(null)
+      }
+    } catch (error) {
+      console.error('Failed to fetch G-code:', error)
+      setGcodeContent(null)
+      setGcodeLoaded(false)
+      setLoadedFileName(null)
+    }
+  }
+    
   // Listen for sender:status events to detect loaded G-code
   useEffect(() => {
     if (!connectedPort) {
@@ -99,44 +105,12 @@ export function ToolsPanel() {
       return
     }
     
-    const fetchGcodeContent = async () => {
-      if (!connectedPort) return
-      
-      try {
-        const token = localStorage.getItem('axiocnc-token')
-        const response = await fetch(`/api/gcode?port=${encodeURIComponent(connectedPort)}`, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (data.data && data.name) {
-            // G-code is loaded
-            setGcodeContent(data.data)
-            setGcodeLoaded(true)
-            setLoadedFileName(data.name)
-          } else {
-            // No G-code loaded
-            setGcodeContent(null)
-            setGcodeLoaded(false)
-            setLoadedFileName(null)
-          }
-        } else if (response.status === 404 || response.status === 400) {
-          // No G-code loaded for this port
-          setGcodeContent(null)
-          setGcodeLoaded(false)
-          setLoadedFileName(null)
-        }
-      } catch (error) {
-        console.error('Failed to fetch G-code:', error)
-        setGcodeContent(null)
-        setGcodeLoaded(false)
-        setLoadedFileName(null)
-      }
-    }
+    // Initial fetch if we have a connected port
+    fetchGcodeContent()
     
+  }, [connectedPort])
+
+  useEffect(() => {
     const handleSenderStatus = (...args: unknown[]) => {
       const senderData = args[0] as {
         name?: string
@@ -173,21 +147,19 @@ export function ToolsPanel() {
       setGcodeLoaded(false)
       setLoadedFileName(null)
     }
-    
-    // Initial fetch if we have a connected port
-    fetchGcodeContent()
-    
+
     socketService.on('sender:status', handleSenderStatus)
     socketService.on('gcode:load', handleGcodeLoad)
     socketService.on('gcode:unload', handleGcodeUnload)
-    
+
     return () => {
       socketService.off('sender:status', handleSenderStatus)
       socketService.off('gcode:load', handleGcodeLoad)
       socketService.off('gcode:unload', handleGcodeUnload)
     }
   }, [connectedPort])
-  
+
+
   // Convert vertical wheel to horizontal scroll
   const handleWheel = (e: React.WheelEvent) => {
     if (e.deltaY !== 0) {
