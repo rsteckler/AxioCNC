@@ -53,10 +53,10 @@ See [`docs/frontend-features.md`](../docs/frontend-features.md) for a comprehens
 
 ```bash
 # Terminal 1: Start the backend server
-yarn start-server-dev
+yarn dev:start-server
 
 # Terminal 2: Start the new frontend dev server
-cd src/app && yarn dev
+yarn dev:start-app
 ```
 
 The frontend dev server runs on `http://localhost:5173` and proxies API/Socket.IO requests to the backend on port 8000.

@@ -282,7 +282,7 @@ yarn install
 
 # Start development servers (requires two terminals)
 # Terminal 1: Backend
-yarn start-server-dev
+yarn dev:start-server
 
 # Terminal 2: Frontend
 cd src/app && yarn dev

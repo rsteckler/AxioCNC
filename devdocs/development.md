@@ -35,7 +35,7 @@ AxioCNC requires **two separate processes** to run in development:
 ### Terminal 1: Backend Server
 
 ```bash
-yarn start-server-dev
+yarn dev:start-server
 ```
 
 The backend server will start on `http://localhost:8000` and serve:
@@ -161,7 +161,7 @@ AxioCNC/
 
 ## Development Workflow
 
-1. **Start backend** (`yarn start-server-dev`)
+1. **Start backend** (`yarn dev:start-server`)
 2. **Start frontend** (`cd src/app && npm run dev`)
 3. **Make changes** - Both servers auto-reload on file changes
 4. **Test** - Open `http://localhost:5173` in browser
@@ -185,8 +185,8 @@ For detailed coding guidelines, see:
 If port 8000 or 5173 is already in use:
 
 ```bash
-# Backend: Use different port
-yarn start-server-dev --port 8001
+# Backend: Use different port (edit nodemon.server.json or set PORT env var)
+yarn dev:start-server
 
 # Frontend: Edit vite.config.ts to change dev server port
 ```

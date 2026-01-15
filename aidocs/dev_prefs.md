@@ -254,10 +254,10 @@ routes/
 
 ```bash
 # Backend
-yarn start-server-dev          # Start backend on port 8000
+yarn dev:start-server          # Start backend on port 8000 (with file watching)
 
 # Frontend
-cd src/app && yarn dev      # Vite dev server on port 5173
+yarn dev:start-app      # Vite dev server on port 5173
 cd src/app && yarn build    # Production build
 cd src/app && yarn build:dev # Development build
 ```

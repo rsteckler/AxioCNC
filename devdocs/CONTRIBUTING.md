@@ -121,7 +121,7 @@ See [Development Setup Guide](development.md) for detailed instructions on setti
 Quick start:
 ```bash
 # Terminal 1: Backend
-yarn start-server-dev
+yarn dev:start-server
 
 # Terminal 2: Frontend
 cd src/app && npm run dev
