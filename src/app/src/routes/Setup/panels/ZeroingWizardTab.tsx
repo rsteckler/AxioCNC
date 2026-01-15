@@ -1447,15 +1447,7 @@ export function ZeroingWizardTab({
     if (!connectedPort || method.type !== 'custom') {
       return
     }
-    
-    // Get socket for event listeners (needed for progress tracking)
-    const socket = socketService.getSocket()
-    if (!socket || !socket.connected) {
-      setProbeError('Socket not connected. Please check your connection and try again.')
-      setProbeStatus('error')
-      return
-    }
-    
+   
     // Clear bitsetter reference if Z axis is being zeroed
     if (method.axes.includes('z')) {
       await clearBitsetterReference(currentWCS)
@@ -1602,21 +1594,14 @@ export function ZeroingWizardTab({
       cleanup()
     }
     
-    // Get socket reference that will be available in cleanup
-    const socketRef = socket
-    
     const cleanup = () => {
       if (isCleanedUp) return
       isCleanedUp = true
       
-      // Get socket again for cleanup (in case it was reconnected)
-      const cleanupSocket = socketService.getSocket()
-      if (cleanupSocket) {
-        cleanupSocket.off('serialport:write', handleSerialWrite)
-        cleanupSocket.off('serialport:read', handleSerialRead)
-        cleanupSocket.off('workflow:state', handleWorkflowState)
-        cleanupSocket.off('disconnect', handleDisconnect)
-      }
+      socketService.off('serialport:write', handleSerialWrite)
+      socketService.off('serialport:read', handleSerialRead)
+      socketService.off('workflow:state', handleWorkflowState)
+      socketService.off('disconnect', handleDisconnect)
       
       if (timeoutId) {
         clearTimeout(timeoutId)
@@ -1625,10 +1610,10 @@ export function ZeroingWizardTab({
     }
     
     // Set up listeners
-    socketRef.on('serialport:write', handleSerialWrite)
-    socketRef.on('serialport:read', handleSerialRead)
-    socketRef.on('workflow:state', handleWorkflowState)
-    socketRef.once('disconnect', handleDisconnect)
+    socketService.on('serialport:write', handleSerialWrite)
+    socketService.on('serialport:read', handleSerialRead)
+    socketService.on('workflow:state', handleWorkflowState)
+    socketService.once('disconnect', handleDisconnect)
     
     try {
       // Send the entire G-code block to the backend via the 'gcode' command

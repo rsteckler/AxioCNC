@@ -3,11 +3,11 @@ import { Upload, FileCode, Circle, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import { useGetWorkfilesQuery, useUploadWorkfileMutation, useGetWorkfileContentQuery, useLazyGetWorkfileContentQuery, useGetControllersQuery } from '@/services/api'
+import { useGetWorkfilesQuery, useUploadWorkfileMutation, useGetWorkfileContentQuery, useLazyGetWorkfileContentQuery, useGetControllersQuery, useGetGcodeQuery } from '@/services/api'
 import { socketService } from '@/services/socket'
 import type { PanelProps } from '../types'
 
-export function FilePanel({ connectedPort: connectedPortProp, onFlashStatus }: PanelProps) {
+export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus }: PanelProps) {
   // Get connected port from controllers (may be null if not connected)
   const { data: controllers } = useGetControllersQuery()
   const connectedPort = connectedPortProp || controllers?.[0]?.port || null
@@ -21,6 +21,26 @@ export function FilePanel({ connectedPort: connectedPortProp, onFlashStatus }: P
   const [uploadWorkfile] = useUploadWorkfileMutation()
 
   const files = workfilesData?.files || []
+
+  // Query currently loaded G-code on mount (to restore when navigating/reloading)
+  const { data: gcodeData } = useGetGcodeQuery(connectedPort || '', {
+    skip: !connectedPort,
+  })
+
+  // Restore loaded file name from API on mount
+  // This ensures the FilePanel shows the correct loaded file state
+  React.useEffect(() => {
+    if (gcodeData) {
+      // Backend is source of truth - update local state to match
+      if (gcodeData.name) {
+        setLoadedFileName(gcodeData.name)
+      } else {
+        // No file loaded on backend
+        setLoadedFileName(null)
+      }
+    }
+    // If query is skipped (no connectedPort), preserve existing state
+  }, [gcodeData])
 
   // Handle file upload (from file picker or drag-drop)
   const handleFileUpload = useCallback(async (file: File) => {
@@ -107,15 +127,19 @@ export function FilePanel({ connectedPort: connectedPortProp, onFlashStatus }: P
 
   // Load file into controller
   const handleLoadFile = useCallback(async (filename: string) => {
+    console.log('[FilePanel] handleLoadFile called:', filename, { isConnected, connectedPort })
     try {
-      const result = await getWorkfileContent(filename).unwrap()
-      
       // Check if we have a connection
-      if (!connectedPort) {
+      if (!isConnected || !connectedPort) {
         // No connection - flash status to indicate connection required
+        console.log('[FilePanel] Not connected, flashing status')
         onFlashStatus()
         return
       }
+
+      console.log('[FilePanel] Fetching file content...')
+      const result = await getWorkfileContent(filename).unwrap()
+      console.log('[FilePanel] File content fetched, sending to backend:', { filename: result.filename, gcodeLength: result.gcode.length })
       
       // Send to controller via existing /api/gcode endpoint
       const token = localStorage.getItem('axiocnc-token')
@@ -138,33 +162,37 @@ export function FilePanel({ connectedPort: connectedPortProp, onFlashStatus }: P
         throw new Error(error.msg || 'Failed to load file')
       }
 
+      console.log('[FilePanel] File sent to backend successfully, waiting for gcode:load event')
       setLoadedFileName(result.filename)
       
       // The gcode:load socket event will be emitted by the backend
       // which will trigger updates in other panels (like ToolsPanel)
     } catch (error) {
-      console.error('Failed to load file:', error)
+      console.error('[FilePanel] Failed to load file:', error)
       // TODO: Show error toast
     }
-  }, [connectedPort, getWorkfileContent, onFlashStatus])
+  }, [isConnected, connectedPort, getWorkfileContent, onFlashStatus])
 
   // Unload file from controller
   const handleUnload = useCallback(() => {
+    console.log('[FilePanel] handleUnload called', { connectedPort, loadedFileName })
     setLoadedFileName(null)
     
     // If connected, send unload command to controller
     if (connectedPort) {
-      const socket = socketService.getSocket()
-      if (socket) {
-        socket.emit('command', connectedPort, 'gcode:unload')
-      }
+      console.log('[FilePanel] Sending gcode:unload command via socket')
+      socketService.command(connectedPort, 'gcode:unload')
+      console.log('[FilePanel] gcode:unload command emitted, waiting for gcode:unload event')
+    } else {
+      console.warn('[FilePanel] No connected port, cannot send unload command')
     }
-  }, [connectedPort])
+  }, [connectedPort, loadedFileName])
 
   // Listen for gcode:load and gcode:unload events to track loaded file
   React.useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
-    const handleGcodeLoad = (name: string) => {
+    const handleGcodeLoad = (name: string, _gcode: string, _context: unknown) => {
+      console.log('[FilePanel] gcode:load event received:', name)
       if (name) {
         setLoadedFileName(name)
       }

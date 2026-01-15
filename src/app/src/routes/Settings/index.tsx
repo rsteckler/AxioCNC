@@ -708,21 +708,6 @@ export default function Settings() {
   }, [debouncedSave])
 
   const handleRefreshPorts = useCallback(() => {
-    // Ensure socket is connected
-    if (!socketService.isConnected()) {
-      const connected = socketService.connect()
-      if (!connected) {
-        console.error('Failed to connect socket for port listing')
-        return
-      }
-    }
-    
-    const socket = socketService.getSocket()
-    if (!socket) {
-      console.error('Socket not available for port listing')
-      return
-    }
-    
     // Set a timeout for port list (5 seconds)
     const listTimeout = setTimeout(() => {
       socketService.off('serialport:list', handlePortList)
@@ -742,8 +727,8 @@ export default function Settings() {
     
     socketService.on('serialport:list', handlePortList)
     
-    // Request port list
-    socket.emit('list')
+      // Request port list
+      socketService.list()
   }, [])
   
   // Auto-refresh ports on mount
@@ -754,16 +739,6 @@ export default function Settings() {
   const handleTestConnection = useCallback(async (): Promise<{ success: boolean; message?: string }> => {
     if (!connectionConfig.port) {
       return { success: false, message: 'No port selected' }
-    }
-    
-    // Ensure socket is connected
-    if (!socketService.isConnected()) {
-      socketService.connect()
-    }
-    
-    const socket = socketService.getSocket()
-    if (!socket) {
-      return { success: false, message: 'Socket connection not available. Please refresh the page.' }
     }
     
     const { port, baudRate, controllerType } = connectionConfig
@@ -786,7 +761,7 @@ export default function Settings() {
           socketService.off('serialport:open', handlePortOpen)
           
           // Immediately close the test connection
-          socket.emit('close', port, () => {
+          socketService.close(port, () => {
             resolve({ 
               success: true, 
               message: `Successfully connected to ${port} at ${baudRate} baud (${controllerType || 'Grbl'})` 
@@ -798,7 +773,7 @@ export default function Settings() {
       socketService.on('serialport:open', handlePortOpen)
       
       // Attempt to open the port
-      socket.emit('open', port, {
+      socketService.open(port, {
         baudrate: baudRate,
         controllerType: controllerType || 'Grbl'
       }, (err: Error | null) => {

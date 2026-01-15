@@ -63,28 +63,12 @@ export function useJoystickInput({
     const gamepad = findGamepad()
 
     if (gamepad) {
-      const socket = socketService.getSocket()
-      if (socket?.connected) {
         const axes = Array.from(gamepad.axes)
         const buttons = gamepad.buttons.map(b => b.pressed)
         const timestamp = gamepad.timestamp
 
-        // DEBUG: Log button presses
-        const pressedButtons: number[] = []
-        buttons.forEach((pressed, index) => {
-          if (pressed) {
-            pressedButtons.push(index)
-          }
-        })
-        
-        if (pressedButtons.length > 0) {
-          console.log(`[useJoystickInput] Buttons pressed: ${pressedButtons.map(idx => `Button ${idx}`).join(', ')}`)
-          console.log(`[useJoystickInput] Full button array:`, buttons.map((p, i) => p ? `B${i}:✓` : `B${i}:✗`).join(' '))
-        }
-
-        // Send to server
-        socket.emit('joystick:gamepad', axes, buttons, timestamp)
-      }
+        // Send to server using socketService
+        socketService.joystickGamepad(axes, buttons, timestamp)
     }
 
     // Continue polling
@@ -124,8 +108,5 @@ export function useJoystickInput({
  * from browser jog controls (mouse/touch).
  */
 export function sendJogControlInput(x: number, y: number, z: number): void {
-  const socket = socketService.getSocket()
-  if (socket?.connected) {
-    socket.emit('joystick:jog', x, y, z, Date.now())
-  }
+  socketService.joystickJog(x, y, z, Date.now())
 }

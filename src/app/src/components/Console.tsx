@@ -77,115 +77,51 @@ export function Console({
       return
     }
 
-    const socket = socketService.getSocket()
-    if (!socket) {
-      return
-    }
-
-    // Helper function to set up console listeners
-    const setupConsoleListeners = () => {
-      // Listen for messages FROM Grbl
-      const handleSerialRead = (...args: unknown[]) => {
-        const message = args[0] as string
-        if (typeof message !== 'string') return
-        
-        // Check for alarm messages BEFORE parsing - capture the raw message
-        const trimmed = message.trim()
-        if (trimmed.startsWith('ALARM:')) {
-          if (lastAlarmMessageRef) {
-            lastAlarmMessageRef.current = trimmed
-          }
-        }
-        
-        const line = parseConsoleMessage(message, 'read')
-        setConsoleLines(prev => {
-          const updated = [...prev, line]
-          consoleLinesRef.current = updated
-          return updated
-        })
-        
-        // Track alarm messages for notifications
-        if (line.type === 'alarm') {
-          if (lastAlarmMessageRef) {
-            lastAlarmMessageRef.current = line.message
-          }
-        }
-      }
-
-      // Listen for messages TO Grbl
-      const handleSerialWrite = (...args: unknown[]) => {
-        const data = args[0] as string
-        if (typeof data !== 'string') return
-        
-        const line = parseConsoleMessage(data, 'write')
-        setConsoleLines(prev => [...prev, line])
-      }
-
-      socket.on('serialport:read', handleSerialRead)
-      socket.on('serialport:write', handleSerialWrite)
-
-      return () => {
-        socket.off('serialport:read', handleSerialRead)
-        socket.off('serialport:write', handleSerialWrite)
-      }
-    }
-
-    // Only set up listeners when socket is actually connected
-    if (!socket.connected) {
-      const cleanupRef = { current: null as (() => void) | null }
+    // Listen for messages FROM Grbl
+    const handleSerialRead = (...args: unknown[]) => {
+      const message = args[0] as string
+      if (typeof message !== 'string') return
       
-      const handleConnect = () => {
-        cleanupRef.current = setupConsoleListeners()
-        // Also ensure we join the port room
-        if (settings?.connection?.port && settings.connection.port === connectedPort) {
-          const connectionOptions = settings.connection ? {
-            controllerType: settings.connection.controllerType || 'Grbl',
-            baudrate: settings.connection.baudRate || 115200,
-            rtscts: settings.connection.rtscts || false,
-          } : {
-            controllerType: 'Grbl',
-            baudrate: 115200,
-            rtscts: false,
-          }
-          socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
-            if (err) {
-              console.error('[Console] Error joining port room after socket connect:', err)
-            }
-          })
+      // Check for alarm messages BEFORE parsing - capture the raw message
+      const trimmed = message.trim()
+      if (trimmed.startsWith('ALARM:')) {
+        if (lastAlarmMessageRef) {
+          lastAlarmMessageRef.current = trimmed
         }
       }
-      socket.once('connect', handleConnect)
       
-      return () => {
-        socket.off('connect', handleConnect)
-        if (cleanupRef.current) {
-          cleanupRef.current()
-        }
-      }
-    }
-
-    // Socket is connected, set up listeners immediately
-    const cleanup = setupConsoleListeners()
-    
-    // Join port room if we're connected but haven't joined yet
-    if (settings?.connection?.port && settings.connection.port === connectedPort) {
-      const connectionOptions = settings.connection ? {
-        controllerType: settings.connection.controllerType || 'Grbl',
-        baudrate: settings.connection.baudRate || 115200,
-        rtscts: settings.connection.rtscts || false,
-      } : {
-        controllerType: 'Grbl',
-        baudrate: 115200,
-        rtscts: false,
-      }
-      socket.emit('open', connectedPort, connectionOptions, (err: Error | null) => {
-        if (err) {
-          console.error('[Console] Error joining port room:', err)
-        }
+      const line = parseConsoleMessage(message, 'read')
+      setConsoleLines(prev => {
+        const updated = [...prev, line]
+        consoleLinesRef.current = updated
+        return updated
       })
+      
+      // Track alarm messages for notifications
+      if (line.type === 'alarm') {
+        if (lastAlarmMessageRef) {
+          lastAlarmMessageRef.current = line.message
+        }
+      }
     }
-    
-    return cleanup
+
+    // Listen for messages TO Grbl
+    const handleSerialWrite = (...args: unknown[]) => {
+      const data = args[0] as string
+      if (typeof data !== 'string') return
+      
+      const line = parseConsoleMessage(data, 'write')
+      setConsoleLines(prev => [...prev, line])
+    }
+
+    socketService.on('serialport:read', handleSerialRead)
+    socketService.on('serialport:write', handleSerialWrite)
+
+    return () => {
+      socketService.off('serialport:read', handleSerialRead)
+      socketService.off('serialport:write', handleSerialWrite)
+    }
+
   }, [isConnected, connectedPort, settings?.connection?.port, lastAlarmMessageRef])
 
   // Handle command input
@@ -193,10 +129,7 @@ export function Console({
     if (!commandInput.trim() || !isConnected || !connectedPort) return
 
     // Send via Socket.IO
-    const socket = socketService.getSocket()
-    if (socket) {
-      socket.emit('writeln', connectedPort, commandInput.trim())
-    }
+    socketService.writeln(connectedPort, commandInput.trim())
     
     // Clear input
     setCommandInput('')

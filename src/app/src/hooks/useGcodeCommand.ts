@@ -15,13 +15,7 @@ export function useGcodeCommand(connectedPort: string | null) {
     if (!connectedPort) {
       return false
     }
-    
-    const socket = socketService.getSocket()
-    if (!socket) {
-      return false
-    }
-    
-    socket.emit('command', connectedPort, 'gcode', gcode)
+    socketService.command(connectedPort, 'gcode', gcode)
     return true
   }, [connectedPort])
 
@@ -36,13 +30,7 @@ export function useGcodeCommand(connectedPort: string | null) {
     if (!connectedPort) {
       return false
     }
-    
-    const socket = socketService.getSocket()
-    if (!socket) {
-      return false
-    }
-    
-    socket.emit('command', connectedPort, command, ...args)
+    socketService.command(connectedPort, command, ...args)
     return true
   }, [connectedPort])
 
