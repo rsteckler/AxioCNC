@@ -179,6 +179,11 @@ class CNCEngine {
             }
           }
         })
+      })
+      
+      // Listen for flash status events from jog loop and emit to all clients
+      jogLoop.on('flashStatus', () => {
+        this.io.emit('joystick:flashStatus')
       });
 
       this.io.use(socketioJwt.authorize({
@@ -468,8 +473,6 @@ class CNCEngine {
 
         // Request machine status on connection
         socket.on('machine:status:request', (port) => {
-          log.debug(`socket.machine:status:request("${port}"): id=${socket.id}`);
-
           if (port) {
             // Request status for specific port
             const status = machineStatusManager.getStatusSummary(port);

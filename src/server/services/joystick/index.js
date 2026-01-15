@@ -132,10 +132,6 @@ class JoystickService extends events.EventEmitter {
       return
     }
     
-    // Log input from client gamepad
-    const pressedButtons = (buttons || []).map((b, i) => b ? i : null).filter(i => i !== null)
-    log.debug(`[client-gamepad:${socketId}] axes: [${(axes || []).map(a => a.toFixed(3)).join(', ')}], buttons: [${pressedButtons.join(', ')}]`)
-    
     // Store input from this client
     this.clientGamepadInputs.set(socketId, {
       axes: axes || [],

@@ -136,6 +136,18 @@ class JogLoop extends events.EventEmitter {
   }
 
   /**
+   * Get the current controller state for debugging
+   */
+  getControllerState() {
+    if (!this.controller) {
+      return 'no controller'
+    }
+    
+    const activeState = this.controller.state?.status?.activeState || 'unknown'
+    return activeState
+  }
+
+  /**
    * Get acceleration from controller settings or use default
    */
   getAcceleration() {
@@ -408,8 +420,18 @@ class JogLoop extends events.EventEmitter {
    * Start the jog loop
    */
   startJogging() {
-    if (!this.controller || !this.canJog()) {
-      log.debug('Cannot start jogging: controller not available or not in valid state')
+    if (!this.controller) {
+      log.debug('Cannot start jogging: controller not available')
+      // Emit event to flash status on frontend
+      this.emit('flashStatus')
+      return
+    }
+    
+    if (!this.canJog()) {
+      const currentState = this.getControllerState()
+      log.debug(`Cannot start jogging: controller in invalid state "${currentState}" (must be "Idle" or "Jog")`)
+      // Emit event to flash status on frontend
+      this.emit('flashStatus')
       return
     }
     
