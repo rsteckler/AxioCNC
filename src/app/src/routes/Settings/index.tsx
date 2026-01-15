@@ -479,17 +479,21 @@ export default function Settings() {
             }
           })() : '';
           
-          // Only update if URLs are different (ignoring credentials)
-          // Don't update enabled state from API when user is toggling it
-          if (prevUrlClean !== cleanUrl || prev.username !== camera.username) {
+          const isFirstLoad = lastLoadedCameraId.current === null;
+          const urlChanged = prevUrlClean !== cleanUrl;
+          const usernameChanged = prev.username !== camera.username;
+          
+          // Always update enabled state on first load, or if URL/username changed
+          // Don't update enabled state from API when user is actively editing
+          if (isFirstLoad || urlChanged || usernameChanged) {
             return {
               ...prev,
               ipCameraUrl: cleanUrl, // This should preserve rtsp://, http://, https://
               username: camera.username,
               // Load password from localStorage if available, otherwise keep existing (user may have typed it)
               password: storedPassword || prev.password,
-              // Only update enabled if we're loading for the first time (lastLoadedCameraId is null)
-              enabled: lastLoadedCameraId.current === null ? camera.enabled : prev.enabled,
+              // Always update enabled on first load, otherwise only if URL/username changed (not when user is toggling)
+              enabled: isFirstLoad ? camera.enabled : (urlChanged || usernameChanged ? camera.enabled : prev.enabled),
             };
           }
           return prev; // No change needed
@@ -855,28 +859,41 @@ export default function Settings() {
       }
     }
     
-    // If this is an IP camera with a URL, create/update in cameras API
-    if (updated.mediaSource === 'ip-camera' && updated.ipCameraUrl) {
+    // Save to cameras API if:
+    // 1. We have a URL (create or update with URL)
+    // 2. OR we're updating enabled state and a camera already exists (allow toggling enabled without URL)
+    const shouldSaveToCamerasAPI = updated.mediaSource === 'ip-camera' && (
+      updated.ipCameraUrl || // Has URL - always save
+      (changes.enabled !== undefined && existingCamera) // Or updating enabled state for existing camera
+    )
+    
+    if (shouldSaveToCamerasAPI) {
       // Strip any credentials from the URL - they should be in separate username/password fields
-      let cleanInputUrl = updated.ipCameraUrl
-      try {
-        const url = new URL(cleanInputUrl)
-        // Remove credentials from URL
-        url.username = ''
-        url.password = ''
-        cleanInputUrl = url.toString()
-      } catch (err) {
-        // If URL parsing fails, try to remove credentials manually
-        cleanInputUrl = cleanInputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
-        cleanInputUrl = cleanInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//')
+      let cleanInputUrl = updated.ipCameraUrl || ''
+      if (cleanInputUrl) {
+        try {
+          const url = new URL(cleanInputUrl)
+          // Remove credentials from URL
+          url.username = ''
+          url.password = ''
+          cleanInputUrl = url.toString()
+        } catch (err) {
+          // If URL parsing fails, try to remove credentials manually
+          cleanInputUrl = cleanInputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
+          cleanInputUrl = cleanInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//')
+        }
       }
       
-      const cameraData = {
+      const cameraData: any = {
         name: 'Camera 1',
-        inputUrl: cleanInputUrl, // URL without credentials
-        username: updated.username,
-        password: updated.password,
-        enabled: updated.enabled, // Use the actual enabled value
+        enabled: updated.enabled, // Always include enabled state
+      }
+      
+      // Only include URL-related fields if we have a URL
+      if (updated.ipCameraUrl) {
+        cameraData.inputUrl = cleanInputUrl
+        cameraData.username = updated.username
+        cameraData.password = updated.password
       }
       
       // Show saving indicator
@@ -886,8 +903,8 @@ export default function Settings() {
         if (existingCamera) {
           // Update existing camera (id is ignored by backend, but we pass it for API compatibility)
           await updateCamera({ id: existingCamera.id, updates: cameraData }).unwrap()
-        } else {
-          // Create new camera
+        } else if (updated.ipCameraUrl) {
+          // Only create new camera if we have a URL (required for creation)
           await createCamera(cameraData).unwrap()
         }
         // Show saved indicator
