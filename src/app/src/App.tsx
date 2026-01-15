@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from '@/components/theme-provider'
 import { useSignInMutation } from '@/services/api'
 import { socketService } from '@/services/socket'
+import { machineStateSync } from '@/services/machineStateSync'
 import TestPage from '@/routes/TestPage'
 import Settings from '@/routes/Settings'
 import Setup from '@/routes/Setup'
@@ -38,6 +39,15 @@ function App() {
         // Connect Socket.IO with token if available
         if (token) {
           socketService.connect(token)
+
+          // Initialize machine state sync after socket connects
+          if (socketService.isConnected()) {
+            machineStateSync.init()
+          } else {
+            socketService.once?.('connect', () => {
+              machineStateSync.init()
+            })
+          }
         }
         
         // Mark auth as ready so components can make API calls
@@ -49,6 +59,12 @@ function App() {
     }
 
     initAuth()
+
+    // Cleanup on unmount
+    return () => {
+      socketService.disconnect()
+      machineStateSync.cleanup()
+    }
   }, [signIn])
 
   // Show loading state while authenticating
