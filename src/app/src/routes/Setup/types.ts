@@ -11,6 +11,20 @@ export interface PanelProps {
   isJobRunning?: boolean
   spindleState?: 'M3' | 'M4' | 'M5'
   spindleSpeed?: number
+  senderState?: {
+    name?: string
+    size?: number
+    total?: number
+    sent?: number
+    received?: number
+    elapsedTime?: number
+    remainingTime?: number
+    nextM6ToolNumber?: number
+    remainingTimeToNextM6?: number
+  }
+  feedrate?: number
+  rxBufferSize?: number
+  currentTool?: number
 }
 
 export interface ProbePanelProps extends PanelProps {

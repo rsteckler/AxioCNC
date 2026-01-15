@@ -191,7 +191,7 @@ export default function TestPage() {
             <p><strong>REST API:</strong> Working! "No active controllers" is correct - no CNC machine is connected.</p>
             <p><strong>Socket.IO:</strong> Requires authentication token. In dev mode, the server allows REST without auth but Socket.IO still needs a token from <code className="bg-muted px-1.5 py-0.5 rounded">/api/signin</code>.</p>
             <p className="text-xs mt-4 pt-4 border-t border-border">
-              Backend: <code className="bg-muted px-1.5 py-0.5 rounded">yarn start-server-dev</code> | 
+              Backend: <code className="bg-muted px-1.5 py-0.5 rounded">yarn dev:start-server</code> | 
               Frontend: <code className="bg-muted px-1.5 py-0.5 rounded">cd src/app && npm run dev</code>
             </p>
           </div>
