@@ -201,6 +201,7 @@ export function VisualizerPanel({
   onWizardClose,
   machinePosition = { x: 0, y: 0, z: 0 },
   workPosition = { x: 0, y: 0, z: 0 },
+  senderState,
   probeContact = false,
   lastAlarmMessageRef,
   currentWCS = 'G54'
@@ -222,19 +223,46 @@ export function VisualizerPanel({
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
   const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
+  const loadedGcodeRef = useRef<{ name: string; gcode: string } | null>(null) // Ref for accessing current loadedGcode in event handlers
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    loadedGcodeRef.current = loadedGcode
+  }, [loadedGcode])
   
   // Query currently loaded G-code on mount (to restore when navigating between pages)
-  const { data: gcodeData } = useGetGcodeQuery(connectedPort || '', {
+  const { data: gcodeData, isLoading: isLoadingGcode } = useGetGcodeQuery(connectedPort || '', {
     skip: !connectedPort,
   })
   
+  // Track which file was loaded from API (not Socket.IO) to know when we can safely clear it
+  const loadedFromApiRef = useRef<string | null>(null)
+  
   // Restore loaded G-code from API on mount
   useEffect(() => {
-    if (gcodeData && gcodeData.name && (gcodeData.data || gcodeData.gcode)) {
+    // Don't do anything while the query is still loading
+    if (isLoadingGcode) {
+      return
+    }
+
+    // Only process if we have gcodeData (query completed)
+    // If query was skipped (no connectedPort), don't clear anything - preserve existing state
+    if (!gcodeData) {
+      return
+    }
+
+    // Skip if we've already processed this exact file from API
+    if (loadedFromApiRef.current === gcodeData.name) {
+      return
+    }
+
+    if (gcodeData.name && gcodeData.name.trim() && (gcodeData.data || gcodeData.gcode)) {
       const gcode = gcodeData.data || gcodeData.gcode || ''
       // Only set if it's a different file than what we already have
       if (!loadedGcode || loadedGcode.name !== gcodeData.name) {
+        console.log('[VisualizerPanel] Restoring G-code from API:', gcodeData.name)
         setLoadedGcode({ name: gcodeData.name, gcode })
+        loadedFromApiRef.current = gcodeData.name // Mark as loaded from API
         // Try to restore model offset from localStorage
         const savedOffsetKey = `modelOffset_${gcodeData.name}`
         const savedOffset = localStorage.getItem(savedOffsetKey)
@@ -254,13 +282,21 @@ export function VisualizerPanel({
           placedGcodeRef.current = null
         }
       }
-    } else if (gcodeData && !gcodeData.name) {
-      // No file loaded
-      setLoadedGcode(null)
-      setModelOffset(null)
-      placedGcodeRef.current = null
+    } else if (!gcodeData.name || !gcodeData.name.trim()) {
+      // Query completed and explicitly shows no file loaded (name is empty or missing)
+      // Only clear if we loaded this file from the API (not from Socket.IO)
+      // This prevents clearing when Socket.IO loads a file but API hasn't returned it yet
+      if (loadedGcode && loadedFromApiRef.current === loadedGcode.name) {
+        console.log('[VisualizerPanel] API says no file, clearing loaded G-code (was loaded from API)')
+        setLoadedGcode(null)
+        setModelOffset(null)
+        placedGcodeRef.current = null
+        loadedFromApiRef.current = null
+      } else if (loadedGcode) {
+        console.log('[VisualizerPanel] API says no file, but keeping loaded G-code (was loaded from Socket.IO, API may be stale)')
+      }
     }
-  }, [gcodeData])
+  }, [gcodeData, isLoadingGcode, loadedGcode])
   
   // Listen to G-code load/unload events for visualizer
   useEffect(() => {
@@ -270,6 +306,8 @@ export function VisualizerPanel({
         // Only reset if this is a different file than the one we've already placed
         const isNewFile = placedGcodeRef.current !== name
         setLoadedGcode({ name, gcode })
+        // Don't mark as loaded from API - this came from Socket.IO
+        // This prevents API restoration from clearing it if API returns stale data
         // Reset model offset and placed tracking only if this is a different file
         if (isNewFile) {
           setModelOffset(null)
@@ -279,13 +317,14 @@ export function VisualizerPanel({
     }
 
     const handleGcodeUnload = () => {
-      // Clear saved offset when unloading
-      if (loadedGcode?.name) {
-        localStorage.removeItem(`modelOffset_${loadedGcode.name}`)
+      // Clear saved offset when unloading (use ref to get current value)
+      if (loadedGcodeRef.current?.name) {
+        localStorage.removeItem(`modelOffset_${loadedGcodeRef.current.name}`)
       }
       setLoadedGcode(null)
       setModelOffset(null)
       placedGcodeRef.current = null
+      loadedFromApiRef.current = null
     }
 
     socketService.on('gcode:load', handleGcodeLoad)
@@ -471,69 +510,83 @@ export function VisualizerPanel({
         )}
       </div>
       
-      {tab === 'wizard' && wizardMethod ? (
-        <ZeroingWizardTab
-          method={wizardMethod}
-          onClose={onWizardClose || (() => {})}
-          isConnected={isConnected}
-          connectedPort={connectedPort}
-          machinePosition={machinePosition}
-          workPosition={workPosition}
-          probeContact={probeContact}
-          currentWCS={currentWCS}
-        />
-      ) : tab === 'camera' ? (
-        <CameraTab />
-      ) : tab === '3d' ? (
-        <div className="flex-1 relative">
-          <VisualizerScene 
-            gcode={loadedGcode?.gcode} 
-            limits={settings?.machine?.limits}
-            view={view}
-            viewKey={viewKey}
+      {/* Always render all tabs, but hide inactive ones to ensure components stay mounted */}
+      {/* This ensures Console captures messages even when not visible */}
+      
+      {/* Wizard Tab */}
+      {wizardMethod && (
+        <div className={`flex-1 ${tab === 'wizard' ? 'block' : 'hidden'}`}>
+          <ZeroingWizardTab
+            method={wizardMethod}
+            onClose={onWizardClose || (() => {})}
+            isConnected={isConnected}
+            connectedPort={connectedPort}
             machinePosition={machinePosition}
-            modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
+            workPosition={workPosition}
+            probeContact={probeContact}
+            currentWCS={currentWCS}
           />
-          
-          {/* View controls overlay */}
-          <div className="absolute bottom-3 left-3 flex gap-1">
-            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('top'); setViewKey(k => k + 1) }}>Top</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('front'); setViewKey(k => k + 1) }}>Front</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('iso'); setViewKey(k => k + 1) }}>Iso</Button>
-            <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('fit'); setViewKey(k => k + 1) }}>Fit</Button>
-          </div>
-          
-          {/* Place Model button */}
-          {loadedGcode && (
-            <div className="absolute bottom-3 right-3">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      className="h-7 text-xs" 
-                      onClick={handlePlaceModel}
-                    >
-                      <Move className="w-3 h-3 mr-1" />
-                      Place Model
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Place the loaded model at the current workspace zero position</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
         </div>
-      ) : (
+      )}
+      
+      {/* Camera Tab */}
+      <div className={`flex-1 flex flex-col min-h-0 ${tab === 'camera' ? 'block' : 'hidden'}`}>
+        <CameraTab />
+      </div>
+      
+      {/* 3D View Tab */}
+      <div className={`flex-1 relative ${tab === '3d' ? 'block' : 'hidden'}`}>
+        <VisualizerScene 
+          gcode={loadedGcode?.gcode} 
+          limits={settings?.machine?.limits}
+          view={view}
+          viewKey={viewKey}
+          machinePosition={machinePosition}
+          processedLines={senderState?.received}
+          modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
+        />
+        
+        {/* View controls overlay */}
+        <div className="absolute bottom-3 left-3 flex gap-1">
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('top'); setViewKey(k => k + 1) }}>Top</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('front'); setViewKey(k => k + 1) }}>Front</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('iso'); setViewKey(k => k + 1) }}>Iso</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('fit'); setViewKey(k => k + 1) }}>Fit</Button>
+        </div>
+        
+        {/* Place Model button */}
+        {loadedGcode && (
+          <div className="absolute bottom-3 right-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="h-7 text-xs" 
+                    onClick={handlePlaceModel}
+                  >
+                    <Move className="w-3 h-3 mr-1" />
+                    Place Model
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Place the loaded model at the current workspace zero position</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+      </div>
+      
+      {/* Console Tab - always rendered to capture messages even when hidden */}
+      <div className={`flex-1 flex flex-col min-h-0 ${tab === 'console' ? 'block' : 'hidden'}`}>
         <Console 
           isConnected={isConnected} 
           connectedPort={connectedPort}
           lastAlarmMessageRef={lastAlarmMessageRef}
         />
-      )}
+      </div>
     </div>
   )
 }
