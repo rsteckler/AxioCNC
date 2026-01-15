@@ -659,7 +659,7 @@ class GrblController {
 
           // Check if it has not been updated for a long time
           if (timespan >= toleranceTime) {
-            log.debug(`Continue status report query: timespan=${timespan}ms`);
+            log.silly(`Continue status report query: timespan=${timespan}ms`);
             this.actionMask.queryStatusReport = false;
           }
         }
@@ -695,7 +695,7 @@ class GrblController {
 
             // Check if it has not been updated for a long time
             if (timespan >= toleranceTime) {
-              log.debug(`Continue parser state query: timespan=${timespan}ms`);
+              log.silly(`Continue parser state query: timespan=${timespan}ms`);
               this.actionMask.queryParserState.state = false;
               this.actionMask.queryParserState.reply = false;
             }
