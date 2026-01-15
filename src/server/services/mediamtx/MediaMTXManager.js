@@ -412,7 +412,12 @@ paths:
 
     // Also log to our logger
     this.process.stdout.on('data', (data) => {
-      log.debug(`MediaMTX stdout: ${data.toString().trim()}`);
+      const line = data.toString().trim();
+      // Filter out HLS part duration warning (known MediaMTX warning that's not actionable)
+      if (line.includes('[HLS]') && line.includes('part duration changed') && line.includes('will cause an error in iOS clients')) {
+        return; // Skip logging this specific warning
+      }
+      log.debug(`MediaMTX stdout: ${line}`);
     });
 
     this.process.stderr.on('data', (data) => {
