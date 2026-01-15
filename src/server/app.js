@@ -398,13 +398,13 @@ const appMain = () => {
     app.get(urljoin(settings.route, 'streams/:id/mjpeg'), (req, res) => {
       const streamId = req.params.id;
       
-      // Get camera by ID from cameras array
-      const cameras = castArray(config.get('cameras', []));
-      const camera = find(cameras, { id: streamId });
+      // Get the single camera (id parameter is ignored, but we verify it matches)
+      const camera = config.get('camera', null);
       
       // Check if camera exists, is enabled, and is MJPEG type
-      if (!camera || !camera.enabled || camera.type !== 'mjpeg') {
-        log.debug(`MJPEG stream not found: camera=${!!camera}, enabled=${camera?.enabled}, type=${camera?.type}`);
+      // Also verify the streamId matches the camera ID
+      if (!camera || !camera.enabled || camera.type !== 'mjpeg' || camera.id !== streamId) {
+        log.debug(`MJPEG stream not found: camera=${!!camera}, enabled=${camera?.enabled}, type=${camera?.type}, idMatch=${camera?.id === streamId}`);
         res.status(404).send({
           msg: 'Stream not found',
         });
@@ -725,12 +725,12 @@ const appMain = () => {
     app.all(urljoin(settings.route, 'streams/:id/*'), (req, res) => {
       const streamId = req.params.id;
       
-      // Get camera to verify it's RTSP
-      const cameras = castArray(config.get('cameras', []));
-      const camera = find(cameras, { id: streamId });
+      // Get the single camera (id parameter is ignored, but we verify it matches)
+      const camera = config.get('camera', null);
       
       // Return 404 if camera doesn't exist, isn't enabled, or isn't RTSP
-      if (!camera || !camera.enabled || camera.type !== 'rtsp') {
+      // Also verify the streamId matches the camera ID
+      if (!camera || !camera.enabled || camera.type !== 'rtsp' || camera.id !== streamId) {
         res.status(404).send({
           msg: 'Stream not found',
         });

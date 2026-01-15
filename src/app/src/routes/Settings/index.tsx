@@ -429,14 +429,18 @@ export default function Settings() {
   
   // Track which camera we've loaded to prevent overwriting user input
   const lastLoadedCameraId = useRef<string | null>(null)
+  const isUserEditing = useRef(false)
   
-  // Load camera from cameras API into local state (only when camera ID changes, not on every data update)
+  // Load camera from cameras API into local state (only on initial load or when camera ID changes)
+  // Don't reload when user is actively editing or when enabled state changes
   useEffect(() => {
-    if (camerasData?.records && cameraConfig.mediaSource === 'ip-camera') {
-      const camera = camerasData.records.find(c => c.enabled) || camerasData.records[0]
+    if (camerasData?.records && cameraConfig.mediaSource === 'ip-camera' && !isUserEditing.current) {
+      // Since we only support one camera, just get the first one
+      const camera = camerasData.records[0]
       const currentCameraId = camera?.id
       
       // Only load if this is a different camera (by ID) - this prevents overwriting user input
+      // Also skip if camera is disabled and we're just toggling (prevents reloading old data)
       if (camera && currentCameraId && lastLoadedCameraId.current !== currentCameraId) {
         // Strip credentials from URL - they should be in separate username/password fields
         // IMPORTANT: Preserve the original protocol (rtsp://, http://, https://)
@@ -476,14 +480,16 @@ export default function Settings() {
           })() : '';
           
           // Only update if URLs are different (ignoring credentials)
-          if (prevUrlClean !== cleanUrl || prev.username !== camera.username || prev.enabled !== camera.enabled) {
+          // Don't update enabled state from API when user is toggling it
+          if (prevUrlClean !== cleanUrl || prev.username !== camera.username) {
             return {
               ...prev,
               ipCameraUrl: cleanUrl, // This should preserve rtsp://, http://, https://
               username: camera.username,
               // Load password from localStorage if available, otherwise keep existing (user may have typed it)
               password: storedPassword || prev.password,
-              enabled: camera.enabled,
+              // Only update enabled if we're loading for the first time (lastLoadedCameraId is null)
+              enabled: lastLoadedCameraId.current === null ? camera.enabled : prev.enabled,
             };
           }
           return prev; // No change needed
@@ -492,7 +498,7 @@ export default function Settings() {
         lastLoadedCameraId.current = currentCameraId
       }
     }
-  }, [camerasData?.records?.find(c => c.enabled)?.id, cameraConfig.mediaSource]) // Only trigger when enabled camera ID changes or mediaSource changes, not on every update
+  }, [camerasData?.records?.[0]?.id, cameraConfig.mediaSource]) // Only trigger when camera ID changes or mediaSource changes, not on enabled changes
 
   // Accumulate pending changes for debounced save
   const pendingChanges = useRef<PartialSettings>({})
@@ -830,26 +836,27 @@ export default function Settings() {
   const handleCameraConfigChange = useCallback(async (changes: Partial<CameraConfig>) => {
     const updated = { ...cameraConfig, ...changes }
     
+    // Mark that user is editing to prevent API from overwriting changes
+    isUserEditing.current = true
+    
     // Update local state
     setCameraConfig(updated)
     
+    // Since we only support one camera, get the first (and only) camera
+    const existingCamera = camerasData?.records?.[0]
+    
     // If password is being set/changed, store it in localStorage (API doesn't return it for security)
-    if (changes.password !== undefined) {
-      const existingCamera = camerasData?.records?.find(c => c.name === 'Camera 1')
-      if (existingCamera?.id) {
-        const storedPasswordKey = `camera_password_${existingCamera.id}`
-        if (changes.password) {
-          localStorage.setItem(storedPasswordKey, changes.password)
-        } else {
-          localStorage.removeItem(storedPasswordKey)
-        }
+    if (changes.password !== undefined && existingCamera?.id) {
+      const storedPasswordKey = `camera_password_${existingCamera.id}`
+      if (changes.password) {
+        localStorage.setItem(storedPasswordKey, changes.password)
+      } else {
+        localStorage.removeItem(storedPasswordKey)
       }
     }
     
     // If this is an IP camera with a URL, create/update in cameras API
     if (updated.mediaSource === 'ip-camera' && updated.ipCameraUrl) {
-      const existingCamera = camerasData?.records?.find(c => c.name === 'Camera 1')
-      
       // Strip any credentials from the URL - they should be in separate username/password fields
       let cleanInputUrl = updated.ipCameraUrl
       try {
@@ -869,7 +876,7 @@ export default function Settings() {
         inputUrl: cleanInputUrl, // URL without credentials
         username: updated.username,
         password: updated.password,
-        enabled: updated.enabled !== false, // Default to true
+        enabled: updated.enabled, // Use the actual enabled value
       }
       
       // Show saving indicator
@@ -877,7 +884,7 @@ export default function Settings() {
       
       try {
         if (existingCamera) {
-          // Update existing camera
+          // Update existing camera (id is ignored by backend, but we pass it for API compatibility)
           await updateCamera({ id: existingCamera.id, updates: cameraData }).unwrap()
         } else {
           // Create new camera
@@ -889,7 +896,16 @@ export default function Settings() {
         console.error('Failed to save camera:', err)
       } finally {
         setIsSaving(false)
+        // Reset editing flag after a short delay to allow API to update
+        setTimeout(() => {
+          isUserEditing.current = false
+        }, 1000)
       }
+    } else {
+      // Reset editing flag immediately if not saving to API
+      setTimeout(() => {
+        isUserEditing.current = false
+      }, 500)
     }
     
     // Only save display options (flip, rotation, crosshair) to settings.camera

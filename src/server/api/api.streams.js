@@ -3,21 +3,19 @@
  *
  * Provides metadata about camera streams (HLS/MJPEG)
  */
-import find from 'lodash/find';
-import castArray from 'lodash/castArray';
 import config from '../services/configstore';
 import {
   ERR_NOT_FOUND,
 } from '../constants';
 
-const CAMERAS_CONFIG_KEY = 'cameras';
+const CAMERA_CONFIG_KEY = 'camera';
 
 /**
- * Get camera by ID
+ * Get camera (single camera only)
  */
-const getCameraById = (id) => {
-  const cameras = castArray(config.get(CAMERAS_CONFIG_KEY, []));
-  return find(cameras, { id: id }) || null;
+const getCamera = () => {
+  const camera = config.get(CAMERA_CONFIG_KEY, null);
+  return camera && typeof camera === 'object' ? camera : null;
 };
 
 /**
@@ -25,10 +23,8 @@ const getCameraById = (id) => {
  * Returns stream metadata (type and source URL)
  */
 export const get = (req, res) => {
-  const streamId = req.params.id;
-
-  // Get camera by ID
-  const camera = getCameraById(streamId);
+  // Get the single camera (id parameter is ignored)
+  const camera = getCamera();
 
   if (!camera || !camera.enabled) {
     res.status(ERR_NOT_FOUND).send({
@@ -38,6 +34,7 @@ export const get = (req, res) => {
   }
 
   const cameraType = camera.type;
+  const streamId = camera.id; // Use camera's ID for stream paths
   let streamType = null;
   let streamSrc = null;
 

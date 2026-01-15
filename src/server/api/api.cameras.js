@@ -6,8 +6,6 @@
 import http from 'http';
 import https from 'https';
 import uuid from 'uuid';
-import find from 'lodash/find';
-import castArray from 'lodash/castArray';
 import isPlainObject from 'lodash/isPlainObject';
 import config from '../services/configstore';
 import logger from '../lib/logger';
@@ -19,43 +17,43 @@ import {
 } from '../constants';
 
 const log = logger('api:cameras');
-const CONFIG_KEY = 'cameras'; // Store cameras as a separate array
+const CONFIG_KEY = 'camera'; // Store single camera object
 
 /**
- * Get sanitized camera records
+ * Get sanitized camera (single camera only)
  */
-const getSanitizedRecords = () => {
-  const records = castArray(config.get(CONFIG_KEY, []));
+const getCamera = () => {
+  let camera = config.get(CONFIG_KEY, null);
+
+  // If camera doesn't exist or is invalid, return null
+  if (!camera || !isPlainObject(camera)) {
+    return null;
+  }
 
   let shouldUpdate = false;
-  for (let i = 0; i < records.length; ++i) {
-    if (!isPlainObject(records[i])) {
-      records[i] = {};
-    }
 
-    const record = records[i];
+  // Ensure ID exists
+  if (!camera.id) {
+    camera.id = uuid.v4();
+    shouldUpdate = true;
+  }
 
-    if (!record.id) {
-      record.id = uuid.v4();
-      shouldUpdate = true;
-    }
-
-    // Defaults
-    if (record.enabled === undefined) {
-      record.enabled = true;
-    }
-    if (!record.name) {
-      record.name = `Camera ${i + 1}`;
-      shouldUpdate = true;
-    }
+  // Defaults
+  if (camera.enabled === undefined) {
+    camera.enabled = false;
+    shouldUpdate = true;
+  }
+  if (!camera.name) {
+    camera.name = 'Camera 1';
+    shouldUpdate = true;
   }
 
   if (shouldUpdate) {
-    log.debug(`update sanitized records: ${JSON.stringify(records)}`);
-    config.set(CONFIG_KEY, records, { silent: true });
+    log.debug(`update sanitized camera: ${JSON.stringify(camera)}`);
+    config.set(CONFIG_KEY, camera, { silent: true });
   }
 
-  return records;
+  return camera;
 };
 
 /**
@@ -186,31 +184,36 @@ const determineStreamType = async (inputUrl, username, password) => {
 
 /**
  * GET /api/cameras
- * List all cameras
+ * Get the single camera (returns as array for frontend compatibility)
  */
 export const fetch = (req, res) => {
   try {
-    const records = getSanitizedRecords();
+    const camera = getCamera();
+
+    // Return as array for frontend compatibility
+    if (!camera) {
+      res.send({ records: [] });
+      return;
+    }
+
+    // Don't return password in the response, but do return username
+    const { id, name, inputUrl, username, type, enabled, createdAt, updatedAt } = camera;
     res.send({
-      records: records.map(record => {
-        // Don't return passwords in the response, but do return username
-        const { id, name, inputUrl, username, type, enabled, createdAt, updatedAt } = record;
-        return {
-          id,
-          name,
-          inputUrl: inputUrl ? inputUrl.replace(/:([^:@]+)@/, ':****@') : '', // Hide password in URL
-          username, // Return username (password is not returned for security)
-          type,
-          enabled,
-          createdAt,
-          updatedAt
-        };
-      })
+      records: [{
+        id,
+        name,
+        inputUrl: inputUrl ? inputUrl.replace(/:([^:@]+)@/, ':****@') : '', // Hide password in URL
+        username, // Return username (password is not returned for security)
+        type,
+        enabled,
+        createdAt,
+        updatedAt
+      }]
     });
   } catch (err) {
-    log.error(`Error fetching cameras: ${err.message}`);
+    log.error(`Error fetching camera: ${err.message}`);
     res.status(ERR_INTERNAL_SERVER_ERROR).send({
-      msg: 'Failed to fetch cameras',
+      msg: 'Failed to fetch camera',
       error: err.message
     });
   }
@@ -218,7 +221,7 @@ export const fetch = (req, res) => {
 
 /**
  * POST /api/cameras
- * Create or update a camera
+ * Create or update the single camera (upsert)
  */
 export const create = async (req, res) => {
   const {
@@ -254,7 +257,7 @@ export const create = async (req, res) => {
       return;
     }
 
-    const records = getSanitizedRecords();
+    const existingCamera = getCamera();
 
     // Don't embed credentials in URL - store them separately
     // Strip any existing credentials from the URL
@@ -271,36 +274,38 @@ export const create = async (req, res) => {
       finalInputUrl = finalInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//');
     }
 
-    const record = {
-      id: uuid.v4(),
+    const wasRTSP = existingCamera?.type === 'rtsp' && existingCamera?.enabled;
+    const camera = {
+      id: existingCamera?.id || uuid.v4(),
       name,
       inputUrl: finalInputUrl, // URL without credentials
       username, // Store separately
       password, // Store separately
       type,
       enabled: !!enabled,
-      createdAt: new Date().toISOString(),
+      createdAt: existingCamera?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    records.push(record);
-    config.set(CONFIG_KEY, records);
+    config.set(CONFIG_KEY, camera);
 
     // If RTSP camera, trigger MediaMTX reload
-    if (type === 'rtsp' && enabled) {
-      log.info('RTSP camera added, reloading MediaMTX');
+    const isRTSP = type === 'rtsp' && enabled;
+    if (isRTSP || (wasRTSP && !enabled)) {
+      log.info('RTSP camera configuration changed, reloading MediaMTX');
       mediamtxService.reload();
     }
 
     res.send({
-      id: record.id,
-      type: record.type,
-      createdAt: record.createdAt
+      id: camera.id,
+      type: camera.type,
+      createdAt: camera.createdAt,
+      updatedAt: camera.updatedAt
     });
   } catch (err) {
-    log.error(`Error creating camera: ${err.message}`);
+    log.error(`Error creating/updating camera: ${err.message}`);
     res.status(ERR_INTERNAL_SERVER_ERROR).send({
-      msg: 'Failed to create camera',
+      msg: 'Failed to create/update camera',
       error: err.message
     });
   }
@@ -308,14 +313,12 @@ export const create = async (req, res) => {
 
 /**
  * GET /api/cameras/:id
- * Get a specific camera
+ * Get the single camera (id parameter is ignored)
  */
 export const read = (req, res) => {
-  const id = req.params.id;
-  const records = getSanitizedRecords();
-  const record = find(records, { id: id });
+  const camera = getCamera();
 
-  if (!record) {
+  if (!camera) {
     res.status(ERR_NOT_FOUND).send({
       msg: 'Camera not found'
     });
@@ -323,7 +326,7 @@ export const read = (req, res) => {
   }
 
   // Don't return password in the response, but do return username (password is sensitive)
-  const { name, inputUrl, username, type, enabled, createdAt, updatedAt } = record;
+  const { id, name, inputUrl, username, type, enabled, createdAt, updatedAt } = camera;
   res.send({
     id,
     name,
@@ -338,14 +341,12 @@ export const read = (req, res) => {
 
 /**
  * PUT /api/cameras/:id
- * Update a camera
+ * Update the single camera (id parameter is ignored)
  */
 export const update = async (req, res) => {
-  const id = req.params.id;
-  const records = getSanitizedRecords();
-  const recordIndex = records.findIndex(r => r.id === id);
+  const camera = getCamera();
 
-  if (recordIndex === -1) {
+  if (!camera) {
     res.status(ERR_NOT_FOUND).send({
       msg: 'Camera not found'
     });
@@ -360,13 +361,12 @@ export const update = async (req, res) => {
     enabled
   } = req.body;
 
-  const oldRecord = records[recordIndex];
-  const wasRTSP = oldRecord.type === 'rtsp';
-  const wasEnabled = oldRecord.enabled;
+  const wasRTSP = camera.type === 'rtsp';
+  const wasEnabled = camera.enabled;
 
   // Update fields if provided
   if (name !== undefined) {
-    records[recordIndex].name = name;
+    camera.name = name;
   }
   if (inputUrl !== undefined) {
     // Strip credentials from URL if provided - store them separately
@@ -381,46 +381,46 @@ export const update = async (req, res) => {
       cleanInputUrl = inputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//');
       cleanInputUrl = cleanInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//');
     }
-    records[recordIndex].inputUrl = cleanInputUrl;
+    camera.inputUrl = cleanInputUrl;
 
     // Re-determine type if URL changed
-    const currentUsername = username !== undefined ? username : records[recordIndex].username;
-    const currentPassword = password !== undefined ? password : records[recordIndex].password;
+    const currentUsername = username !== undefined ? username : camera.username;
+    const currentPassword = password !== undefined ? password : camera.password;
     const type = await determineStreamType(cleanInputUrl, currentUsername, currentPassword);
     if (type) {
-      records[recordIndex].type = type;
+      camera.type = type;
     }
   }
 
   // Store username/password as separate fields (don't embed in URL)
   if (username !== undefined) {
-    records[recordIndex].username = username;
+    camera.username = username;
   }
   if (password !== undefined) {
-    records[recordIndex].password = password;
+    camera.password = password;
   }
 
   // If username/password changed (but URL didn't), re-determine type
   if ((username !== undefined || password !== undefined) && inputUrl === undefined) {
-    const currentUrl = records[recordIndex].inputUrl;
-    const currentUsername = username !== undefined ? username : records[recordIndex].username;
-    const currentPassword = password !== undefined ? password : records[recordIndex].password;
+    const currentUrl = camera.inputUrl;
+    const currentUsername = username !== undefined ? username : camera.username;
+    const currentPassword = password !== undefined ? password : camera.password;
     const type = await determineStreamType(currentUrl, currentUsername, currentPassword);
     if (type) {
-      records[recordIndex].type = type;
+      camera.type = type;
     }
   }
   if (enabled !== undefined) {
-    records[recordIndex].enabled = !!enabled;
+    camera.enabled = !!enabled;
   }
 
-  records[recordIndex].updatedAt = new Date().toISOString();
+  camera.updatedAt = new Date().toISOString();
 
-  config.set(CONFIG_KEY, records);
+  config.set(CONFIG_KEY, camera);
 
   // Trigger MediaMTX reload if RTSP camera was added/enabled or config changed
-  const isRTSP = records[recordIndex].type === 'rtsp';
-  const isEnabled = records[recordIndex].enabled;
+  const isRTSP = camera.type === 'rtsp';
+  const isEnabled = camera.enabled;
 
   if (isRTSP && (isEnabled || (wasRTSP && wasEnabled))) {
     log.info('RTSP camera configuration changed, reloading MediaMTX');
@@ -428,32 +428,31 @@ export const update = async (req, res) => {
   }
 
   res.send({
-    id: records[recordIndex].id,
-    type: records[recordIndex].type,
-    updatedAt: records[recordIndex].updatedAt
+    id: camera.id,
+    type: camera.type,
+    updatedAt: camera.updatedAt
   });
 };
 
 /**
  * DELETE /api/cameras/:id
- * Delete a camera
+ * Delete the single camera (id parameter is ignored)
  */
 export const __delete = (req, res) => {
-  const id = req.params.id;
-  const records = getSanitizedRecords();
-  const record = find(records, { id: id });
+  const camera = getCamera();
 
-  if (!record) {
+  if (!camera) {
     res.status(ERR_NOT_FOUND).send({
       msg: 'Camera not found'
     });
     return;
   }
 
-  const wasRTSP = record.type === 'rtsp' && record.enabled;
+  const wasRTSP = camera.type === 'rtsp' && camera.enabled;
+  const cameraId = camera.id;
 
-  const updatedRecords = records.filter(r => r.id !== id);
-  config.set(CONFIG_KEY, updatedRecords);
+  // Clear the camera
+  config.set(CONFIG_KEY, null);
 
   // Reload MediaMTX if RTSP camera was removed
   if (wasRTSP) {
@@ -461,5 +460,5 @@ export const __delete = (req, res) => {
     mediamtxService.reload();
   }
 
-  res.send({ id });
+  res.send({ id: cameraId });
 };

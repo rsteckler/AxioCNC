@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import os from 'os';
-import castArray from 'lodash/castArray';
 import logger from '../../lib/logger';
 import config from '../configstore';
 
@@ -177,57 +176,56 @@ class MediaMTXManager extends events.EventEmitter {
   /**
    * Generate MediaMTX YAML config from camera settings
    * 
-   * Reads from new cameras array, with fallback to old camera settings for backward compatibility
+   * Reads from single camera object
    */
   generateConfigYAML() {
     const cameras = [];
     
-    // First, try new cameras array
-    const camerasArray = castArray(config.get('cameras', []));
-    camerasArray.forEach(camera => {
-      // Only include enabled RTSP cameras
-      if (camera.enabled && camera.type === 'rtsp' && camera.inputUrl) {
-        // Build RTSP URL with credentials if provided
-        let rtspUrl = camera.inputUrl;
-        
-        // Inject username/password into RTSP URL if provided separately
-        if (camera.username || camera.password) {
-          try {
-            const urlObj = new URL(rtspUrl);
-            // Remove any existing credentials from URL
-            urlObj.username = '';
-            urlObj.password = '';
-            // Add credentials from separate fields
-            if (camera.username) {
-              urlObj.username = camera.username;
-            }
-            if (camera.password) {
-              urlObj.password = camera.password;
-            }
-            rtspUrl = urlObj.toString();
-          } catch (err) {
-            log.warn(`Failed to inject credentials into RTSP URL for camera ${camera.id}: ${err.message}`);
-            // Fallback: try to inject credentials manually
-            if (rtspUrl.includes('@')) {
-              // Remove existing credentials
-              rtspUrl = rtspUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//');
-            }
-            // Add new credentials
-            if (camera.username || camera.password) {
-              const auth = `${camera.username || ''}:${camera.password || ''}`;
-              rtspUrl = rtspUrl.replace(/\/\/([^\/]+)/, `//${auth}@$1`);
-            }
+    // Get the single camera
+    const camera = config.get('camera', null);
+    
+    // Only include enabled RTSP cameras
+    if (camera && camera.enabled && camera.type === 'rtsp' && camera.inputUrl) {
+      // Build RTSP URL with credentials if provided
+      let rtspUrl = camera.inputUrl;
+      
+      // Inject username/password into RTSP URL if provided separately
+      if (camera.username || camera.password) {
+        try {
+          const urlObj = new URL(rtspUrl);
+          // Remove any existing credentials from URL
+          urlObj.username = '';
+          urlObj.password = '';
+          // Add credentials from separate fields
+          if (camera.username) {
+            urlObj.username = camera.username;
+          }
+          if (camera.password) {
+            urlObj.password = camera.password;
+          }
+          rtspUrl = urlObj.toString();
+        } catch (err) {
+          log.warn(`Failed to inject credentials into RTSP URL for camera ${camera.id}: ${err.message}`);
+          // Fallback: try to inject credentials manually
+          if (rtspUrl.includes('@')) {
+            // Remove existing credentials
+            rtspUrl = rtspUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//');
+          }
+          // Add new credentials
+          if (camera.username || camera.password) {
+            const auth = `${camera.username || ''}:${camera.password || ''}`;
+            rtspUrl = rtspUrl.replace(/\/\/([^\/]+)/, `//${auth}@$1`);
           }
         }
-        
-        cameras.push({
-          id: camera.id,
-          source: rtspUrl
-        });
-        
-        log.debug(`MediaMTX config: camera ${camera.id} - RTSP URL: ${rtspUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//$1:***@')}`);
       }
-    });
+      
+      cameras.push({
+        id: camera.id,
+        source: rtspUrl
+      });
+      
+      log.debug(`MediaMTX config: camera ${camera.id} - RTSP URL: ${rtspUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//$1:***@')}`);
+    }
     
     // Generate YAML manually (simple template)
     // MediaMTX logDestinations: stdout, stderr, syslog, or file://<path>
