@@ -40,6 +40,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Plus, Pencil, Trash2, Wrench } from 'lucide-react'
+import { mmToInches, inchesToMm } from '@/utils/units'
 
 export interface Tool {
   id: string
@@ -71,18 +72,6 @@ interface ToolLibrarySectionProps {
   onAdd: (tool: Omit<Tool, 'id' | 'mtime'>) => void
   onEdit: (tool: Tool) => void
   onDelete: (id: string) => void
-}
-
-// Helper function to convert mm to inches
-const mmToInches = (mm: number | null | undefined): string => {
-  if (mm == null) return '—'
-  const inches = mm / 25.4
-  return inches.toFixed(4).replace(/\.?0+$/, '')  // Remove trailing zeros
-}
-
-// Helper function to convert inches to mm
-const inchesToMm = (inches: number): number => {
-  return inches * 25.4
 }
 
 export function ToolLibrarySection({

@@ -11,8 +11,7 @@ import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQue
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from '@/hooks'
 import { MachineActionButton } from '@/components/MachineActionButton'
-import { MachineStatusBar } from '@/components/MachineStatusBar'
-import { JobStatusBar } from '@/components/JobStatusBar'
+import { PageStatusBar } from '@/components/PageStatusBar'
 import { Console } from '@/components/Console'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
@@ -1258,19 +1257,15 @@ export default function Monitor() {
       </header>
 
       {/* Monitor control bar - screen-specific controls */}
-      <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
-        <MachineStatusBar />
-        
-        <JobStatusBar
-          workflowState={workflowState}
-          isJobRunning={isJobRunning}
-          onStart={handleStart}
-          onStop={handleStop}
-          onPause={handlePause}
-          onResume={handleResume}
-          disabled={!isConnected || machineStatus === 'alarm'}
-        />
-      </div>
+      <PageStatusBar
+        workflowState={workflowState}
+        isJobRunning={isJobRunning}
+        onStart={handleStart}
+        onStop={handleStop}
+        onPause={handlePause}
+        onResume={handleResume}
+        disabled={!isConnected || machineStatus === 'alarm'}
+      />
 
       {/* Main content area */}
       <div className="flex-1 flex gap-2 p-2 min-h-0 overflow-hidden">

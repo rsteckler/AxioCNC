@@ -45,8 +45,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
-import { MachineStatusBar } from '@/components/MachineStatusBar'
-import { JobStatusBar } from '@/components/JobStatusBar'
+import { PageStatusBar } from '@/components/PageStatusBar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ActionRequirements } from '@/utils/machineState'
 
@@ -882,18 +881,15 @@ export default function Setup() {
       </header>
       
       {/* Setup control bar - screen-specific controls */}
-      <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
-        <MachineStatusBar onError={showErrorNotification} />
-        
-        <JobStatusBar
-          workflowState={workflowState}
-          isJobRunning={isJobRunning}
-          onStop={handleStop}
-          onPause={handlePause}
-          onResume={handleResume}
-          disabled={!isConnected || machineStatus === 'alarm'}
-        />
-      </div>
+      <PageStatusBar
+        onError={showErrorNotification}
+        workflowState={workflowState}
+        isJobRunning={isJobRunning}
+        onStop={handleStop}
+        onPause={handlePause}
+        onResume={handleResume}
+        disabled={!isConnected || machineStatus === 'alarm'}
+      />
       
       {/* Dashboard - Two column flex layout */}
       <main className="flex-1 flex gap-2 p-2 min-h-0">
