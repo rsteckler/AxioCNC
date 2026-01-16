@@ -182,10 +182,6 @@ M3 S1000          ; Start spindle at 1000 RPM
 G4 P2             ; Dwell 2 seconds
 M5                ; Stop spindle
 
-; Request probe confirmation
-; (User should touch probe to confirm it's working)
-M0 (Touch probe to verify connection, then resume)
-
 ; Preflight complete
 `,
 }
