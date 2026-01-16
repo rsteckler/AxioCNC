@@ -235,10 +235,13 @@ export function VisualizerPanel({
     skip: !connectedPort,
   })
   
-  // Track which file was loaded from API (not Socket.IO) to know when we can safely clear it
-  const loadedFromApiRef = useRef<string | null>(null)
+  // Track the last file we restored from API to avoid redundant restorations
+  // Special value: empty string '' means "explicitly unloaded, don't restore"
+  const lastRestoredApiFileRef = useRef<string | null>(null)
   
-  // Restore loaded G-code from API on mount
+  // Restore loaded G-code from API on mount or when API data changes
+  // Note: This effect only reacts to API data changes, not WebSocket state changes
+  // WebSocket events are authoritative and handled separately
   useEffect(() => {
     // Don't do anything while the query is still loading
     if (isLoadingGcode) {
@@ -246,23 +249,28 @@ export function VisualizerPanel({
     }
 
     // Only process if we have gcodeData (query completed)
-    // If query was skipped (no connectedPort), don't clear anything - preserve existing state
+    // If query was skipped (no connectedPort), don't do anything - preserve existing state
     if (!gcodeData) {
       return
     }
 
-    // Skip if we've already processed this exact file from API
-    if (loadedFromApiRef.current === gcodeData.name) {
+    // If we explicitly unloaded (sentinel value), don't restore from API
+    if (lastRestoredApiFileRef.current === '') {
       return
     }
 
     if (gcodeData.name && gcodeData.name.trim() && (gcodeData.data || gcodeData.gcode)) {
       const gcode = gcodeData.data || gcodeData.gcode || ''
-      // Only set if it's a different file than what we already have
-      if (!loadedGcode || loadedGcode.name !== gcodeData.name) {
+      // Use ref to get current loadedGcode value without including it in dependencies
+      // This prevents the effect from running when WebSocket updates loadedGcode
+      const currentLoadedGcode = loadedGcodeRef.current
+      
+      // Restore if we don't have a file, or if backend has a different file than we have
+      // Skip if we've already restored this exact file from API
+      if (gcodeData.name !== lastRestoredApiFileRef.current && (!currentLoadedGcode || currentLoadedGcode.name !== gcodeData.name)) {
         console.log('[VisualizerPanel] Restoring G-code from API:', gcodeData.name)
         setLoadedGcode({ name: gcodeData.name, gcode })
-        loadedFromApiRef.current = gcodeData.name // Mark as loaded from API
+        lastRestoredApiFileRef.current = gcodeData.name
         // Try to restore model offset from localStorage
         const savedOffsetKey = `modelOffset_${gcodeData.name}`
         const savedOffset = localStorage.getItem(savedOffsetKey)
@@ -283,20 +291,15 @@ export function VisualizerPanel({
         }
       }
     } else if (!gcodeData.name || !gcodeData.name.trim()) {
-      // Query completed and explicitly shows no file loaded (name is empty or missing)
-      // Only clear if we loaded this file from the API (not from Socket.IO)
-      // This prevents clearing when Socket.IO loads a file but API hasn't returned it yet
-      if (loadedGcode && loadedFromApiRef.current === loadedGcode.name) {
-        console.log('[VisualizerPanel] API says no file, clearing loaded G-code (was loaded from API)')
-        setLoadedGcode(null)
-        setModelOffset(null)
-        placedGcodeRef.current = null
-        loadedFromApiRef.current = null
-      } else if (loadedGcode) {
-        console.log('[VisualizerPanel] API says no file, but keeping loaded G-code (was loaded from Socket.IO, API may be stale)')
+      // API says no file - don't do anything, let WebSocket events handle unloading
+      // This ensures WebSocket events remain authoritative
+      // Clear tracking (but keep sentinel if it's set)
+      if (lastRestoredApiFileRef.current !== '') {
+        lastRestoredApiFileRef.current = null
       }
     }
-  }, [gcodeData, isLoadingGcode, loadedGcode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gcodeData, isLoadingGcode])
   
   // Listen to G-code load/unload events for visualizer
   useEffect(() => {
@@ -306,8 +309,10 @@ export function VisualizerPanel({
         // Only reset if this is a different file than the one we've already placed
         const isNewFile = placedGcodeRef.current !== name
         setLoadedGcode({ name, gcode })
-        // Don't mark as loaded from API - this came from Socket.IO
-        // This prevents API restoration from clearing it if API returns stale data
+        // Clear unload sentinel when a file is loaded
+        if (lastRestoredApiFileRef.current === '') {
+          lastRestoredApiFileRef.current = null
+        }
         // Reset model offset and placed tracking only if this is a different file
         if (isNewFile) {
           setModelOffset(null)
@@ -324,7 +329,8 @@ export function VisualizerPanel({
       setLoadedGcode(null)
       setModelOffset(null)
       placedGcodeRef.current = null
-      loadedFromApiRef.current = null
+      // Set sentinel value to prevent API restoration after explicit unload
+      lastRestoredApiFileRef.current = ''
     }
 
     socketService.on('gcode:load', handleGcodeLoad)
