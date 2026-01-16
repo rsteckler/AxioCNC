@@ -71,12 +71,6 @@ export function Console({
 
   // Listen to Socket.IO events for console messages
   useEffect(() => {
-    if (!isConnected || !connectedPort) {
-      // Clear console when disconnected
-      setConsoleLines([])
-      return
-    }
-
     // Listen for messages FROM Grbl
     const handleSerialRead = (...args: unknown[]) => {
       const message = args[0] as string
@@ -121,8 +115,14 @@ export function Console({
       socketService.off('serialport:read', handleSerialRead)
       socketService.off('serialport:write', handleSerialWrite)
     }
-
-  }, [isConnected, connectedPort, settings?.connection?.port, lastAlarmMessageRef])
+  }, []) // Empty array - listeners register once, handlers check connection state internally
+    
+  // Clear console when disconnected (separate effect for UI state)
+  useEffect(() => {
+    if (!isConnected || !connectedPort) {
+      setConsoleLines([])
+    }
+  }, [isConnected, connectedPort])
 
   // Handle command input
   const handleSendCommand = useCallback(() => {

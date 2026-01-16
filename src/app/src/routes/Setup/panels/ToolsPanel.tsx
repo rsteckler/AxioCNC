@@ -157,7 +157,7 @@ export function ToolsPanel() {
       socketService.off('gcode:load', handleGcodeLoad)
       socketService.off('gcode:unload', handleGcodeUnload)
     }
-  }, [connectedPort])
+  }, [])
 
 
   // Convert vertical wheel to horizontal scroll

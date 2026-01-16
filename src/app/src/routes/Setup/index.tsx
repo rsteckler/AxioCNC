@@ -524,7 +524,7 @@ export default function Setup() {
       // Machine status updates are handled by machineStateSync, but we show notifications here
       if (isAlarm) {
         // Check current status before updating - this is the "previous" value for transition detection
-        const currentStatus = machineStatus
+        const currentStatus = machineStatusRef.current
         const isTransitioningToAlarm = currentStatus !== 'alarm'
         
         // Clear hold on alarm (page-specific)
@@ -573,7 +573,7 @@ export default function Setup() {
       // Page-specific: Track hold reason for display
       if (senderData.hold && senderData.holdReason) {
         setHoldReason(senderData.holdReason)
-      } else if (!senderData.hold && machineStatus === 'hold') {
+      } else if (!senderData.hold && machineStatusRef.current === 'hold') {
         // Hold was cleared - check if we should reset
         // Only reset if controller state also says we're not in hold
         // This prevents resetting when sender clears but controller still shows Hold
@@ -631,7 +631,7 @@ export default function Setup() {
     
     const handleSocketDisconnect = (...args: unknown[]) => {
       const reason = args[0]
-      if (isConnected) {
+      if (isConnectedRef.current) {
         // Machine state updates are handled by machineStateSync
         // Only show notification (page-specific)
         const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
@@ -669,7 +669,7 @@ export default function Setup() {
       socketService.off('marlin:homing', handleHomingComplete)
       socketService.off('joystick:flashStatus', flashStatus)
     }
-  }, [showErrorNotification, isConnected, flashStatus, machineStatus, isHomed, dispatch])
+  }, []) // Empty array - listeners register once, handlers use refs for current values
   
   // Restore state from API on mount (only when needed - not on every navigation)
   // Only restore if:
