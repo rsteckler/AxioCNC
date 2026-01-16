@@ -1,6 +1,6 @@
 {
   "name": "axiocnc-app",
-  "version": "1.10.52",
+  "version": "1.10.54",
   "productName": "AxioCNC",
   "description": "CNC Milling Controller",
   "homepage": "https://github.com/rsteckler/axiocnc",
@@ -52,7 +52,6 @@
     "regenerator-runtime": "~0.13.10",
     "registry-auth-token": "~3.4.0",
     "registry-url": "~5.1.0",
-    "rimraf": "~2.6.3",
     "serialport": "^10.0.0",
     "serve-favicon": "~2.5.0",
     "serve-static": "~1.13.2",
