@@ -166,6 +166,30 @@ class JogLoop extends events.EventEmitter {
   }
 
   /**
+   * Get max feedrate from controller settings for given axes
+   * Returns the minimum max rate of the axes being moved (safety)
+   */
+  getMaxFeedrate(dx, dy, dz) {
+    if (!this.controller?.runner?.settings?.settings) {
+      return null; // No limit if settings unavailable
+    }
+
+    const settings = this.controller.runner.settings.settings;
+    const maxRateX = parseFloat(settings.$110) || null; // X max rate (mm/min)
+    const maxRateY = parseFloat(settings.$111) || null; // Y max rate (mm/min)
+    const maxRateZ = parseFloat(settings.$112) || null; // Z max rate (mm/min)
+
+    // Collect max rates for axes being moved
+    const maxRates = [];
+    if (Math.abs(dx) > 0.001 && maxRateX !== null) maxRates.push(maxRateX);
+    if (Math.abs(dy) > 0.001 && maxRateY !== null) maxRates.push(maxRateY);
+    if (Math.abs(dz) > 0.001 && maxRateZ !== null) maxRates.push(maxRateZ);
+
+    // Return minimum max rate of moved axes (safety)
+    return maxRates.length > 0 ? Math.min(...maxRates) : null;
+  }
+
+  /**
    * Calculate optimal time interval (dt) for given velocity
    * Formula: dt > v² / (2 * a * (N-1))
    *
@@ -221,7 +245,13 @@ class JogLoop extends events.EventEmitter {
 
     // Calculate feedrate (mm/min)
     // For multi-axis, use the combined vector speed
-    const feedrate = vTotal * 60;
+    let feedrate = vTotal * 60;
+
+    // Clamp feedrate to machine's max rates from $$ settings (if available)
+    const maxFeedrate = this.getMaxFeedrate(dx, dy, dz);
+    if (maxFeedrate !== null && feedrate > maxFeedrate) {
+      feedrate = maxFeedrate;
+    }
 
     // Validate all calculated values
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(dz) || !Number.isFinite(feedrate)) {
