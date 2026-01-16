@@ -1,6 +1,6 @@
 {
   "name": "axiocnc-app",
-  "version": "1.10.70",
+  "version": "1.10.79",
   "productName": "AxioCNC",
   "description": "CNC Milling Controller",
   "homepage": "https://github.com/rsteckler/axiocnc",
