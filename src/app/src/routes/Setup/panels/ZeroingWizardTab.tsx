@@ -152,7 +152,7 @@ export function ZeroingWizardTab({
     
     // Navigate to bitsetter position safely using machine coordinates (G53)
     // Sequence: Raise Z to safe height -> Move XY -> Lower Z to bitsetter position
-    const safeHeight = method.position.z + method.retractHeight
+    const safeHeight = 5 // Always retract to Z=5 in machine coordinates
     const commands = [
       'G90', // Absolute mode (ensure we're in absolute mode)
       `G53 G0 Z${safeHeight}`, // Raise Z to safe height above bitsetter (machine coordinates)
@@ -398,10 +398,9 @@ export function ZeroingWizardTab({
                 setProbeStatus('complete')
                 // Retract to safe height after storing reference
                 if (method.type === 'bitsetter' && connectedPort) {
-                  const safeHeight = method.position.z + method.retractHeight
                   sendGcode('G90') // Ensure absolute mode
                   setTimeout(() => {
-                    sendGcode(`G53 G0 Z${safeHeight}`) // Retract in machine coordinates
+                    sendGcode('G53 G0 Z5') // Always retract to Z=5 in machine coordinates
                   }, 200)
                 }
               })
@@ -1051,10 +1050,6 @@ export function ZeroingWizardTab({
                 <div>
                   <span className="text-muted-foreground">Probe Distance: </span>
                   <span className="font-mono">{bitsetterMethod.probeDistance}mm</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Retract Height: </span>
-                  <span className="font-mono">{bitsetterMethod.retractHeight}mm</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Work Coordinate: </span>
