@@ -415,6 +415,11 @@ class CNCEngine {
 
           const controller = store.get(`controllers["${port}"]`);
           if (!controller) {
+            // Controller already closed or doesn't exist - update status anyway
+            // This handles the case where the port was already disconnected but frontend state wasn't updated
+            log.debug(`Controller for port "${port}" not found, updating status to not_connected`);
+            machineStatusManager.handleSerialPortClose(port);
+            
             const err = `Serial port "${port}" not accessible`;
             log.error(err);
             callback(new Error(err));

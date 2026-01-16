@@ -187,6 +187,11 @@ class MachineStateSyncService {
   private handleSerialPortClose(..._args: unknown[]) {
     store.dispatch(setConnectionState({ isConnected: false, connectedPort: null }))
     store.dispatch(setConnecting(false))
+    // Also update machine status to not_connected when port closes
+    store.dispatch(setMachineStatus('not_connected'))
+    store.dispatch(setHomed(false))
+    store.dispatch(setWorkflowState(null))
+    store.dispatch(clearJobState())
   }
 
 
