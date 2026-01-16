@@ -234,6 +234,18 @@ class CNCEngine {
           }
         });
 
+        // Auto-associate new socket with any already-open controllers
+        // This handles reconnection scenarios (e.g., Vite hot reload) where
+        // the port is already open but the new socket hasn't called 'open'
+        const controllers = store.get('controllers', {});
+        Object.keys(controllers).forEach(port => {
+          const controller = controllers[port];
+          if (controller && controller.isOpen()) {
+            log.debug(`Auto-associating socket ${socket.id} with already-open port "${port}"`);
+            controller.addConnection(socket);
+          }
+        });
+
         socket.on('disconnect', () => {
           log.debug(`Disconnected from ${address}: id=${socket.id}, user.id=${user.id}, user.name=${user.name}`);
 

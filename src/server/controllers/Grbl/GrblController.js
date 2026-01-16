@@ -1162,13 +1162,21 @@ class GrblController {
           callback(null, this.sender.toJSON());
         },
         'gcode:unload': () => {
+          log.debug('[gcode:unload] Command received, unloading G-code');
+          
           this.workflow.stop();
 
           // Sender
           this.sender.unload();
 
+          const socketCount = Object.keys(this.sockets).length;
+          const socketIds = Object.keys(this.sockets);
+          log.debug(`[gcode:unload] Emitting unload event (tracked sockets: ${socketCount}, ids: ${socketIds.join(', ') || 'none'})`);
+          
           this.emit('gcode:unload');
           this.event.trigger('gcode:unload');
+          
+          log.debug('[gcode:unload] Unload event emitted and triggered');
         },
         'start': () => {
           log.warn(`Warning: The "${cmd}" command is deprecated and will be removed in a future release.`);
