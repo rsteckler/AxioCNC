@@ -2,7 +2,6 @@ import events from 'events';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import os from 'os';
 import logger from '../../lib/logger';
 import config from '../configstore';
 
@@ -10,7 +9,7 @@ const log = logger('service:mediamtx');
 
 /**
  * MediaMTXManager - Manages MediaMTX sidecar process for RTSP to HLS conversion
- * 
+ *
  * Spawns and supervises MediaMTX binary, generates config from camera settings,
  * and provides HLS streams via reverse proxy.
  */
@@ -26,7 +25,7 @@ class MediaMTXManager extends events.EventEmitter {
   binaryPath = null;
   configPath = null;
   logDir = null;
-  
+
   // MediaMTX HTTP port (loopback only)
   httpPort = 8888;
 
@@ -42,14 +41,14 @@ class MediaMTXManager extends events.EventEmitter {
    */
   findProjectRoot() {
     let current = __dirname;
-    
+
     // Start from __dirname and go up until we find the actual project root
     // Look for package.json AND vendor/ or src/ directory to avoid matching build output
     for (let i = 0; i < 15; i++) {
       const packageJson = path.join(current, 'package.json');
       const vendorDir = path.join(current, 'vendor');
       const srcDir = path.join(current, 'src');
-      
+
       // Check if this looks like the project root:
       // - Has package.json
       // - Has vendor/ or src/ directory (not build output)
@@ -67,44 +66,44 @@ class MediaMTXManager extends events.EventEmitter {
           current = parent;
           continue;
         }
-        
+
         // Check for vendor/ or src/ directory (project structure indicators)
         if (fs.existsSync(vendorDir) || fs.existsSync(srcDir)) {
           return current;
         }
-        
+
         // If we have package.json and we're not in output/dist, and we have themes/
         // that's also a good indicator
         if (fs.existsSync(path.join(current, 'themes'))) {
           return current;
         }
       }
-      
+
       const parent = path.dirname(current);
       if (parent === current) {
         break; // Reached filesystem root
       }
       current = parent;
     }
-    
+
     // Fallback: try process.cwd() and go up if needed
     let fallback = process.cwd();
     for (let i = 0; i < 5; i++) {
       const packageJson = path.join(fallback, 'package.json');
       const vendorDir = path.join(fallback, 'vendor');
       const srcDir = path.join(fallback, 'src');
-      
+
       if (fs.existsSync(packageJson) && (fs.existsSync(vendorDir) || fs.existsSync(srcDir))) {
         return fallback;
       }
-      
+
       const parent = path.dirname(fallback);
       if (parent === fallback) {
         break;
       }
       fallback = parent;
     }
-    
+
     // Last resort: use process.cwd()
     return process.cwd();
   }
@@ -115,16 +114,16 @@ class MediaMTXManager extends events.EventEmitter {
   setupPaths() {
     const getUserHome = () => (process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']);
     const homeDir = getUserHome();
-    
+
     // App data directory - use ~/.axiocnc for MediaMTX runtime files
     // This matches the pattern used by other app data (like themes)
     const axiocncDir = path.resolve(homeDir, '.axiocnc');
-    
+
     // MediaMTX config directory inside .axiocnc
     const mediamtxDir = path.resolve(axiocncDir, 'mediamtx');
     this.configPath = path.resolve(mediamtxDir, 'mediamtx.yml');
     this.logDir = path.resolve(mediamtxDir, 'logs');
-    
+
     // Ensure directories exist
     if (!fs.existsSync(mediamtxDir)) {
       fs.mkdirSync(mediamtxDir, { recursive: true });
@@ -136,11 +135,11 @@ class MediaMTXManager extends events.EventEmitter {
     // Binary path based on platform/arch
     const platform = process.platform;
     const arch = process.arch;
-    
+
     // Vendor binary path (relative to project root)
     // Directory structure: vendor/mediamtx/linux-amd64/mediamtx
     const projectRoot = this.findProjectRoot();
-    
+
     // Map platform/arch to directory name
     // linux + x64 -> linux-amd64
     // windows + x64 -> windows-amd64 (future)
@@ -159,7 +158,7 @@ class MediaMTXManager extends events.EventEmitter {
       // Fallback: use platform-arch format
       platformArchDir = `${platform}-${arch}`;
     }
-    
+
     const vendorBinaryPath = path.resolve(
       projectRoot,
       'vendor',
@@ -167,28 +166,28 @@ class MediaMTXManager extends events.EventEmitter {
       platformArchDir,
       'mediamtx' + (platform === 'win32' ? '.exe' : '')
     );
-    
+
     this.binaryPath = vendorBinaryPath;
-    
+
     log.debug(`MediaMTX paths: projectRoot=${projectRoot}, binary=${this.binaryPath}, config=${this.configPath}, logDir=${this.logDir}`);
   }
 
   /**
    * Generate MediaMTX YAML config from camera settings
-   * 
+   *
    * Reads from single camera object
    */
   generateConfigYAML() {
     const cameras = [];
-    
+
     // Get the single camera
     const camera = config.get('camera', null);
-    
+
     // Only include enabled RTSP cameras
     if (camera && camera.enabled && camera.type === 'rtsp' && camera.inputUrl) {
       // Build RTSP URL with credentials if provided
       let rtspUrl = camera.inputUrl;
-      
+
       // Inject username/password into RTSP URL if provided separately
       if (camera.username || camera.password) {
         try {
@@ -218,20 +217,19 @@ class MediaMTXManager extends events.EventEmitter {
           }
         }
       }
-      
+
       cameras.push({
         id: camera.id,
         source: rtspUrl
       });
-      
+
       log.debug(`MediaMTX config: camera ${camera.id} - RTSP URL: ${rtspUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//$1:***@')}`);
     }
-    
+
     // Generate YAML manually (simple template)
     // MediaMTX logDestinations: stdout, stderr, syslog, or file://<path>
     // For file logging, we'll just use stdout and let our process capture it
-    const logFilePath = path.resolve(this.logDir, 'mediamtx.log');
-    
+
     let yamlContent = `logLevel: info
 logDestinations:
   - stdout
@@ -249,7 +247,7 @@ paths:
     cameras.forEach(camera => {
       // Use YAML quoted string for URLs to handle special characters
       const sourceUrl = camera.source.includes(':') ? `"${camera.source}"` : camera.source;
-      
+
       yamlContent += `  ${camera.id}:
     source: ${sourceUrl}
     sourceProtocol: automatic
@@ -259,7 +257,7 @@ paths:
     rtspTransport: tcp
 `;
     });
-    
+
     return yamlContent;
   }
 
@@ -286,29 +284,29 @@ paths:
       if (!fs.existsSync(this.binaryPath)) {
         return false;
       }
-      
+
       // Check if it's actually a file (not a directory)
       const stats = fs.statSync(this.binaryPath);
       if (!stats.isFile()) {
         log.warn(`MediaMTX path exists but is not a file: ${this.binaryPath}`);
         return false;
       }
-      
+
       // Try to read first few bytes to check if it's a binary
       // ELF binaries start with 0x7F 'ELF'
       const fd = fs.openSync(this.binaryPath, 'r');
       const buffer = Buffer.alloc(4);
       fs.readSync(fd, buffer, 0, 4, 0);
       fs.closeSync(fd);
-      
+
       const magic = buffer.toString('hex');
       const isElf = buffer[0] === 0x7F && buffer[1] === 0x45 && buffer[2] === 0x4C && buffer[3] === 0x46; // ELF
       const isShebang = buffer[0] === 0x23 && buffer[1] === 0x21; // #!
-      
+
       if (!isElf && !isShebang) {
         log.warn(`MediaMTX file may not be a valid binary (magic: ${magic}). Expected ELF binary or script with shebang.`);
       }
-      
+
       return true;
     } catch (error) {
       log.error(`Error checking MediaMTX binary: ${error.message}`);
@@ -344,6 +342,7 @@ paths:
       // Check if file is executable (check for execute bit for owner)
       const mode = stats.mode;
       const executeMode = 0o111; // Execute permission
+      // eslint-disable-next-line no-bitwise
       if ((mode & executeMode) === 0) {
         log.warn('MediaMTX binary does not have execute permissions, attempting to fix...');
         fs.chmodSync(this.binaryPath, 0o755); // rwxr-xr-x
@@ -359,21 +358,21 @@ paths:
     // Spawn MediaMTX process
     const logFile = path.resolve(this.logDir, 'mediamtx-process.log');
     const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-    
+
     log.info(`Starting MediaMTX from ${this.binaryPath}`);
     log.info(`MediaMTX config: ${this.configPath}`);
-    
+
     // Use absolute path and ensure shell: false
     // Also set PATH to ensure no shell interpretation
     const absoluteBinaryPath = path.resolve(this.binaryPath);
-    
+
     log.debug(`Spawning MediaMTX with absolute path: ${absoluteBinaryPath}`);
     log.debug(`Config path: ${this.configPath}`);
-    
+
     // MediaMTX takes config file as positional argument, not -c flag
     // Usage: mediamtx [<confpath>] [flags]
     const absoluteConfigPath = path.resolve(this.configPath);
-    
+
     // Use shell: false to run the binary directly, not through a shell
     // Config file is a positional argument, not a flag
     this.process = spawn(absoluteBinaryPath, [absoluteConfigPath], {
@@ -386,7 +385,7 @@ paths:
     });
 
     this.pid = this.process.pid;
-    
+
     // Pipe stdout/stderr to log file with error handling
     // Handle errors to prevent "write after end" when process exits quickly
     this.process.stdout.on('error', (err) => {
@@ -394,17 +393,17 @@ paths:
         log.debug(`MediaMTX stdout stream error: ${err.message}`);
       }
     });
-    
+
     this.process.stderr.on('error', (err) => {
       if (err.code !== 'EPIPE') {
         log.debug(`MediaMTX stderr stream error: ${err.message}`);
       }
     });
-    
+
     logStream.on('error', (err) => {
       log.debug(`Log stream error: ${err.message}`);
     });
-    
+
     this.process.stdout.pipe(logStream, { end: false });
     this.process.stderr.pipe(logStream, { end: false });
 
@@ -432,7 +431,7 @@ paths:
 
     this.process.on('exit', (code, signal) => {
       log.warn(`MediaMTX process exited with code ${code}, signal ${signal}`);
-      
+
       // Close the log stream after a short delay to ensure all data is written
       setTimeout(() => {
         try {
@@ -443,11 +442,11 @@ paths:
           // Ignore errors when closing stream
         }
       }, 100);
-      
+
       this.process = null;
       this.pid = null;
       this.emit('exit', code, signal);
-      
+
       if (code !== 0 && code !== null) {
         // Process crashed - restart with backoff
         this.scheduleRestart();
@@ -468,13 +467,13 @@ paths:
     }
 
     const delay = Math.min(
-      this.minRestartDelay * Math.pow(2, this.restartCount),
+      this.minRestartDelay * 2 ** this.restartCount,
       this.maxRestartDelay
     );
-    
+
     this.restartCount++;
     log.info(`Scheduling MediaMTX restart in ${delay}ms (attempt ${this.restartCount})`);
-    
+
     this.restartTimeout = setTimeout(() => {
       this.restartTimeout = null;
       this.start();
@@ -495,10 +494,10 @@ paths:
     }
 
     log.info(`Stopping MediaMTX process (PID ${this.pid})`);
-    
+
     try {
       this.process.kill('SIGTERM');
-      
+
       // Force kill after 5 seconds if still running
       const forceKillTimeout = setTimeout(() => {
         if (this.process) {
@@ -506,14 +505,14 @@ paths:
           this.process.kill('SIGKILL');
         }
       }, 5000);
-      
+
       this.process.once('exit', () => {
         clearTimeout(forceKillTimeout);
       });
     } catch (error) {
       log.error(`Error stopping MediaMTX: ${error.message}`);
     }
-    
+
     this.process = null;
     this.pid = null;
     this.restartCount = 0;

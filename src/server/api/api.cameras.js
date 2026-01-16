@@ -83,14 +83,14 @@ const probeStreamType = (inputUrl, username, password) => {
       if (username || password) {
         const authString = `${username || ''}:${password || ''}`;
         const auth = Buffer.from(authString).toString('base64');
-        requestOptions.headers['Authorization'] = `Basic ${auth}`;
+        requestOptions.headers.Authorization = `Basic ${auth}`;
       }
 
       // Also try to use credentials from URL if no separate credentials provided
       if (!username && !password && (upstreamUrl.username || upstreamUrl.password)) {
         const authString = `${upstreamUrl.username || ''}:${upstreamUrl.password || ''}`;
         const auth = Buffer.from(authString).toString('base64');
-        requestOptions.headers['Authorization'] = `Basic ${auth}`;
+        requestOptions.headers.Authorization = `Basic ${auth}`;
       }
 
       const req = httpModule.request(requestOptions, (res) => {

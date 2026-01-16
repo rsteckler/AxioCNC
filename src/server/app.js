@@ -26,9 +26,6 @@ import serveStatic from 'serve-static';
 import sessionFileStore from 'session-file-store';
 import _get from 'lodash/get';
 import _noop from 'lodash/noop';
-import castArray from 'lodash/castArray';
-import find from 'lodash/find';
-import rimraf from 'rimraf';
 import {
   LanguageDetector as i18nextLanguageDetector,
   handle as i18nextHandle
@@ -314,7 +311,7 @@ const appMain = () => {
 
     // Machines
     app.get(urljoin(settings.route, 'api/machines'), api.machines.fetch);
-    
+
     // Machine Presets
     app.get(urljoin(settings.route, 'api/machine-presets'), api.machinePresets.fetch);
     app.post(urljoin(settings.route, 'api/machines'), api.machines.create);
@@ -397,10 +394,10 @@ const appMain = () => {
     // Route must come before the general /streams/:id/* route
     app.get(urljoin(settings.route, 'streams/:id/mjpeg'), (req, res) => {
       const streamId = req.params.id;
-      
+
       // Get the single camera (id parameter is ignored, but we verify it matches)
       const camera = config.get('camera', null);
-      
+
       // Check if camera exists, is enabled, and is MJPEG type
       // Also verify the streamId matches the camera ID
       if (!camera || !camera.enabled || camera.type !== 'mjpeg' || camera.id !== streamId) {
@@ -410,14 +407,14 @@ const appMain = () => {
         });
         return;
       }
-      
+
       try {
         // Build URL - use credentials from camera object if available, otherwise from URL
         let upstreamUrlString = camera.inputUrl;
-        
+
         // Check if URL has masked password (****) - if so, we need to use separate credentials
         const hasMaskedPassword = upstreamUrlString.includes(':****@');
-        
+
         // If we have separate username/password, use those instead of URL credentials
         if (camera.username || camera.password) {
           try {
@@ -436,13 +433,13 @@ const appMain = () => {
           });
           return;
         }
-        
+
         const upstreamUrl = new URL(upstreamUrlString);
-        
+
         // Build upstream request options
         const isHttps = upstreamUrl.protocol === 'https:';
         const defaultPort = isHttps ? 443 : 80;
-        
+
         const requestOptions = {
           hostname: upstreamUrl.hostname,
           port: upstreamUrl.port ? parseInt(upstreamUrl.port, 10) : defaultPort,
@@ -453,26 +450,26 @@ const appMain = () => {
             'User-Agent': 'AxioCNC-MJPEG-Proxy/1.0',
           },
         };
-        
+
         // Add Basic Auth if credentials are provided
         // ALWAYS prefer separate username/password fields over URL-embedded credentials
         // URL credentials might be masked (****) or incorrect
         if (camera.username || camera.password) {
           const authString = `${camera.username || ''}:${camera.password || ''}`;
           const auth = Buffer.from(authString).toString('base64');
-          requestOptions.headers['Authorization'] = `Basic ${auth}`;
+          requestOptions.headers.Authorization = `Basic ${auth}`;
         } else if (upstreamUrl.username && upstreamUrl.password && !upstreamUrl.password.includes('****')) {
           // Fallback: credentials in URL (only if password is not masked)
           const authString = `${upstreamUrl.username}:${upstreamUrl.password}`;
           const auth = Buffer.from(authString).toString('base64');
-          requestOptions.headers['Authorization'] = `Basic ${auth}`;
+          requestOptions.headers.Authorization = `Basic ${auth}`;
         } else {
           log.warn(`No valid authentication provided for ${streamId} - camera may require auth`);
         }
-        
+
         // Use http or https based on protocol
         const httpModule = isHttps ? https : http;
-        
+
         // Helper function to generate Digest Auth response
         const generateDigestAuth = (username, password, method, path, wwwAuthenticate) => {
           // Parse WWW-Authenticate header
@@ -484,26 +481,26 @@ const appMain = () => {
               authParams[match[1]] = match[2];
             }
           });
-          
+
           const realm = authParams.realm || '';
           const nonce = authParams.nonce || '';
           const qop = authParams.qop || '';
           const opaque = authParams.opaque || '';
-          
+
           // Generate cnonce (client nonce)
           const cnonce = crypto.randomBytes(16).toString('hex');
-          
+
           // Calculate HA1 = MD5(username:realm:password)
           const ha1 = crypto.createHash('md5').update(`${username}:${realm}:${password}`).digest('hex');
-          
+
           // Calculate HA2 = MD5(method:uri)
           const ha2 = crypto.createHash('md5').update(`${method}:${path}`).digest('hex');
-          
+
           // Calculate response = MD5(HA1:nonce:nonceCount:cnonce:qop:HA2)
           // For simplicity, we use nonceCount=00000001
           const nonceCount = '00000001';
           const response = crypto.createHash('md5').update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:${qop}:${ha2}`).digest('hex');
-          
+
           // Build Authorization header
           let authHeaderValue = `Digest username="${username}", realm="${realm}", nonce="${nonce}", uri="${path}", response="${response}"`;
           if (qop) {
@@ -512,21 +509,21 @@ const appMain = () => {
           if (opaque) {
             authHeaderValue += `, opaque="${opaque}"`;
           }
-          
+
           return authHeaderValue;
         };
-        
+
         // Make upstream request
         const upstreamReq = httpModule.request(requestOptions, (upstreamRes) => {
           // Check for authentication errors - if 401 and we have credentials, try Digest Auth
           if (upstreamRes.statusCode === 401 && (camera.username || camera.password)) {
             const wwwAuthenticate = upstreamRes.headers['www-authenticate'];
-            
+
             if (wwwAuthenticate && wwwAuthenticate.toLowerCase().startsWith('digest')) {
               // Close the first request
               upstreamRes.destroy();
               upstreamReq.destroy();
-              
+
               // Generate Digest Auth header
               const digestAuth = generateDigestAuth(
                 camera.username || '',
@@ -535,7 +532,7 @@ const appMain = () => {
                 requestOptions.path,
                 wwwAuthenticate
               );
-              
+
               // Create new request with Digest Auth (replace Basic Auth)
               const digestRequestOptions = {
                 ...requestOptions,
@@ -544,10 +541,9 @@ const appMain = () => {
                   'Authorization': digestAuth,
                 }
               };
-              
+
               // Make second request with Digest Auth
               const digestReq = httpModule.request(digestRequestOptions, (digestRes) => {
-                
                 if (digestRes.statusCode === 401) {
                   log.error(`MJPEG stream ${streamId} authentication failed (401) with Digest Auth. Check camera credentials.`);
                   if (!res.headersSent) {
@@ -558,13 +554,13 @@ const appMain = () => {
                   digestRes.destroy();
                   return;
                 }
-                
+
                 // Success - stream the response
                 res.setHeader('Cache-Control', 'no-store');
                 res.setHeader('Content-Type', digestRes.headers['content-type'] || 'multipart/x-mixed-replace');
-                
+
                 digestRes.pipe(res);
-                
+
                 digestRes.on('error', (err) => {
                   log.error(`MJPEG upstream response error (Digest Auth) for ${streamId}: ${err.message}`);
                   if (!res.headersSent) {
@@ -577,7 +573,7 @@ const appMain = () => {
                   }
                 });
               });
-              
+
               digestReq.on('error', (err) => {
                 log.error(`MJPEG upstream request error (Digest Auth) for ${streamId}: ${err.message}`);
                 if (!res.headersSent) {
@@ -589,20 +585,20 @@ const appMain = () => {
                   res.destroy();
                 }
               });
-              
+
               // Handle client disconnect
               req.on('close', () => {
                 if (!digestReq.destroyed) {
                   digestReq.destroy();
                 }
               });
-              
+
               res.on('close', () => {
                 if (!digestReq.destroyed) {
                   digestReq.destroy();
                 }
               });
-              
+
               digestReq.end();
               return;
             } else {
@@ -617,7 +613,7 @@ const appMain = () => {
               return;
             }
           }
-          
+
           if (upstreamRes.statusCode !== 200) {
             log.error(`MJPEG stream ${streamId} returned status ${upstreamRes.statusCode}`);
             if (!res.headersSent) {
@@ -628,14 +624,14 @@ const appMain = () => {
             upstreamRes.destroy();
             return;
           }
-          
+
           // Set response headers
           res.setHeader('Cache-Control', 'no-store');
           res.setHeader('Content-Type', upstreamRes.headers['content-type'] || 'multipart/x-mixed-replace');
-          
+
           // Stream the response directly
           upstreamRes.pipe(res);
-          
+
           // Handle upstream response errors
           upstreamRes.on('error', (err) => {
             log.error(`MJPEG upstream response error for ${streamId}: ${err.message}`);
@@ -649,7 +645,7 @@ const appMain = () => {
             }
           });
         });
-        
+
         // Handle upstream request errors
         upstreamReq.on('error', (err) => {
           log.error(`MJPEG upstream request error for ${streamId}: ${err.message}`);
@@ -662,7 +658,7 @@ const appMain = () => {
             res.destroy();
           }
         });
-        
+
         // Handle client disconnect - abort upstream request
         req.on('close', () => {
           log.debug(`Client disconnected from MJPEG stream ${streamId}, aborting upstream request`);
@@ -670,17 +666,16 @@ const appMain = () => {
             upstreamReq.destroy();
           }
         });
-        
+
         res.on('close', () => {
           log.debug(`Response closed for MJPEG stream ${streamId}, aborting upstream request`);
           if (!upstreamReq.destroyed) {
             upstreamReq.destroy();
           }
         });
-        
+
         // Send the request
         upstreamReq.end();
-        
       } catch (err) {
         log.error(`Error setting up MJPEG proxy for ${streamId}: ${err.message}`);
         if (!res.headersSent) {
@@ -706,7 +701,7 @@ const appMain = () => {
       const streamId = req.params.id;
       const originalPath = proxyReq.path || '';
       const mediaMTXPath = originalPath.replace(`/streams/${streamId}`, `/${streamId}`);
-      
+
       proxyReq.path = mediaMTXPath;
       // HLS streaming continuously requests segments - don't log every request
     });
@@ -724,10 +719,10 @@ const appMain = () => {
     // Proxy all /streams/:id/* requests to MediaMTX (except /mjpeg which is handled above)
     app.all(urljoin(settings.route, 'streams/:id/*'), (req, res) => {
       const streamId = req.params.id;
-      
+
       // Get the single camera (id parameter is ignored, but we verify it matches)
       const camera = config.get('camera', null);
-      
+
       // Return 404 if camera doesn't exist, isn't enabled, or isn't RTSP
       // Also verify the streamId matches the camera ID
       if (!camera || !camera.enabled || camera.type !== 'rtsp' || camera.id !== streamId) {
@@ -736,7 +731,7 @@ const appMain = () => {
         });
         return;
       }
-      
+
       // Skip if this is an MJPEG request (already handled above)
       if (req.path.endsWith('/mjpeg')) {
         res.status(404).send({
@@ -744,7 +739,7 @@ const appMain = () => {
         });
         return;
       }
-      
+
       // Proxy to MediaMTX for HLS streams
       proxy.web(req, res);
     });
@@ -754,13 +749,14 @@ const appMain = () => {
   app.get(urljoin(settings.route, '/'), (req, res) => {
     const appPath = _get(settings, 'assets.app.path', '');
     const indexPath = path.join(appPath, 'index.html');
-    
+
     // Check if Vite-built index.html exists, otherwise fall back to template
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
+      return;
     } else {
       // Fallback to template if index.html doesn't exist
-      return renderPage('index.hbs', (req, res) => {
+      renderPage('index.hbs', (req, res) => {
         const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
         const lng = req.language;
         const t = req.t;
@@ -772,6 +768,7 @@ const appMain = () => {
           loading: t('loading')
         };
       })(req, res);
+      return;
     }
   });
 
@@ -796,13 +793,14 @@ const appMain = () => {
     // Serve Vite-built index.html for all other routes (client-side routes)
     const appPath = _get(settings, 'assets.app.path', '');
     const indexPath = path.join(appPath, 'index.html');
-    
+
     // Check if Vite-built index.html exists, otherwise fall back to template
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
+      return undefined;
     } else {
       // Fallback to template if index.html doesn't exist
-      return renderPage('index.hbs', (req, res) => {
+      renderPage('index.hbs', (req, res) => {
         const webroot = _get(settings, 'assets.app.routes[0]', ''); // with trailing slash
         const lng = req.language;
         const t = req.t;
@@ -814,6 +812,7 @@ const appMain = () => {
           loading: t('loading')
         };
       })(req, res, next);
+      return undefined;
     }
   });
 

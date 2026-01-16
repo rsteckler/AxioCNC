@@ -1,9 +1,9 @@
 /**
  * Gamepad Service
- * 
+ *
  * Provides server-side gamepad detection and input reading using the Linux
  * joystick API (/dev/input/js*). Zero native dependencies required.
- * 
+ *
  * Linux Joystick Event Structure (8 bytes):
  *   - time:   uint32 (ms timestamp)
  *   - value:  int16  (-32767 to 32767 for axes, 0/1 for buttons)
@@ -32,67 +32,19 @@ function isLinux() {
 }
 
 /**
- * Map Linux joystick button numbers to Web Gamepad API standard
- * 
- * For Xbox controllers on Linux (via xpad driver):
- * - Buttons 0-5 map directly (A, B, X, Y, LB, RB)
- * - Button 6 = Back/Select -> maps to button 8
- * - Button 7 = Start -> maps to button 9
- * - Button 8 = Left stick click -> maps to button 10
- * - Button 9 = Right stick click -> maps to button 11
- * - Buttons 10+ are D-pad or other -> map to 12-15
- * 
- * @param {string} deviceName - The device name from /sys
- * @param {number} linuxButtonNum - The raw button number from Linux
- * @returns {number} - The Web Gamepad API button number
- */
-function mapButtonToStandard(deviceName, linuxButtonNum) {
-  // Detect Xbox controllers by name
-  const isXbox = /xbox|microsoft|xinput/i.test(deviceName);
-  
-  if (isXbox) {
-    // Xbox controller mapping (via xpad driver)
-    const xboxMapping = {
-      0: 0,  // A
-      1: 1,  // B
-      2: 2,  // X
-      3: 3,  // Y
-      4: 4,  // LB
-      5: 5,  // RB
-      6: 8,  // Back -> maps to button 8
-      7: 9,  // Start -> maps to button 9
-      8: 10, // Left stick click -> maps to button 10
-      9: 11, // Right stick click -> maps to button 11
-    };
-    
-    if (xboxMapping.hasOwnProperty(linuxButtonNum)) {
-      return xboxMapping[linuxButtonNum];
-    }
-    
-    // D-pad and other buttons map to 12+
-    if (linuxButtonNum >= 10) {
-      return Math.min(12 + (linuxButtonNum - 10), 15);
-    }
-  }
-  
-  // For unknown controllers, use raw button numbers (up to 15)
-  return Math.min(linuxButtonNum, 15);
-}
-
-/**
  * Scan for joystick devices in /dev/input/
  */
 function scanJoystickDevices() {
   if (!isLinux()) {
     return [];
   }
-  
+
   try {
     // Check if /dev/input exists
     if (!fs.existsSync(JOYSTICK_DEV_PATH)) {
       return [];
     }
-    
+
     let files;
     try {
       files = fs.readdirSync(JOYSTICK_DEV_PATH);
@@ -103,18 +55,18 @@ function scanJoystickDevices() {
       }
       return [];
     }
-    
+
     const jsFiles = files.filter(f => f.startsWith('js') && f.match(/^js\d+$/));
-    
+
     const joysticks = jsFiles
       .map(f => {
         const devicePath = path.join(JOYSTICK_DEV_PATH, f);
         const index = parseInt(f.replace('js', ''), 10);
-        
-        if (isNaN(index)) {
+
+        if (Number.isNaN(index)) {
           return null;
         }
-        
+
         // Try to get device name from /sys
         let name = `Joystick ${index}`;
         try {
@@ -122,7 +74,7 @@ function scanJoystickDevices() {
             `/sys/class/input/${f}/device/name`,
             `/sys/class/input/${f}/name`,
           ];
-          
+
           for (const sysPath of sysPaths) {
             if (fs.existsSync(sysPath)) {
               name = fs.readFileSync(sysPath, 'utf8').trim();
@@ -132,7 +84,7 @@ function scanJoystickDevices() {
         } catch (err) {
           // Ignore - use default name
         }
-        
+
         return {
           id: devicePath,
           path: devicePath,
@@ -144,7 +96,7 @@ function scanJoystickDevices() {
       })
       .filter(gp => gp !== null) // Filter out null entries
       .sort((a, b) => a.index - b.index);
-    
+
     return joysticks;
   } catch (err) {
     log.error(`Error scanning for joysticks: ${err.message}`);
@@ -168,7 +120,7 @@ class GamepadService extends EventEmitter {
       timestamp: 0,
     };
     this._isSupported = isLinux();
-    
+
     // Listen to state changes and emit via Socket.IO
     this.on('state', (state) => {
       if (this.io && this.selectedGamepadId) {
@@ -207,7 +159,7 @@ class GamepadService extends EventEmitter {
       this.gamepads = [];
       return this.gamepads;
     }
-    
+
     try {
       this.gamepads = scanJoystickDevices();
     } catch (err) {
@@ -215,7 +167,7 @@ class GamepadService extends EventEmitter {
       log.error(err.stack);
       this.gamepads = [];
     }
-    
+
     // If selected gamepad is no longer connected, clear selection
     if (this.selectedGamepadId) {
       const stillConnected = this.gamepads.some(gp => gp.id === this.selectedGamepadId);
@@ -224,7 +176,7 @@ class GamepadService extends EventEmitter {
         this.setSelected(null);
       }
     }
-    
+
     return this.gamepads;
   }
 
@@ -248,21 +200,21 @@ class GamepadService extends EventEmitter {
   setSelected(gamepadId) {
     // Close existing connection
     this.closeDevice();
-    
+
     this.selectedGamepadId = gamepadId;
     this.selectedGamepadName = null;
-    
+
     // Reset state
     this.state = {
       axes: [0, 0, 0, 0, 0, 0, 0, 0],
       buttons: Array(16).fill(false),
       timestamp: 0,
     };
-    
+
     if (!gamepadId) {
       return true;
     }
-    
+
     // Find the gamepad
     const gamepad = this.gamepads.find(gp => gp.id === gamepadId);
     if (!gamepad) {
@@ -271,21 +223,21 @@ class GamepadService extends EventEmitter {
       this.selectedGamepadName = null;
       return false;
     }
-    
+
     // Store gamepad name for button mapping
     this.selectedGamepadName = gamepad.name;
-    
+
     // Open the device using fs.open for character devices
     try {
       // Check if device exists and is readable
       fs.accessSync(gamepad.path, fs.constants.R_OK);
-      
+
       // Open file descriptor for character device
       this.fd = fs.openSync(gamepad.path, 'r');
-      
+
       // Set up recursive read loop
       this.readLoop();
-      
+
       return true;
     } catch (err) {
       log.error(`Failed to open joystick: ${err.message}`);
@@ -306,23 +258,23 @@ class GamepadService extends EventEmitter {
     if (this.reading || !this.fd) {
       return;
     }
-    
+
     this.reading = true;
-    
+
     // Use a new buffer for each read to avoid data corruption
     const readNext = () => {
       if (!this.reading || !this.fd) {
         return;
       }
-      
+
       const buffer = Buffer.alloc(8); // One joystick event = 8 bytes
-      
+
       // Use async fs.read - it uses libuv's thread pool and won't block the event loop
       fs.read(this.fd, buffer, 0, 8, null, (err, bytesRead) => {
         if (!this.reading) {
           return; // Stopped reading
         }
-        
+
         if (err) {
           if (err.code === 'ENODEV' || err.code === 'EBADF' || err.code === 'ENXIO') {
             log.warn('Joystick disconnected');
@@ -335,16 +287,16 @@ class GamepadService extends EventEmitter {
           setTimeout(readNext, 100);
           return;
         }
-        
+
         if (bytesRead === 8) {
           this.parseEvent(buffer);
         }
-        
+
         // Continue reading (async callback handles next read)
         readNext();
       });
     };
-    
+
     // Start reading
     readNext();
   }
@@ -354,7 +306,7 @@ class GamepadService extends EventEmitter {
    */
   closeDevice() {
     this.reading = false;
-    
+
     if (this.readStream) {
       try {
         this.readStream.destroy();
@@ -363,7 +315,7 @@ class GamepadService extends EventEmitter {
       }
       this.readStream = null;
     }
-    
+
     if (this.fd !== null) {
       try {
         fs.closeSync(this.fd);
@@ -382,18 +334,19 @@ class GamepadService extends EventEmitter {
     if (data.length < 8) {
       return;
     }
-    
+
     // Parse multiple events if buffer contains more than one
     for (let offset = 0; offset + 8 <= data.length; offset += 8) {
-      const time = data.readUInt32LE(offset);
+      // time is read but not used - keeping for potential future use
+      // const time = data.readUInt32LE(offset);
       const value = data.readInt16LE(offset + 4);
       const type = data.readUInt8(offset + 6);
       const number = data.readUInt8(offset + 7);
-      
+
       // Strip init flag
+      // eslint-disable-next-line no-bitwise
       const eventType = type & ~JS_EVENT_INIT;
-      const isInit = !!(type & JS_EVENT_INIT);
-      
+
       if (eventType === JS_EVENT_AXIS) {
         // Normalize axis value from -32767..32767 to -1..1
         if (number < this.state.axes.length) {
@@ -417,10 +370,10 @@ class GamepadService extends EventEmitter {
           log.warn(`Button ${number} out of range (max=${this.state.buttons.length - 1})`);
         }
       }
-      
+
       this.state.timestamp = Date.now();
     }
-    
+
     this.emit('state', this.state);
   }
 
@@ -431,7 +384,7 @@ class GamepadService extends EventEmitter {
     if (!this.selectedGamepadId) {
       return null;
     }
-    
+
     return {
       gamepadId: this.selectedGamepadId,
       connected: !!this.fd,
@@ -448,12 +401,11 @@ class GamepadService extends EventEmitter {
     return {
       supported: this._isSupported,
       platform: process.platform,
-      message: this._isSupported 
+      message: this._isSupported
         ? 'Server-side gamepad supported'
         : 'Server-side gamepad requires Linux. Use browser-side gamepad instead.',
     };
   }
-
 
   /**
    * Shutdown the service
