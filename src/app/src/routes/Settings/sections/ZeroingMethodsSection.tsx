@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Move } from 'lucide-react'
+import { JogPanel } from '@/routes/Setup/panels/JogPanel'
+import { useMachineState, useIsConnected, useConnectedPort, useMachinePosition, useWorkPosition, useIsHomed } from '@/store/hooks'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -42,6 +45,8 @@ import {
   Check,
   MapPin,
   ShieldCheck,
+  HelpCircle,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -189,7 +194,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         probeFeedrate: 100,
         probeDistance: 50,
         retractHeight: 10,
-        requireCheck: false,
+        requireCheck: true,
       }
     case 'bitzero':
       return {
@@ -199,7 +204,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         probeThickness: 12.7, // 0.5" is common
         probeFeedrate: 100,
         probeDistance: 25,
-        requireCheck: false,
+        requireCheck: true,
       }
     case 'touchplate':
       return {
@@ -595,14 +600,7 @@ function MethodEditDialog({
             <BitSetterSettings 
               config={editedMethod} 
               onChange={(changes) => setEditedMethod({ ...editedMethod, ...changes })}
-              onSetFromCurrentPosition={() => {
-                // TODO: Get current machine position from API
-                // For now, show a placeholder message
-                console.log('Would set position from current machine position')
-                // Example of what this would do when connected:
-                // const currentPos = await getMachinePosition()
-                // setEditedMethod({ ...editedMethod, position: currentPos })
-              }}
+              onSetFromCurrentPosition={undefined}
             />
           )}
           {editedMethod.type === 'bitzero' && (
@@ -634,7 +632,10 @@ function MethodEditDialog({
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
+          <Button 
+            onClick={handleSave}
+            disabled={editedMethod.type === 'bitsetter' && editedMethod.position.x === 0 && editedMethod.position.y === 0 && editedMethod.position.z === -50}
+          >
             <Check className="w-4 h-4 mr-2" />
             Save
           </Button>
@@ -654,50 +655,91 @@ function BitSetterSettings({
   onChange: (changes: Partial<BitSetterConfig>) => void
   onSetFromCurrentPosition?: () => void
 }) {
+  const [jogDialogOpen, setJogDialogOpen] = useState(false)
+  const machineState = useMachineState()
+  const isConnected = useIsConnected()
+  const connectedPort = useConnectedPort()
+  const machinePosition = useMachinePosition()
+  const workPosition = useWorkPosition()
+  const isHomed = useIsHomed()
+  
+  // Determine machine status from backend status
+  const machineStatus = machineState.backendStatus?.machineStatus || (isConnected ? 'connected_post_home' : 'not_connected')
+  
+  // Check if machine is connected and homed
+  const isConnectedAndHomed = isConnected && isHomed
+  
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm font-medium">Sensor Position (Machine Coordinates)</Label>
-            <p className="text-xs text-muted-foreground">
-              The fixed position of the BitSetter on your machine bed
+        <div>
+          <Label className="text-sm font-medium">BitSetter Position (Machine Coordinates)</Label>
+          <p className="text-xs text-muted-foreground">
+            The fixed position of the BitSetter on your machine bed
+          </p>
+        </div>
+        <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-blue-900 dark:text-blue-100">
+            Open Jog Controls and move the tool to the BitSetter location. Once positioned, press "Set from Current" to capture the machine coordinates.
+          </p>
+        </div>
+        {!isConnectedAndHomed && (
+          <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-900 dark:text-red-100">
+              <strong>Critical:</strong> The machine must be connected and homed before setting the BitSetter location. This ensures accurate machine coordinates.
             </p>
           </div>
+        )}
+        <div className="flex items-center justify-start gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setJogDialogOpen(true)}
+            className="gap-2"
+            disabled={!isConnectedAndHomed}
+          >
+            <Move className="w-4 h-4" />
+            Jog Controls
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onSetFromCurrentPosition}
+            onClick={() => {
+              onChange({ position: { x: machinePosition.x, y: machinePosition.y, z: machinePosition.z } })
+            }}
             className="gap-1.5"
+            disabled={!isConnectedAndHomed}
           >
             <MapPin className="w-3.5 h-3.5" />
             Set from Current
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">X (mm)</Label>
-            <Input
-              type="number"
-              value={config.position.x}
-              onChange={(e) => onChange({ position: { ...config.position, x: parseFloat(e.target.value) || 0 } })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Y (mm)</Label>
-            <Input
-              type="number"
-              value={config.position.y}
-              onChange={(e) => onChange({ position: { ...config.position, y: parseFloat(e.target.value) || 0 } })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Z (mm)</Label>
-            <Input
-              type="number"
-              value={config.position.z}
-              onChange={(e) => onChange({ position: { ...config.position, z: parseFloat(e.target.value) || 0 } })}
-            />
+        <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Stored BitSetter Position:</div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">X: </span>
+              <span className="font-mono">
+                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.x.toFixed(3)}
+              </span>
+              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Y: </span>
+              <span className="font-mono">
+                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.y.toFixed(3)}
+              </span>
+              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Z: </span>
+              <span className="font-mono">
+                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.z.toFixed(3)}
+              </span>
+              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -728,18 +770,6 @@ function BitSetterSettings({
         </SettingsField>
       </div>
 
-      <SettingsField label="Retract Height" tooltip="Height to retract after probing">
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            value={config.retractHeight}
-            onChange={(e) => onChange({ retractHeight: parseFloat(e.target.value) || 0 })}
-            className="w-20"
-          />
-          <span className="text-xs text-muted-foreground">mm</span>
-        </div>
-      </SettingsField>
-
       {/* Require Check Before Running */}
       <div className="pt-2 border-t">
         <div className="flex items-start gap-3">
@@ -760,6 +790,31 @@ function BitSetterSettings({
           </div>
         </div>
       </div>
+
+      {/* Jog Controls Dialog */}
+      <Dialog open={jogDialogOpen} onOpenChange={setJogDialogOpen}>
+        <DialogContent className="max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Jog Controls</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <JogPanel
+              isConnected={isConnected}
+              connectedPort={connectedPort}
+              machineStatus={machineStatus}
+              onFlashStatus={() => {}}
+              machinePosition={machinePosition}
+              workPosition={workPosition}
+            />
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mt-4">
+            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              Jog your machine to the location of the BitSetter, then close this dialog and click "Set from Current".
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
