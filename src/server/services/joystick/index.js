@@ -151,9 +151,16 @@ class JoystickService extends events.EventEmitter {
   /**
    * Handle client jog control input
    * Called from Socket.IO event handler
+   * 
+   * Note: Jog controls work independently of joystick/gamepad hardware support.
+   * They use joystick settings (sensitivity, inversion) if available, but should
+   * function even when joystick is disabled.
    */
   handleClientJogControlInput(socketId, x, y, z, timestamp) {
-    if (!this.enabled || !this.config || !this.mapper) {
+    // Require config and mapper for settings (sensitivity, inversion), but not enabled flag
+    // Jog controls work independently of joystick hardware support
+    if (!this.config || !this.mapper) {
+      log.debug(`[client-jog:${socketId}] ignoring input: config or mapper not available`);
       return;
     }
 
