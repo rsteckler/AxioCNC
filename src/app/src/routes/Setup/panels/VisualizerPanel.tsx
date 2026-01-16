@@ -213,10 +213,13 @@ export function VisualizerPanel({
   const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit' | undefined>('iso')
   const [viewKey, setViewKey] = useState(0)
   
-  // Switch to wizard tab when wizard method is set
+  // Switch to wizard tab when wizard method is set, and back to 3D view when it closes
   useEffect(() => {
     if (wizardMethod) {
       setTab('wizard')
+    } else {
+      // When wizard closes, switch back to 3D view
+      setTab(prevTab => prevTab === 'wizard' ? '3d' : prevTab)
     }
   }, [wizardMethod])
   // G-code state for visualizer
@@ -521,7 +524,7 @@ export function VisualizerPanel({
       
       {/* Wizard Tab */}
       {wizardMethod && (
-        <div className={`flex-1 ${tab === 'wizard' ? 'block' : 'hidden'}`}>
+        <div className={`flex-1 flex flex-col min-h-0 ${tab === 'wizard' ? 'block' : 'hidden'}`}>
           <ZeroingWizardTab
             method={wizardMethod}
             onClose={onWizardClose || (() => {})}

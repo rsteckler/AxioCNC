@@ -7,6 +7,8 @@ import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { parseConsoleMessage } from '../utils/consoleParser'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
+import 'overlayscrollbars/overlayscrollbars.css'
 
 // Helper function to get axes label
 function getAxesLabel(axes: string): string {
@@ -1892,9 +1894,14 @@ export function ZeroingWizardTab({
       </div>
       
       {/* Step content */}
-      <div className="flex-1 overflow-y-auto min-h-0 mb-4">
+      <OverlayScrollbarsComponent 
+        className="flex-1 min-h-0 mb-4"
+        options={{ 
+          scrollbars: { autoHide: 'scroll', autoHideDelay: 400 }
+        }}
+      >
         {renderStepContent()}
-      </div>
+      </OverlayScrollbarsComponent>
       
       {/* Navigation buttons */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
