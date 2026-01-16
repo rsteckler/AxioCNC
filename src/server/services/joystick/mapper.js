@@ -189,13 +189,21 @@ class JoystickMapper {
    *
    * Browser controls are already normalized (useAnalogJog handles this on client)
    * Deadzone is already applied by the client, so we skip it here.
+   * Inversion is also already handled on the client (frontend inverts Y for browser controls),
+   * so we skip joystick settings inversion here as well.
    * 
    * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
    * The jog loop needs to receive neutral input to know when to cancel jogging.
    */
   mapJogControl(x, y, z) {
-    // Use unified processing (deadzone already applied by client)
-    return this.mapAnalogInput(x, y, z, false);
+    // Browser jog controls are already fully processed on the client (normalized, deadzone, inversion)
+    // Skip all joystick settings - just return the values as-is (except clamp to valid range)
+    return {
+      type: 'analog',
+      x: Math.max(-1, Math.min(1, x || 0)),
+      y: Math.max(-1, Math.min(1, y || 0)),
+      z: Math.max(-1, Math.min(1, z || 0)),
+    };
   }
 
   /**
