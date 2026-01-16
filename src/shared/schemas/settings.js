@@ -101,7 +101,7 @@ export const BitSetterMethodSchema = BaseMethodSchema.extend({
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(50),
   retractHeight: z.number().default(10),
-  requireCheck: z.boolean().default(false),
+  requireCheck: z.boolean().default(true),
 });
 
 // BitZero - corner/edge/center probe (XYZ)
@@ -110,7 +110,7 @@ export const BitZeroMethodSchema = BaseMethodSchema.extend({
   probeThickness: z.number().default(12.7),
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(25),
-  requireCheck: z.boolean().default(false),
+  requireCheck: z.boolean().default(true),
 });
 
 // Touch Plate - simple Z touch plate
