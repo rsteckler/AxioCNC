@@ -692,22 +692,13 @@ export function ZeroingWizardTab({
           <div className="space-y-4">
             <div className="space-y-2">
               <h3 className="text-base font-semibold">Step 1: Verify Touch Plate</h3>
-              <div className="text-sm text-muted-foreground space-y-2">
+              <div className="text-sm text-muted-foreground">
                 <p>
-                  Verify that the touch plate is working by manually touching it to the tool. The touch plate should trigger when contact is made.
-                </p>
-                <p>
-                  This ensures the probe circuit is functioning correctly before starting the zeroing process.
+                  Verify that the touch plate is working by manually touching it to the tool. The touch plate should trigger when contact is made. This ensures the probe circuit is functioning correctly before starting the zeroing process.
                 </p>
               </div>
             </div>
             <div className="space-y-3">
-              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-blue-900 dark:text-blue-100">
-                  Touch the plate to the tool manually. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
-                </p>
-              </div>
               <div className={`p-3 rounded-lg border ${
                 probeContact 
                   ? 'bg-green-500/10 border-green-500/30' 
@@ -726,6 +717,12 @@ export function ZeroingWizardTab({
                     The probe circuit is working correctly. You can proceed to the next step.
                   </p>
                 )}
+              </div>
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  Touch the plate to the tool manually. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
+                </p>
               </div>
             </div>
           </div>
@@ -782,22 +779,11 @@ export function ZeroingWizardTab({
                 </p>
               </div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="text-sm font-medium">Probe Settings:</div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Plate Thickness: </span>
-                  <span className="font-mono">{touchplateMethod.plateThickness}mm</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Probe Feedrate: </span>
-                  <span className="font-mono">{touchplateMethod.probeFeedrate}mm/min</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Probe Distance: </span>
-                  <span className="font-mono">{touchplateMethod.probeDistance}mm</span>
-                </div>
-              </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({touchplateMethod.probeDistance}mm) before starting.
+              </p>
             </div>
             <div className="flex items-center justify-center py-4">
               <Button
@@ -810,12 +796,6 @@ export function ZeroingWizardTab({
                 <Target className="w-5 h-5" />
                 Start Z-Probe
               </Button>
-            </div>
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure the tool is positioned above the touch plate and there is enough clearance for the probe distance ({touchplateMethod.probeDistance}mm) before starting.
-              </p>
             </div>
           </div>
         )
@@ -1822,8 +1802,8 @@ export function ZeroingWizardTab({
   return (
     <div className="flex-1 flex flex-col min-h-0 p-6">
       {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-start justify-between mb-2">
+      <div className="mb-2">
+        <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">
@@ -1840,13 +1820,10 @@ export function ZeroingWizardTab({
             <span className="sr-only">Close</span>
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Step {currentStep} of {totalSteps} - {getAxesLabel(method.axes)} Zeroing
-        </p>
       </div>
       
       {/* Progress indicator - full width with justified steps */}
-      <div className="relative w-full py-4 mb-4">
+      <div className="relative w-full py-2 mb-4">
         {/* Full-width connecting line behind circles */}
         <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 bg-muted" />
         
@@ -1927,7 +1904,12 @@ export function ZeroingWizardTab({
           <Button 
             onClick={handleNext} 
             className="gap-2"
-            disabled={method.type === 'custom' && currentStep === 1 && probeStatus !== 'complete'}
+            disabled={
+              (method.type === 'custom' && currentStep === 1 && probeStatus !== 'complete') ||
+              (method.type === 'touchplate' && 
+               currentStep === (method.requireCheck === false ? 2 : 3) &&
+               probeStatus !== 'complete')
+            }
           >
             Next
             <ChevronRightIcon className="w-4 h-4" />

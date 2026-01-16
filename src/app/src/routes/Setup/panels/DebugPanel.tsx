@@ -39,6 +39,30 @@ export function DebugPanel({
   const currentTool = useCurrentTool()
   const plannerQueue = usePlannerQueue()
 
+  // Get pin state and accessory state from backend status
+  const pinState = machineState.backendStatus?.controllerState?.pinState || ''
+  const accessoryState = machineState.backendStatus?.controllerState?.accessoryState || ''
+
+  // Pin state indicators (XYZPDHRS)
+  const pinLabels: Record<string, string> = {
+    X: 'X-Limit',
+    Y: 'Y-Limit',
+    Z: 'Z-Limit',
+    P: 'Probe',
+    D: 'Door',
+    H: 'Hold',
+    R: 'Soft-Reset',
+    S: 'Cycle-Start',
+  }
+
+  // Accessory state designators (SCFM)
+  const accessoryLabels: Record<string, string> = {
+    S: 'Spindle CW',
+    C: 'Spindle CCW',
+    F: 'Flood Coolant',
+    M: 'Mist Coolant',
+  }
+
   const handleLogMachineStatus = useCallback(() => {
     // Get the full machine state from Redux
     const fullMachineStatus = {
@@ -121,6 +145,66 @@ export function DebugPanel({
           <p className="text-xs text-muted-foreground">
             Outputs the current machine status object to the browser console in JSON format.
           </p>
+        </div>
+
+        {/* Pin State Indicators */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Pin State (XYZPDHRS)</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(pinLabels).map(([pin, label]) => {
+              const isActive = pinState.includes(pin)
+              return (
+                <div
+                  key={pin}
+                  className={`flex items-center justify-between px-2 py-1 rounded text-xs ${
+                    isActive
+                      ? 'bg-primary/20 text-primary font-medium'
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  <span className="font-mono">{pin}</span>
+                  <span className="text-[10px]">{label}</span>
+                </div>
+              )
+            })}
+          </div>
+          {pinState ? (
+            <p className="text-xs text-muted-foreground font-mono">
+              Active: {pinState.split('').join(', ')}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">No pins active</p>
+          )}
+        </div>
+
+        {/* Accessory State Designators */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Accessories (A:SCFM)</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(accessoryLabels).map(([acc, label]) => {
+              const isActive = accessoryState.includes(acc)
+              return (
+                <div
+                  key={acc}
+                  className={`flex items-center justify-between px-2 py-1 rounded text-xs ${
+                    isActive
+                      ? 'bg-primary/20 text-primary font-medium'
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  <span className="font-mono">{acc}</span>
+                  <span className="text-[10px]">{label}</span>
+                </div>
+              )
+            })}
+          </div>
+          {accessoryState ? (
+            <p className="text-xs text-muted-foreground font-mono">
+              Active: {accessoryState.split('').join(', ')}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">No accessories active</p>
+          )}
         </div>
       </div>
     </div>
