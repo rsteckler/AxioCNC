@@ -19,8 +19,8 @@ export function SpindlePanel({
   // Generate speeds array from 8000 to 24000 in 100 RPM increments
   const speeds = Array.from({ length: 161 }, (_, i) => 8000 + i * 100)
   
-  // Label positions (indices) - 6 evenly spaced labels
-  const labelIndices = [0, 20, 50, 80, 120, 160] // 8000, 10000, 13000, 16000, 20000, 24000
+  // Label positions (indices) - 5 evenly spaced labels (8k, 12k, 16k, 20k, 24k)
+  const labelIndices = [0, 40, 80, 120, 160] // 8000, 12000, 16000, 20000, 24000
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)
