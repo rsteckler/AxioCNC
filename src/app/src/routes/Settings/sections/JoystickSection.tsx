@@ -625,7 +625,7 @@ export function JoystickSection({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {GAMEPAD_BUTTONS.filter(b => !(b as any).isDpad).map((button) => (
+                  {GAMEPAD_BUTTONS.filter(b => !('isDpad' in b) || !(b as { isDpad?: boolean }).isDpad).map((button) => (
                     <TableRow 
                       key={button.index}
                       className={cn(
@@ -669,7 +669,7 @@ export function JoystickSection({
                     <TableCell colSpan={3} className="pt-4">
                       <div className="flex items-center gap-4">
                         <span className="text-sm font-medium text-muted-foreground w-20">D-Pad:</span>
-                        {GAMEPAD_BUTTONS.filter(b => (b as any).isDpad).map((button) => (
+                        {GAMEPAD_BUTTONS.filter(b => 'isDpad' in b && (b as { isDpad: boolean }).isDpad).map((button) => (
                           <div key={button.index} className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <div className="text-muted-foreground">

@@ -163,19 +163,21 @@ export function validateParameterValue(
   }
 
   switch (type) {
-    case 'number':
+    case 'number': {
       const num = Number(value)
       if (isNaN(num)) {
         return { valid: false, error: 'Must be a valid number' }
       }
       return { valid: true }
+    }
 
-    case 'boolean':
+    case 'boolean': {
       const lower = value.toLowerCase().trim()
       if (!['true', 'false', '1', '0', 'yes', 'no'].includes(lower)) {
         return { valid: false, error: 'Must be true/false, yes/no, or 1/0' }
       }
       return { valid: true }
+    }
 
     case 'string':
       return { valid: true }
@@ -196,9 +198,10 @@ export function convertParameterValue(
     case 'number':
       return Number(value)
 
-    case 'boolean':
+    case 'boolean': {
       const lower = value.toLowerCase().trim()
       return ['true', '1', 'yes'].includes(lower)
+    }
 
     case 'string':
     default:

@@ -35,14 +35,6 @@ export function MachineActionWrapper({
   className,
   children
 }: MachineActionWrapperProps) {
-  const handleInteraction = (e: React.MouseEvent | React.PointerEvent | React.TouchEvent) => {
-    if (isDisabled) {
-      e.preventDefault()
-      e.stopPropagation()
-      onFlashStatus()
-      return false
-    }
-  }
 
   // Use ref to attach capture phase listener for better event catching
   const wrapperRef = React.useRef<HTMLDivElement>(null)

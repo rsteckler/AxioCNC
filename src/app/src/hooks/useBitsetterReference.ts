@@ -24,10 +24,12 @@ export function useBitsetterReference() {
     } catch (err: unknown) {
       // 404 means the key doesn't exist (nothing to clear) - this is fine, silently ignore it
       // RTK Query throws FetchBaseQueryError with status property
+      // Type-safe error property access
+      const errorRecord = typeof err === 'object' && err !== null ? err as Record<string, unknown> : null
       const status = 
-        (err as any)?.status || 
-        (err as any)?.data?.status || 
-        (typeof err === 'object' && err !== null && 'status' in err ? (err as any).status : undefined)
+        (errorRecord?.status as number | undefined) || 
+        (typeof errorRecord?.data === 'object' && errorRecord.data !== null ? (errorRecord.data as Record<string, unknown>)?.status as number | undefined : undefined) || 
+        undefined
       
       if (status !== 404 && status !== 'FETCH_ERROR') {
         console.error('Failed to clear bitsetter reference:', err)

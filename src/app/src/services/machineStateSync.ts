@@ -3,13 +3,11 @@ import {
   setConnectionState,
   setConnecting,
   setMachineStatus,
-  setFlashing,
   setHomed,
   setMachinePosition,
   setWorkPosition,
   setSpindleState,
   setSpindleSpeed,
-  setMaxSpindleSpeed,
   setCurrentTool,
   setPlannerQueue,
   setRxBufferSize,
@@ -18,7 +16,8 @@ import {
 } from '@/store/machineSlice'
 import { setJobState, clearJobState } from '@/store/jobSlice'
 import { socketService } from './socket'
-import { useLazyGetMachineStatusQuery } from '@/services/api'
+// useLazyGetMachineStatusQuery not currently used but may be needed in future
+// import { useLazyGetMachineStatusQuery } from '@/services/api'
 import type { MachineStatus as ApiMachineStatus } from '@/services/api'
 
 /**
@@ -146,17 +145,19 @@ class MachineStateSyncService {
         api.endpoints.getGcode.initiate(port)
       ).unwrap()
 
+      // Type-safe access to result properties
+      const resultData = result as Record<string, unknown>
       console.log('[machineStateSync] restoreGcodeStateFromAPI result:', { 
         hasResult: !!result, 
-        name: (result as any)?.name,
-        size: (result as any)?.size,
-        total: (result as any)?.total 
+        name: typeof resultData?.name === 'string' ? resultData.name : undefined,
+        size: typeof resultData?.size === 'number' ? resultData.size : undefined,
+        total: typeof resultData?.total === 'number' ? resultData.total : undefined
       })
 
       if (result) {
         // The API returns sender.toJSON() which includes name, size, total, sent, received, etc.
         // TypeScript type may be incomplete, so we safely access properties
-        const gcodeData = result as any
+        const gcodeData = resultData as Record<string, unknown>
         
         // Update job state with file information
         // This ensures components have job state immediately on page load
@@ -184,6 +185,7 @@ class MachineStateSyncService {
     store.dispatch(setConnecting(false))
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleSerialPortClose(..._args: unknown[]) {
     store.dispatch(setConnectionState({ isConnected: false, connectedPort: null }))
     store.dispatch(setConnecting(false))
@@ -315,8 +317,10 @@ class MachineStateSyncService {
     }
   }
 
-  private handleWorkflowState(...args: unknown[]) {
-    const _port = args[0] as string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleWorkflowState(..._args: unknown[]) {
+    // port may be needed in future - keep args for now
+    // const _port = args[0] as string
     const workflowState = args[1] as 'idle' | 'running' | 'paused'
 
     store.dispatch(setWorkflowState(workflowState || null))

@@ -13,11 +13,9 @@ import type {
   ServerGamepadState,
   BrowserJogControlInput,
   MappedAnalogAction,
-  MappedButtonAction,
   MappedAction,
   MappingConfig,
   CncAction,
-  AnalogMapping,
 } from './types'
 
 /**

@@ -4,13 +4,9 @@ import type { PanelProps } from '../types'
 import type { CameraConfig } from '../../Settings/sections/CameraSection'
 import Hls from 'hls.js'
 
-export function CameraPanel({ 
-  isConnected, 
-  connectedPort, 
-  machineStatus, 
-  onFlashStatus 
-}: PanelProps) {
-  const { data: camerasData, isLoading: isLoadingCameras, refetch: refetchCameras } = useGetCamerasQuery(undefined, {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function CameraPanel(_props: PanelProps) {
+  const { data: camerasData, isLoading: isLoadingCameras } = useGetCamerasQuery(undefined, {
     // Refetch every 5 seconds to catch new cameras
     pollingInterval: 5000,
   })

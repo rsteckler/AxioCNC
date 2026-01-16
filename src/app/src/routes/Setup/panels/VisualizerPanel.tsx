@@ -9,7 +9,7 @@ import { Console } from '@/components/Console'
 import { ZeroingWizardTab } from './ZeroingWizardTab'
 import { processGCode } from '@/lib/gcodeVisualizer'
 import { Vector3 } from 'three'
-import { machineToThree, workToThree, type MachineLimits } from '@/lib/coordinates'
+import { machineToThree, type MachineLimits } from '@/lib/coordinates'
 import type { HomingCorner } from '@/lib/machineLimits'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { CameraConfig } from '../../Settings/sections/CameraSection'
@@ -284,7 +284,7 @@ export function VisualizerPanel({
               setModelOffset(offset)
               placedGcodeRef.current = gcodeData.name
             }
-          } catch (err) {
+          } catch {
             // Invalid saved offset, ignore
           }
         } else {
@@ -301,7 +301,7 @@ export function VisualizerPanel({
         lastRestoredApiFileRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [gcodeData, isLoadingGcode])
   
   // Listen to G-code load/unload events for visualizer

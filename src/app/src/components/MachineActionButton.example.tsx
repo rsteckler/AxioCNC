@@ -5,6 +5,7 @@
  * to replace the repetitive pattern of disabled buttons with flash status.
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { MachineActionButton } from './MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'
 import { ChevronUp, Home } from 'lucide-react'
@@ -46,6 +47,7 @@ function JogButtonExample({
 }
 
 // Example 2: Home button (allowed even when not homed)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HomeButtonExample({ 
   isConnected, 
   connectedPort, 
@@ -79,6 +81,7 @@ function HomeButtonExample({
 }
 
 // Example 3: Custom requirements
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CustomButtonExample({ 
   isConnected, 
   connectedPort, 
@@ -122,6 +125,7 @@ function CustomButtonExample({
 // Example 4: Using the utility function directly (for non-button elements)
 import { canPerformAction, ActionRequirements } from '@/utils/machineState'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CustomElementExample({ 
   isConnected, 
   connectedPort, 

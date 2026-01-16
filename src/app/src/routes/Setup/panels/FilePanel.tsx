@@ -1,9 +1,9 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { Upload, FileCode, Circle, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import { useGetWorkfilesQuery, useUploadWorkfileMutation, useGetWorkfileContentQuery, useLazyGetWorkfileContentQuery, useGetControllersQuery, useGetGcodeQuery } from '@/services/api'
+import { useGetWorkfilesQuery, useUploadWorkfileMutation, useLazyGetWorkfileContentQuery, useGetControllersQuery, useGetGcodeQuery } from '@/services/api'
 import { socketService } from '@/services/socket'
 import type { PanelProps } from '../types'
 
@@ -191,7 +191,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
   // Listen for gcode:load and gcode:unload events to track loaded file
   React.useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
-    const handleGcodeLoad = (name: string, _gcode: string, _context: unknown) => {
+    const handleGcodeLoad = (name: string) => {
       console.log('[FilePanel] gcode:load event received:', name)
       if (name) {
         setLoadedFileName(name)

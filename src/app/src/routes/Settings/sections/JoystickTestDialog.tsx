@@ -223,7 +223,7 @@ export function JoystickTestDialog({
     
     if (gamepad) {
       const buttons = gamepad.buttons.map(b => b.pressed)
-      let axes = Array.from(gamepad.axes)
+      const axes = Array.from(gamepad.axes)
       
       // For client-side gamepads, convert LT/RT buttons to axes
       if (config.connectionLocation === 'client') {
@@ -406,11 +406,12 @@ export function JoystickTestDialog({
   }, [open, pollGamepad, config.connectionLocation, gamepadId, config.buttonMappings])
 
   // Get axis value with deadzone applied (for display)
-  const getAxisDisplay = (value: number): number => {
-    const absValue = Math.abs(value)
-    if (absValue < config.deadzone) return 0
-    return value
-  }
+  // getAxisDisplay may be needed in future
+  // const getAxisDisplay = (value: number): number => {
+  //   const absValue = Math.abs(value)
+  //   if (absValue < config.deadzone) return 0
+  //   return value
+  // }
 
   // Convert axis value to percentage for progress bar
   const axisToProgress = (value: number): number => {
@@ -620,7 +621,7 @@ export function JoystickTestDialog({
         <div className="mb-6">
           <h4 className="text-sm font-medium mb-3">Buttons</h4>
           <div className="grid grid-cols-4 gap-2">
-            {gamepadButtons.filter(b => !(b as any).isDpad).map((button) => {
+            {gamepadButtons.filter(b => !('isDpad' in b) || !(b as { isDpad?: boolean }).isDpad).map((button) => {
               const isPressed = gamepadState.buttons[button.index]
               const action = config.buttonMappings[button.index]
               
@@ -657,7 +658,7 @@ export function JoystickTestDialog({
           <div className="mt-4">
             <h5 className="text-xs font-medium text-muted-foreground mb-2">D-Pad</h5>
             <div className="grid grid-cols-4 gap-2">
-              {gamepadButtons.filter(b => (b as any).isDpad).map((button) => {
+              {gamepadButtons.filter(b => 'isDpad' in b && (b as { isDpad: boolean }).isDpad).map((button) => {
                 // D-pad button detection depends on connection location
                 let isPressed = false
                 

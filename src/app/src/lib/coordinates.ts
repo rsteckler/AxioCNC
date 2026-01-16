@@ -59,7 +59,8 @@ function getMachineHomeInThreeSpace(
   limits: MachineLimits,
   homingCorner: HomingCorner
 ): Coordinate {
-  const { xSize, ySize, zSize } = getEnvelopeDimensions(limits)
+  // xSize, ySize, zSize not currently used but may be needed for future calculations
+  // const { xSize, ySize, zSize } = getEnvelopeDimensions(limits)
   const machineHome = getHomingPosition(limits, homingCorner)
   
   // Machine home position in machine coordinates is (0, 0, 0)

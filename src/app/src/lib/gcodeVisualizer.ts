@@ -78,7 +78,7 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
       const radius = Math.sqrt(
         ((v1.x - v0.x) ** 2) + ((v1.y - v0.y) ** 2)
       )
-      let startAngle = Math.atan2(v1.y - v0.y, v1.x - v0.x)
+      const startAngle = Math.atan2(v1.y - v0.y, v1.x - v0.x)
       let endAngle = Math.atan2(v2.y - v0.y, v2.x - v0.x)
 
       // Draw full circle if startAngle and endAngle are both zero
@@ -120,7 +120,7 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
   })
 
   // Process G-code synchronously
-  toolpath.loadFromStringSync(gcode, (line: string, index: number) => {
+  toolpath.loadFromStringSync(gcode, (line: string) => {
     frames.push({
       data: line,
       vertexIndex: Math.floor(positions.length / 3) // Current vertex count

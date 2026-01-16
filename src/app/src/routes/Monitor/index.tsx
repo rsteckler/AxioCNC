@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, Maximize, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, Home, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList } from 'lucide-react'
+import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery, type MachineStatus as ApiMachineStatus } from '@/services/api'
+import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery } from '@/services/api'
+// useGetControllersQuery not currently used but may be needed in future
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from '@/hooks'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -18,7 +18,6 @@ import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
 import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
-import { setJobState } from '@/store/jobSlice'
 import { processGCode } from '@/lib/gcodeVisualizer'
 import { Vector3 } from 'three'
 import { machineToThree, type MachineLimits } from '@/lib/coordinates'
@@ -293,7 +292,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
             setModelOffset(offset)
             placedGcodeRef.current = gcodeData.name
           }
-        } catch (err) {
+        } catch {
           // Invalid saved offset, ignore
         }
       } else {
@@ -323,7 +322,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
   // Listen to G-code load/unload events for visualizer
   useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
-    const handleGcodeLoad = (name: string, gcode: string, context?: unknown) => {
+    const handleGcodeLoad = (name: string, gcode: string) => {
       console.log('[Monitor VisualizerCameraView] gcode:load event received:', { name, gcodeLength: gcode?.length, hasGcode: !!gcode })
       if (name && gcode) {
         // Only reset if this is a different file than the one we've already placed
@@ -426,8 +425,8 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
     }
   }, [loadedGcode, settings, machinePosition, workPosition])
   
-  const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit'>('iso')
-  const [viewKey, setViewKey] = useState(0)
+  const [view] = useState<'top' | 'front' | 'iso' | 'fit'>('iso')
+  const [viewKey] = useState(0)
 
   const handleSwapPiP = () => {
     if (viewMode === 'pip-visual') {
@@ -930,11 +929,8 @@ export default function Monitor() {
   
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
-  const { data: controllersData } = useGetControllersQuery()
-  const [getMachineStatus] = useLazyGetMachineStatusQuery()
   
   // Get shared machine and job state from Redux
-  const dispatch = useAppDispatch()
   const machineState = useMachineState()
   const jobState = useJobState()
   
@@ -955,8 +951,7 @@ export default function Monitor() {
   const rxBufferSize = machineState.rxBufferSize
   const feedrate = machineState.feedrate
   
-  // Job state (sender state)
-  const senderState = jobState
+  // Job state (sender state) - jobState is used via other extracted values
   
   // Debug log to verify job state
   React.useEffect(() => {
@@ -1148,11 +1143,12 @@ export default function Monitor() {
   }
   
   // Progress panel props with additional planner queue data
-  const progressPanelProps = {
-    ...panelProps,
-    plannerQueueDepth,
-    plannerQueueMax,
-  }
+  // progressPanelProps prepared for future use
+  // const progressPanelProps = {
+  //   ...panelProps,
+  //   plannerQueueDepth,
+  //   plannerQueueMax,
+  // }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">

@@ -94,7 +94,8 @@ export function ToolsPanel() {
   // Track loaded G-code content and filename
   const [gcodeContent, setGcodeContent] = useState<string | null>(null)
   const [gcodeLoaded, setGcodeLoaded] = useState(false)
-  const [loadedFileName, setLoadedFileName] = useState<string | null>(null)
+  // loadedFileName may be needed in future - keeping setLoadedFileName for now
+  const [, setLoadedFileName] = useState<string | null>(null)
   
   // Parse tools from G-code
   const toolsInUse = useMemo(() => {

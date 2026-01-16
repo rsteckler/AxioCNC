@@ -498,6 +498,7 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines }: VisualizerSceneProps = {}) {
   // Debug logging
   useEffect(() => {

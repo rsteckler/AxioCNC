@@ -13,7 +13,8 @@ import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
 
 const JOYSTICK_LOCK_KEY = 'axiocnc-joystick-locked'
 
-export function JoystickPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function JoystickPanel(_props: PanelProps) {
   const navigate = useNavigate()
   const { data: settings } = useGetSettingsQuery()
   const [testDialogOpen, setTestDialogOpen] = useState(false)

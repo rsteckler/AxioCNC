@@ -613,7 +613,7 @@ export function ZeroingWizardTab({
             )}
           </div>
         )
-      case 3:
+      case 3: {
         // Check if WCS is at zero for the axes that were zeroed (2 decimal accuracy = 0.01mm tolerance)
         const isAtZero = 
           (!axes.includes('x') || Math.abs(workPosition.x) < 0.01) &&
@@ -668,6 +668,7 @@ export function ZeroingWizardTab({
             )}
           </div>
         )
+      }
       default:
         return null
     }
@@ -979,7 +980,7 @@ export function ZeroingWizardTab({
             </div>
           </div>
         )
-      case 4:
+      case 4: {
         // Step 4: Run Probe (shown as step 3 if requireCheck is false)
         const isProbing = probeStatus === 'probing' || probeStatus === 'capturing' || probeStatus === 'storing'
         const isProbeComplete = probeStatus === 'complete'
@@ -1149,6 +1150,7 @@ export function ZeroingWizardTab({
             )}
           </div>
         )
+      }
       default:
         return null
     }
@@ -1588,6 +1590,7 @@ export function ZeroingWizardTab({
     }
     
     // Handle disconnections
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleDisconnect = (..._args: unknown[]) => {
       if (isCleanedUp) return
       setProbeError('Socket disconnected during G-code execution')

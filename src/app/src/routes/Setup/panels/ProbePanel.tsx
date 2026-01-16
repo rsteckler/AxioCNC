@@ -34,6 +34,7 @@ export function ProbePanel({
   connectedPort, 
   machineStatus, 
   onFlashStatus, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   workPosition: _workPosition = { x: 0, y: 0, z: 0 }, 
   onStartWizard 
 }: ProbePanelProps) {

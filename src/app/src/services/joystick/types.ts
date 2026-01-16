@@ -13,7 +13,8 @@ export type {
 } from '@/routes/Settings/sections/JoystickSection'
 
 // Re-export JoystickConfig interface (we need the full interface, not just the type)
-import type { JoystickConfig as JoystickConfigType } from '@/routes/Settings/sections/JoystickSection'
+// JoystickConfigType not currently used but may be needed in future
+// import type { JoystickConfig as JoystickConfigType } from '@/routes/Settings/sections/JoystickSection'
 
 /**
  * Raw gamepad state from browser Gamepad API

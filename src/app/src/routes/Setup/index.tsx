@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetControllersQuery, useLazyGetMachineStatusQuery, type MachineStatus as ApiMachineStatus } from '@/services/api'
+import { useGetSettingsQuery } from '@/services/api'
+// useGetControllersQuery not currently used but may be needed in future
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
 import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
-import { setConnecting, setFlashing, setConnectionState, setMachineStatus, setHomed, setSpindleState, setSpindleSpeed } from '@/store/machineSlice'
+import { setConnecting } from '@/store/machineSlice'
 import {
   Dialog,
   DialogContent,
@@ -37,16 +38,15 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { 
   ChevronDown,
-  Home, Play, Pause, Square, Unlock, 
+  Square, 
   Crosshair, RotateCcw, RotateCw, GripVertical,
   Zap, Target, FileCode,
   Move, Navigation, Bell, AlertCircle, X,
-  HelpCircle, Camera, Gamepad2,
+  Camera, Gamepad2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { PageStatusBar } from '@/components/PageStatusBar'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ActionRequirements } from '@/utils/machineState'
 
 // Import extracted panels - explicit imports for Vite compatibility
@@ -270,10 +270,8 @@ export default function Setup() {
   
   // Extract values from Redux state
   const isConnected = machineState.isConnected
-  const isConnecting = machineState.isConnecting
   const connectedPort = machineState.connectedPort
   const machineStatus = machineState.machineStatus
-  const isFlashing = machineState.isFlashing
   const isHomed = machineState.isHomed
   const isJobRunning = machineState.isJobRunning
   const workflowState = machineState.workflowState
@@ -319,12 +317,10 @@ export default function Setup() {
   
   // Get active controllers to check if we're already connected when remounting
   // Refetch on mount to ensure we have fresh data when navigating back
-  const { data: controllersData } = useGetControllersQuery(undefined, {
-    refetchOnMountOrArgChange: true, // Always refetch when component mounts
-  })
-
-  // Lazy query for machine status (we'll call it manually when needed)
-  const [getMachineStatus] = useLazyGetMachineStatusQuery()
+  // controllersData not currently used but may be needed in future
+  // const { data: controllersData } = useGetControllersQuery(undefined, {
+  //   refetchOnMountOrArgChange: true, // Always refetch when component mounts
+  // })
   
   // G-code command hook for main component handlers
   const { sendCommand } = useGcodeCommand(connectedPort)
@@ -434,8 +430,10 @@ export default function Setup() {
   
   // Listen for connection events and errors
   useEffect(() => {
-    const handleSerialPortOpen = (...args: unknown[]) => {
-      const data = args[0] as { port: string }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const handleSerialPortOpen = (..._args: unknown[]) => {
+      // data may be needed in future - keep args for now
+      // const data = _args[0] as { port: string }
       
       // Clear manual disconnect flag when we successfully connect
       manuallyDisconnectedRef.current = false
@@ -444,6 +442,7 @@ export default function Setup() {
       dispatch(setConnecting(false))
     }
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleSerialPortClose = (..._args: unknown[]) => {
       // Machine state updates are handled by machineStateSync
       // Only update page-specific state
@@ -464,7 +463,8 @@ export default function Setup() {
     const handleMachineStatus = (...args: unknown[]) => {
       // Backend sends: machine:status(port, status)
       // Status now includes full controller state including parserstate
-      const port = args[0] as string
+      // port may be needed in future - keep args for now
+      // const port = args[0] as string
       const status = args[1] as {
         parserstate?: {
           modal?: {
@@ -501,20 +501,22 @@ export default function Setup() {
       // Extract activeState from nested structure
       const activeState = status.controllerState?.activeState || ''
       const isAlarm = activeState === 'Alarm'
-      const isHold = activeState === 'Hold'
+      // isHold may be needed in future
+      // const isHold = activeState === 'Hold'
       const isHoming = activeState === 'Home'
       const isIdle = activeState === 'Idle'
       
       // Check if homing completed FIRST - when we transition from 'Home' state to 'Idle'
       // This must run before the status update logic to avoid race conditions
-      let homingJustCompleted = false
+      // homingJustCompleted may be needed for future features
+      // let homingJustCompleted = false
       // Check if we're idle and homing was in progress - this indicates homing completed
       // We check homingInProgressRef to detect the transition from Home to Idle
       if (isIdle && !isHoming && homingInProgressRef.current && !isHomed && isConnected) {
         // Homing was in progress and now we're idle - homing completed
         setHomingInProgress(false)
         homingInProgressRef.current = false
-        homingJustCompleted = true
+        // homingJustCompleted = true
       } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomed) {
         // Reset homing progress flag if we're idle without homing active
         setHomingInProgress(false)
@@ -533,7 +535,7 @@ export default function Setup() {
         // Show notification when transitioning TO alarm state (not when already in alarm)
         if (isTransitioningToAlarm) {
           // Try to get alarm message from ref (updated by VisualizerPanel when serialport:read events arrive)
-          let alarmMessage = lastAlarmMessageRef.current
+          const alarmMessage = lastAlarmMessageRef.current
           
           // If still no message found, wait a short time for the alarm message to arrive via serialport:read
           // This handles the case where machine:status arrives before serialport:read
@@ -553,6 +555,7 @@ export default function Setup() {
     
     // Listen for workflow state - machine state is handled by machineStateSync
     // This handler is kept for page-specific logic if needed
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleWorkflowState = (..._args: unknown[]) => {
       // Machine state updates are handled by machineStateSync
       // Keep this handler for any page-specific logic if needed
@@ -619,6 +622,7 @@ export default function Setup() {
     }
     
     // Listen for homing completion (controller-specific events)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleHomingComplete = (..._args: unknown[]) => {
       // Args may contain controller type or other info, but we don't need it
       if (isConnectedRef.current) {

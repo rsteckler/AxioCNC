@@ -24,13 +24,14 @@ import {
   useGetVersionQuery,
   useGetExtensionsQuery,
   useSetExtensionsMutation,
-  useGetGamepadsQuery,
+  // useGetGamepadsQuery - not currently used but may be needed in future
   useRefreshGamepadsMutation,
   useSetSelectedGamepadMutation,
   useGetCamerasQuery,
   useCreateCameraMutation,
   useUpdateCameraMutation,
   type PartialSettings,
+  type Camera,
 } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { useTheme } from '@/components/theme-provider'
@@ -300,9 +301,10 @@ export default function Settings() {
   const [setExtensions] = useSetExtensionsMutation()
 
   // Gamepads API (server-side)
-  const { data: serverGamepadsData } = useGetGamepadsQuery(undefined, {
-    skip: true, // Don't auto-fetch - we'll use refresh mutation
-  })
+  // serverGamepadsData not currently used but may be needed in future
+  // const { data: serverGamepadsData } = useGetGamepadsQuery(undefined, {
+  //   skip: true, // Don't auto-fetch - we'll use refresh mutation
+  // })
   const [refreshGamepads] = useRefreshGamepadsMutation()
   const [setSelectedGamepad] = useSetSelectedGamepadMutation()
   
@@ -453,7 +455,7 @@ export default function Settings() {
             url.username = ''
             url.password = ''
             cleanUrl = url.toString()
-          } catch (err) {
+          } catch {
             // If URL parsing fails, try to remove credentials manually
             // Preserve protocol by only replacing the auth part
             cleanUrl = cleanUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
@@ -877,14 +879,14 @@ export default function Settings() {
           url.username = ''
           url.password = ''
           cleanInputUrl = url.toString()
-        } catch (err) {
+        } catch {
           // If URL parsing fails, try to remove credentials manually
           cleanInputUrl = cleanInputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//')
           cleanInputUrl = cleanInputUrl.replace(/\/\/\*\*\*\*:\*\*\*\*@/, '//')
         }
       }
       
-      const cameraData: any = {
+      const cameraData: Partial<Omit<Camera, 'id' | 'createdAt' | 'updatedAt'>> = {
         name: 'Camera 1',
         enabled: updated.enabled, // Always include enabled state
       }

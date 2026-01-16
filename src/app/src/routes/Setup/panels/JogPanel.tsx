@@ -118,7 +118,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     const yRaw = ((clientY - rect.top) - centerY) / centerY
     
     // Calculate magnitude
-    let mag = Math.sqrt(xRaw * xRaw + yRaw * yRaw)
+    const mag = Math.sqrt(xRaw * xRaw + yRaw * yRaw)
     
     // Clamp visual position to circle (for drag target)
     if (mag > 1) {

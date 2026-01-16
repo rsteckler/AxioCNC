@@ -1,8 +1,7 @@
 import React from 'react'
-import { Play, Square, Pause, PlayCircle } from 'lucide-react'
+import { Play, Square, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 
 export type JobStatus = 'not_started' | 'running' | 'paused' | 'complete'
 

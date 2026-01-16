@@ -30,8 +30,8 @@ export interface AnalogJogInput {
 export function useAnalogJog(
   input: AnalogJogInput,
   enabled: boolean,
-  deadzone: number = 0.05,
-  pollRate: number = 60
+  deadzone: number = 0.05
+  // pollRate parameter removed - not currently used but may be needed in future
 ): AnalogJogValues {
   const [values, setValues] = useState<AnalogJogValues>({ x: 0, y: 0, z: 0 })
   const animationRef = useRef<number | null>(null)

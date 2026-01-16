@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery } from '@/services/api'
+// useGetSettingsQuery not currently used but may be needed in future
 import { parseConsoleMessage, type ConsoleLine } from '@/routes/Setup/utils/consoleParser'
 
 interface ConsoleProps {
@@ -18,7 +18,6 @@ export function Console({
   connectedPort,
   lastAlarmMessageRef 
 }: ConsoleProps) {
-  const { data: settings } = useGetSettingsQuery()
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([])
   const [commandInput, setCommandInput] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)

@@ -1,7 +1,8 @@
 import React from 'react'
 import type { PanelProps } from '../../Setup/types'
 
-export function CurrentStatsPanel(props: PanelProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function CurrentStatsPanel(_props: PanelProps) {
   // Mock operation type breakdown (for pie chart)
   // TODO: Replace with real data from sender/feeder when available
   const operationTypes = [

@@ -78,7 +78,7 @@ class SocketService {
   
   // Store all registered listeners so we can re-apply them after reconnection
   // Map<eventName, Set<callback>>
-  private listenerRegistry = new Map<string, Set<(...args: any[]) => void>>()
+  private listenerRegistry = new Map<string, Set<(...args: unknown[]) => void>>()
 
   connect(token?: string) {
     if (this.socket?.connected) {
@@ -267,9 +267,12 @@ class SocketService {
     if (!this.listenerRegistry.has(event)) {
       this.listenerRegistry.set(event, new Set())
     }
+    // Type assertion needed for Socket.IO compatibility - events have typed args but Socket.IO uses any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.listenerRegistry.get(event)!.add(callback as (...args: any[]) => void)
 
     // Register with Socket.IO
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.socket.on(event, callback as (...args: any[]) => void)
   }
 
@@ -287,6 +290,7 @@ class SocketService {
       // Remove specific listener from registry
       const callbacks = this.listenerRegistry.get(event)
       if (callbacks) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         callbacks.delete(callback as (...args: any[]) => void)
         if (callbacks.size === 0) {
           this.listenerRegistry.delete(event)
@@ -294,6 +298,7 @@ class SocketService {
       }
       
       // Remove from Socket.IO
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.socket?.off(event, callback as (...args: any[]) => void)
     } else {
       // Remove all listeners for this event
@@ -320,6 +325,7 @@ class SocketService {
 
     // Don't store one-time listeners - they're meant to fire once
     // Socket.IO will handle cleanup automatically
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.socket.once(event, callback as (...args: any[]) => void)
   }
 }

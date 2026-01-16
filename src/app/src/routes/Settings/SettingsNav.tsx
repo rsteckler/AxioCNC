@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Settings, Palette, Gamepad2, Box, Terminal, Zap, Info, Camera, Target, Plug, Code, Route, Wrench, Settings2 } from 'lucide-react'
+import { Settings, Palette, Gamepad2, Box, Zap, Info, Camera, Target, Plug, Code, Route, Wrench, Settings2 } from 'lucide-react'
 
 export interface SettingsSection {
   id: string
