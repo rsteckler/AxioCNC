@@ -149,12 +149,10 @@ class GrblLineParserResultStatus {
     if (_.has(result, 'Pn')) {
       const pinStateValue = _.get(result, 'Pn[0]', '');
       payload.pinState = pinStateValue;
-      log.debug(`[GrblParser] Parsed Pn field, result.Pn: ${JSON.stringify(result.Pn)}, pinState: ${pinStateValue}`);
     } else if (!hasLim) {
       // If neither Pn: (v1.1) nor Lim: (v0.9) is present, explicitly clear pinState
       // This ensures the state is cleared when pins are released in v1.1 format
       payload.pinState = '';
-      log.debug(`[GrblParser] No Pn field found in result. Clearing pinState. Available keys: ${Object.keys(result).join(', ')}`);
     }
 
     // Override Values (v1.1)
