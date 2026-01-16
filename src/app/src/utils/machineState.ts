@@ -4,14 +4,7 @@
  * Provides type-safe utilities for checking machine state and action availability
  */
 
-export type MachineStatus = 
-  | 'not_connected'
-  | 'connected_pre_home'
-  | 'connected_post_home'
-  | 'alarm'
-  | 'running'
-  | 'hold'
-  | 'error'
+import type { MachineReadinessStatus } from '@/types/machine'
 
 export type ActionRequirement = {
   requiresConnected?: boolean
@@ -29,7 +22,7 @@ export type ActionRequirement = {
 export function canPerformAction(
   isConnected: boolean,
   connectedPort: string | null,
-  machineStatus: MachineStatus,
+  machineStatus: MachineReadinessStatus,
   isHomed: boolean,
   requirements: ActionRequirement = {}
 ): boolean {

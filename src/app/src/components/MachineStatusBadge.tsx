@@ -1,22 +1,14 @@
 import { HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-
-export type MachineStatus = 
-  | 'not_connected'
-  | 'connected_pre_home'
-  | 'connected_post_home'
-  | 'alarm'
-  | 'running'
-  | 'hold'
-  | 'error'
+import type { MachineReadinessStatus } from '@/types/machine'
 
 interface MachineStatusBadgeProps {
-  machineStatus: MachineStatus
+  machineStatus: MachineReadinessStatus
   isFlashing?: boolean
 }
 
 export function MachineStatusBadge({ machineStatus, isFlashing = false }: MachineStatusBadgeProps) {
-  const getStatusLabel = (status: MachineStatus): string => {
+  const getStatusLabel = (status: MachineReadinessStatus): string => {
     switch (status) {
       case 'not_connected':
         return 'Not connected'
@@ -37,7 +29,7 @@ export function MachineStatusBadge({ machineStatus, isFlashing = false }: Machin
     }
   }
 
-  const getStatusTooltip = (status: MachineStatus): string => {
+  const getStatusTooltip = (status: MachineReadinessStatus): string => {
     switch (status) {
       case 'not_connected':
         return 'AxioCNC is not connected to your machine.'
@@ -58,7 +50,7 @@ export function MachineStatusBadge({ machineStatus, isFlashing = false }: Machin
     }
   }
 
-  const getStatusStyles = (status: MachineStatus) => {
+  const getStatusStyles = (status: MachineReadinessStatus) => {
     if (status === 'connected_post_home' || status === 'running') {
       return {
         container: 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400',

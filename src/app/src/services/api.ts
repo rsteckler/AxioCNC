@@ -25,12 +25,14 @@ export interface Controller {
 // API returns array directly, not wrapped in object
 export type ControllersResponse = Controller[]
 
+import type { MachineReadinessStatus } from '@/types/machine'
+
 // Machine Status from MachineStatusManager
 export interface MachineStatus {
   port: string
   connected: boolean
   controllerType: string | null
-  machineStatus: 'not_connected' | 'connected_pre_home' | 'connected_post_home' | 'alarm' | 'running' | 'hold'
+  machineStatus: MachineReadinessStatus
   isHomed: boolean
   isJobRunning: boolean
   homingInProgress: boolean

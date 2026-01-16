@@ -1,8 +1,8 @@
 import React from 'react'
 import { Button, ButtonProps } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { MachineReadinessStatus } from '@/types/machine'
 import { 
-  MachineStatus, 
   ActionRequirement, 
   canPerformAction 
 } from '@/utils/machineState'
@@ -13,7 +13,7 @@ export interface MachineActionButtonProps extends Omit<ButtonProps, 'disabled' |
   /** The connected port (if any) */
   connectedPort: string | null
   /** Current machine status */
-  machineStatus: MachineStatus
+  machineStatus: MachineReadinessStatus
   /** Whether the machine is homed */
   isHomed?: boolean
   /** Callback to flash the status when action is not allowed */
