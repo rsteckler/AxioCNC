@@ -22,7 +22,10 @@ class GrblLineParserResultStatus {
     }
 
     const payload = {};
-    const pattern = /[a-zA-Z]+(:[0-9\.\-]+(,[0-9\.\-]+){0,5})?/g;
+    // Pattern matches: parameter name optionally followed by colon and value(s)
+    // Values can be numbers (for MPos, Bf, FS, etc.) or letters (for Pn, A, etc.)
+    // Examples: MPos:0.000,0.000,0.000, Bf:14,128, Pn:P, A:SFM
+    const pattern = /[a-zA-Z]+(:[a-zA-Z0-9\.\-]+(,[a-zA-Z0-9\.\-]+){0,5})?/g;
     const params = r[1].match(pattern);
     const result = {};
 
@@ -124,7 +127,8 @@ class GrblLineParserResultStatus {
     // X_AXIS is (1<<0) or bit 0
     // Y_AXIS is (1<<1) or bit 1
     // Z_AXIS is (1<<2) or bit 2
-    if (_.has(result, 'Lim')) {
+    const hasLim = _.has(result, 'Lim');
+    if (hasLim) {
       const value = Number(_.get(result, 'Lim[0]', 0));
       payload.pinState = [
         (value & (1 << 0)) ? 'X' : '',
@@ -143,7 +147,14 @@ class GrblLineParserResultStatus {
     //   - Example: Pn:PZ indicates the probe and z-limit pins are 'triggered'.
     //   - Note: A may be added in later versions for an A-axis limit pin.
     if (_.has(result, 'Pn')) {
-      payload.pinState = _.get(result, 'Pn[0]', '');
+      const pinStateValue = _.get(result, 'Pn[0]', '');
+      payload.pinState = pinStateValue;
+      log.debug(`[GrblParser] Parsed Pn field, result.Pn: ${JSON.stringify(result.Pn)}, pinState: ${pinStateValue}`);
+    } else if (!hasLim) {
+      // If neither Pn: (v1.1) nor Lim: (v0.9) is present, explicitly clear pinState
+      // This ensures the state is cleared when pins are released in v1.1 format
+      payload.pinState = '';
+      log.debug(`[GrblParser] No Pn field found in result. Clearing pinState. Available keys: ${Object.keys(result).join(', ')}`);
     }
 
     // Override Values (v1.1)
