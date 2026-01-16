@@ -1,18 +1,8 @@
 import { store } from '@/store'
 import {
-  setConnectionState,
   setConnecting,
-  setMachineStatus,
-  setHomed,
-  setMachinePosition,
-  setWorkPosition,
-  setSpindleState,
-  setSpindleSpeed,
-  setCurrentTool,
-  setPlannerQueue,
-  setRxBufferSize,
-  setFeedrate,
-  setWorkflowState,
+  setBackendStatus,
+  setMaxSpindleSpeed,
 } from '@/store/machineSlice'
 import { setJobState, clearJobState } from '@/store/jobSlice'
 import { socketService } from './socket'
@@ -181,18 +171,16 @@ class MachineStateSyncService {
 
   private handleSerialPortOpen(...args: unknown[]) {
     const data = args[0] as { port: string }
-    store.dispatch(setConnectionState({ isConnected: true, connectedPort: data.port }))
+    // Connection state is now part of backendStatus, which will be updated by machine:status events
+    // Just clear the connecting flag
     store.dispatch(setConnecting(false))
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleSerialPortClose(..._args: unknown[]) {
-    store.dispatch(setConnectionState({ isConnected: false, connectedPort: null }))
+    // Clear backend status on disconnect - this resets all machine state
+    store.dispatch(setBackendStatus(null))
     store.dispatch(setConnecting(false))
-    // Also update machine status to not_connected when port closes
-    store.dispatch(setMachineStatus('not_connected'))
-    store.dispatch(setHomed(false))
-    store.dispatch(setWorkflowState(null))
     store.dispatch(clearJobState())
   }
 
@@ -211,108 +199,18 @@ class MachineStateSyncService {
       status: status.status,
     })
 
-    // Update connection state
-    store.dispatch(setConnectionState({
-      isConnected: status.connected ?? false,
-      connectedPort: status.port || null,
-    }))
+    // Store the full backend status - single source of truth
+    store.dispatch(setBackendStatus(status))
 
-    // Update machine status
-    if (status.machineStatus) {
-      const machineStatusMap: Record<string, ReturnType<typeof setMachineStatus>['payload']> = {
-        'not_connected': 'not_connected',
-        'connected_pre_home': 'connected_pre_home',
-        'connected_post_home': 'connected_post_home',
-        'alarm': 'alarm',
-        'running': 'running',
-        'hold': 'hold',
-      }
-      const mappedStatus = machineStatusMap[status.machineStatus]
-      if (mappedStatus) {
-        store.dispatch(setMachineStatus(mappedStatus))
-      }
-    }
-
-    // Update homed state
-    if (status.isHomed !== undefined) {
-      store.dispatch(setHomed(status.isHomed))
-    }
-
-    // Update positions from controllerState
-    if (status.controllerState?.mpos) {
-      store.dispatch(setMachinePosition({
-        x: parseFloat(status.controllerState.mpos.x || '0'),
-        y: parseFloat(status.controllerState.mpos.y || '0'),
-        z: parseFloat(status.controllerState.mpos.z || '0'),
-      }))
-    }
-    if (status.controllerState?.wpos) {
-      store.dispatch(setWorkPosition({
-        x: parseFloat(status.controllerState.wpos.x || '0'),
-        y: parseFloat(status.controllerState.wpos.y || '0'),
-        z: parseFloat(status.controllerState.wpos.z || '0'),
-      }))
-    }
-
-    // Update planner queue from status buffer
-    if (status.status?.buf?.planner !== undefined) {
-      const availableBlocks = status.status.buf.planner
-      const maxBlocks = 15
-      const usedBlocks = Math.max(0, maxBlocks - availableBlocks)
-      store.dispatch(setPlannerQueue({ depth: usedBlocks, max: maxBlocks }))
-    }
-
-    // Update RX buffer
-    if (status.status?.buf?.rx !== undefined) {
-      store.dispatch(setRxBufferSize(status.status.buf.rx))
-    }
-
-    // Update parserstate values (spindle, tool, feedrate)
-    if (status.parserstate) {
-      // Spindle state from modal.spindle
-      if (status.parserstate.modal?.spindle) {
-        const spindle = status.parserstate.modal.spindle
-        console.log('[machineStateSync] Spindle state from machine:status modal.spindle:', spindle)
-        if (spindle === 'M3' || spindle === 'M4' || spindle === 'M5') {
-          console.log('[machineStateSync] Dispatching setSpindleState:', spindle)
-          store.dispatch(setSpindleState(spindle))
-        } else {
-          console.warn('[machineStateSync] Unexpected spindle state value:', spindle)
+    // Update max spindle speed if current speed is higher
+    if (status.parserstate?.spindle) {
+      const speed = parseFloat(status.parserstate.spindle || '0')
+      if (speed > 0) {
+        const currentMax = store.getState().machine.maxSpindleSpeed
+        const newMax = Math.max(currentMax, speed, 3000)
+        if (newMax !== currentMax) {
+          store.dispatch(setMaxSpindleSpeed(newMax))
         }
-      } else {
-        console.log('[machineStateSync] No modal.spindle found in machine:status parserstate')
-      }
-
-      // Spindle speed
-      if (status.parserstate.spindle !== undefined) {
-        const speed = parseFloat(status.parserstate.spindle || '0')
-        console.log('[machineStateSync] Spindle speed from machine:status parserstate.spindle:', speed)
-        store.dispatch(setSpindleSpeed(speed))
-      }
-
-      // Current tool
-      if (status.parserstate.tool !== undefined) {
-        const tool = parseFloat(status.parserstate.tool || '0')
-        store.dispatch(setCurrentTool(tool > 0 ? tool : undefined))
-      }
-
-      // Feedrate
-      if (status.parserstate.feedrate !== undefined) {
-        const feed = parseFloat(status.parserstate.feedrate || '0')
-        store.dispatch(setFeedrate(feed))
-      }
-    }
-
-    // Update workflow state
-    if (status.workflowState) {
-      const workflowMap: Record<string, ReturnType<typeof setWorkflowState>['payload']> = {
-        'idle': 'idle',
-        'running': 'running',
-        'paused': 'paused',
-      }
-      const mappedWorkflow = workflowMap[status.workflowState]
-      if (mappedWorkflow) {
-        store.dispatch(setWorkflowState(mappedWorkflow))
       }
     }
   }
@@ -323,7 +221,15 @@ class MachineStateSyncService {
     // const _port = _args[0] as string
     const workflowState = _args[1] as 'idle' | 'running' | 'paused'
 
-    store.dispatch(setWorkflowState(workflowState || null))
+    // Update backendStatus if it exists, otherwise it will be updated by next machine:status event
+    const currentStatus = store.getState().machine.backendStatus
+    if (currentStatus) {
+      store.dispatch(setBackendStatus({
+        ...currentStatus,
+        workflowState: workflowState || null,
+        isJobRunning: workflowState === 'running',
+      }))
+    }
 
     // Reset timer when workflow goes to idle (job stopped)
     if (workflowState === 'idle') {
