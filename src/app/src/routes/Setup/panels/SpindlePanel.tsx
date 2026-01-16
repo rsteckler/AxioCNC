@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { RotateCw, RotateCcw, Circle } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { MachineActionButton } from '@/components/MachineActionButton'

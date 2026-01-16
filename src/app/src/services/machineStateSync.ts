@@ -320,8 +320,8 @@ class MachineStateSyncService {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleWorkflowState(..._args: unknown[]) {
     // port may be needed in future - keep args for now
-    // const _port = args[0] as string
-    const workflowState = args[1] as 'idle' | 'running' | 'paused'
+    // const _port = _args[0] as string
+    const workflowState = _args[1] as 'idle' | 'running' | 'paused'
 
     store.dispatch(setWorkflowState(workflowState || null))
 

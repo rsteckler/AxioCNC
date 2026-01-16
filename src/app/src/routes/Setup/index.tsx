@@ -9,7 +9,7 @@ import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
 import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
-import { setConnecting } from '@/store/machineSlice'
+import { setConnecting, setFlashing, type MachineStatus } from '@/store/machineSlice'
 import {
   Dialog,
   DialogContent,

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 import { Target } from 'lucide-react'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'

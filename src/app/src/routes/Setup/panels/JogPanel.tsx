@@ -99,12 +99,13 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     60 // 60fps polling rate
   )
   
-  // Send jog control inputs to server when in analog mode and joystick is enabled
+  // Send jog control inputs to server when in analog mode
+  // Note: Analog jog controls work independently of joystick/gamepad hardware support
   useEffect(() => {
-    if (mode === 'analog' && settings?.joystick?.enabled) {
+    if (mode === 'analog') {
       sendJogControlInput(analogValues.x, analogValues.y, analogValues.z)
     }
-  }, [mode, settings?.joystick?.enabled, analogValues.x, analogValues.y, analogValues.z])
+  }, [mode, analogValues.x, analogValues.y, analogValues.z])
   
   // Calculate joystick values from mouse position
   const updateJoystickFromMouse = useCallback((clientX: number, clientY: number) => {

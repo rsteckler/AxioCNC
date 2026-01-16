@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Target, AlertCircle, HelpCircle, Check, X, RotateCcw, Navigation, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'

@@ -1,5 +1,3 @@
-import React from 'react'
-
 interface EmptyStateProps {
   message: string
   className?: string

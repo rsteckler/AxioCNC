@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'
 import { useGetSettingsQuery } from '@/services/api'
@@ -27,19 +27,21 @@ export function RapidPanel({
   }
   
   // Calculate positions for each button
+  // Edge positions are inset 10mm from the limits
+  const inset = 10
   const positions = {
     // Top row (Y max)
-    upperLeft: { x: limits.xmin, y: limits.ymax },
-    upperCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymax },
-    upperRight: { x: limits.xmax, y: limits.ymax },
+    upperLeft: { x: limits.xmin + inset, y: limits.ymax - inset },
+    upperCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymax - inset },
+    upperRight: { x: limits.xmax - inset, y: limits.ymax - inset },
     // Middle row (Y center)
-    middleLeft: { x: limits.xmin, y: (limits.ymin + limits.ymax) / 2 },
+    middleLeft: { x: limits.xmin + inset, y: (limits.ymin + limits.ymax) / 2 },
     center: { x: (limits.xmin + limits.xmax) / 2, y: (limits.ymin + limits.ymax) / 2 },
-    middleRight: { x: limits.xmax, y: (limits.ymin + limits.ymax) / 2 },
+    middleRight: { x: limits.xmax - inset, y: (limits.ymin + limits.ymax) / 2 },
     // Bottom row (Y min)
-    lowerLeft: { x: limits.xmin, y: limits.ymin },
-    lowerCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymin },
-    lowerRight: { x: limits.xmax, y: limits.ymin },
+    lowerLeft: { x: limits.xmin + inset, y: limits.ymin + inset },
+    lowerCenter: { x: (limits.xmin + limits.xmax) / 2, y: limits.ymin + inset },
+    lowerRight: { x: limits.xmax - inset, y: limits.ymin + inset },
   }
   
   const handleRapidMove = useCallback((x: number, y: number) => {

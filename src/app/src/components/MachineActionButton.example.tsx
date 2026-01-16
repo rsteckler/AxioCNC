@@ -7,7 +7,6 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { MachineActionButton } from './MachineActionButton'
-import { ActionRequirements } from '@/utils/machineState'
 import { ChevronUp, Home } from 'lucide-react'
 
 // Example 1: Simple jog button

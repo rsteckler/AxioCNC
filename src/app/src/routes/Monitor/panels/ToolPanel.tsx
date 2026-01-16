@@ -1,4 +1,3 @@
-import React from 'react'
 import type { PanelProps } from '../../Setup/types'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

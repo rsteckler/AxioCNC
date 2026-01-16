@@ -1,4 +1,3 @@
-import React from 'react'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import type { PanelProps } from '../../Setup/types'

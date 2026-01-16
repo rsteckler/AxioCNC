@@ -1,4 +1,3 @@
-import React from 'react'
 import { MachineStatusBar } from './MachineStatusBar'
 import { JobStatusBar } from './JobStatusBar'
 
