@@ -323,6 +323,20 @@ export function JoystickTestDialog({
     }
   }, [open, findGamepad, config.buttonMappings])
 
+  // Set test mode when dialog opens/closes (prevents commands during testing)
+  useEffect(() => {
+    if (open) {
+      socketService.joystickTestMode(true)
+    } else {
+      socketService.joystickTestMode(false)
+    }
+    
+    return () => {
+      // Cleanup: disable test mode when component unmounts
+      socketService.joystickTestMode(false)
+    }
+  }, [open])
+
   // Handle server-side gamepad state updates (Socket.IO)
   useEffect(() => {
     if (!open || config.connectionLocation !== 'server') {

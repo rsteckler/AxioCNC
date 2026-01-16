@@ -28,6 +28,7 @@ class JoystickService extends events.EventEmitter {
     this.enabled = false;
     this.clientGamepadInputs = new Map(); // socketId -> { axes, buttons, timestamp }
     this.clientJogControlInputs = new Map(); // socketId -> { x, y, z, timestamp }
+    this.testModeSockets = new Set(); // socketId -> true (sockets in test mode)
 
     // Server gamepad listener
     this.serverGamepadListener = null;
@@ -77,7 +78,8 @@ class JoystickService extends events.EventEmitter {
         const actions = this.mapper.mapGamepad(state.axes, state.buttons);
 
         // Route to handlers (emit event for translation layer)
-        if (actions.length > 0) {
+        // Skip if any client is in test mode (prevents commands during testing)
+        if (actions.length > 0 && this.testModeSockets.size === 0) {
           // Log actions that will be dispatched
           const actionStrings = actions.map(action => {
             if (action.type === 'analog') {
@@ -89,6 +91,8 @@ class JoystickService extends events.EventEmitter {
           });
           log.debug(`[server-gamepad] mapped to ${actions.length} action(s): ${actionStrings.join(', ')}`);
           this.emit('actions', actions, 'server-gamepad');
+        } else if (actions.length > 0 && this.testModeSockets.size > 0) {
+          log.debug(`[server-gamepad] ignoring ${actions.length} action(s) - test mode active`);
         }
       };
 
@@ -142,9 +146,12 @@ class JoystickService extends events.EventEmitter {
     const actions = this.mapper.mapGamepad(axes || [], buttons || []);
 
     // Route to handlers
-    if (actions.length > 0) {
+    // Skip if this client is in test mode (prevents commands during testing)
+    if (actions.length > 0 && !this.testModeSockets.has(socketId)) {
       log.debug(`[client-gamepad:${socketId}] mapped to ${actions.length} action(s)`);
       this.emit('actions', actions, `client-gamepad-${socketId}`);
+    } else if (actions.length > 0) {
+      log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - test mode active`);
     }
   }
 
@@ -182,9 +189,25 @@ class JoystickService extends events.EventEmitter {
     const action = this.mapper.mapJogControl(x || 0, y || 0, z || 0);
 
     // Route to handlers
-    if (action) {
+    // Skip if this client is in test mode (prevents commands during testing)
+    if (action && !this.testModeSockets.has(socketId)) {
       log.debug(`[client-jog:${socketId}] mapped to action: analog(x=${action.x.toFixed(3)}, y=${action.y.toFixed(3)}, z=${action.z.toFixed(3)})`);
       this.emit('actions', [action], `client-jog-${socketId}`);
+    } else if (action) {
+      log.debug(`[client-jog:${socketId}] ignoring action - test mode active`);
+    }
+  }
+
+  /**
+   * Set test mode for a socket (prevents commands from being sent)
+   */
+  setTestMode(socketId, enabled) {
+    if (enabled) {
+      this.testModeSockets.add(socketId);
+      log.debug(`[joystick] Test mode enabled for socket ${socketId}`);
+    } else {
+      this.testModeSockets.delete(socketId);
+      log.debug(`[joystick] Test mode disabled for socket ${socketId}`);
     }
   }
 
@@ -194,6 +217,7 @@ class JoystickService extends events.EventEmitter {
   removeClient(socketId) {
     this.clientGamepadInputs.delete(socketId);
     this.clientJogControlInputs.delete(socketId);
+    this.testModeSockets.delete(socketId);
   }
 
   /**
@@ -212,6 +236,7 @@ class JoystickService extends events.EventEmitter {
     this.enabled = false;
     this.clientGamepadInputs.clear();
     this.clientJogControlInputs.clear();
+    this.testModeSockets.clear();
   }
 }
 

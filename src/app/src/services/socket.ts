@@ -248,6 +248,16 @@ class SocketService {
     this.socket.emit('joystick:jog', x, y, z, timestamp)
   }
 
+  // Set joystick test mode (prevents commands during testing)
+  // Format: socket.emit('joystick:testMode', enabled)
+  joystickTestMode(enabled: boolean) {
+    if (!this.socket?.connected) {
+      console.error('Socket not connected, cannot set joystick test mode')
+      return
+    }
+    this.socket.emit('joystick:testMode', enabled)
+  }
+
   /**
    * Type-safe event subscription
    * Stores the listener so it can be re-applied after reconnection

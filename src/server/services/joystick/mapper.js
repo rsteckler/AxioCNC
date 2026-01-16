@@ -141,19 +141,34 @@ class JoystickMapper {
   }
 
   /**
-   * Map browser jog control input to mapped actions
-   *
-   * Browser controls are already normalized (useAnalogJog handles this on client)
-   * We just need to apply settings (sensitivity, inversion) and format
+   * Unified analog input processing
+   * Applies settings (deadzone, sensitivity, inversion) to normalized (x, y, z) values
    * 
    * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
    * The jog loop needs to receive neutral input to know when to cancel jogging.
+   * 
+   * @param {number} x - X axis value (-1 to 1)
+   * @param {number} y - Y axis value (-1 to 1)
+   * @param {number} z - Z axis value (-1 to 1)
+   * @param {boolean} shouldApplyDeadzone - Whether to apply deadzone (true for gamepad, false for browser controls)
+   * @returns {object} Analog action object { type: 'analog', x, y, z }
    */
-  mapJogControl(x, y, z) {
-    // Apply settings (deadzone already applied by client, but apply sensitivity and inversion)
-    let xValue = applySensitivity(x, this.config.sensitivity);
-    let yValue = applySensitivity(y, this.config.sensitivity);
-    let zValue = applySensitivity(z, this.config.sensitivity);
+  mapAnalogInput(x, y, z, shouldApplyDeadzone = false) {
+    let xValue = x || 0;
+    let yValue = y || 0;
+    let zValue = z || 0;
+
+    // Apply deadzone if requested (for gamepad input)
+    if (shouldApplyDeadzone) {
+      xValue = applyDeadzone(xValue, this.config.deadzone);
+      yValue = applyDeadzone(yValue, this.config.deadzone);
+      zValue = applyDeadzone(zValue, this.config.deadzone);
+    }
+
+    // Apply sensitivity
+    xValue = applySensitivity(xValue, this.config.sensitivity);
+    yValue = applySensitivity(yValue, this.config.sensitivity);
+    zValue = applySensitivity(zValue, this.config.sensitivity);
 
     // Apply inversion
     xValue = applyInversion(xValue, this.config.invertX);
@@ -170,8 +185,26 @@ class JoystickMapper {
   }
 
   /**
+   * Map browser jog control input to mapped actions
+   *
+   * Browser controls are already normalized (useAnalogJog handles this on client)
+   * Deadzone is already applied by the client, so we skip it here.
+   * 
+   * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
+   * The jog loop needs to receive neutral input to know when to cancel jogging.
+   */
+  mapJogControl(x, y, z) {
+    // Use unified processing (deadzone already applied by client)
+    return this.mapAnalogInput(x, y, z, false);
+  }
+
+  /**
    * Map analog axes from gamepad state
-   * Applies mappings, settings (deadzone, sensitivity, inversion), and converts to normalized format
+   * Extracts (x, y, z) from raw gamepad axes based on analogMappings,
+   * then uses unified processing to apply settings.
+   * 
+   * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
+   * The jog loop needs to receive neutral input to know when to cancel jogging.
    */
   mapAnalogAxes(axes) {
     // Get raw axis values
@@ -228,32 +261,8 @@ class JoystickMapper {
     jogY = Math.max(-1, Math.min(1, jogY));
     jogZ = Math.max(-1, Math.min(1, jogZ));
 
-    // Apply settings: deadzone, sensitivity, inversion
-    jogX = applyDeadzone(jogX, this.config.deadzone);
-    jogY = applyDeadzone(jogY, this.config.deadzone);
-    jogZ = applyDeadzone(jogZ, this.config.deadzone);
-
-    jogX = applySensitivity(jogX, this.config.sensitivity);
-    jogY = applySensitivity(jogY, this.config.sensitivity);
-    jogZ = applySensitivity(jogZ, this.config.sensitivity);
-
-    jogX = applyInversion(jogX, this.config.invertX);
-    jogY = applyInversion(jogY, this.config.invertY);
-    jogZ = applyInversion(jogZ, this.config.invertZ);
-
-    // Check if any axis has meaningful input (after settings)
-    const hasInput = Math.abs(jogX) > 0.001 || Math.abs(jogY) > 0.001 || Math.abs(jogZ) > 0.001;
-
-    if (!hasInput) {
-      return null;
-    }
-
-    return {
-      type: 'analog',
-      x: jogX,
-      y: jogY,
-      z: jogZ,
-    };
+    // Use unified processing (apply deadzone for gamepad input)
+    return this.mapAnalogInput(jogX, jogY, jogZ, true);
   }
 }
 

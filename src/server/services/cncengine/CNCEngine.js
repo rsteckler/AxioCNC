@@ -274,6 +274,11 @@ class CNCEngine {
           joystickService.handleClientJogControlInput(socket.id, x, y, z, timestamp);
         });
 
+        // Handle joystick test mode (prevents commands during testing)
+        socket.on('joystick:testMode', (enabled) => {
+          joystickService.setTestMode(socket.id, enabled);
+        });
+
         // List the available serial ports
         socket.on('list', () => {
           log.debug(`socket.list(): id=${socket.id}`);

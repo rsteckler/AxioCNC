@@ -130,7 +130,9 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     
     // Normalize for circular input (for jog values)
     const normalized = normalizeToCircle(xRaw, yRaw)
-    setJogValues({ x: normalized.x, y: normalized.y })
+    // Invert Y axis for browser-based analog jog controls (Setup page only)
+    // Server-side gamepad uses settings.joystick.invertY instead
+    setJogValues({ x: normalized.x, y: -normalized.y })
   }, [])
   
   // Handle XY joystick mouse down
