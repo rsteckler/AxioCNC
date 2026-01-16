@@ -25,9 +25,9 @@ const log = logger('service:joystick:jogloop');
 
 // Configuration constants
 const PLANNER_BLOCKS = 15; // Grbl planner buffer size
-const TARGET_QUEUE_DEPTH = 4; // Target commands in queue
+const TARGET_QUEUE_DEPTH = 3; // Target commands in queue (3 provides smooth motion with minimal latency)
 const MIN_DT_MS = 25; // Minimum time interval (ms)
-const MAX_DT_MS = 200; // Maximum time interval (ms)
+const MAX_DT_MS = 60; // Maximum time interval (ms) - matches Grbl docs recommendation (0.025-0.06 sec)
 const DEFAULT_ACCELERATION = 500; // Default acceleration (mm/sec²) if not available from controller
 const CANCEL_TIMEOUT_MS = 1000; // Timeout waiting for cancel confirmation
 const INPUT_NEUTRAL_THRESHOLD = 0.01; // Threshold for considering input as neutral
@@ -43,7 +43,7 @@ class JogLoop extends events.EventEmitter {
 
     // State
     this.state = STATE_IDLE;
-    this.enabled = false;
+    this.enabled = true; // Jog loop is always enabled - accepts input from browser controls
 
     // Configuration
     this.config = {
@@ -86,6 +86,10 @@ class JogLoop extends events.EventEmitter {
 
   /**
    * Update configuration
+   * 
+   * Note: The jog loop always accepts input from browser jog controls,
+   * regardless of joystick.enabled setting. The enabled flag only controls
+   * whether gamepad hardware input is processed.
    */
   updateConfig(config) {
     if (config.analogJogSpeedXY !== undefined && Number.isFinite(config.analogJogSpeedXY)) {
@@ -95,14 +99,11 @@ class JogLoop extends events.EventEmitter {
       this.config.analogJogSpeedZ = config.analogJogSpeedZ;
     }
 
-    this.enabled = config.enabled ?? this.enabled;
+    // Jog loop is always enabled - it processes input from browser controls
+    // regardless of joystick hardware support being enabled/disabled
+    this.enabled = true;
 
-    log.debug(`Config updated: enabled=${this.enabled}, speedXY=${this.config.analogJogSpeedXY}, speedZ=${this.config.analogJogSpeedZ}`);
-
-    // If disabled, stop any active jogging
-    if (!this.enabled && this.state !== STATE_IDLE) {
-      this.cancelJog();
-    }
+    log.debug(`Config updated: speedXY=${this.config.analogJogSpeedXY}, speedZ=${this.config.analogJogSpeedZ}`);
   }
 
   /**
@@ -208,9 +209,9 @@ class JogLoop extends events.EventEmitter {
       return null; // No movement
     }
 
-    // Calculate dt based on maximum velocity component
-    const maxV = Math.max(Math.abs(vx), Math.abs(vy), Math.abs(vz));
-    const dt = this.calculateDt(maxV);
+    // Calculate dt based on actual vector velocity (not max component)
+    // This provides lower latency at slower speeds per Grbl docs
+    const dt = this.calculateDt(vTotal);
     const dtSec = dt / 1000;
 
     // Calculate incremental distances
@@ -295,12 +296,11 @@ class JogLoop extends events.EventEmitter {
   /**
    * Handle analog input update
    * Called by joystick service when analog input changes
+   * 
+   * Note: Always accepts input - works independently of joystick.enabled setting.
+   * Browser jog controls and gamepad hardware are separate input sources.
    */
   handleAnalogInput(x, y, z) {
-    if (!this.enabled) {
-      return;
-    }
-
     // Ensure we have valid speed configuration
     if (!this.config.analogJogSpeedXY || !this.config.analogJogSpeedZ) {
       log.warn('Jog loop not properly configured - missing speed settings');
@@ -323,6 +323,7 @@ class JogLoop extends events.EventEmitter {
       case STATE_IDLE:
         if (!this.isInputNeutral(input)) {
           // Start jogging
+          this.currentInput = input;
           this.startJogging();
         }
         break;
@@ -331,12 +332,18 @@ class JogLoop extends events.EventEmitter {
         if (this.isInputNeutral(input)) {
           // Input returned to neutral, cancel jog
           this.cancelJog();
+        } else {
+          // Update input normally - jog loop will use it
+          this.currentInput = input;
         }
-        // Otherwise, the jog loop will use the updated input
         break;
 
       case STATE_CANCELLING:
-        // Waiting for cancel confirmation, ignore input updates
+        // Waiting for cancel confirmation, but store input for when we restart
+        // This ensures we don't lose the new direction while cancelling
+        if (!this.isInputNeutral(input)) {
+          this.currentInput = input;
+        }
         break;
 
       default:
@@ -393,6 +400,7 @@ class JogLoop extends events.EventEmitter {
 
   /**
    * Handle 'ok' response from runner
+   * Event-driven: immediately check if we need to send another command
    */
   handleOkResponse() {
     // Command completed
@@ -402,7 +410,26 @@ class JogLoop extends events.EventEmitter {
       // G4P0 completed, sync done
       this.waitingForSync = false;
       log.debug('Jog cancel sync complete');
+      return;
     }
+
+    // Event-driven: 'ok' received means we can potentially send more
+    // Schedule a check (don't call immediately) to respect dt timing intervals
+    // This prevents rapid-fire sending and maintains proper buffer
+    if (this.state === STATE_JOGGING && this.commandsInQueue < TARGET_QUEUE_DEPTH) {
+      // Schedule a check - runJogLoop will respect dt timing
+      // Only schedule if timer isn't already set (avoid duplicate timers)
+      if (!this.jogTimer) {
+        this.jogTimer = setTimeout(() => {
+          this.jogTimer = null;
+          if (this.state === STATE_JOGGING) {
+            this.runJogLoop();
+          }
+        }, 5); // Very short delay to let timing logic in runJogLoop work properly
+      }
+    } 
+    // Note: If state is CANCELLING, we intentionally don't send commands
+    // even if 'ok' responses from pre-cancel commands are still arriving
   }
 
   /**
@@ -476,12 +503,20 @@ class JogLoop extends events.EventEmitter {
       return;
     }
 
+    // Double-check state before sending (defense against race conditions)
+    if (this.state !== STATE_JOGGING) {
+      return;
+    }
+
     // Only send if queue isn't too full
     if (this.commandsInQueue < TARGET_QUEUE_DEPTH) {
       // Check if enough time has passed since last command
+      // Always respect dt interval to maintain proper buffer and timing
+      // Only send immediately if this is the very first command (lastCommandTime === 0)
       const timeSinceLastCmd = now - this.lastCommandTime;
+      const shouldSend = (this.lastCommandTime === 0) || (timeSinceLastCmd >= params.dt);
 
-      if (timeSinceLastCmd >= params.dt || this.commandsInQueue === 0) {
+      if (shouldSend) {
         // Build and send the jog command
         const cmd = this.buildJogCommand(params);
 
@@ -489,9 +524,12 @@ class JogLoop extends events.EventEmitter {
         if (!cmd) {
           log.debug('Skipping jog command - movement too small');
         } else {
-          // Log the command being sent
-          log.info(`Sending jog: ${cmd}`);
+          // Final state check before sending (defense against race conditions)
+          if (this.state !== STATE_JOGGING) {
+            return;
+          }
 
+          // Log the command being sent with state info for debugging
           try {
             this.controller.writeln(cmd);
             this.commandsInQueue++;
@@ -505,13 +543,25 @@ class JogLoop extends events.EventEmitter {
       }
     }
 
-    // Schedule next iteration
-    // Use shorter interval when queue is low, longer when it's filling up
-    const nextInterval = this.commandsInQueue < 2 ? MIN_DT_MS : params.dt;
+    // Schedule next iteration only if we're still jogging (not cancelling)
+    // Use a short polling interval as fallback for input changes
+    // Primary path is event-driven via handleOkResponse()
+    if (this.state !== STATE_JOGGING) {
+      return; // Don't schedule timer if we're cancelling or idle
+    }
 
-    this.jogTimer = setTimeout(() => {
-      this.runJogLoop();
-    }, Math.max(5, nextInterval / 2)); // Run at half the interval for responsiveness
+    if (this.commandsInQueue >= TARGET_QUEUE_DEPTH) {
+      // Queue is full, wait a bit before checking again
+      this.jogTimer = setTimeout(() => {
+        this.runJogLoop();
+      }, MIN_DT_MS);
+    } else {
+      // Queue has room, poll more frequently to catch input changes
+      // But don't poll too aggressively - event-driven path handles most cases
+      this.jogTimer = setTimeout(() => {
+        this.runJogLoop();
+      }, Math.max(10, params.dt / 4)); // Poll at 1/4 of dt interval
+    }
   }
 
   /**
@@ -522,14 +572,14 @@ class JogLoop extends events.EventEmitter {
       return;
     }
 
-    log.debug('Cancelling jog');
-
     // Clear the jog timer
     if (this.jogTimer) {
       clearTimeout(this.jogTimer);
       this.jogTimer = null;
     }
 
+    // Immediately clear command queue - no more commands should be sent
+    this.commandsInQueue = 0;
     this.state = STATE_CANCELLING;
 
     // Send jog cancel realtime command (0x85)
@@ -590,6 +640,7 @@ class JogLoop extends events.EventEmitter {
 
   /**
    * Transition to idle state
+   * If there's pending input, restart jogging immediately
    */
   transitionToIdle() {
     log.debug('Transitioning to idle');
@@ -604,10 +655,19 @@ class JogLoop extends events.EventEmitter {
       this.cancelTimer = null;
     }
 
+    const pendingInput = this.currentInput;
+    
     this.state = STATE_IDLE;
     this.commandsInQueue = 0;
     this.waitingForSync = false;
-    this.currentInput = { x: 0, y: 0, z: 0 };
+
+    // If we have pending input, restart jogging immediately
+    if (!this.isInputNeutral(pendingInput)) {
+      this.currentInput = pendingInput;
+      this.startJogging();
+    } else {
+      this.currentInput = { x: 0, y: 0, z: 0 };
+    }
   }
 
   /**
@@ -616,11 +676,10 @@ class JogLoop extends events.EventEmitter {
    *
    * For button jogs, we send a single jog command while the button is held,
    * and cancel when released.
+   * 
+   * Note: Always accepts input - works independently of joystick.enabled setting.
    */
   handleButtonJog(action, pressed) {
-    if (!this.enabled) {
-      return;
-    }
 
     // Parse action to get axis and direction
     const match = action.match(/^jog_([xyz])_(pos|neg)$/);

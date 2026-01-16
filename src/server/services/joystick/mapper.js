@@ -145,6 +145,9 @@ class JoystickMapper {
    *
    * Browser controls are already normalized (useAnalogJog handles this on client)
    * We just need to apply settings (sensitivity, inversion) and format
+   * 
+   * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
+   * The jog loop needs to receive neutral input to know when to cancel jogging.
    */
   mapJogControl(x, y, z) {
     // Apply settings (deadzone already applied by client, but apply sensitivity and inversion)
@@ -157,13 +160,7 @@ class JoystickMapper {
     yValue = applyInversion(yValue, this.config.invertY);
     zValue = applyInversion(zValue, this.config.invertZ);
 
-    // Check if any axis has meaningful input (after settings)
-    const hasInput = Math.abs(xValue) > 0.001 || Math.abs(yValue) > 0.001 || Math.abs(zValue) > 0.001;
-
-    if (!hasInput) {
-      return null;
-    }
-
+    // Always return an action - jog loop needs neutral input to trigger cancel
     return {
       type: 'analog',
       x: xValue,

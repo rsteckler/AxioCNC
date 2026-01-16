@@ -130,7 +130,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     
     // Normalize for circular input (for jog values)
     const normalized = normalizeToCircle(xRaw, yRaw)
-    setJogValues(normalized)
+    setJogValues({ x: normalized.x, y: normalized.y })
   }, [])
   
   // Handle XY joystick mouse down
