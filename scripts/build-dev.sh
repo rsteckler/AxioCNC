@@ -35,7 +35,10 @@ cd "${PROJECT_ROOT}/src/app" && yarn build:dev && cd "${PROJECT_ROOT}"
 
 # Ensure we're in project root for the copy command
 cd "${PROJECT_ROOT}"
-cp -af src/server/{i18n,views,config} output/axiocnc/server/
+# Copy i18n and views (these don't need babel transformation)
+cp -af src/server/{i18n,views} output/axiocnc/server/
+# Copy config JSON files only (JS files already transformed by babel above)
+cp -af src/server/config/*.json output/axiocnc/server/config/ 2>/dev/null || true
 # Copy index.hbs template to app directory (needed by Express views)
 cp -af index.hbs output/axiocnc/app/ 2>/dev/null || true
 # Copy favicon if it exists

@@ -29,6 +29,9 @@ cd src/app && yarn build && cd ../..
 mkdir -p dist/axiocnc/app
 mkdir -p dist/axiocnc/server
 
-cp -af src/server/{i18n,views,config} dist/axiocnc/server/
+# Copy i18n and views (these don't need babel transformation)
+cp -af src/server/{i18n,views} dist/axiocnc/server/
+# Copy config JSON files only (JS files already transformed by babel above)
+cp -af src/server/config/*.json dist/axiocnc/server/config/ 2>/dev/null || true
 # Copy index.hbs template to app directory (needed by Express views)
 cp -af index.hbs dist/axiocnc/app/ 2>/dev/null || true
