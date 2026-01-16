@@ -16,7 +16,23 @@ import { Console } from '@/components/Console'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
-import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
+import { 
+  useMachineState, 
+  useJobState, 
+  useAppDispatch,
+  useIsConnected,
+  useConnectedPort,
+  useIsJobRunning,
+  useWorkflowState,
+  useMachinePosition,
+  useWorkPosition,
+  useSpindleState,
+  useSpindleSpeed,
+  useCurrentTool,
+  usePlannerQueue,
+  useRxBufferSize,
+  useFeedrate,
+} from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
 import { processGCode } from '@/lib/gcodeVisualizer'
 import { Vector3 } from 'three'
@@ -233,9 +249,8 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
   const dispatch = useAppDispatch()
   
   // Get shared machine state for positions
-  const machineState = useMachineState()
-  const workPosition = machineState.workPosition
-  const connectedPort = machineState.connectedPort // Use Redux state instead of settings
+  const workPosition = useWorkPosition()
+  const connectedPort = useConnectedPort() // Use Redux state instead of settings
   
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
@@ -934,22 +949,23 @@ export default function Monitor() {
   const machineState = useMachineState()
   const jobState = useJobState()
   
-  // Extract values from Redux state
-  const isConnected = machineState.isConnected
-  const connectedPort = machineState.connectedPort
+  // Extract values from Redux state using selectors
+  const isConnected = useIsConnected()
+  const connectedPort = useConnectedPort()
   const machineStatus = machineState.machineStatus
-  const isJobRunning = machineState.isJobRunning
-  const workflowState = machineState.workflowState
-  const machinePosition = machineState.machinePosition
-  const workPosition = machineState.workPosition
-  const spindleState = machineState.spindleState
-  const spindleSpeed = machineState.spindleSpeed
+  const isJobRunning = useIsJobRunning()
+  const workflowState = useWorkflowState()
+  const machinePosition = useMachinePosition()
+  const workPosition = useWorkPosition()
+  const spindleState = useSpindleState()
+  const spindleSpeed = useSpindleSpeed()
   const maxSpindleSpeed = machineState.maxSpindleSpeed
-  const currentTool = machineState.currentTool
-  const plannerQueueDepth = machineState.plannerQueueDepth
-  const plannerQueueMax = machineState.plannerQueueMax
-  const rxBufferSize = machineState.rxBufferSize
-  const feedrate = machineState.feedrate
+  const currentTool = useCurrentTool()
+  const plannerQueue = usePlannerQueue()
+  const plannerQueueDepth = plannerQueue.depth
+  const plannerQueueMax = plannerQueue.max
+  const rxBufferSize = useRxBufferSize()
+  const feedrate = useFeedrate()
   
   // Job state (sender state) - jobState is used via other extracted values
   

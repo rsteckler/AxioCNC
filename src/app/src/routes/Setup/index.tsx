@@ -3,13 +3,26 @@ import { useNavigate } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
 // useGetControllersQuery not currently used but may be needed in future
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
-import { useMachineState, useJobState, useAppDispatch } from '@/store/hooks'
+import { 
+  useMachineState, 
+  useJobState, 
+  useAppDispatch,
+  useIsConnected,
+  useConnectedPort,
+  useIsHomed,
+  useIsJobRunning,
+  useWorkflowState,
+  useMachinePosition,
+  useWorkPosition,
+  useSpindleState,
+  useSpindleSpeed,
+} from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
-import { setConnecting, setFlashing, type MachineStatus } from '@/store/machineSlice'
+import { setConnecting, setFlashing, type MachineReadinessStatus } from '@/store/machineSlice'
 import {
   Dialog,
   DialogContent,
@@ -42,7 +55,7 @@ import {
   Crosshair, RotateCcw, RotateCw, GripVertical,
   Zap, Target, FileCode,
   Move, Navigation, Bell, AlertCircle, X,
-  Camera, Gamepad2,
+  Camera, Gamepad2, Bug,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -61,6 +74,7 @@ import { ToolsPanel } from './panels/ToolsPanel'
 import { VisualizerPanel } from './panels/VisualizerPanel'
 import { CameraPanel } from './panels/CameraPanel'
 import { JoystickPanel } from './panels/JoystickPanel'
+import { DebugPanel } from './panels/DebugPanel'
 import type { PanelProps } from './types'
 
 // ============================================================================
@@ -82,6 +96,7 @@ const panelConfig: Record<string, {
   spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
   camera: { title: 'Camera', icon: Camera, component: CameraPanel },
   joystick: { title: 'Joystick', icon: Gamepad2, component: JoystickPanel },
+  debug: { title: 'Debug', icon: Bug, component: DebugPanel },
 }
 
 // Sortable Panel Component
@@ -190,10 +205,18 @@ export default function Setup() {
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
   
+  // Get advanced config (for debug mode)
+  const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
+  const debugMode = extensionsData && typeof extensionsData === 'object' && 'debugMode' in extensionsData
+    ? (extensionsData as { debugMode?: boolean }).debugMode ?? false
+    : false
+  
   // Panel order - just an array of IDs
   // Load from localStorage or use default
   // Store the last known position of joystick panel before it was removed
   const joystickPositionRef = useRef<number | null>(null)
+  // Store the last known position of debug panel before it was removed
+  const debugPositionRef = useRef<number | null>(null)
 
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem('axiocnc-setup-panel-order')
@@ -201,7 +224,7 @@ export default function Setup() {
       try {
         const parsed = JSON.parse(stored)
         // Validate it's an array with valid panel IDs
-        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick']
+        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick', 'debug']
         if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
           // Store joystick position if it exists in the saved order
           const joystickIndex = parsed.indexOf('joystick')
@@ -243,6 +266,32 @@ export default function Setup() {
     }
   }, [settings?.joystick?.enabled, panelOrder])
   
+  // Add/remove debug panel to order when debug mode is enabled/disabled
+  // Preserve its position when re-adding
+  useEffect(() => {
+    if (debugMode && !panelOrder.includes('debug')) {
+      setPanelOrder(prev => {
+        // If we have a saved position, restore it there
+        if (debugPositionRef.current !== null && debugPositionRef.current < prev.length) {
+          const newOrder = [...prev]
+          newOrder.splice(debugPositionRef.current, 0, 'debug')
+          return newOrder
+        }
+        // Otherwise add to end
+        return [...prev, 'debug']
+      })
+    } else if (!debugMode && panelOrder.includes('debug')) {
+      setPanelOrder(prev => {
+        // Save the position before removing
+        const debugIndex = prev.indexOf('debug')
+        if (debugIndex !== -1) {
+          debugPositionRef.current = debugIndex
+        }
+        return prev.filter(id => id !== 'debug')
+      })
+    }
+  }, [debugMode, panelOrder])
+  
   // Track which panels are collapsed
   // Load from localStorage or use default
   const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>(() => {
@@ -268,17 +317,17 @@ export default function Setup() {
   const machineState = useMachineState()
   const jobState = useJobState()
   
-  // Extract values from Redux state
-  const isConnected = machineState.isConnected
-  const connectedPort = machineState.connectedPort
+  // Extract values from Redux state using selectors
+  const isConnected = useIsConnected()
+  const connectedPort = useConnectedPort()
   const machineStatus = machineState.machineStatus
-  const isHomed = machineState.isHomed
-  const isJobRunning = machineState.isJobRunning
-  const workflowState = machineState.workflowState
-  const machinePosition = machineState.machinePosition
-  const workPosition = machineState.workPosition
-  const spindleState = machineState.spindleState
-  const spindleSpeed = machineState.spindleSpeed
+  const isHomed = useIsHomed()
+  const isJobRunning = useIsJobRunning()
+  const workflowState = useWorkflowState()
+  const machinePosition = useMachinePosition()
+  const workPosition = useWorkPosition()
+  const spindleState = useSpindleState()
+  const spindleSpeed = useSpindleSpeed()
   
   // UI-specific state (not in Redux)
   const [homingInProgress, setHomingInProgress] = useState(false)
@@ -294,7 +343,7 @@ export default function Setup() {
   const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
   
   // Refs to track state in event handlers to avoid stale closures
-  const machineStatusRef = useRef<MachineStatus>(machineStatus)
+  const machineStatusRef = useRef<MachineReadinessStatus>(machineStatus)
   machineStatusRef.current = machineStatus // Keep ref in sync
   const isConnectedRef = useRef(isConnected)
   isConnectedRef.current = isConnected
@@ -915,6 +964,10 @@ export default function Setup() {
                     // Filter out joystick panel if joystick is not enabled
                     if (panelId === 'joystick') {
                       return settings?.joystick?.enabled ?? false
+                    }
+                    // Filter out debug panel if debug mode is not enabled
+                    if (panelId === 'debug') {
+                      return debugMode
                     }
                     return true
                   })

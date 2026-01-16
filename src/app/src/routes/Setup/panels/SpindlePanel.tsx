@@ -16,7 +16,11 @@ export function SpindlePanel({
   spindleState = 'M5', 
   spindleSpeed = 0 
 }: PanelProps) {
-  const speeds = [0, 500, 1000, 1500, 2000, 2500, 3000]
+  // Generate speeds array from 8000 to 24000 in 100 RPM increments
+  const speeds = Array.from({ length: 161 }, (_, i) => 8000 + i * 100)
+  
+  // Label positions (indices) - 6 evenly spaced labels
+  const labelIndices = [0, 20, 50, 80, 120, 160] // 8000, 10000, 13000, 16000, 20000, 24000
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)
@@ -38,14 +42,16 @@ export function SpindlePanel({
     }
   }, [isOn, backendDirection])
   
-  // Find closest speed index from backend speed, or default to 1000 RPM
+  // Find closest speed index from backend speed, or default to 10000 RPM (index 20)
   const getSpeedIndex = (speed: number | undefined): number => {
-    if (speed === undefined) return 2 // Default to 1000 RPM
+    if (speed === undefined) return 20 // Default to 10000 RPM
+    // Clamp speed to valid range
+    const clampedSpeed = Math.max(8000, Math.min(24000, speed))
     // Find closest speed in speeds array
-    let closestIndex = 2
-    let minDiff = Math.abs(speed - speeds[2])
+    let closestIndex = 20
+    let minDiff = Math.abs(clampedSpeed - speeds[20])
     speeds.forEach((s, i) => {
-      const diff = Math.abs(speed - s)
+      const diff = Math.abs(clampedSpeed - s)
       if (diff < minDiff) {
         minDiff = diff
         closestIndex = i
@@ -198,13 +204,11 @@ export function SpindlePanel({
           />
         </MachineActionWrapper>
         <div className="flex justify-between text-[10px] text-muted-foreground px-1">
-          <span>0</span>
-          <span>500</span>
-          <span>1k</span>
-          <span>1.5k</span>
-          <span>2k</span>
-          <span>2.5k</span>
-          <span>3k</span>
+          {labelIndices.map((idx) => {
+            const labelSpeed = speeds[idx]
+            const label = labelSpeed >= 1000 ? `${labelSpeed / 1000}k` : `${labelSpeed}`
+            return <span key={idx}>{label}</span>
+          })}
         </div>
       </div>
       

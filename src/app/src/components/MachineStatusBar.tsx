@@ -1,22 +1,22 @@
 import { useCallback, useRef } from 'react'
 import { Home, Play, Square, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { MachineStatusBadge, type MachineStatus } from './MachineStatusBadge'
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
+import { MachineStatusBadge } from './MachineStatusBadge'
+import { 
+  useAppSelector, 
+  useAppDispatch,
+  useIsConnected,
+  useConnectedPort,
+  useIsHomed,
+} from '@/store/hooks'
 import { useGetSettingsQuery } from '@/services/api'
 import { useGcodeCommand } from '@/hooks'
 import { socketService } from '@/services/socket'
 import {
   setConnecting,
   setFlashing,
-  setConnectionState,
-  setMachineStatus,
-  setHomed,
-  setSpindleState,
-  setSpindleSpeed,
+  setBackendStatus,
 } from '@/store/machineSlice'
-
-export type { MachineStatus }
 
 interface MachineStatusBarProps {
   onError?: (title: string, message: string) => void
@@ -25,14 +25,13 @@ interface MachineStatusBarProps {
 export function MachineStatusBar({ onError }: MachineStatusBarProps) {
   const dispatch = useAppDispatch()
   
-  // Only select the specific properties we need - this prevents re-renders
-  // when position updates come in during jogging
-  const isConnected = useAppSelector((state) => state.machine.isConnected)
+  // Use selectors for computed values
+  const isConnected = useIsConnected()
   const isConnecting = useAppSelector((state) => state.machine.isConnecting)
-  const connectedPort = useAppSelector((state) => state.machine.connectedPort)
+  const connectedPort = useConnectedPort()
   const machineStatus = useAppSelector((state) => state.machine.machineStatus)
   const isFlashing = useAppSelector((state) => state.machine.isFlashing)
-  const isHomed = useAppSelector((state) => state.machine.isHomed)
+  const isHomed = useIsHomed()
   
   const { data: settings } = useGetSettingsQuery()
   
@@ -96,13 +95,8 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
     // we need to handle both cases here.
     if (isConnected && connectedPort) {
       // Disconnect
-      // Update UI optimistically (will be confirmed by serialport:close event)
-      dispatch(setConnectionState({ isConnected: false, connectedPort: null }))
-      dispatch(setMachineStatus('not_connected'))
-      isHomedRef.current = false
-      dispatch(setHomed(false))
-      dispatch(setSpindleState('M5'))
-      dispatch(setSpindleSpeed(0))
+      // Clear backend status (will be confirmed by serialport:close event)
+      dispatch(setBackendStatus(null))
       
       // Request disconnect from backend
       socketService.close(connectedPort, (err: Error | null) => {
@@ -143,10 +137,8 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
             const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to connect to machine')
             showError('Connection Failed', errorMessage)
           } else {
-            dispatch(setConnectionState({ isConnected: true, connectedPort: port }))
-            dispatch(setMachineStatus('connected_pre_home'))
-            isHomedRef.current = false
-            dispatch(setHomed(false)) // Reset homing state on new connection
+            // Connection state will be updated by machine:status event from backend
+            // Just clear connecting flag here
           }
         })
       }
