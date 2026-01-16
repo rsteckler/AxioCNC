@@ -21,8 +21,8 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     }
     return 'steps'
   })
-  const [distanceIndex, setDistanceIndex] = useState(3) // Default to 10mm
-  const distances = [0.01, 0.1, 1, 10, 100, 500, 'Continuous'] as const
+  const [distanceIndex, setDistanceIndex] = useState(9) // Default to 10mm (index 9 in new array)
+  const distances = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500] as const
   const currentDistance = distances[distanceIndex]
   
   // Check debug mode from extensions
@@ -39,9 +39,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   
   // Handle jog command
   const handleJog = useCallback((x: number, y: number, z: number) => {
-    // For "Continuous", we'll use a very large distance (999999)
-    // In practice, continuous jogging would need different handling
-    const distance = currentDistance === 'Continuous' ? 999999 : currentDistance
+    const distance = currentDistance
     
     // Build the movement command
     const parts: string[] = []
@@ -411,7 +409,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
             <div className="text-xs text-muted-foreground flex justify-between">
               <span>Distance</span>
               <span className="font-mono font-medium">
-                {currentDistance === 'Continuous' ? 'Continuous' : `${currentDistance} mm`}
+                {currentDistance} mm
               </span>
             </div>
             <MachineActionWrapper
@@ -433,7 +431,6 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
               <span>10</span>
               <span>100</span>
               <span>500</span>
-              <span>∞</span>
             </div>
           </div>
         </>
