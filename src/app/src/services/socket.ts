@@ -152,9 +152,13 @@ class SocketService {
     console.log('[SocketService] Re-applying', this.listenerRegistry.size, 'event listener(s)')
     
     for (const [eventName, callbacks] of this.listenerRegistry.entries()) {
+      // Remove all existing listeners for this event to prevent duplicates
+      this.socket.off(eventName)
+      
+      // Re-register all listeners from the registry
       for (const callback of callbacks) {
-        // Re-register the listener
-        this.socket.on(eventName, callback)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.socket.on(eventName, callback as (...args: any[]) => void)
       }
     }
   }
