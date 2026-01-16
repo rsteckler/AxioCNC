@@ -293,11 +293,6 @@ class MachineStatusManager extends events.EventEmitter {
             log.debug(`Alarm detected for ${port}, resetting homed status`);
         }
 
-        // Log state preservation
-        if (isHomed === currentStatus.isHomed && currentStatus.isHomed) {
-            log.debug(`Preserving homed state for ${port} (isHomed: ${isHomed}, activeState: ${currentActiveState})`);
-        }
-
         // Update controller state - include FULL controller state including parserstate
         this.updateStatus(port, {
             controllerType: controllerType,
