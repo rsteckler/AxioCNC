@@ -36,38 +36,39 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 
 ### Main Interface
 
+*Task-based workflows for setting up a job and monitoring a running job*
+
 <div align="center">
-  <img src="website/media/screen-monitor.png" alt="Monitor Screen" width="45%"/>
   <img src="website/media/screen-setup.png" alt="Setup Screen" width="45%"/>
+  <img src="website/media/screen-monitor.png" alt="Monitor Screen" width="45%"/>
 </div>
 
-### Machine Management & Configuration
+### Intuitive Settings
+
+*Easily setup your machine, probes, and tool library*
 
 <div align="center">
-  <img src="website/media/screen-machines.png" alt="Machine Configuration" width="45%"/>
-  <img src="website/media/screen-joystick.png" alt="Joystick Settings" width="45%"/>
+  <img src="website/media/screen-machines.png" alt="Machine Configuration" width="30%"/>
+  <img src="website/media/screen-tools.png" alt="Tool Library" width="30%"/>
+  <img src="website/media/screen-probes.png" alt="Probing Strategies" width="30%"/>
 </div>
 
-### Tools & Themes
+### Features to Make Life Easy
+
+*Setup a web camera, joystick for easy jogging, and apply one of the built in custom themes or design your own*
 
 <div align="center">
-  <img src="website/media/screen-tools.png" alt="Tool Library" width="45%"/>
-  <img src="website/media/screen-themes.png" alt="Theme Settings" width="45%"/>
+  <img src="website/media/screen-camera.png" alt="Camera Feed" width="30%"/>
+  <img src="website/media/screen-joystick.png" alt="Joystick Settings" width="30%"/>
+  <img src="website/media/screen-themes.png" alt="Theme Settings" width="30%"/>
 </div>
 
-### Advanced Features
+### Lifetime Stats and Job History
+
+*Track your machine usage, job statistics, and maintain a complete history of all completed work*
 
 <div align="center">
-  <img src="website/media/screen-probes.png" alt="Probing Strategies" width="45%"/>
   <img src="website/media/screen-stats.png" alt="Statistics Dashboard" width="45%"/>
-  <img src="website/media/screen-camera.png" alt="Camera Feed" width="45%"/>
-</div>
-
-### Macros
-
-<div align="center">
-  <img src="website/media/screen-macro-define-param.png" alt="Macro Definition with Parameters" width="45%"/>
-  <img src="website/media/screen-macro-run-param.png" alt="Macro Execution with Parameters" width="45%"/>
 </div>
 
 ---
