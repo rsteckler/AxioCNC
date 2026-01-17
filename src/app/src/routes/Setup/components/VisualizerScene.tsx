@@ -499,16 +499,6 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines }: VisualizerSceneProps = {}) {
-  // Debug logging
-  useEffect(() => {
-    console.log('[VisualizerScene] Props received:', { 
-      hasGcode: !!gcode, 
-      gcodeLength: gcode?.length,
-      hasModelOffset: !!modelOffset,
-      modelOffset: modelOffset ? { x: modelOffset.x, y: modelOffset.y, z: modelOffset.z } : null
-    })
-  }, [gcode, modelOffset])
-  
   // Get machine limits and homing corner from settings
   const { data: settings } = useGetSettingsQuery()
   const machineLimits = settings?.machine?.limits
