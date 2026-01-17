@@ -11,8 +11,8 @@ import { ZeroingWizard } from './ZeroingWizard'
 import { getTotalSteps } from './wizards/utils'
 import { ManualZeroingWizard } from './wizards/ManualZeroingWizard'
 import { TouchPlateZeroingWizard } from './wizards/TouchPlateZeroingWizard'
-import { BitSetterZeroingWizard } from './wizards/BitSetterZeroingWizard'
-import { BitSetterToolChangeWizard } from './wizards/BitSetterToolChangeWizard'
+import { BitSetterFirstToolWizard } from './wizards/BitSetterFirstToolWizard'
+import { BitSetterNextToolWizard } from './wizards/BitSetterNextToolWizard'
 import { BitZeroZeroingWizard } from './wizards/BitZeroZeroingWizard'
 import { CustomZeroingWizard } from './wizards/CustomZeroingWizard'
 import { useToolChange } from '@/contexts/ToolChangeContext'
@@ -1339,7 +1339,7 @@ export function ZeroingWizardTab({
       if (!isFirstToolChange) {
         // Subsequent tool change (or forced by debug flag) - use tool change wizard
         return (
-          <BitSetterToolChangeWizard
+          <BitSetterNextToolWizard
             method={method}
             currentStep={currentStep}
             machinePosition={machinePosition}
@@ -1358,7 +1358,7 @@ export function ZeroingWizardTab({
       }
       // First tool change or initial setup - use regular wizard
       return (
-        <BitSetterZeroingWizard
+        <BitSetterFirstToolWizard
           method={method}
           currentStep={currentStep}
           machinePosition={machinePosition}
@@ -1410,7 +1410,7 @@ export function ZeroingWizardTab({
   
   // Old render functions removed - now using separate wizard components
   // renderManualStep, renderTouchPlateStep, renderBitsetterStep, renderBitZeroStep, renderCustomStep
-  // were extracted to: ManualZeroingWizard, TouchPlateZeroingWizard, BitSetterZeroingWizard, BitZeroZeroingWizard, CustomZeroingWizard
+  // were extracted to: ManualZeroingWizard, TouchPlateZeroingWizard, BitSetterFirstToolWizard, BitZeroZeroingWizard, CustomZeroingWizard
   
   if (!isConnected || !connectedPort) {
     return (

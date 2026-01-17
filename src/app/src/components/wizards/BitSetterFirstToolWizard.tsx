@@ -3,7 +3,7 @@ import { Target, AlertCircle, HelpCircle, Navigation, Check } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 
-interface BitSetterToolChangeWizardProps {
+interface BitSetterFirstToolWizardProps {
   method: Extract<ZeroingMethod, { type: 'bitsetter' }>
   currentStep: number
   machinePosition: { x: number; y: number; z: number }
@@ -20,10 +20,9 @@ interface BitSetterToolChangeWizardProps {
 }
 
 /**
- * BitSetter tool change wizard - renders steps for bitsetter tool change method
- * This is used for subsequent tool changes during a job, skipping the "Install First Tool" step
+ * BitSetter first tool wizard - renders steps for bitsetter first tool change
  */
-export function BitSetterToolChangeWizard({
+export function BitSetterFirstToolWizard({
   method,
   currentStep,
   machinePosition,
@@ -37,10 +36,9 @@ export function BitSetterToolChangeWizard({
   onNavigate,
   onProbe,
   isJobPaused = false,
-}: BitSetterToolChangeWizardProps) {
+}: BitSetterFirstToolWizardProps) {
   // Map step numbers based on requireCheck setting
-  // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->probe
-  // Note: This wizard skips "Install First Tool" since the tool has already been changed
+  // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->tool change, step 3->probe
   const skipVerification = method.requireCheck === false
   const actualStep = skipVerification ? currentStep + 1 : currentStep
 
@@ -56,7 +54,7 @@ export function BitSetterToolChangeWizard({
                 Verify that the BitSetter circuit is working by manually pressing the sensor down. The BitSetter should trigger when the sensor is pressed.
               </p>
               <p>
-                This ensures the probe circuit is functioning correctly before measuring the tool length.
+                This ensures the probe circuit is functioning correctly before starting the zeroing process.
               </p>
             </div>
           </div>
@@ -97,7 +95,7 @@ export function BitSetterToolChangeWizard({
             <h3 className="text-base font-semibold">Step {skipVerification ? 1 : 2}: Navigate to BitSetter</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                The machine will automatically navigate to the BitSetter location configured in settings. This will move the machine to the BitSetter position safely so we can measure the new tool length.
+                The tool will automatically navigate to the BitSetter location configured in settings. The machine will move to the BitSetter position safely.
               </p>
             </div>
           </div>
@@ -158,21 +156,21 @@ export function BitSetterToolChangeWizard({
         </div>
       )
     case 3:
-      // Step 3: Install Next Tool (shown as step 2 if requireCheck is false)
+      // Step 3: Install First Tool (shown as step 2 if requireCheck is false)
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Install Next Tool</h3>
+            <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Install First Tool</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Install the next tool before probing. We will measure the length of this tool so the Z offset can be adjusted automatically for the remainder of the job.
+                Install the first tool before probing. We will measure the length of this tool so tool changes during the job are easier and you will only need to re-measure on the bitsetter instead of setting Z again on the material.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              Once the next tool is installed, press Next to proceed to the probing step.
+              Once the first tool is installed, press Next to proceed to the probing step.
             </p>
           </div>
         </div>
@@ -193,13 +191,13 @@ export function BitSetterToolChangeWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Measure Tool Length</h3>
+            <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Run Probe</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Press the probe button below to start the automatic BitSetter probe sequence. The tool will perform a multi-stage probe sequence to accurately measure the new tool length.
+                Press the probe button below to start the automatic BitSetter probe sequence. The tool will perform a multi-stage probe sequence to accurately measure the tool length.
               </p>
               <p>
-                After probing, the tool reference will be stored and Z zero will be adjusted automatically. The tool will automatically retract to a safe height above the BitSetter.
+                After probing, the tool reference will be stored. The tool will automatically retract to a safe height above the BitSetter.
               </p>
             </div>
           </div>
@@ -239,10 +237,10 @@ export function BitSetterToolChangeWizard({
                 <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Tool length measured! Reference stored.
+                    Probe complete! Tool reference stored.
                   </p>
                   <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                    The tool reference has been saved for {currentWCS}. Z zero has been adjusted and you can resume the job.
+                    The tool reference has been saved for {currentWCS}. You can now use this reference for tool changes.
                   </p>
                 </div>
               </div>
@@ -285,7 +283,7 @@ export function BitSetterToolChangeWizard({
             <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure the new tool is installed and positioned above the BitSetter with enough clearance for the probe distance ({method.probeDistance}mm) before starting.
+                <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({method.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
               </p>
             </div>
           )}
@@ -308,7 +306,7 @@ export function BitSetterToolChangeWizard({
               ) : (
                 <>
                   <Target className="w-5 h-5" />
-                  {isProbeComplete ? 'Measurement Complete' : 'Measure Tool Length'}
+                  {isProbeComplete ? 'Probe Complete' : 'Start BitSetter Probe'}
                 </>
               )}
             </Button>
@@ -320,7 +318,7 @@ export function BitSetterToolChangeWizard({
               <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
                 <p className="font-medium">Tool reference stored</p>
                 <p>
-                  The tool reference for {currentWCS} has been saved and Z zero has been adjusted. You can now resume the job with the new tool.
+                  The tool reference for {currentWCS} has been saved. When you change tools during a job, you can use this reference to automatically adjust the Z offset.
                 </p>
               </div>
             </div>
@@ -329,7 +327,8 @@ export function BitSetterToolChangeWizard({
       )
     }
     case 5: {
-      // Step 5: Complete Tool Change (only shown if requireCheck is true AND job is paused, shown as step 4 if requireCheck is false AND job is paused)
+      // Step 5: Complete Tool Change (shown as step 4 if requireCheck is false)
+      // This step is only shown during tool changes (first tool change) when job is paused, not during initial setup
       if (!isJobPaused) {
         return null
       }
