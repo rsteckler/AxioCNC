@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { Play, Square, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useGcodeCommand } from '@/hooks'
+import { useGcodeCommand, useToolChangeDetection } from '@/hooks'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { MachineReadinessStatus } from '@/types/machine'
@@ -34,6 +34,9 @@ export function JobStatusBar({
 }: JobStatusBarProps) {
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  
+  // Detect M6 tool changes and trigger tool change flow
+  useToolChangeDetection(connectedPort)
   // Determine status from props
   let jobStatus: JobStatus = status || 'not_started'
   

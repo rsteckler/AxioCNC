@@ -4,4 +4,5 @@ export { useGcodeCommand } from './useGcodeCommand'
 export { useBitsetterReference } from './useBitsetterReference'
 export { useAnalogJog, type AnalogJogValues, type AnalogJogInput } from './useAnalogJog'
 export { useJoystickInput, sendJogControlInput } from './useJoystickInput'
+export { useToolChangeDetection } from './useToolChangeDetection'
 

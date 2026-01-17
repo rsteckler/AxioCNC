@@ -3,10 +3,10 @@ import { Target, AlertCircle, HelpCircle, Check, X, RotateCcw, Navigation, Chevr
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
 import { useSetExtensionsMutation } from '@/services/api'
-import type { ZeroingMethod } from '../../../../shared/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
-import { parseConsoleMessage } from '../utils/consoleParser'
+import { parseConsoleMessage } from '@/routes/Setup/utils/consoleParser'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 

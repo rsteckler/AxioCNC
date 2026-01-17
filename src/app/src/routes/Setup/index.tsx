@@ -333,9 +333,6 @@ export default function Setup() {
   const [homingInProgress, setHomingInProgress] = useState(false)
   const [currentWCS, setCurrentWCS] = useState('G54') // Work Coordinate System
   
-  // Hold state
-  const [holdReason, setHoldReason] = useState<{ data?: string; msg?: string } | null>(null)
-  
   // Probe status (from pinState - 'P' indicates probe contact)
   const [probeContact, setProbeContact] = useState<boolean>(false)
   
@@ -430,8 +427,6 @@ export default function Setup() {
     // Only update page-specific state
     setHomingInProgress(false)
     homingInProgressRef.current = false
-    // Clear hold state on E-Stop (page-specific)
-    setHoldReason(null)
   }, [connectedPort, sendCommand])
   
   
@@ -542,9 +537,6 @@ export default function Setup() {
         const currentStatus = machineStatusRef.current
         const isTransitioningToAlarm = currentStatus !== 'alarm'
         
-        // Clear hold on alarm (page-specific)
-        setHoldReason(null)
-        
         // Show notification when transitioning TO alarm state (not when already in alarm)
         if (isTransitioningToAlarm) {
           // Try to get alarm message from ref (updated by VisualizerPanel when serialport:read events arrive)
@@ -575,63 +567,21 @@ export default function Setup() {
     }
     
     // Listen for sender status - machine state is handled by machineStateSync
-    // This handler is kept for page-specific hold reason tracking
-    const handleSenderStatus = (...args: unknown[]) => {
-      const senderData = args[0] as {
-      hold?: boolean
-      holdReason?: { data?: string; msg?: string; err?: boolean }
-      }
-      if (!senderData || typeof senderData !== 'object') return
-      
-      // Only update if we're connected
-      if (!isConnectedRef.current) return
-      
-      // Page-specific: Track hold reason for display
-      if (senderData.hold && senderData.holdReason) {
-        setHoldReason(senderData.holdReason)
-      } else if (!senderData.hold && machineStatusRef.current === 'hold') {
-        // Hold was cleared - check if we should reset
-        // Only reset if controller state also says we're not in hold
-        // This prevents resetting when sender clears but controller still shows Hold
-      }
+    // This handler is kept for potential page-specific logic
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const handleSenderStatus = (..._args: unknown[]) => {
+      // Sender status is handled by machineStateSync for global state
+      // No page-specific logic needed at this time
     }
     
-    // Listen for feeder status to get hold reason (for macros sent via command('gcode'))
-    // NOTE: We don't set hold state from feeder status - only controller state determines hold
-    // Feeder status is only used to get the hold reason message (M0 comment, etc.)
+    // Listen for feeder status - marks that we've received initial state from backend
     // This is called on initial connection (page refresh) AND on state changes
-    const handleFeederStatus = (...args: unknown[]) => {
-      const feederData = args[0] as {
-      hold?: boolean
-      holdReason?: { data?: string; msg?: string; err?: boolean }
-      queue?: number
-      pending?: boolean
-      }
-      if (!feederData || typeof feederData !== 'object') return
-      
+    const handleFeederStatus = (..._args: unknown[]) => {
       // Only update if we're connected
       if (!isConnectedRef.current) return
       
       // Mark that we've received initial state from backend
       hasReceivedInitialStateRef.current = true
-      
-      // Only update hold reason if controller confirms we're in Hold state
-      // This prevents storing hold reason from stale feeder state
-      if (feederData.hold && feederData.holdReason && machineStatusRef.current === 'hold') {
-        // Machine is in hold state (confirmed by controller) - update hold reason message
-        setHoldReason(prevReason => {
-          // Prefer feeder holdReason if it has a message, otherwise keep previous
-          if (feederData.holdReason?.msg) {
-            return feederData.holdReason
-          }
-          return prevReason || feederData.holdReason || null
-        })
-      } else if (!feederData.hold && machineStatusRef.current !== 'hold') {
-        // Feeder hold was cleared AND controller confirms we're not in hold - clear hold reason
-        if (holdReason) {
-          setHoldReason(null)
-        }
-      }
     }
     
     // Listen for homing completion (controller-specific events)

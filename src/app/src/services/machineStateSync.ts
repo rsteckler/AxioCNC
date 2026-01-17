@@ -191,14 +191,6 @@ class MachineStateSyncService {
 
     if (!status) return
 
-    console.log('[machineStateSync] machine:status received:', {
-      port,
-      machineStatus: status.machineStatus,
-      activeState: status.controllerState?.activeState,
-      parserstate: status.parserstate,
-      status: status.status,
-    })
-
     // Store the full backend status - single source of truth
     store.dispatch(setBackendStatus(status))
 

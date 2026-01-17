@@ -13,6 +13,8 @@ import { useGcodeCommand } from '@/hooks'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { PageStatusBar } from '@/components/PageStatusBar'
 import { Console } from '@/components/Console'
+import { ToolChangeTab } from '@/components/ToolChangeTab'
+import { useToolChange } from '@/contexts/ToolChangeContext'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
@@ -1104,7 +1106,15 @@ export default function Monitor() {
   }, [settings?.connection?.port, isConnected, connectedPort])
   
   // Tab state for visualizer/console
-  const [tab, setTab] = useState<'visualizer' | 'console'>('visualizer')
+  const { isToolChangePending } = useToolChange()
+  const [tab, setTab] = useState<'visualizer' | 'console' | 'toolchange'>('visualizer')
+  
+  // Switch to tool change tab when tool change is pending
+  useEffect(() => {
+    if (isToolChangePending) {
+      setTab('toolchange')
+    }
+  }, [isToolChangePending])
   
   // Panel props with real state from Redux
   const panelProps: PanelProps = {
@@ -1311,12 +1321,38 @@ export default function Monitor() {
                 <Terminal className="w-4 h-4 inline mr-1.5" />
                 Console
               </button>
+              {isToolChangePending && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <button
+                    onClick={() => setTab('toolchange')}
+                    className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      tab === 'toolchange' 
+                        ? 'border-primary text-foreground' 
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Wrench className="w-4 h-4 inline mr-1.5" />
+                    Tool Change
+                  </button>
+                </>
+              )}
             </div>
             
             {/* Tab content */}
             <div className="flex-1 flex flex-col min-h-0">
               {tab === 'visualizer' && <VisualizerCameraView machinePosition={machinePosition} processedLines={jobState?.received} />}
               {tab === 'console' && <Console isConnected={isConnected} connectedPort={connectedPort} />}
+              {tab === 'toolchange' && (
+                <ToolChangeTab
+                  isConnected={isConnected}
+                  connectedPort={connectedPort}
+                  machinePosition={machinePosition}
+                  workPosition={workPosition}
+                  probeContact={false}
+                  currentWCS="G54"
+                />
+              )}
             </div>
           </div>
 

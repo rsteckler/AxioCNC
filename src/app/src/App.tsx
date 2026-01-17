@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ToolChangeProvider } from '@/contexts/ToolChangeContext'
 import { useSignInMutation } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { machineStateSync } from '@/services/machineStateSync'
@@ -82,12 +83,14 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
-      <Routes>
-        <Route path="/" element={<Setup />} />
-        <Route path="/monitor" element={<Monitor />} />
-        <Route path="/test" element={<TestPage />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
+      <ToolChangeProvider>
+        <Routes>
+          <Route path="/" element={<Setup />} />
+          <Route path="/monitor" element={<Monitor />} />
+          <Route path="/test" element={<TestPage />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </ToolChangeProvider>
     </ThemeProvider>
   )
 }

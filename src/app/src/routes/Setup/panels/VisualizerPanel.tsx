@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { Maximize2, Terminal, Target, Move, Camera } from 'lucide-react'
+import { Maximize2, Terminal, Target, Move, Camera, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
 import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery } from '@/services/api'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 import { VisualizerScene } from '../components/VisualizerScene'
 import { Console } from '@/components/Console'
-import { ZeroingWizardTab } from './ZeroingWizardTab'
+import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
+import { ToolChangeTab } from '@/components/ToolChangeTab'
+import { useToolChange } from '@/contexts/ToolChangeContext'
 import { processGCode } from '@/lib/gcodeVisualizer'
 import { Vector3 } from 'three'
 import { machineToThree, type MachineLimits } from '@/lib/coordinates'
@@ -208,8 +210,9 @@ export function VisualizerPanel({
 }: VisualizerPanelProps) {
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
+  const { isToolChangePending } = useToolChange()
   
-  const [tab, setTab] = useState<'3d' | 'console' | 'camera' | 'wizard'>('3d')
+  const [tab, setTab] = useState<'3d' | 'console' | 'camera' | 'wizard' | 'toolchange'>('3d')
   const [view, setView] = useState<'top' | 'front' | 'iso' | 'fit' | undefined>('iso')
   const [viewKey, setViewKey] = useState(0)
   
@@ -222,6 +225,13 @@ export function VisualizerPanel({
       setTab(prevTab => prevTab === 'wizard' ? '3d' : prevTab)
     }
   }, [wizardMethod])
+  
+  // Switch to tool change tab when tool change is pending
+  useEffect(() => {
+    if (isToolChangePending) {
+      setTab('toolchange')
+    }
+  }, [isToolChangePending])
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
@@ -501,6 +511,22 @@ export function VisualizerPanel({
           <Camera className="w-4 h-4 inline mr-1.5" />
           Camera
         </button>
+        {isToolChangePending && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <button
+              onClick={() => setTab('toolchange')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === 'toolchange' 
+                  ? 'border-primary text-foreground' 
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Wrench className="w-4 h-4 inline mr-1.5" />
+              Tool Change
+            </button>
+          </>
+        )}
         {wizardMethod && (
           <>
             <div className="w-px h-4 bg-border" />
@@ -521,6 +547,20 @@ export function VisualizerPanel({
       
       {/* Always render all tabs, but hide inactive ones to ensure components stay mounted */}
       {/* This ensures Console captures messages even when not visible */}
+      
+      {/* Tool Change Tab */}
+      {isToolChangePending && (
+        <div className={`flex-1 flex flex-col min-h-0 ${tab === 'toolchange' ? 'block' : 'hidden'}`}>
+          <ToolChangeTab
+            isConnected={isConnected}
+            connectedPort={connectedPort}
+            machinePosition={machinePosition}
+            workPosition={workPosition}
+            probeContact={probeContact}
+            currentWCS={currentWCS}
+          />
+        </div>
+      )}
       
       {/* Wizard Tab */}
       {wizardMethod && (

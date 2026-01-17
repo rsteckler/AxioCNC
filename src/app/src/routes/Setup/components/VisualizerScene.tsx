@@ -310,7 +310,6 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
     return null
   }
 
-  console.log('[GCodeToolpath] Rendering geometry with', geometry.attributes.position.count / 3, 'vertices')
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial
