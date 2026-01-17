@@ -1,5 +1,8 @@
 import { ZeroingWizardTab } from './ZeroingWizardTab'
+import { ZeroingMethodSelectDialog } from './ZeroingMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
+import { useGetSettingsQuery } from '@/services/api'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 
 interface ToolChangeTabProps {
   isConnected: boolean
@@ -22,16 +25,40 @@ export function ToolChangeTab({
   probeContact = false,
   currentWCS = 'G54',
 }: ToolChangeTabProps) {
-  const { toolChangeMethod, completeToolChange } = useToolChange()
+  const { toolChangeMethod, completeToolChange, triggerToolChange, isFirstToolChange } = useToolChange()
+  const { data: settings } = useGetSettingsQuery()
 
-  // If method is 'ask', show method selection (TODO: implement method picker)
+  // Get available methods from settings
+  const availableMethods: ZeroingMethod[] = settings?.zeroingMethods?.methods?.filter((m: ZeroingMethod) => m.enabled) ?? []
+
+  // When method is 'ask', show dialog (automatically open when toolChangeMethod === 'ask')
+  const showDialog = toolChangeMethod === 'ask'
+
+  // Handle method selection from dialog
+  const handleMethodSelect = (method: ZeroingMethod) => {
+    // Update the tool change method in context to the selected method
+    // Preserve isFirstToolChange state when switching to the selected method
+    triggerToolChange(method, isFirstToolChange)
+  }
+
+  // If method is 'ask', show method selection dialog
   if (toolChangeMethod === 'ask') {
     return (
-      <div className="flex-1 flex items-center justify-center bg-muted/30">
-        <div className="text-sm text-muted-foreground text-center py-8">
-          Please select a zeroing method (method picker coming soon)
+      <>
+        <div className="flex-1 flex items-center justify-center bg-muted/30">
+          <div className="text-sm text-muted-foreground text-center py-8">
+            Please select a zeroing method
+          </div>
         </div>
-      </div>
+        <ZeroingMethodSelectDialog
+          open={showDialog}
+          onOpenChange={() => {}} // Prevent closing - user must select a method
+          methods={availableMethods}
+          title="Select Zeroing Method"
+          description="Choose a zeroing method to use for this tool change:"
+          onSelect={handleMethodSelect}
+        />
+      </>
     )
   }
 

@@ -17,6 +17,7 @@ import {
   Play,
   RefreshCw,
   PauseCircle,
+  AlertCircle,
 } from 'lucide-react'
 import type { ZeroingMethod, ZeroingMethodType } from './ZeroingMethodsSection'
 
@@ -211,12 +212,22 @@ export function ZeroingStrategiesSection({
         description={SCENARIOS['tool-change'].description}
         tooltip={SCENARIOS['tool-change'].tooltip}
       >
-        <StrategySelect
-          value={config.toolChange}
-          methods={availableMethods}
-          onChange={(value) => onConfigChange({ toolChange: value })}
-          scenario="tool-change"
-        />
+        <div className="space-y-2">
+          <StrategySelect
+            value={config.toolChange}
+            methods={availableMethods}
+            onChange={(value) => onConfigChange({ toolChange: value })}
+            scenario="tool-change"
+          />
+          {config.toolChange === 'skip' && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-900 dark:text-red-100">
+                <strong>Warning:</strong> AxioCNC will not pause when a tool change is requested. The tool change command (M6) will be passed directly to the machine instead. This is not recommended unless the machine has a fully automated tool change system.
+              </p>
+            </div>
+          )}
+        </div>
       </SettingsField>
 
       {/* After Pause */}
