@@ -351,6 +351,68 @@ export interface StreamMetadata {
 }
 
 // =============================================================================
+// Job History Types
+// =============================================================================
+
+export interface JobHistoryStats {
+  totalJobs: number
+  successfulJobs: number
+  failedJobs: number
+  stoppedJobs: number
+  totalTime: number // milliseconds
+  totalLines: number
+  totalDistance: number // mm
+}
+
+export interface ToolUsage {
+  toolNumber: number
+  time?: number // milliseconds
+  distance?: number // mm
+}
+
+export interface JobHistoryJob {
+  id: string
+  timestamp: number
+  status: 'completed' | 'stopped' | 'error' | 'reset' | 'panic_stop' | 'power_loss' | 'unknown'
+  wasSuccessful?: boolean
+  reason?: string
+  port?: string
+  controllerType?: string
+  fileName?: string
+  fileSize?: number
+  stats?: {
+    total?: number
+    sent?: number
+    received?: number
+    startTime?: number
+    finishTime?: number
+    elapsedTime?: number
+    distance?: number // mm
+    distanceX?: number // mm
+    distanceY?: number // mm
+    distanceZ?: number // mm
+    operationTypes?: Array<{
+      type: string
+      percent: number
+      color?: string
+      bgColor?: string
+    }>
+  }
+  tools?: ToolUsage[]
+  m6Indices?: number[]
+  context?: Record<string, unknown>
+  gcode?: string // G-code content (if stored)
+}
+
+export interface JobHistoryToolStats {
+  toolNumber: number
+  totalJobs: number
+  totalTime: number // milliseconds
+  totalDistance: number // mm
+  usageCount: number
+}
+
+// =============================================================================
 // Machine Presets Types
 // =============================================================================
 
@@ -384,7 +446,7 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads', 'MachinePresets', 'Cameras', 'Streams'],
+  tagTypes: ['Controllers', 'GCode', 'Settings', 'Extensions', 'Version', 'Themes', 'Users', 'Commands', 'Events', 'Macros', 'WatchFolders', 'Tools', 'Workfiles', 'Gamepads', 'MachinePresets', 'Cameras', 'Streams', 'JobHistory'],
   endpoints: (builder) => ({
     // Get active controllers
     getControllers: builder.query<ControllersResponse, void>({
@@ -913,6 +975,40 @@ export const api = createApi({
       query: (id) => `/streams/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Streams', id }],
     }),
+
+    // ==========================================================================
+    // Job History
+    // ==========================================================================
+
+    // Get job history list
+    getJobHistory: builder.query<JobHistoryJob[], { status?: string; limit?: number; offset?: number } | void>({
+      query: (params) => ({
+        url: '/jobhistory',
+        params: params || {},
+      }),
+      providesTags: ['JobHistory'],
+    }),
+
+    // Get specific job by ID
+    getJobHistoryJob: builder.query<JobHistoryJob, string>({
+      query: (id) => `/jobhistory/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'JobHistory', id }],
+    }),
+
+    // Get accumulated statistics
+    getJobHistoryStats: builder.query<JobHistoryStats, void>({
+      query: () => '/jobhistory/stats',
+      providesTags: ['JobHistory'],
+    }),
+
+    // Get tool statistics
+    getJobHistoryToolStats: builder.query<JobHistoryToolStats[] | JobHistoryToolStats | null, { toolNumber?: number } | void>({
+      query: (params) => ({
+        url: '/jobhistory/tools',
+        params: params && 'toolNumber' in params ? { toolNumber: params.toolNumber } : undefined,
+      }),
+      providesTags: ['JobHistory'],
+    }),
   }),
 })
 
@@ -990,6 +1086,11 @@ export const {
   useDeleteCameraMutation,
   // Streams
   useGetStreamMetadataQuery,
+  // Job History
+  useGetJobHistoryQuery,
+  useGetJobHistoryJobQuery,
+  useGetJobHistoryStatsQuery,
+  useGetJobHistoryToolStatsQuery,
   // G-code
   useGetGcodeQuery,
   // Other

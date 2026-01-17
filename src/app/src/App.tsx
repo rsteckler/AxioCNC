@@ -9,6 +9,7 @@ import TestPage from '@/routes/TestPage'
 import Settings from '@/routes/Settings'
 import Setup from '@/routes/Setup'
 import Monitor from '@/routes/Monitor'
+import Stats from '@/routes/Stats'
 
 function App() {
   const [signIn] = useSignInMutation()
@@ -87,6 +88,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Setup />} />
           <Route path="/monitor" element={<Monitor />} />
+          <Route path="/stats" element={<Stats />} />
           <Route path="/test" element={<TestPage />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
