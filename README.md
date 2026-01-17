@@ -27,7 +27,7 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 - ✅ **Prevents costly mistakes** - Spaced controls to avoid accidental taps
 - ✅ **Network accessible** - Control from any device on your network
 - ✅ **Modern, themeable UI** - Light and dark modes for comfortable sessions
-- ✅ **Native joystick support** - Smooth analog jogging with any USB gamepad
+- ✅ **Native joystick support** - Smooth analog jogging with any USB gamepad or use the built-in web-based analog joystick controls
 - ✅ **Human-readable tool library** - See "1/4 inch flat endmill" instead of "T4"
 
 ---
@@ -49,13 +49,13 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 
 <div align="center">
   <img src="website/media/screen-machines.png" alt="Machine Configuration" width="30%"/>
-  <img src="website/media/screen-tools.png" alt="Tool Library" width="30%"/>
   <img src="website/media/screen-probes.png" alt="Probing Strategies" width="30%"/>
+  <img src="website/media/screen-tools.png" alt="Tool Library" width="30%"/>
 </div>
 
 ### Features to Make Life Easy
 
-*Setup a web camera, joystick for easy jogging, and apply one of the built in custom themes or design your own*
+*Setup a web camera, use USB gamepad or web-based analog joystick controls for easy jogging, and apply one of the built in custom themes or design your own*
 
 <div align="center">
   <img src="website/media/screen-camera.png" alt="Camera Feed" width="30%"/>
@@ -88,7 +88,7 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 
 - **Task-Oriented Interface** - Different views optimized for setup, cutting, and review
 - **Spaced Control Layout** - XY jog pad and Z controls are separated to prevent accidental clicks
-- **Analog Joystick Jogging** - Continuous smooth movement with USB gamepads/joysticks
+- **Analog Joystick Jogging** - Continuous smooth movement with USB gamepads/joysticks or the built-in web-based analog joystick controls
 - **Tool Library** - Human-readable tool names, diameters, and descriptions
 - **Probe Strategies** - Built-in support for touch plates and edge finders
 - **Watch Directory** - Automatically detect new G-code files in a folder
@@ -208,7 +208,7 @@ ls -l /dev/ttyUSB* /dev/ttyACM*  # Check available serial ports
 
 ### Key Controls
 
-- **Jog Controls** - Move machine in X, Y, Z with discrete steps or analog joystick
+- **Jog Controls** - Move machine in X, Y, Z with discrete steps or analog joystick (USB gamepad or web-based analog controls)
 - **Home All** - Return machine to home position (if supported by firmware)
 - **Feed Hold** - Pause job execution (press Resume to continue)
 - **Stop** - Abort current job (with confirmation)
@@ -217,10 +217,16 @@ ls -l /dev/ttyUSB* /dev/ttyACM*  # Check available serial ports
 
 ### Joystick Support
 
-Plug in any USB gamepad or joystick:
-1. Go to **Settings** → **Joystick**
-2. Configure button mappings and analog stick sensitivity
-3. Use the joystick for smooth, continuous jogging in the Setup screen
+Use analog joystick controls for smooth, continuous jogging:
+
+**USB Gamepad/Joystick:**
+1. Plug in any USB gamepad or joystick
+2. Go to **Settings** → **Joystick**
+3. Configure button mappings and analog stick sensitivity
+4. Use the joystick for smooth, continuous jogging in the Setup screen
+
+**Web-Based Analog Joystick:**
+The Setup screen includes built-in analog jog controls that work directly in your browser. No additional hardware needed—just drag the on-screen joystick for precise, smooth movement.
 
 ### Tool Library
 

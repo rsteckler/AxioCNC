@@ -400,7 +400,7 @@
     </section>
 
     <!-- Screenshots Section -->
-    <section id="screenshots" class="py-20 fade-in">
+    <section id="screenshots" class="py-20 fade-in bg-zinc-50 dark:bg-zinc-950">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="mb-12">
                 <h2 class="text-4xl font-bold mb-4">Screenshots</h2>
@@ -410,71 +410,109 @@
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Monitor Screen -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-monitor.png" alt="Monitor Screen - Main interface for running jobs" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-monitor.png', 'Monitor Screen - Main interface for running jobs')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Monitor Screen</p>
+            <!-- Carousel Container -->
+            <div class="relative">
+                <!-- Carousel Slides -->
+                <div id="carousel-container" class="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg">
+                    <div id="carousel-track" class="flex transition-transform duration-500 ease-in-out">
+                        <!-- Slide 1: Setup Screen -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-setup.png" alt="Task-based flows for setting up the job" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-setup.png', 'Task-based flows for setting up the job')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Setup Screen</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Task-based flows for setting up the job</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 2: Monitor Screen -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-monitor.png" alt="Real-time monitoring and control during job execution" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-monitor.png', 'Real-time monitoring and control during job execution')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Monitor Screen</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Real-time monitoring and control during job execution</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 3: Machine Configuration -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-machines.png" alt="Easily configure your CNC controllers and connection settings" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-machines.png', 'Easily configure your CNC controllers and connection settings')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Machine Configuration</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Easily configure your CNC controllers and connection settings</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4: Probing Strategies -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-probes.png" alt="Built-in probing workflows for accurate zeroing and edge finding" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-probes.png', 'Built-in probing workflows for accurate zeroing and edge finding')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Probing Strategies</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Built-in probing workflows for accurate zeroing and edge finding</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 5: Tool Library -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-tools.png" alt="Human-readable tool library that tells you exactly what to grab from your toolbox" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-tools.png', 'Human-readable tool library that tells you exactly what to grab from your toolbox')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Tool Library</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Human-readable tool library that tells you exactly what to grab from your toolbox</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 6: Camera Feed -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-camera.png" alt="Monitor your machine remotely with built-in web camera support" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-camera.png', 'Monitor your machine remotely with built-in web camera support')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Camera Feed</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Monitor your machine remotely with built-in web camera support</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 7: Joystick Settings -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-joystick.png" alt="Smooth analog jogging with USB gamepads or web-based joystick controls" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-joystick.png', 'Smooth analog jogging with USB gamepads or web-based joystick controls')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Joystick Controls</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Smooth analog jogging with USB gamepads or web-based joystick controls</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 8: Theme Settings -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-themes.png" alt="Customize your interface with light/dark themes and accent colors" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-themes.png', 'Customize your interface with light/dark themes and accent colors')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Theme Settings</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Customize your interface with light/dark themes and accent colors</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 9: Statistics Dashboard -->
+                        <div class="min-w-full flex-shrink-0">
+                            <div class="p-8">
+                                <img src="media/screen-stats.png" alt="Track lifetime machine usage and maintain complete job history" class="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-stats.png', 'Track lifetime machine usage and maintain complete job history')" />
+                                <h3 class="mt-6 text-2xl font-semibold mb-2 text-center">Statistics Dashboard</h3>
+                                <p class="text-center text-lg text-zinc-600 dark:text-zinc-400">Track lifetime machine usage and maintain complete job history</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Setup Screen -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-setup.png" alt="Setup Screen - Machine setup and zeroing" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-setup.png', 'Setup Screen - Machine setup and zeroing')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Setup Screen</p>
-                </div>
+                <!-- Navigation Arrows -->
+                <button id="carousel-prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-full p-3 shadow-lg transition-all hover:scale-110 z-10" aria-label="Previous screenshot">
+                    <svg class="w-6 h-6 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <button id="carousel-next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-full p-3 shadow-lg transition-all hover:scale-110 z-10" aria-label="Next screenshot">
+                    <svg class="w-6 h-6 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
 
-                <!-- Machine Configuration -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-machines.png" alt="Machine Configuration - Configure CNC controllers" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-machines.png', 'Machine Configuration - Configure CNC controllers')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Machine Configuration</p>
-                </div>
-
-                <!-- Joystick Settings -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-joystick.png" alt="Joystick Settings - Configure USB gamepad/joystick controls" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-joystick.png', 'Joystick Settings - Configure USB gamepad/joystick controls')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Joystick Settings</p>
-                </div>
-
-                <!-- Tool Library -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-tools.png" alt="Tool Library - Human-readable tool names and specifications" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-tools.png', 'Tool Library - Human-readable tool names and specifications')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Tool Library</p>
-                </div>
-
-                <!-- Theme Settings -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-themes.png" alt="Theme Settings - Light and dark modes with accent colors" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-themes.png', 'Theme Settings - Light and dark modes with accent colors')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Theme Settings</p>
-                </div>
-
-                <!-- Probing Strategies -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-probes.png" alt="Probing Strategies - Touch plate and edge finder support" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-probes.png', 'Probing Strategies - Touch plate and edge finder support')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Probing Strategies</p>
-                </div>
-
-                <!-- Statistics Dashboard -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-stats.png" alt="Statistics Dashboard - Machine usage and job statistics" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-stats.png', 'Statistics Dashboard - Machine usage and job statistics')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Statistics Dashboard</p>
-                </div>
-
-                <!-- Camera Feed -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-camera.png" alt="Camera Feed - Monitor your machine remotely" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-camera.png', 'Camera Feed - Monitor your machine remotely')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Camera Feed</p>
-                </div>
-
-                <!-- Macro Definition -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-macro-define-param.png" alt="Macro Definition - Create parameterized macros" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-macro-define-param.png', 'Macro Definition - Create parameterized macros')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Macro Definition</p>
-                </div>
-
-                <!-- Macro Execution -->
-                <div class="group cursor-pointer">
-                    <img src="media/screen-macro-run-param.png" alt="Macro Execution - Run macros with custom parameters" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-macro-run-param.png', 'Macro Execution - Run macros with custom parameters')" />
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Macro Execution</p>
+                <!-- Dot Indicators -->
+                <div class="flex justify-center mt-6 space-x-2" id="carousel-dots" role="tablist" aria-label="Screenshot navigation">
+                    <!-- Dots will be generated by JavaScript -->
                 </div>
             </div>
         </div>
@@ -744,6 +782,74 @@
                 closeLightbox();
             }
         });
+        
+        // Carousel functionality
+        const carouselTrack = document.getElementById('carousel-track');
+        const carouselPrev = document.getElementById('carousel-prev');
+        const carouselNext = document.getElementById('carousel-next');
+        const carouselDots = document.getElementById('carousel-dots');
+        const slides = carouselTrack.querySelectorAll('div');
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        
+        // Create dot indicators
+        slides.forEach((_, index) => {
+            const dot = document.createElement('button');
+            dot.className = `w-2 h-2 rounded-full transition-all ${index === 0 ? 'bg-primary-light' : 'bg-zinc-300 dark:bg-zinc-700'}`;
+            dot.setAttribute('aria-label', `Go to screenshot ${index + 1}`);
+            dot.setAttribute('role', 'tab');
+            dot.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+            dot.addEventListener('click', () => goToSlide(index));
+            carouselDots.appendChild(dot);
+        });
+        
+        function updateCarousel() {
+            carouselTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+            
+            // Update dots
+            const dots = carouselDots.querySelectorAll('button');
+            dots.forEach((dot, index) => {
+                if (index === currentSlide) {
+                    dot.className = 'w-2 h-2 rounded-full transition-all bg-primary-light';
+                    dot.setAttribute('aria-selected', 'true');
+                } else {
+                    dot.className = 'w-2 h-2 rounded-full transition-all bg-zinc-300 dark:bg-zinc-700';
+                    dot.setAttribute('aria-selected', 'false');
+                }
+            });
+        }
+        
+        function goToSlide(index) {
+            currentSlide = index;
+            updateCarousel();
+        }
+        
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            updateCarousel();
+        }
+        
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+            updateCarousel();
+        }
+        
+        if (carouselPrev && carouselNext) {
+            carouselPrev.addEventListener('click', prevSlide);
+            carouselNext.addEventListener('click', nextSlide);
+        }
+        
+        // Auto-advance carousel (optional - can be removed if not desired)
+        // let autoPlayInterval = setInterval(nextSlide, 5000);
+        // 
+        // // Pause on hover
+        // const carouselContainer = document.getElementById('carousel-container');
+        // if (carouselContainer) {
+        //     carouselContainer.addEventListener('mouseenter', () => clearInterval(autoPlayInterval));
+        //     carouselContainer.addEventListener('mouseleave', () => {
+        //         autoPlayInterval = setInterval(nextSlide, 5000);
+        //     });
+        // }
     </script>
 </body>
 </html>
