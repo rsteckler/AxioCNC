@@ -1,6 +1,6 @@
 /**
  * Job History API
- * 
+ *
  * Endpoints for storing and retrieving job history, statistics, and tool usage
  */
 import jobHistory from '../services/jobhistory';
@@ -95,8 +95,8 @@ export const getStats = (req, res) => {
  * Query param: toolNumber (optional, to get specific tool)
  */
 export const getToolStats = (req, res) => {
-  const toolNumber = req.query.toolNumber 
-    ? parseInt(req.query.toolNumber, 10) 
+  const toolNumber = req.query.toolNumber
+    ? parseInt(req.query.toolNumber, 10)
     : null;
 
   const toolStats = jobHistory.getToolStats(toolNumber);
