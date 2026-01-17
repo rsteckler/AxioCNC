@@ -23,6 +23,8 @@ import cncengine from './services/cncengine';
 import monitor from './services/monitor';
 import config from './services/configstore';
 import mediamtxService from './services/mediamtx';
+import jobHistory from './services/jobhistory';
+import jobHistoryHook from './services/jobhistory/hook';
 import logger, { setLevel } from './lib/logger';
 import urljoin from './lib/urljoin';
 
@@ -57,6 +59,14 @@ const createServer = (options, callback) => {
 
   // rcfile
   settings.rcfile = rcfile;
+
+  // jobhistory service
+  const jobHistoryFile = path.resolve(path.dirname(rcfile), 'jobhistory.json');
+  log.info(`Loading job history from ${chalk.yellow(JSON.stringify(jobHistoryFile))}`);
+  jobHistory.load(jobHistoryFile);
+  
+  // Initialize job history hook to listen to controller events
+  jobHistoryHook.initialize();
 
   { // secret
     if (!config.get('secret')) {

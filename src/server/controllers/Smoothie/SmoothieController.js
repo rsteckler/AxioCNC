@@ -342,9 +342,28 @@ class SmoothieController {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
       });
-      this.workflow.on('stop', (...args) => {
+      this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
+        
+        // Emit job completion event
+        const senderState = this.sender.toJSON();
+        const completionInfo = {
+          reason: reason || 'unknown',
+          timestamp: new Date().getTime(),
+          previousState: previousState || 'idle',
+          senderState: {
+            received: senderState.received || 0,
+            total: senderState.total || 0,
+            finishTime: senderState.finishTime || 0,
+            name: senderState.name || '',
+          },
+          wasSuccessful: reason === 'completed' && 
+                         (senderState.received || 0) >= (senderState.total || 0) && 
+                         (senderState.total || 0) > 0
+        };
+        
+        this.emit('job:complete', completionInfo);
       });
       this.workflow.on('pause', (...args) => {
         this.emit('workflow:state', this.workflow.state);

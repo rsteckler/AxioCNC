@@ -20,6 +20,7 @@ import * as workfiles from './api.workfiles';
 import * as gamepads from './api.gamepads';
 import * as streams from './api.streams';
 import * as cameras from './api.cameras';
+import * as jobhistory from './api.jobhistory';
 
 export {
   version,
@@ -44,4 +45,5 @@ export {
   gamepads,
   streams,
   cameras,
+  jobhistory,
 };

@@ -347,6 +347,15 @@ const appMain = () => {
 
     // Cameras (camera management)
     app.get(urljoin(settings.route, 'api/cameras'), api.cameras.fetch);
+
+    // Job History
+    app.get(urljoin(settings.route, 'api/jobhistory'), api.jobhistory.list);
+    app.get(urljoin(settings.route, 'api/jobhistory/stats'), api.jobhistory.getStats);
+    app.get(urljoin(settings.route, 'api/jobhistory/tools'), api.jobhistory.getToolStats);
+    app.get(urljoin(settings.route, 'api/jobhistory/:id'), api.jobhistory.get);
+    app.post(urljoin(settings.route, 'api/jobhistory'), api.jobhistory.create);
+    app.delete(urljoin(settings.route, 'api/jobhistory'), api.jobhistory.clear);
+    app.delete(urljoin(settings.route, 'api/jobhistory/:id'), api.jobhistory.remove);
     app.post(urljoin(settings.route, 'api/cameras'), api.cameras.create);
     app.get(urljoin(settings.route, 'api/cameras/:id'), api.cameras.read);
     app.put(urljoin(settings.route, 'api/cameras/:id'), api.cameras.update);
