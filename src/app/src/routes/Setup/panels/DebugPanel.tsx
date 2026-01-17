@@ -21,6 +21,7 @@ import {
   useRxBufferSize,
   useCurrentTool,
   usePlannerQueue,
+  useJobState,
 } from '@/store/hooks'
 
 export function DebugPanel({
@@ -42,6 +43,7 @@ export function DebugPanel({
   const rxBufferSize = useRxBufferSize()
   const currentTool = useCurrentTool()
   const plannerQueue = usePlannerQueue()
+  const jobState = useJobState()
 
   // Debug flag for forcing bitsetter to appear as subsequent tool change
   const { forceSubsequentToolChange, setForceSubsequentToolChange } = useToolChange()
@@ -247,6 +249,33 @@ export function DebugPanel({
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">No tool offset stored for G54</p>
+          )}
+        </div>
+
+        {/* Job Info */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Job Info</h4>
+          {jobState?.jobId ? (
+            <div className="px-2 py-1 rounded bg-muted/50 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Job ID:</span>
+                <span className="font-mono font-medium text-[10px] break-all text-right ml-2">
+                  {jobState.jobId}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No job loaded</p>
+          )}
+          {jobState?.name && (
+            <div className="px-2 py-1 rounded bg-muted/50 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">File:</span>
+                <span className="font-mono font-medium text-[10px] break-all text-right ml-2">
+                  {jobState.name}
+                </span>
+              </div>
+            </div>
           )}
         </div>
 

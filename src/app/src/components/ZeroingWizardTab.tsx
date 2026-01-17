@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
-import { useSetExtensionsMutation } from '@/services/api'
+import { useSetExtensionsMutation, useGetExtensionsQuery } from '@/services/api'
 import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
@@ -16,6 +16,7 @@ import { BitSetterToolChangeWizard } from './wizards/BitSetterToolChangeWizard'
 import { BitZeroZeroingWizard } from './wizards/BitZeroZeroingWizard'
 import { CustomZeroingWizard } from './wizards/CustomZeroingWizard'
 import { useToolChange } from '@/contexts/ToolChangeContext'
+import { useJobState } from '@/store/hooks'
 
 interface ZeroingWizardTabProps {
   method: ZeroingMethod
@@ -60,6 +61,22 @@ export function ZeroingWizardTab({
   
   // Extensions API for bitsetter toolReference storage
   const [setExtensions] = useSetExtensionsMutation()
+  
+  // Get jobId from job state for tracking first tool change completion
+  const jobState = useJobState()
+  const jobId = jobState?.jobId
+  
+  // Get initial tool reference for subsequent tool changes (from first tool change)
+  const toolReferenceKey = `bitsetter.toolReference.${currentWCS}`
+  const { data: toolReferenceData } = useGetExtensionsQuery(
+    { key: toolReferenceKey },
+    { skip: !connectedPort || !currentWCS || method.type !== 'bitsetter' || isFirstToolChange }
+  )
+  
+  // Extract initial tool reference value
+  const initialToolReference = toolReferenceData && typeof toolReferenceData === 'object' && 'value' in toolReferenceData
+    ? (toolReferenceData as { value?: number }).value
+    : null
   
   // Hooks for G-code commands and bitsetter reference
   const { sendGcode } = useGcodeCommand(connectedPort)
@@ -150,6 +167,11 @@ export function ZeroingWizardTab({
       return
     }
     
+    // For subsequent tool changes, store XY coordinates before navigating to bitsetter
+    if (!isFirstToolChange) {
+      storedMachineCoordsRef.current = { x: machinePosition.x, y: machinePosition.y }
+    }
+    
     // Mark navigation as started
     setBitsetterNavigated(true)
     
@@ -169,78 +191,500 @@ export function ZeroingWizardTab({
         sendGcode(cmd)
       }, index * 300) // Longer delay for navigation commands to allow movement to complete
     })
-  }, [connectedPort, method, sendGcode])
+  }, [connectedPort, method, sendGcode, isFirstToolChange, machinePosition])
   
   const handleBitsetterProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'bitsetter') {
       return
     }
     
-    // Reset capture flag for new probe
-    capturingPositionRef.current = false
-    
-    setProbeStatus('probing')
-    setProbeError(null)
-    
-    // Multi-stage probe sequence based on user's example script:
-    // 1. Fast probe down
-    // 2. Small retract
-    // 3. Fine probe down with pauses
-    // 4. Probe up to verify contact loss
-    // 5. Fine probe down again
-    // 6. Probe up to verify contact loss again
-    // 7. Switch to absolute mode
-    // 8. Capture position (TOOL_REFERENCE)
-    // 9. Retract to safe height
-    
-    const rapidFeedrate = method.probeFeedrate || 200 // Fast feedrate for initial probe
-    const fineFeedrate = 40 // Fine feedrate for dialing in
-    
-    const commands = [
-      'G21', // Metric units
-      'M5', // Stop spindle
-      'G90', // Absolute positioning
-      'G91', // Switch to relative mode for probing
-      `G38.2 Z-${method.probeDistance} F${rapidFeedrate}`, // Fast probe down
-      'G0 Z2', // Small retract
-      `G38.2 Z-5 F${fineFeedrate}`, // Fine probe down
-      'G4 P0.25', // Pause 0.25 seconds
-      'G38.4 Z10 F20', // Probe up to verify contact loss
-      'G4 P0.25', // Pause 0.25 seconds
-      'G38.2 Z-2 F10', // Very fine probe down
-      'G4 P0.25', // Pause 0.25 seconds
-      'G38.4 Z10 F5', // Ultra fine probe up to verify contact loss
-      'G4 P0.25', // Pause 0.25 seconds
-      'G90', // Switch back to absolute mode (position is now stable)
-    ]
-    
-    // Store the position before probing to detect when it stabilizes after probe
-    const positionBeforeProbe = { ...workPosition }
-    previousWorkPositionRef.current = positionBeforeProbe
-    
-    // Send probe sequence commands sequentially
-    let commandIndex = 0
-    const sendNextCommand = () => {
-      if (commandIndex < commands.length) {
-        sendGcode(commands[commandIndex])
-        commandIndex++
-        // Vary delays: longer for movements, shorter for pauses
-        // Probe commands need more time (500ms for G38.2/G38.4, 300ms for G4)
-        const cmd = commands[commandIndex - 1]
-        const delay = cmd.startsWith('G4') ? 350 : (cmd.startsWith('G38') ? 800 : 300)
-        setTimeout(sendNextCommand, delay)
-      } else {
-        // After probe sequence completes, wait for controller state to update
-        // Then capture position once it stabilizes
-        setTimeout(() => {
-          setProbeStatus('capturing')
-          // Position will be captured via useEffect watching workPosition
-        }, 1000) // Longer delay to ensure controller has processed all commands
+    // For first tool change, use macro approach; for subsequent, use sequential commands
+    if (isFirstToolChange) {
+      // First tool change: run macro, then capture position and store tool reference
+      setProbeStatus('probing')
+      setProbeError(null)
+      
+      const bitsetterMethod = method as Extract<ZeroingMethod, { type: 'bitsetter' }>
+      const probeDistance = bitsetterMethod.probeDistance || 50
+      const probeRapidFeedrate = bitsetterMethod.probeFeedrate || 200
+      
+      // Build macro string with values inserted
+      const macroLines = [
+        '; Wait until the planner queue is empty',
+        '%wait',
+        '',
+        '; Save modal state',
+        '%UNITS = modal.units',
+        '%DISTANCE = modal.distance',
+        '%FEEDRATE = modal.feedrate',
+        '%SPINDLE = modal.spindle',
+        '%MOTION = modal.motion',
+        '',
+        'G21 ;metric',
+        'M5   ;Stop spindle',
+        '',
+        'G91',
+        `G38.2 Z-${probeDistance} F${probeRapidFeedrate} ;fast probe(so it doesn't take forever)`,
+        'G0 z2',
+        'G38.2 z-5 F40	;"dial-it-in" probes',
+        'G4 P.25',
+        'G38.4 z10 F20',
+        'G4 P.25',
+        'G38.2 z-2 F10',
+        'G4 P.25',
+        'G38.4 z10 F5',
+        'G4 P.25',
+        '',
+        '; Restore modal state',
+        '[UNITS] [DISTANCE] [FEEDRATE] [SPINDLE] [MOTION]',
+        '',
+        '%wait',
+        '; This is where we need to end the macro and capture the current z position',
+      ]
+      
+      const macroString = macroLines.join('\n')
+      
+      // Parse G-code to count lines for progress tracking
+      // Exclude macro control commands like %wait, %msg that don't generate OK responses
+      const gcodeLines = macroString
+        .split(/\r?\n/)
+        .map((line: string) => line.trim())
+        .filter((line: string) => {
+          // Remove empty lines, comments, and macro control commands
+          if (line.length === 0) return false
+          if (line.startsWith(';')) return false
+          // Exclude %wait and %msg (macro control commands that don't generate OK responses)
+          if (line.match(/^%wait\b/i)) return false
+          if (line.match(/^%msg\b/i)) return false
+          return true
+        })
+      
+      const totalLines = gcodeLines.length
+      
+      if (totalLines === 0) {
+        setProbeError('Failed to generate BitSetter macro. Please check your settings.')
+        setProbeStatus('error')
+        return
+      }
+      
+      let linesSent = 0
+      let linesReceived = 0
+      let lastWorkflowState: string | null = null
+      let isCleanedUp = false
+      let timeoutId: NodeJS.Timeout | null = null
+      let currentStatusRef = 'probing'
+      
+      // Track progress via serialport:write events (each line sent)
+      const handleSerialWrite = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const data = args[0] as string
+        const context = args[1] as { source?: string } | undefined
+        
+        // Only count lines sent from the feeder (not manual commands or status queries)
+        if (context?.source === 'feeder' || (!context?.source && data.trim())) {
+          const trimmed = data.trim()
+          // Filter out Grbl status queries and other non-G-code commands
+          if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
+            linesSent++
+          }
+        }
+      }
+      
+      // Track responses via serialport:read events (ok responses)
+      const recentMessages: string[] = []
+      const handleSerialRead = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const message = args[0] as string
+        if (!message || typeof message !== 'string') return
+        
+        // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
+        recentMessages.push(message.trim())
+        if (recentMessages.length > 5) {
+          recentMessages.shift()
+        }
+        
+        const line = parseConsoleMessage(message, 'read')
+        
+        if (line.type === 'ok') {
+          linesReceived++
+          
+          // Check if all lines have been acknowledged - if so, mark as complete immediately
+          if (linesReceived >= totalLines && currentStatusRef === 'probing' && !isCleanedUp) {
+            currentStatusRef = 'complete'
+            // Macro complete - set status to capturing and let existing useEffect handle capture/storage
+            setProbeStatus('capturing')
+            cleanup()
+            return
+          }
+        } else if (line.type === 'error' || line.type === 'alarm') {
+          // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
+          const failingLine = recentMessages.find(msg => msg.startsWith('> '))
+          
+          // Include the failing line in the error message if found
+          const errorMsg = failingLine
+            ? `${line.message}\n\nFailing line: ${failingLine}`
+            : line.message
+          
+          setProbeError(errorMsg)
+          setProbeStatus('error')
+          currentStatusRef = 'error'
+          cleanup()
+          return
+        }
+      }
+      
+      // Track workflow state changes (idle -> running -> idle = complete)
+      const handleWorkflowState = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const state = args[0] as string
+        
+        if (lastWorkflowState === null) {
+          lastWorkflowState = state
+        } else if (lastWorkflowState === 'idle' && state === 'running') {
+          // Workflow started - G-code is being executed
+          lastWorkflowState = state
+        } else if (lastWorkflowState === 'running' && state === 'idle') {
+          // Workflow completed - all G-code has finished
+          if (currentStatusRef === 'probing' && !isCleanedUp) {
+            currentStatusRef = 'complete'
+            // Macro complete - set status to capturing and let existing useEffect handle capture/storage
+            setProbeStatus('capturing')
+            cleanup()
+          }
+          lastWorkflowState = state
+        } else {
+          lastWorkflowState = state
+        }
+        
+        // Handle error states
+        if (state === 'error' || state === 'alarm') {
+          setProbeError('Machine entered error state during probe sequence')
+          setProbeStatus('error')
+          currentStatusRef = 'error'
+          cleanup()
+        }
+      }
+      
+      // Handle disconnections
+      const handleDisconnect = (..._args: unknown[]) => {
+        if (isCleanedUp) return
+        setProbeError('Socket disconnected during probe sequence')
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+      }
+      
+      const cleanup = () => {
+        if (isCleanedUp) return
+        isCleanedUp = true
+        
+        socketService.off('serialport:write', handleSerialWrite)
+        socketService.off('serialport:read', handleSerialRead)
+        socketService.off('workflow:state', handleWorkflowState)
+        socketService.off('disconnect', handleDisconnect)
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+      }
+      
+      // Set up listeners
+      socketService.on('serialport:write', handleSerialWrite)
+      socketService.on('serialport:read', handleSerialRead)
+      socketService.on('workflow:state', handleWorkflowState)
+      socketService.once('disconnect', handleDisconnect)
+      
+      try {
+        // Process macro string to strip comments from assignment lines (same as BitZero)
+        const processedMacro = macroString
+          .split(/\r?\n/)
+          .map((line: string) => {
+            const trimmed = line.trim()
+            // For assignment expression lines (starting with % but not %msg or %wait),
+            // strip comments using the same regex pattern as builtinCommand.match
+            if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+              return trimmed.replace(/;.*$/, '').trim()
+            }
+            return trimmed
+          })
+          .filter((line: string) => line.length > 0) // Remove empty lines
+          .join('\n')
+        
+        // Send the macro via the 'gcode' command (same as BitZero)
+        sendGcode(processedMacro)
+        
+        // Set timeout as safety net (5 minutes max)
+        timeoutId = setTimeout(() => {
+          if (currentStatusRef === 'probing' && !isCleanedUp) {
+            setProbeError('Probe sequence timed out. Please check the machine and try again.')
+            setProbeStatus('error')
+            currentStatusRef = 'error'
+            cleanup()
+          }
+        }, 5 * 60 * 1000) // 5 minutes
+      } catch (error) {
+        console.error('BitSetter probe error:', error)
+        setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+        setProbeStatus('error')
+        cleanup()
+      }
+    } else {
+      // Subsequent tool change: use macro approach
+      if (!initialToolReference) {
+        setProbeError('Initial tool reference not found. Please run first tool change before subsequent tool changes.')
+        setProbeStatus('error')
+        return
+      }
+      
+      setProbeStatus('probing')
+      setProbeError(null)
+      
+      // Use stored machine coordinates (captured before navigating to bitsetter)
+      if (!storedMachineCoordsRef.current) {
+        // Fallback: store current position if not already stored (shouldn't happen)
+        storedMachineCoordsRef.current = { x: machinePosition.x, y: machinePosition.y }
+      }
+      const storedMachineCoords = storedMachineCoordsRef.current
+      
+      const bitsetterMethod = method as Extract<ZeroingMethod, { type: 'bitsetter' }>
+      const probeDistance = bitsetterMethod.probeDistance || 50
+      const probeRapidFeedrate = bitsetterMethod.probeFeedrate || 200
+      
+      // Build macro string with values inserted
+      const macroLines = [
+        '; Wait until the planner queue is empty',
+        '%wait',
+        '',
+        '; Save modal state',
+        '%UNITS = modal.units',
+        '%DISTANCE = modal.distance',
+        '%FEEDRATE = modal.feedrate',
+        '%SPINDLE = modal.spindle',
+        '%MOTION = modal.motion',
+        '',
+        'G21 ;metric',
+        'M5   ;Stop spindle',
+        '',
+        'G91',
+        `G38.2 Z-${probeDistance} F${probeRapidFeedrate} ;fast probe(so it doesn't take forever)`,
+        'G0 z2',
+        'G38.2 z-5 F40	;"dial-it-in" probes',
+        'G4 P.25',
+        'G38.4 z10 F20',
+        'G4 P.25',
+        'G38.2 z-2 F10',
+        'G4 P.25',
+        'G38.4 z10 F5',
+        'G4 P.25',
+        '',
+        'G90',
+        '%wait',
+        `; Update Z offset for new tool`,
+        `G10 L20 Z${initialToolReference}`,
+        '%wait',
+        '',
+        '; Restore modal state',
+        '[UNITS] [DISTANCE] [FEEDRATE] [SPINDLE] [MOTION]',
+        '',
+        '%wait',
+      ]
+      
+      const macroString = macroLines.join('\n')
+      
+      // Parse G-code to count lines for progress tracking
+      // Exclude macro control commands like %wait, %msg that don't generate OK responses
+      const gcodeLines = macroString
+        .split(/\r?\n/)
+        .map((line: string) => line.trim())
+        .filter((line: string) => {
+          // Remove empty lines, comments, and macro control commands
+          if (line.length === 0) return false
+          if (line.startsWith(';')) return false
+          // Exclude %wait and %msg (macro control commands that don't generate OK responses)
+          if (line.match(/^%wait\b/i)) return false
+          if (line.match(/^%msg\b/i)) return false
+          return true
+        })
+      
+      const totalLines = gcodeLines.length
+      
+      if (totalLines === 0) {
+        setProbeError('Failed to generate BitSetter macro. Please check your settings.')
+        setProbeStatus('error')
+        return
+      }
+      
+      let linesSent = 0
+      let linesReceived = 0
+      let lastWorkflowState: string | null = null
+      let isCleanedUp = false
+      let timeoutId: NodeJS.Timeout | null = null
+      let currentStatusRef = 'probing'
+      
+      // Track progress via serialport:write events (each line sent)
+      const handleSerialWrite = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const data = args[0] as string
+        const context = args[1] as { source?: string } | undefined
+        
+        // Only count lines sent from the feeder (not manual commands or status queries)
+        if (context?.source === 'feeder' || (!context?.source && data.trim())) {
+          const trimmed = data.trim()
+          // Filter out Grbl status queries and other non-G-code commands
+          if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
+            linesSent++
+          }
+        }
+      }
+      
+      // Track responses via serialport:read events (ok responses)
+      const recentMessages: string[] = []
+      const handleSerialRead = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const message = args[0] as string
+        if (!message || typeof message !== 'string') return
+        
+        // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
+        recentMessages.push(message.trim())
+        if (recentMessages.length > 5) {
+          recentMessages.shift()
+        }
+        
+        const line = parseConsoleMessage(message, 'read')
+        
+        if (line.type === 'ok') {
+          linesReceived++
+          
+          // Check if all lines have been acknowledged - if so, mark as complete immediately
+          if (linesReceived >= totalLines && currentStatusRef === 'probing' && !isCleanedUp) {
+            currentStatusRef = 'complete'
+            // Macro complete - set status to capturing and let useEffect handle retract/move
+            setProbeStatus('capturing')
+            cleanup()
+            return
+          }
+        } else if (line.type === 'error' || line.type === 'alarm') {
+          // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
+          const failingLine = recentMessages.find(msg => msg.startsWith('> '))
+          
+          // Include the failing line in the error message if found
+          const errorMsg = failingLine
+            ? `${line.message}\n\nFailing line: ${failingLine}`
+            : line.message
+          
+          setProbeError(errorMsg)
+          setProbeStatus('error')
+          currentStatusRef = 'error'
+          cleanup()
+          return
+        }
+      }
+      
+      // Track workflow state changes (idle -> running -> idle = complete)
+      const handleWorkflowState = (...args: unknown[]) => {
+        if (isCleanedUp) return
+        
+        const state = args[0] as string
+        
+        if (lastWorkflowState === null) {
+          lastWorkflowState = state
+        } else if (lastWorkflowState === 'idle' && state === 'running') {
+          // Workflow started - G-code is being executed
+          lastWorkflowState = state
+        } else if (lastWorkflowState === 'running' && state === 'idle') {
+          // Workflow completed - all G-code has finished
+          if (currentStatusRef === 'probing' && !isCleanedUp) {
+            currentStatusRef = 'complete'
+            // Macro complete - set status to capturing and let useEffect handle retract/move
+            setProbeStatus('capturing')
+            cleanup()
+          }
+          lastWorkflowState = state
+        } else {
+          lastWorkflowState = state
+        }
+        
+        // Handle error states
+        if (state === 'error' || state === 'alarm') {
+          setProbeError('Machine entered error state during probe sequence')
+          setProbeStatus('error')
+          currentStatusRef = 'error'
+          cleanup()
+        }
+      }
+      
+      // Handle disconnections
+      const handleDisconnect = (..._args: unknown[]) => {
+        if (isCleanedUp) return
+        setProbeError('Socket disconnected during probe sequence')
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+      }
+      
+      const cleanup = () => {
+        if (isCleanedUp) return
+        isCleanedUp = true
+        
+        socketService.off('serialport:write', handleSerialWrite)
+        socketService.off('serialport:read', handleSerialRead)
+        socketService.off('workflow:state', handleWorkflowState)
+        socketService.off('disconnect', handleDisconnect)
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+      }
+      
+      // Set up listeners
+      socketService.on('serialport:write', handleSerialWrite)
+      socketService.on('serialport:read', handleSerialRead)
+      socketService.on('workflow:state', handleWorkflowState)
+      socketService.once('disconnect', handleDisconnect)
+      
+      try {
+        // Process macro string to strip comments from assignment lines (same as BitZero)
+        const processedMacro = macroString
+          .split(/\r?\n/)
+          .map((line: string) => {
+            const trimmed = line.trim()
+            // For assignment expression lines (starting with % but not %msg or %wait),
+            // strip comments using the same regex pattern as builtinCommand.match
+            if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+              return trimmed.replace(/;.*$/, '').trim()
+            }
+            return trimmed
+          })
+          .filter((line: string) => line.length > 0) // Remove empty lines
+          .join('\n')
+        
+        // Send the macro via the 'gcode' command (same as BitZero)
+        sendGcode(processedMacro)
+        
+        // Set timeout as safety net (5 minutes max)
+        timeoutId = setTimeout(() => {
+          if (currentStatusRef === 'probing' && !isCleanedUp) {
+            setProbeError('Probe sequence timed out. Please check the machine and try again.')
+            setProbeStatus('error')
+            currentStatusRef = 'error'
+            cleanup()
+          }
+        }, 5 * 60 * 1000) // 5 minutes
+      } catch (error) {
+        console.error('BitSetter probe error:', error)
+        setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+        setProbeStatus('error')
+        cleanup()
       }
     }
-    
-    sendNextCommand()
-  }, [connectedPort, method, workPosition, sendGcode])
+  }, [connectedPort, method, workPosition, machinePosition, isFirstToolChange, currentWCS, setExtensions, sendGcode, initialToolReference])
   
   const handleBitZeroProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'bitzero') {
@@ -711,67 +1155,100 @@ export function ZeroingWizardTab({
   }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode])
   
   // Monitor workPosition after probe to capture TOOL_REFERENCE
-  const previousWorkPositionRef = useRef<{ x: number; y: number; z: number } | null>(null)
   const capturingPositionRef = useRef(false)
   const captureTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Store machine X, Y for subsequent tool change (captured before navigating to bitsetter)
+  const storedMachineCoordsRef = useRef<{ x: number; y: number } | null>(null)
   
+  // Capture position when probeStatus changes to 'capturing'
+  // The macro ends with G4 P0.5 (dwell) and %wait (planner queue empty),
+  // so the position is already stable when the macro completes
   useEffect(() => {
     // Only capture position if we're in capturing state and haven't captured yet
     if (probeStatus === 'capturing' && !capturingPositionRef.current) {
-      const previousPos = previousWorkPositionRef.current
-      
-      // Check if position has changed (probe has completed) and stabilized
-      // Position should have changed from before probe, then stabilized
-      if (previousPos) {
-        // Wait for position to stabilize (no change for 500ms)
-        if (captureTimeoutRef.current) {
-          clearTimeout(captureTimeoutRef.current)
-        }
-        
-        captureTimeoutRef.current = setTimeout(() => {
-          // Check again if position is stable
-          const currentPos = { ...workPosition }
-          if (previousWorkPositionRef.current && Math.abs(currentPos.z - previousWorkPositionRef.current.z) < 0.001) {
-            capturingPositionRef.current = true
-            setProbeStatus('storing')
-            
-            // Store TOOL_REFERENCE in Extensions API
-            // This is the work Z position at bitsetter contact point
-            const toolReference = currentPos.z
-            const wcsKey = `bitsetter.toolReference.${currentWCS}`
-            
-            setExtensions({ 
-              key: wcsKey, 
-              data: { 
-                value: toolReference, 
-                wcs: currentWCS, 
-                timestamp: new Date().toISOString() 
-              } 
-            })
-              .unwrap()
-              .then(() => {
-                setProbeStatus('complete')
-                // Retract to safe height after storing reference
-                if (method.type === 'bitsetter' && connectedPort) {
-                  sendGcode('G90') // Ensure absolute mode
-                  setTimeout(() => {
-                    sendGcode('G53 G0 Z-5') // Always retract to Z=-5 in machine coordinates
-                  }, 200)
-                }
-              })
-              .catch((err) => {
-                console.error('Failed to store bitsetter reference:', err)
-                setProbeStatus('error')
-                setProbeError('Failed to store tool reference. Please try again.')
-                capturingPositionRef.current = false
-              })
-          }
-        }, 500) // Wait 500ms for position to stabilize
+      // The macro already completed with dwell and %wait, so position is stable
+      // Just wait a short delay (200ms) for position to be reported, then capture
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current)
       }
+      
+      captureTimeoutRef.current = setTimeout(() => {
+        if (isFirstToolChange) {
+          // First tool change: capture position and store tool reference
+          const currentPos = { ...workPosition }
+          
+          capturingPositionRef.current = true
+          setProbeStatus('storing')
+          
+          // Store TOOL_REFERENCE in Extensions API
+          // This is the work Z position at bitsetter contact point
+          const toolReference = currentPos.z
+          const wcsKey = `bitsetter.toolReference.${currentWCS}`
+          
+          setExtensions({ 
+            key: wcsKey, 
+            data: { 
+              value: toolReference, 
+              wcs: currentWCS, 
+              timestamp: new Date().toISOString() 
+            } 
+          })
+            .unwrap()
+            .then(() => {
+              // Store first tool change completion flag for this job
+              if (jobId) {
+                const firstToolChangeFlagKey = `bitsetter.firstToolChangeCompleted.${currentWCS}.${jobId}`
+                setExtensions({
+                  key: firstToolChangeFlagKey,
+                  data: {
+                    completed: true,
+                    timestamp: new Date().toISOString(),
+                    jobId,
+                    wcs: currentWCS
+                  }
+                }).catch((err) => {
+                  console.error('Failed to store first tool change completion flag:', err)
+                })
+              }
+              setProbeStatus('complete')
+              // Retract to safe height after storing reference
+              if (method.type === 'bitsetter' && connectedPort) {
+                sendGcode('G90') // Ensure absolute mode
+                setTimeout(() => {
+                  sendGcode('G53 G0 Z-5') // Retract to Z=-5 in machine coordinates
+                  // For first tool change, move to WCS home (X0 Y0)
+                  setTimeout(() => {
+                    sendGcode('G0 X0 Y0') // Move to WCS home
+                  }, 500)
+                }, 200)
+              }
+            })
+            .catch((err) => {
+              console.error('Failed to store bitsetter reference:', err)
+              setProbeStatus('error')
+              setProbeError('Failed to store tool reference. Please try again.')
+              capturingPositionRef.current = false
+            })
+        } else {
+          // Subsequent tool change: no position capture needed, just retract and return to stored XY
+          capturingPositionRef.current = true
+          setProbeStatus('complete')
+          
+          // Retract Z and return to stored X, Y
+          if (method.type === 'bitsetter' && connectedPort && storedMachineCoordsRef.current) {
+            const storedCoords = storedMachineCoordsRef.current
+            sendGcode('G90') // Ensure absolute mode
+            setTimeout(() => {
+              sendGcode('G53 G0 Z-5') // Retract to Z=-5 in machine coordinates
+              setTimeout(() => {
+                sendGcode(`G53 G0 X${storedCoords.x} Y${storedCoords.y}`) // Return to stored X, Y
+                storedMachineCoordsRef.current = null // Clear after use
+              }, 500)
+            }, 200)
+          }
+        }
+      }, 200) // Short delay just to ensure position is reported
     }
-    
-    // Update previous position reference
-    previousWorkPositionRef.current = { ...workPosition }
     
     // Cleanup timeout on unmount or status change
     return () => {
@@ -779,7 +1256,7 @@ export function ZeroingWizardTab({
         clearTimeout(captureTimeoutRef.current)
       }
     }
-  }, [workPosition, probeStatus, currentWCS, setExtensions, method, connectedPort, sendGcode])
+  }, [probeStatus, currentWCS, setExtensions, method, connectedPort, sendGcode, isFirstToolChange, workPosition, jobId])
   
   const handleComplete = async () => {
     // For touchplate, manual, bitzero, and custom (if Z axis), clear bitsetter reference if Z zero is being set

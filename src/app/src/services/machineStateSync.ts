@@ -236,7 +236,6 @@ class MachineStateSyncService {
   }
 
   private handleSenderStatus(...args: unknown[]) {
-    console.log('[machineStateSync] handleSenderStatus called with args:', args)
     // sender:status is emitted with just the sender state object (no port prefix)
     const senderState = args[0] as {
       name?: string
@@ -246,24 +245,13 @@ class MachineStateSyncService {
       received?: number
       elapsedTime?: number
       remainingTime?: number
+      m6Indices?: number[]
       nextM6ToolNumber?: number
       remainingTimeToNextM6?: number
+      jobId?: string | null
     }
 
-    console.log('[machineStateSync] Parsed senderState:', senderState)
-
     if (senderState && typeof senderState === 'object') {
-      // Debug log to verify data is being received
-      console.log('[machineStateSync] sender:status received:', {
-        name: senderState.name,
-        size: senderState.size,
-        total: senderState.total,
-        sent: senderState.sent,
-        received: senderState.received,
-        elapsedTime: senderState.elapsedTime,
-        remainingTime: senderState.remainingTime,
-      })
-      
       const jobStateUpdate = {
         name: senderState.name,
         size: senderState.size,
@@ -272,15 +260,12 @@ class MachineStateSyncService {
         received: senderState.received,
         elapsedTime: senderState.elapsedTime,
         remainingTime: senderState.remainingTime,
+        m6Indices: senderState.m6Indices,
         nextM6ToolNumber: senderState.nextM6ToolNumber,
         remainingTimeToNextM6: senderState.remainingTimeToNextM6,
+        jobId: senderState.jobId,
       }
-      console.log('[machineStateSync] Dispatching setJobState with:', jobStateUpdate)
       store.dispatch(setJobState(jobStateUpdate))
-      
-      // Log current Redux state after dispatch
-      const currentState = store.getState()
-      console.log('[machineStateSync] Redux jobState after dispatch:', currentState.job)
     } else {
       console.warn('[machineStateSync] sender:status received invalid data:', args)
     }

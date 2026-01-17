@@ -10,6 +10,8 @@ interface JobState {
   remainingTime?: number
   nextM6ToolNumber?: number
   remainingTimeToNextM6?: number
+  jobId?: string | null
+  m6Indices?: number[]
 }
 
 const initialState: JobState = {}

@@ -119,6 +119,8 @@ class SPCharCounting {
     }
 }
 
+const uuid = require('uuid');
+
 class Sender extends events.EventEmitter {
     // streaming protocol
     sp = null;
@@ -140,7 +142,8 @@ class Sender extends events.EventEmitter {
       m6Indices: [],
       nextM6Index: -1,
       remainingTimeToNextM6: 0,
-      nextM6ToolNumber: -1
+      nextM6ToolNumber: -1,
+      jobId: null
     };
 
     stateChanged = false;
@@ -241,9 +244,11 @@ class Sender extends events.EventEmitter {
         finishTime: this.state.finishTime,
         elapsedTime: this.state.elapsedTime,
         remainingTime: this.state.remainingTime,
+        m6Indices: this.state.m6Indices.map(entry => entry.index), // Extract just the line numbers (indices)
         nextM6Index: this.state.nextM6Index,
         nextM6ToolNumber: this.state.nextM6ToolNumber,
-        remainingTimeToNextM6: this.state.remainingTimeToNextM6
+        remainingTimeToNextM6: this.state.remainingTimeToNextM6,
+        jobId: this.state.jobId
       };
     }
 
@@ -322,6 +327,9 @@ class Sender extends events.EventEmitter {
       this.state.nextM6ToolNumber = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].toolNumber : -1;
       this.state.remainingTimeToNextM6 = 0;
 
+      // Generate new UUID for this job
+      this.state.jobId = uuid.v4();
+
       this.emit('load', name, gcode, context);
       this.emit('change');
 
@@ -349,6 +357,7 @@ class Sender extends events.EventEmitter {
       this.state.nextM6Index = -1;
       this.state.nextM6ToolNumber = -1;
       this.state.remainingTimeToNextM6 = 0;
+      this.state.jobId = null;
 
       this.emit('unload');
       this.emit('change');
