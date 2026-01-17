@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { useGetSettingsQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetExtensionsQuery, useDeleteExtensionsMutation } from '@/services/api'
 import { useToolChange } from '@/contexts/ToolChangeContext'
-import { useWorkflowState } from '@/store/hooks'
+import { useWorkflowState, useCurrentWCS } from '@/store/hooks'
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from './useGcodeCommand'
 import type { ZeroingMethod } from '../../../shared/schemas/settings'
@@ -14,11 +14,49 @@ export function useToolChangeDetection(connectedPort: string | null) {
   const { triggerToolChange, isToolChangePending } = useToolChange()
   const { sendCommand } = useGcodeCommand(connectedPort)
   const workflowState = useWorkflowState()
+  const currentWCS = useCurrentWCS()
   const { data: settings } = useGetSettingsQuery()
+  const [deleteExtensions] = useDeleteExtensionsMutation()
+  
+  // Track previous workflow state to detect job start
+  const prevWorkflowStateRef = useRef<'idle' | 'running' | 'paused' | null>(workflowState || 'idle')
   
   // Track holdReason from sender:status events
   const holdReasonRef = useRef<{ data?: string; msg?: string } | null>(null)
   const hasTriggeredRef = useRef(false) // Prevent multiple triggers
+  
+  // Check if tool reference exists for bitsetter (determines first vs subsequent tool change)
+  const toolReferenceKey = `bitsetter.toolReference.${currentWCS}`
+  const { data: toolReferenceData } = useGetExtensionsQuery(
+    { key: toolReferenceKey },
+    { skip: !connectedPort || !currentWCS }
+  )
+
+  // Clear tool reference when job starts (workflowState: idle -> running)
+  useEffect(() => {
+    const prevState = prevWorkflowStateRef.current
+    const currentState = workflowState
+    
+    // Detect job start: idle -> running
+    if (prevState === 'idle' && currentState === 'running' && connectedPort && currentWCS) {
+      // Clear tool reference when job starts (indicates first tool change)
+      const wcsKey = `bitsetter.toolReference.${currentWCS}`
+      deleteExtensions({ key: wcsKey }).unwrap().catch((err: unknown) => {
+        // 404 means key doesn't exist - this is fine, silently ignore
+        const errorRecord = typeof err === 'object' && err !== null ? err as Record<string, unknown> : null
+        const status = 
+          (errorRecord?.status as number | string | undefined) || 
+          (typeof errorRecord?.data === 'object' && errorRecord.data !== null ? (errorRecord.data as Record<string, unknown>)?.status as number | string | undefined : undefined) || 
+          undefined
+        
+        if (status !== 404 && status !== 'FETCH_ERROR') {
+          console.error('Failed to clear tool reference on job start:', err)
+        }
+      })
+    }
+    
+    prevWorkflowStateRef.current = currentState || 'idle'
+  }, [workflowState, connectedPort, currentWCS, deleteExtensions])
 
   // Helper function to check and trigger tool change
   const checkAndTriggerToolChange = (holdReason: { data?: string; msg?: string } | null) => {
@@ -35,21 +73,32 @@ export function useToolChangeDetection(connectedPort: string | null) {
         // Auto-resume - no zeroing needed
         sendCommand('gcode:resume')
         hasTriggeredRef.current = false // Reset after resume
-      } else if (strategy === 'ask') {
-        // User will choose method - trigger with 'ask'
-        triggerToolChange('ask')
       } else {
-        // Strategy is a method ID - look up the method
+        // Look up the method (if strategy is not 'ask')
         const availableMethods = settings?.zeroingMethods?.methods || []
-        const method = availableMethods.find((m: ZeroingMethod) => m.id === strategy)
+        const method = strategy !== 'ask' 
+          ? availableMethods.find((m: ZeroingMethod) => m.id === strategy)
+          : null
         
-        if (method) {
-          // Found the method - trigger with method object
-          triggerToolChange(method)
+        // Determine if this is first or subsequent tool change (for bitsetter only)
+        // Check if tool reference exists: if no reference -> first tool change, if exists -> subsequent
+        let isFirstToolChange = true
+        if (method?.type === 'bitsetter') {
+          // Tool reference exists if toolReferenceData has a value property
+          const hasToolReference = toolReferenceData && typeof toolReferenceData === 'object' && 'value' in toolReferenceData
+          isFirstToolChange = !hasToolReference
+        }
+        
+        if (strategy === 'ask') {
+          // User will choose method - trigger with 'ask'
+          triggerToolChange('ask', isFirstToolChange)
+        } else if (method) {
+          // Found the method - trigger with method object and first/subsequent flag
+          triggerToolChange(method, isFirstToolChange)
         } else {
           // Method not found - fall back to 'ask'
           console.warn(`Tool change method with ID "${strategy}" not found. Falling back to "ask".`)
-          triggerToolChange('ask')
+          triggerToolChange('ask', isFirstToolChange)
         }
       }
     }
@@ -103,7 +152,7 @@ export function useToolChangeDetection(connectedPort: string | null) {
       socketService.off('sender:status', handleSenderStatus)
       socketService.off('feeder:status', handleFeederStatus)
     }
-  }, [connectedPort, workflowState, settings, triggerToolChange, sendCommand, isToolChangePending, checkAndTriggerToolChange])
+  }, [connectedPort, workflowState, settings, triggerToolChange, sendCommand, isToolChangePending, checkAndTriggerToolChange, toolReferenceData])
 
   // Detect M6 tool change when workflow pauses (check existing holdReason)
   useEffect(() => {
@@ -114,7 +163,7 @@ export function useToolChangeDetection(connectedPort: string | null) {
 
     // Check if we already have a holdReason
     checkAndTriggerToolChange(holdReasonRef.current)
-  }, [workflowState, connectedPort, settings, triggerToolChange, sendCommand, isToolChangePending, checkAndTriggerToolChange])
+  }, [workflowState, connectedPort, settings, triggerToolChange, sendCommand, isToolChangePending, checkAndTriggerToolChange, toolReferenceData])
 
   // Reset trigger flag when workflow resumes
   useEffect(() => {

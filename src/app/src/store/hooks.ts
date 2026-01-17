@@ -108,6 +108,15 @@ export const selectWorkflowState = createSelector(
   (backendStatus) => backendStatus?.workflowState ?? null
 )
 
+// Computed work coordinate system
+export const selectCurrentWCS = createSelector(
+  [selectBackendStatus],
+  (backendStatus) => {
+    const wcs = backendStatus?.parserstate?.modal?.wcs
+    return wcs || 'G54'
+  }
+)
+
 export const selectIsJobRunning = createSelector(
   [selectBackendStatus],
   (backendStatus) => backendStatus?.isJobRunning ?? false
@@ -137,3 +146,4 @@ export const usePlannerQueue = () => useAppSelector(selectPlannerQueue)
 export const useWorkflowState = () => useAppSelector(selectWorkflowState)
 export const useIsJobRunning = () => useAppSelector(selectIsJobRunning)
 export const useIsHomed = () => useAppSelector(selectIsHomed)
+export const useCurrentWCS = () => useAppSelector(selectCurrentWCS)

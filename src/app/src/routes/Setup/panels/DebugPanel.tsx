@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { Bug } from 'lucide-react'
 import type { PanelProps } from '../types'
 import { useGetExtensionsQuery } from '@/services/api'
+import { useToolChange } from '@/contexts/ToolChangeContext'
 import { 
   useMachineState,
   useIsConnected,
@@ -39,6 +42,9 @@ export function DebugPanel({
   const rxBufferSize = useRxBufferSize()
   const currentTool = useCurrentTool()
   const plannerQueue = usePlannerQueue()
+
+  // Debug flag for forcing bitsetter to appear as subsequent tool change
+  const { forceSubsequentToolChange, setForceSubsequentToolChange } = useToolChange()
 
   // Get tool reference for G54
   const toolReferenceKey = 'bitsetter.toolReference.G54'
@@ -242,6 +248,24 @@ export function DebugPanel({
           ) : (
             <p className="text-xs text-muted-foreground">No tool offset stored for G54</p>
           )}
+        </div>
+
+        {/* Debug: Force Subsequent Tool Change */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Tool Change Debug</h4>
+          <div className="flex items-center justify-between px-2 py-1 rounded bg-muted/50">
+            <Label htmlFor="force-subsequent" className="text-xs cursor-pointer">
+              Force Bitsetter as Subsequent Tool Change
+            </Label>
+            <Switch
+              id="force-subsequent"
+              checked={forceSubsequentToolChange}
+              onCheckedChange={setForceSubsequentToolChange}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When enabled, bitsetter tool changes will always use the subsequent wizard (skips "Install First Tool" step), regardless of tool reference status.
+          </p>
         </div>
       </div>
     </div>

@@ -47,6 +47,7 @@ export function ToolChangeTab({
   }
 
   // Render the zeroing wizard with the configured method
+  // Mark as tool change so bitsetter uses the tool change wizard (skips "Install First Tool" step)
   return (
     <ZeroingWizardTab
       method={toolChangeMethod}
@@ -57,6 +58,7 @@ export function ToolChangeTab({
       workPosition={workPosition}
       probeContact={probeContact}
       currentWCS={currentWCS}
+      isToolChange={true}
     />
   )
 }
