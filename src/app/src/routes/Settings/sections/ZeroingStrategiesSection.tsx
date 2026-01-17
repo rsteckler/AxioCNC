@@ -16,13 +16,12 @@ import {
   HelpCircle,
   Play,
   RefreshCw,
-  PauseCircle,
   AlertCircle,
 } from 'lucide-react'
 import type { ZeroingMethod, ZeroingMethodType } from './ZeroingMethodsSection'
 
 // Strategy scenarios
-export type ZeroingScenario = 'initial-setup' | 'tool-change' | 'after-pause'
+export type ZeroingScenario = 'initial-setup' | 'tool-change'
 
 // Strategy option: a specific method or "ask each time"
 export type StrategyOption = string | 'ask' | 'skip'
@@ -66,12 +65,6 @@ const SCENARIOS: Record<ZeroingScenario, {
     description: 'When M6 is encountered',
     icon: <RefreshCw className="w-5 h-5" />,
     tooltip: 'The zeroing method used when a tool change (M6) command is encountered during a job. Usually only Z needs to be re-zeroed.',
-  },
-  'after-pause': {
-    label: 'After Pause/Resume',
-    description: 'When resuming after a pause',
-    icon: <PauseCircle className="w-5 h-5" />,
-    tooltip: 'The zeroing method used when resuming a job after a pause or interruption. Useful if the machine may have moved.',
   },
 }
 
@@ -228,20 +221,6 @@ export function ZeroingStrategiesSection({
             </div>
           )}
         </div>
-      </SettingsField>
-
-      {/* After Pause */}
-      <SettingsField
-        label={SCENARIOS['after-pause'].label}
-        description={SCENARIOS['after-pause'].description}
-        tooltip={SCENARIOS['after-pause'].tooltip}
-      >
-        <StrategySelect
-          value={config.afterPause}
-          methods={availableMethods}
-          onChange={(value) => onConfigChange({ afterPause: value })}
-          scenario="after-pause"
-        />
       </SettingsField>
 
       {/* Helper text */}
