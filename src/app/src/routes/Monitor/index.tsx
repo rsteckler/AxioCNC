@@ -1060,50 +1060,14 @@ export default function Monitor() {
     })
   }, [])
   
-  const { sendCommand } = useGcodeCommand(connectedPort)
-  
   // Flash status when action attempted while disconnected
   const flashStatus = useCallback(() => {
     // Note: Flash status is handled by Redux, but we can trigger it here if needed
     // For now, we'll keep this as a no-op since flashing is managed by components
   }, [])
   
-  // Handle Pause button
-  const handlePause = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('gcode:pause')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
-  // Handle Start button
-  const handleStart = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('gcode:start')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
-  // Handle Resume button
-  const handleResume = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('gcode:resume')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
-  // Handle Stop button
-  const handleStop = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      flashStatus()
-      return
-    }
-    sendCommand('gcode:stop', { force: true })
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
+  // Use G-code command hook for Reset and E-Stop buttons
+  const { sendCommand } = useGcodeCommand(connectedPort)
   
   // Handle Reset button
   const handleReset = useCallback(() => {
@@ -1272,11 +1236,12 @@ export default function Monitor() {
       <PageStatusBar
         workflowState={workflowState}
         isJobRunning={isJobRunning}
-        onStart={handleStart}
-        onStop={handleStop}
-        onPause={handlePause}
-        onResume={handleResume}
+        connectedPort={connectedPort}
+        isConnected={isConnected}
+        machineStatus={machineStatus}
+        onFlashStatus={flashStatus}
         disabled={!isConnected || machineStatus === 'alarm'}
+        hasFile={!!jobState?.name}
       />
 
       {/* Main content area */}

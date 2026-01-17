@@ -434,42 +434,6 @@ export default function Setup() {
     setHoldReason(null)
   }, [connectedPort, sendCommand])
   
-  // Handle Pause button
-  const handlePause = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      console.warn('Cannot pause: not connected')
-      flashStatus()
-      return
-    }
-    sendCommand('gcode:pause')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
-  // Handle Resume button (sends ~ to resume from hold and resets feeder/sender state)
-  const handleResume = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      console.warn('Cannot resume: not connected')
-      flashStatus()
-      return
-    }
-    // Send gcode:resume command (sends ! AND resets feeder/sender hold state)
-    // This is better than cyclestart which only sends ~ without resetting feeder state
-    sendCommand('gcode:resume')
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
-  
-  // Handle Stop button (stops the job during hold)
-  const handleStop = useCallback(() => {
-    if (!isConnected || !connectedPort) {
-      console.warn('Cannot stop: not connected')
-      flashStatus()
-      return
-    }
-    // Stop the job
-    sendCommand('gcode:stop')
-    // isJobRunning is managed by Redux via workflow:state events
-    // Clear hold state
-    setHoldReason(null)
-    // Status will be updated by workflow:state event
-  }, [isConnected, connectedPort, flashStatus, sendCommand])
   
   // Track if we've received initial state from backend (for page refresh)
   const hasReceivedInitialStateRef = useRef(false)
@@ -938,10 +902,12 @@ export default function Setup() {
         onError={showErrorNotification}
         workflowState={workflowState}
         isJobRunning={isJobRunning}
-        onStop={handleStop}
-        onPause={handlePause}
-        onResume={handleResume}
+        connectedPort={connectedPort}
+        isConnected={isConnected}
+        machineStatus={machineStatus}
+        onFlashStatus={flashStatus}
         disabled={!isConnected || machineStatus === 'alarm'}
+        hasFile={!!jobState?.name}
       />
       
       {/* Dashboard - Two column flex layout */}

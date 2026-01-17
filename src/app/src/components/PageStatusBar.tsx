@@ -8,22 +8,24 @@ interface PageStatusBarProps {
   // JobStatusBar props
   workflowState?: 'idle' | 'running' | 'paused' | null
   isJobRunning?: boolean
-  onStart?: () => void
-  onStop?: () => void
-  onPause?: () => void
-  onResume?: () => void
+  connectedPort?: string | null
+  isConnected?: boolean
+  machineStatus?: 'not_connected' | 'connected_pre_home' | 'connected_post_home' | 'alarm' | 'running' | 'hold' | 'error'
+  onFlashStatus?: () => void
   disabled?: boolean
+  hasFile?: boolean
 }
 
 export function PageStatusBar({
   onError,
   workflowState,
   isJobRunning,
-  onStart,
-  onStop,
-  onPause,
-  onResume,
+  connectedPort,
+  isConnected,
+  machineStatus,
+  onFlashStatus,
   disabled,
+  hasFile,
 }: PageStatusBarProps) {
   return (
     <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
@@ -32,11 +34,12 @@ export function PageStatusBar({
       <JobStatusBar
         workflowState={workflowState}
         isJobRunning={isJobRunning}
-        onStart={onStart}
-        onStop={onStop}
-        onPause={onPause}
-        onResume={onResume}
+        connectedPort={connectedPort}
+        isConnected={isConnected}
+        machineStatus={machineStatus}
+        onFlashStatus={onFlashStatus}
         disabled={disabled}
+        hasFile={hasFile}
       />
     </div>
   )
