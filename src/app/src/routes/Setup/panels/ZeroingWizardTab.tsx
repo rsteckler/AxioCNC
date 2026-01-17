@@ -39,6 +39,7 @@ export function ZeroingWizardTab({
   const [currentStep, setCurrentStep] = useState(1)
   const [probeStatus, setProbeStatus] = useState<'idle' | 'probing' | 'capturing' | 'storing' | 'complete' | 'error'>('idle')
   const [probeError, setProbeError] = useState<string | null>(null)
+  const [bitsetterNavigated, setBitsetterNavigated] = useState(false)
   
   // Extensions API for bitsetter toolReference storage
   const [setExtensions] = useSetExtensionsMutation()
@@ -50,6 +51,7 @@ export function ZeroingWizardTab({
   // Reset to step 1 when method changes
   useEffect(() => {
     setCurrentStep(1)
+    setBitsetterNavigated(false)
   }, [method.id])
   
   // Get total steps based on method type
@@ -92,7 +94,13 @@ export function ZeroingWizardTab({
   
   const handleBack = () => {
     if (!isFirstStep) {
-      setCurrentStep(prev => prev - 1)
+      setCurrentStep(prev => {
+        // Reset navigation state when going back from bitsetter step 3 to step 2
+        if (method.type === 'bitsetter' && prev === (method.requireCheck === false ? 2 : 3)) {
+          setBitsetterNavigated(false)
+        }
+        return prev - 1
+      })
     }
   }
   
@@ -150,9 +158,12 @@ export function ZeroingWizardTab({
       return
     }
     
+    // Mark navigation as started
+    setBitsetterNavigated(true)
+    
     // Navigate to bitsetter position safely using machine coordinates (G53)
     // Sequence: Raise Z to safe height -> Move XY -> Lower Z to bitsetter position
-    const safeHeight = 5 // Always retract to Z=5 in machine coordinates
+    const safeHeight = -5 // Always retract to Z=-5 in machine coordinates
     const commands = [
       'G90', // Absolute mode (ensure we're in absolute mode)
       `G53 G0 Z${safeHeight}`, // Raise Z to safe height above bitsetter (machine coordinates)
@@ -250,15 +261,6 @@ export function ZeroingWizardTab({
     setProbeStatus('probing')
     setProbeError(null)
     
-    // BitZero probe sequence based on user's macro:
-    // 1. Probe X right, retract, fine probe, capture X_RIGHT
-    // 2. Probe X left, retract, fine probe, capture X_LEFT, calculate center, set X0
-    // 3. Probe Y top, retract, fine probe, capture Y_TOP
-    // 4. Probe Y bottom, retract, fine probe, capture Y_BTM, calculate center, set Y0
-    // 5. Move to Z probe location (above plate)
-    // 6. Probe Z, retract, fine probe, set Z0 with thickness offset
-    // 7. Final retract and move to origin
-    
     const bitzeroMethod = method as Extract<ZeroingMethod, { type: 'bitzero' }>
     
     // Use settings or defaults from macro
@@ -276,84 +278,261 @@ export function ZeroingWizardTab({
     const setYZeroCommand = buildSetZeroCommand(currentWCS, 'y')
     const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', zProbeThickness)
     
-    const commands = [
+    // Build macro string that calculates center on the controller
+    // Macro uses variables: %X_RIGHT, %X_LEFT, %Y_TOP, %Y_BTM
+    // Position variables: posx, posy, posz
+    // Calculations: %X_CHORD=(X_RIGHT-X_LEFT), %X_OFFSET=X_CHORD/2, etc.
+    const macroLines = [
       'G91', // Relative positioning
       'G21', // Metric units
-      // Probe X right edge
-      `G38.2 X${probeDistance} F${probeFeedrateA}`, // Probe toward right until contact
+      '',
+      '; X-Axis Probing',
+      `G38.2 X${probeDistance} F${probeFeedrateA}`, // Fast probe X right
       'G0 X-2', // Retract 2mm
-      `G38.2 X5 F${probeFeedrateB}`, // Slow fine probe to find exact right edge
-      // At this point we're at X_RIGHT edge (macro: %X_RIGHT = posx)
-      `G0 X-${probeMajorRetract}`, // Retract before probing left
-      // Probe X left edge  
-      `G38.2 X-${probeDistance} F${probeFeedrateA}`, // Probe toward left until contact
+      `G38.2 X5 F${probeFeedrateB}`, // Fine probe X right edge
+      'G90', // Absolute mode to read position
+      '%X_RIGHT=posx', // Capture X right position
+      'G91', // Back to relative
+      `G0 X-${probeMajorRetract}`, // Retract before left probe
+      '',
+      `G38.2 X-${probeDistance} F${probeFeedrateA}`, // Fast probe X left
       'G0 X2', // Retract 2mm
-      `G38.2 X-5 F${probeFeedrateB}`, // Slow fine probe to find exact left edge
-      // At this point we're at X_LEFT edge (macro: %X_LEFT = posx)
-      // Macro calculates: %X_CHORD = X_RIGHT - X_LEFT, then moves X[X_CHORD/2] to center
-      // Without macro variables, we can't calculate X_CHORD exactly. 
-      // We'll approximate by moving right from left edge by half the probe distance.
-      // This assumes the hole is roughly probeDistance wide, which should be close for most cases.
-      // Note: For exact center calculation, the controller would need to support macro variables
-      // or we'd need to read work positions from controller state after each probe.
-      `G0 X${probeDistance / 2}`, // Move to approximate X center (macro: G0 X[X_CHORD/2])
-      'G4 P1', // Dwell 1 second (macro: %wait)
-      setXZeroCommand, // Set X0 at current position (hole X center) - macro: G10L20X0
-      // Probe Y top edge
-      `G38.2 Y${probeDistance} F${probeFeedrateA}`, // Probe toward top until contact
+      `G38.2 X-5 F${probeFeedrateB}`, // Fine probe X left edge
+      'G90', // Absolute mode to read position
+      '%X_LEFT=posx', // Capture X left position
+      '',
+      '; Calculate X center and move there',
+      '%X_CHORD=X_RIGHT-X_LEFT', // Calculate actual hole width
+      '%X_OFFSET=X_CHORD/2', // Distance from X_LEFT to center
+      'G91', // Relative mode
+      'G0 X[X_OFFSET]', // Move to actual X center
+      'G4 P1', // Dwell 1 second
+      setXZeroCommand, // Set X0 at calculated center
+      '',
+      '; Y-Axis Probing',
+      'G91', // Relative mode
+      `G38.2 Y${probeDistance} F${probeFeedrateA}`, // Fast probe Y top
       'G0 Y-2', // Retract 2mm
-      `G38.2 Y5 F${probeFeedrateB}`, // Slow fine probe to find exact top edge
-      // At this point we're at Y_TOP edge (macro: %Y_TOP = posy)
-      `G0 Y-${probeMajorRetract}`, // Retract before probing bottom
-      // Probe Y bottom edge
-      `G38.2 Y-${probeDistance} F${probeFeedrateA}`, // Probe toward bottom until contact
+      `G38.2 Y5 F${probeFeedrateB}`, // Fine probe Y top edge
+      'G90', // Absolute mode to read position
+      '%Y_TOP=posy', // Capture Y top position
+      'G91', // Back to relative
+      `G0 Y-${probeMajorRetract}`, // Retract before bottom probe
+      '',
+      `G38.2 Y-${probeDistance} F${probeFeedrateA}`, // Fast probe Y bottom
       'G0 Y2', // Retract 2mm
-      `G38.2 Y-5 F${probeFeedrateB}`, // Slow fine probe to find exact bottom edge
-      // At this point we're at Y_BTM edge (macro: %Y_BTM = posy)
-      // Macro calculates: %Y_CHORD = Y_TOP - Y_BTM, %HOLE_RADIUS = Y_CHORD/2
-      // Then moves Y[HOLE_RADIUS] to center
-      // Similar to X axis, we'll approximate center by moving up from bottom edge
-      // by half the probe distance (assuming hole is roughly probeDistance tall)
-      `G0 Y${probeDistance / 2}`, // Move to approximate Y center (macro: G0 Y[HOLE_RADIUS])
-      // Note: Same approximation limitation as X axis
-      'G4 P1', // Dwell 1 second (macro: %wait)
-      setYZeroCommand, // Set Y0 at current position (hole Y center) - macro: G10L20Y0
-      // Move to Z probe location (above plate, away from hole)
-      // After setting Y0, we're at hole center (X0, Y0). Move relative to get above plate.
-      // In macro: HOLE_RADIUS = Y_CHORD/2, we approximate with probeDistance/2
-      `G0 Z${zProbe}`, // Lift out of hole (macro: G0 Z[Z_PROBE])
-      `X${probeDistance / 2 + zProbeKeepout} Y${probeDistance / 2 + zProbeKeepout}`, // Move above plate, relative from center (macro: X[HOLE_RADIUS + Z_PROBE_KEEPOUT] Y[HOLE_RADIUS + Z_PROBE_KEEPOUT])
-      // Probe Z
-      `G38.2 Z-${zProbe} F${probeFeedrateA}`, // Probe Z down (macro: G38.2 Z-[Z_PROBE] F[PROBE_FEEDRATE_A])
+      `G38.2 Y-5 F${probeFeedrateB}`, // Fine probe Y bottom edge
+      'G90', // Absolute mode to read position
+      '%Y_BTM=posy', // Capture Y bottom position
+      '',
+      '; Calculate Y center and move there',
+      '%Y_CHORD=Y_TOP-Y_BTM', // Calculate actual hole height
+      '%Y_OFFSET=Y_CHORD/2', // Distance from Y_BTM to center
+      'G91', // Relative mode
+      'G0 Y[Y_OFFSET]', // Move to actual Y center
+      'G4 P1', // Dwell 1 second
+      setYZeroCommand, // Set Y0 at calculated center
+      '',
+      '; Calculate Z probe location using actual hole radius',
+      '%HOLE_RADIUS=Y_CHORD/2', // Use Y chord for radius (hole is circular)
+      `%Z_PROBE_X=HOLE_RADIUS+${zProbeKeepout}`, // X offset for Z probe (keepout)
+      `%Z_PROBE_Y=HOLE_RADIUS+${zProbeKeepout}`, // Y offset for Z probe (keepout)
+      '',
+      '; Z-Axis Probing',
+      `G0 Z${zProbe}`, // Lift out of hole
+      'G0 X[Z_PROBE_X] Y[Z_PROBE_Y]', // Move above plate using actual hole radius
+      `G38.2 Z-${zProbe} F${probeFeedrateA}`, // Fast probe Z down
       'G0 Z2', // Retract 2mm
-      `G38.2 Z-5 F${probeFeedrateB}`, // Slow fine probe (macro: G38.2 Z-5 F[PROBE_FEEDRATE_B])
-      setZZeroCommand, // Set Z0 with plate thickness offset (macro: G10L20Z[Z_PROBE_THICKNESS])
-      `G0 Z${zFinal}`, // Raise to final height (macro: G0 Z[Z_FINAL])
-      'G90', // Absolute positioning (macro: G90)
-      'G0 X0 Y0', // Move to work origin (macro: G0 X0 Y0)
-      'G4 P1', // Dwell 1 second (macro: %wait)
+      `G38.2 Z-5 F${probeFeedrateB}`, // Fine probe Z down
+      setZZeroCommand, // Set Z0 with plate thickness offset
+      `G0 Z${zFinal}`, // Raise to final height
+      '',
+      '; Final: Move to origin',
+      'G90', // Absolute positioning
+      'G0 X0 Y0', // Move to work origin
+      'G4 P1', // Dwell 1 second
     ]
     
-    // Send probe sequence commands sequentially
-    let commandIndex = 0
-    const sendNextCommand = () => {
-      if (commandIndex < commands.length) {
-        sendGcode(commands[commandIndex])
-        commandIndex++
-        // Vary delays: longer for probe movements, shorter for positioning
-        const cmd = commands[commandIndex - 1]
-        const delay = cmd.startsWith('G4') ? 1100 : (cmd.startsWith('G38') ? 1000 : (cmd.startsWith('G10') ? 500 : 400))
-        setTimeout(sendNextCommand, delay)
-      } else {
-        // After probe sequence completes
-        setTimeout(() => {
-          setProbeStatus('complete')
-        }, 1000)
+    const macroString = macroLines.join('\n')
+    
+    // Parse G-code to count lines for progress tracking
+    const gcodeLines = macroString
+      .split(/\r?\n/)
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0 && !line.startsWith(';')) // Remove empty lines and comments
+    
+    const totalLines = gcodeLines.length
+    
+    if (totalLines === 0) {
+      setProbeError('Failed to generate BitZero macro. Please check your settings.')
+      setProbeStatus('error')
+      return
+    }
+    
+    let linesSent = 0
+    let linesReceived = 0
+    let lastWorkflowState: string | null = null
+    let isCleanedUp = false
+    let timeoutId: NodeJS.Timeout | null = null
+    let currentStatusRef = 'probing' // Track status to avoid closure issues
+    
+    // Track progress via serialport:write events (each line sent)
+    const handleSerialWrite = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const data = args[0] as string
+      const context = args[1] as { source?: string } | undefined
+      
+      // Only count lines sent from the feeder (not manual commands or status queries)
+      if (context?.source === 'feeder' || (!context?.source && data.trim())) {
+        const trimmed = data.trim()
+        // Filter out Grbl status queries and other non-G-code commands
+        if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
+          linesSent++
+        }
       }
     }
     
-    sendNextCommand()
-  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode])
+    // Track responses via serialport:read events (ok responses)
+    const recentMessages: string[] = []
+    const handleSerialRead = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const message = args[0] as string
+      if (!message || typeof message !== 'string') return
+      
+      // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
+      recentMessages.push(message.trim())
+      if (recentMessages.length > 5) {
+        recentMessages.shift()
+      }
+      
+      const line = parseConsoleMessage(message, 'read')
+      
+      if (line.type === 'ok') {
+        linesReceived++
+        
+        // Check if all lines have been acknowledged - if so, mark as complete immediately
+        if (linesReceived >= totalLines && currentStatusRef === 'probing' && !isCleanedUp) {
+          setProbeStatus('complete')
+          currentStatusRef = 'complete'
+          cleanup()
+          return
+        }
+      } else if (line.type === 'error' || line.type === 'alarm') {
+        // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
+        const failingLine = recentMessages.find(msg => msg.startsWith('> '))
+        
+        // Include the failing line in the error message if found
+        const errorMsg = failingLine
+          ? `${line.message}\n\nFailing line: ${failingLine}`
+          : line.message
+        
+        setProbeError(errorMsg)
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+        return
+      }
+    }
+    
+    // Track workflow state changes (idle -> running -> idle = complete)
+    const handleWorkflowState = (...args: unknown[]) => {
+      if (isCleanedUp) return
+      
+      const state = args[0] as string
+      
+      if (lastWorkflowState === null) {
+        lastWorkflowState = state
+      } else if (lastWorkflowState === 'idle' && state === 'running') {
+        // Workflow started - G-code is being executed
+        lastWorkflowState = state
+      } else if (lastWorkflowState === 'running' && state === 'idle') {
+        // Workflow completed - all G-code has finished
+        if (currentStatusRef === 'probing') {
+          setProbeStatus('complete')
+          currentStatusRef = 'complete'
+          cleanup()
+        }
+        lastWorkflowState = state
+      } else {
+        lastWorkflowState = state
+      }
+      
+      // Handle error states
+      if (state === 'error' || state === 'alarm') {
+        setProbeError('Machine entered error state during probe sequence')
+        setProbeStatus('error')
+        currentStatusRef = 'error'
+        cleanup()
+      }
+    }
+    
+    // Handle disconnections
+    const handleDisconnect = (..._args: unknown[]) => {
+      if (isCleanedUp) return
+      setProbeError('Socket disconnected during probe sequence')
+      setProbeStatus('error')
+      currentStatusRef = 'error'
+      cleanup()
+    }
+    
+    const cleanup = () => {
+      if (isCleanedUp) return
+      isCleanedUp = true
+      
+      socketService.off('serialport:write', handleSerialWrite)
+      socketService.off('serialport:read', handleSerialRead)
+      socketService.off('workflow:state', handleWorkflowState)
+      socketService.off('disconnect', handleDisconnect)
+      
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+    }
+    
+    // Set up listeners
+    socketService.on('serialport:write', handleSerialWrite)
+    socketService.on('serialport:read', handleSerialRead)
+    socketService.on('workflow:state', handleWorkflowState)
+    socketService.once('disconnect', handleDisconnect)
+    
+    try {
+      // Process macro string to strip comments from assignment lines (same as custom G-code)
+      const processedMacro = macroString
+        .split(/\r?\n/)
+        .map((line: string) => {
+          const trimmed = line.trim()
+          // For assignment expression lines (starting with % but not %msg or %wait),
+          // strip comments using the same regex pattern as builtinCommand.match
+          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+            return trimmed.replace(/;.*$/, '').trim()
+          }
+          return trimmed
+        })
+        .filter((line: string) => line.length > 0) // Remove empty lines
+        .join('\n')
+      
+      // Send the macro via the 'gcode' command (same as custom G-code)
+      sendGcode(processedMacro)
+      
+      // Set timeout as safety net (5 minutes max)
+      timeoutId = setTimeout(() => {
+        if (currentStatusRef === 'probing' && !isCleanedUp) {
+          setProbeError('Probe sequence timed out. Please check the machine and try again.')
+          setProbeStatus('error')
+          currentStatusRef = 'error'
+          cleanup()
+        }
+      }, 5 * 60 * 1000) // 5 minutes
+    } catch (error) {
+      console.error('BitZero probe error:', error)
+      setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+      setProbeStatus('error')
+      cleanup()
+    }
+  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode, buildSetZeroCommand, buildSetZeroWithOffsetCommand])
   
   // Monitor workPosition after probe to capture TOOL_REFERENCE
   const previousWorkPositionRef = useRef<{ x: number; y: number; z: number } | null>(null)
@@ -400,7 +579,7 @@ export function ZeroingWizardTab({
                 if (method.type === 'bitsetter' && connectedPort) {
                   sendGcode('G90') // Ensure absolute mode
                   setTimeout(() => {
-                    sendGcode('G53 G0 Z5') // Always retract to Z=5 in machine coordinates
+                    sendGcode('G53 G0 Z-5') // Always retract to Z=-5 in machine coordinates
                   }, 200)
                 }
               })
@@ -892,32 +1071,13 @@ export function ZeroingWizardTab({
                 <p>
                   The tool will automatically navigate to the BitSetter location configured in settings. The machine will move to the BitSetter position safely.
                 </p>
-                <p>
-                  <strong>BitSetter Location:</strong>
-                </p>
-                <ul className="list-disc list-inside space-y-1 ml-2 text-sm">
-                  <li>X: {bitsetterMethod.position.x.toFixed(3)}mm</li>
-                  <li>Y: {bitsetterMethod.position.y.toFixed(3)}mm</li>
-                  <li>Z: {bitsetterMethod.position.z.toFixed(3)}mm</li>
-                </ul>
               </div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="text-sm font-medium">Current Position:</div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">X: </span>
-                  <span className="font-mono">{machinePosition.x.toFixed(3)}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Y: </span>
-                  <span className="font-mono">{machinePosition.y.toFixed(3)}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Z: </span>
-                  <span className="font-mono">{machinePosition.z.toFixed(3)}</span>
-                </div>
-              </div>
+            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                <strong>Warning:</strong> Make sure there is a clear path to the BitSetter location and that no obstacles will interfere with the tool movement.
+              </p>
             </div>
             <div className="flex items-center justify-center py-4">
               <Button
@@ -931,11 +1091,41 @@ export function ZeroingWizardTab({
                 Navigate to BitSetter
               </Button>
             </div>
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure there is a clear path to the BitSetter location and that no obstacles will interfere with the tool movement.
-              </p>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">BitSetter Location:</div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">X: </span>
+                    <span className="font-mono">{bitsetterMethod.position.x.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Y: </span>
+                    <span className="font-mono">{bitsetterMethod.position.y.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Z: </span>
+                    <span className="font-mono">{bitsetterMethod.position.z.toFixed(3)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Machine Position:</div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">X: </span>
+                    <span className="font-mono">{machinePosition.x.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Y: </span>
+                    <span className="font-mono">{machinePosition.y.toFixed(3)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Z: </span>
+                    <span className="font-mono">{machinePosition.z.toFixed(3)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )
@@ -964,6 +1154,13 @@ export function ZeroingWizardTab({
         const isProbing = probeStatus === 'probing' || probeStatus === 'capturing' || probeStatus === 'storing'
         const isProbeComplete = probeStatus === 'complete'
         const isProbeError = probeStatus === 'error'
+        
+        // Check if machine is at bitsetter position (with 1mm tolerance)
+        const positionTolerance = 1.0
+        const isAtBitsetterPosition = 
+          Math.abs(machinePosition.x - bitsetterMethod.position.x) < positionTolerance &&
+          Math.abs(machinePosition.y - bitsetterMethod.position.y) < positionTolerance &&
+          Math.abs(machinePosition.z - bitsetterMethod.position.z) < positionTolerance
         
         return (
           <div className="space-y-4">
@@ -1040,42 +1237,28 @@ export function ZeroingWizardTab({
               </div>
             )}
             
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="text-sm font-medium">Probe Settings:</div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Probe Feedrate: </span>
-                  <span className="font-mono">{bitsetterMethod.probeFeedrate}mm/min</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Probe Distance: </span>
-                  <span className="font-mono">{bitsetterMethod.probeDistance}mm</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Work Coordinate: </span>
-                  <span className="font-mono">{currentWCS}</span>
+            {!isProbing && !isProbeComplete && !isAtBitsetterPosition && (
+              <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                      Machine not at BitSetter location
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                      The machine is not positioned at the BitSetter location. Please go back to the previous step and navigate to the BitSetter location before probing.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             
-            {/* Current Position Display */}
-            {!isProbeComplete && (
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <div className="text-sm font-medium">Current Work Position:</div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">X: </span>
-                    <span className="font-mono">{workPosition.x.toFixed(3)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Y: </span>
-                    <span className="font-mono">{workPosition.y.toFixed(3)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Z: </span>
-                    <span className="font-mono">{workPosition.z.toFixed(3)}</span>
-                  </div>
-                </div>
+            {!isProbing && !isProbeComplete && isAtBitsetterPosition && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                  <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({bitsetterMethod.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
+                </p>
               </div>
             )}
             
@@ -1085,7 +1268,7 @@ export function ZeroingWizardTab({
                 variant="default"
                 size="lg"
                 className="gap-2"
-                disabled={!isConnected || !connectedPort || isProbing}
+                disabled={!isConnected || !connectedPort || isProbing || !isAtBitsetterPosition}
               >
                 {isProbing ? (
                   <>
@@ -1102,15 +1285,6 @@ export function ZeroingWizardTab({
                 )}
               </Button>
             </div>
-            
-            {!isProbing && !isProbeComplete && (
-              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                  <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({bitsetterMethod.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
-                </p>
-              </div>
-            )}
             
             {isProbeComplete && (
               <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -1903,7 +2077,10 @@ export function ZeroingWizardTab({
               (method.type === 'custom' && currentStep === 1 && probeStatus !== 'complete') ||
               (method.type === 'touchplate' && 
                currentStep === (method.requireCheck === false ? 2 : 3) &&
-               probeStatus !== 'complete')
+               probeStatus !== 'complete') ||
+              (method.type === 'bitsetter' && 
+               currentStep === (method.requireCheck === false ? 1 : 2) &&
+               !bitsetterNavigated)
             }
           >
             Next

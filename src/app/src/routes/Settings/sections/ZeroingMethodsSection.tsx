@@ -190,7 +190,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         ...base,
         type: 'bitsetter',
         axes: 'z',
-        position: { x: 0, y: 0, z: -50 },
+        position: { x: 0, y: 0, z: -30 },
         probeFeedrate: 100,
         probeDistance: 50,
         retractHeight: 10,
@@ -634,7 +634,7 @@ function MethodEditDialog({
           </Button>
           <Button 
             onClick={handleSave}
-            disabled={editedMethod.type === 'bitsetter' && editedMethod.position.x === 0 && editedMethod.position.y === 0 && editedMethod.position.z === -50}
+            disabled={editedMethod.type === 'bitsetter' && editedMethod.position.x === 0 && editedMethod.position.y === 0 && editedMethod.position.z === -30}
           >
             <Check className="w-4 h-4 mr-2" />
             Save
@@ -707,7 +707,7 @@ function BitSetterSettings({
             variant="outline" 
             size="sm" 
             onClick={() => {
-              onChange({ position: { x: machinePosition.x, y: machinePosition.y, z: machinePosition.z } })
+              onChange({ position: { x: machinePosition.x, y: machinePosition.y, z: -30 } })
             }}
             className="gap-1.5"
             disabled={!isConnectedAndHomed}
@@ -718,27 +718,20 @@ function BitSetterSettings({
         </div>
         <div className="bg-muted/50 rounded-lg p-3 space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Stored BitSetter Position:</div>
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-muted-foreground">X: </span>
               <span className="font-mono">
-                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.x.toFixed(3)}
+                {config.position.x === 0 && config.position.y === 0 && config.position.z === -30 ? '--' : config.position.x.toFixed(3)}
               </span>
-              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
+              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -30 ? '' : 'mm'}</span>
             </div>
             <div>
               <span className="text-muted-foreground">Y: </span>
               <span className="font-mono">
-                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.y.toFixed(3)}
+                {config.position.x === 0 && config.position.y === 0 && config.position.z === -30 ? '--' : config.position.y.toFixed(3)}
               </span>
-              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Z: </span>
-              <span className="font-mono">
-                {config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '--' : config.position.z.toFixed(3)}
-              </span>
-              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -50 ? '' : 'mm'}</span>
+              <span className="text-muted-foreground text-xs ml-1">{config.position.x === 0 && config.position.y === 0 && config.position.z === -30 ? '' : 'mm'}</span>
             </div>
           </div>
         </div>
