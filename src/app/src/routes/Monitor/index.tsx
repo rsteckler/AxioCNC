@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList } from 'lucide-react'
+import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList, Target } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -14,7 +14,10 @@ import { MachineActionButton } from '@/components/MachineActionButton'
 import { PageStatusBar } from '@/components/PageStatusBar'
 import { Console } from '@/components/Console'
 import { ToolChangeTab } from '@/components/ToolChangeTab'
+import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
+import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
@@ -1107,7 +1110,50 @@ export default function Monitor() {
   
   // Tab state for visualizer/console
   const { isToolChangePending } = useToolChange()
-  const [tab, setTab] = useState<'visualizer' | 'console' | 'toolchange'>('visualizer')
+  const [tab, setTab] = useState<'visualizer' | 'console' | 'toolchange' | 'wizard'>('visualizer')
+  
+  // Wizard state
+  const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
+  const [showMethodSelectDialog, setShowMethodSelectDialog] = useState(false)
+  const [pendingJobStart, setPendingJobStart] = useState(false) // Track if we need to start job after wizard completes
+
+  // Handler for starting wizard from job start (called by JobStatusBar)
+  const handleStartWizard = useCallback((method: ZeroingMethod | 'ask' | null) => {
+    if (method === 'ask') {
+      // Show method selection dialog
+      setShowMethodSelectDialog(true)
+      setPendingJobStart(true) // Mark that we need to start job after wizard
+    } else if (method) {
+      // Open wizard with specific method
+      setWizardMethod(method)
+      setPendingJobStart(true) // Mark that we need to start job after wizard
+      setTab('wizard') // Switch to wizard tab
+    }
+  }, [])
+
+  // Handle method selection from dialog
+  const handleMethodSelect = useCallback((method: ZeroingMethod) => {
+    setShowMethodSelectDialog(false)
+    setWizardMethod(method)
+    setTab('wizard') // Switch to wizard tab
+  }, [])
+
+  // Handle wizard close - start job if pending
+  const handleWizardClose = useCallback(() => {
+    setWizardMethod(null)
+    // If we were starting a job, start it now that wizard is complete
+    if (pendingJobStart) {
+      setPendingJobStart(false)
+      // Small delay to ensure wizard tab is closed before starting
+      setTimeout(() => {
+        if (connectedPort) {
+          sendCommand('gcode:start')
+        }
+      }, 100)
+    }
+    // Switch back to visualizer tab (use functional update to avoid dependency)
+    setTab(prevTab => prevTab === 'wizard' ? 'visualizer' : prevTab)
+  }, [pendingJobStart, connectedPort, sendCommand])
   
   // Switch to tool change tab when tool change is pending
   useEffect(() => {
@@ -1115,6 +1161,13 @@ export default function Monitor() {
       setTab('toolchange')
     }
   }, [isToolChangePending])
+
+  // Switch to wizard tab when wizard method is set
+  useEffect(() => {
+    if (wizardMethod) {
+      setTab('wizard')
+    }
+  }, [wizardMethod])
   
   // Panel props with real state from Redux
   const panelProps: PanelProps = {
@@ -1202,7 +1255,7 @@ export default function Monitor() {
         <div className="flex gap-1 ml-6">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>Setup</Button>
           <Button variant="default" size="sm">Monitor</Button>
-          <Button variant="ghost" size="sm">Stats</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
         </div>
         
@@ -1252,6 +1305,7 @@ export default function Monitor() {
         onFlashStatus={flashStatus}
         disabled={!isConnected || machineStatus === 'alarm'}
         hasFile={!!jobState?.name}
+        onStartWizard={handleStartWizard}
       />
 
       {/* Main content area */}
@@ -1337,6 +1391,22 @@ export default function Monitor() {
                   </button>
                 </>
               )}
+              {wizardMethod && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <button
+                    onClick={() => setTab('wizard')}
+                    className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      tab === 'wizard' 
+                        ? 'border-primary text-foreground' 
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Target className="w-4 h-4 inline mr-1.5" />
+                    {wizardMethod.name}
+                  </button>
+                </>
+              )}
             </div>
             
             {/* Tab content */}
@@ -1345,6 +1415,18 @@ export default function Monitor() {
               {tab === 'console' && <Console isConnected={isConnected} connectedPort={connectedPort} />}
               {tab === 'toolchange' && (
                 <ToolChangeTab
+                  isConnected={isConnected}
+                  connectedPort={connectedPort}
+                  machinePosition={machinePosition}
+                  workPosition={workPosition}
+                  probeContact={false}
+                  currentWCS="G54"
+                />
+              )}
+              {tab === 'wizard' && wizardMethod && (
+                <ZeroingWizardTab
+                  method={wizardMethod}
+                  onClose={handleWizardClose}
                   isConnected={isConnected}
                   connectedPort={connectedPort}
                   machinePosition={machinePosition}
@@ -1365,6 +1447,16 @@ export default function Monitor() {
           />
         </div>
       </div>
+
+      {/* Method selection dialog for "ask" strategy */}
+      <ZeroingMethodSelectDialog
+        open={showMethodSelectDialog}
+        onOpenChange={setShowMethodSelectDialog}
+        methods={settings?.zeroingMethods?.methods ?? []}
+        title="Select Zeroing Method"
+        description="Choose a zeroing method to use before starting the job:"
+        onSelect={handleMethodSelect}
+      />
     </div>
   )
 }

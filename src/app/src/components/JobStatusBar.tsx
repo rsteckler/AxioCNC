@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { useGcodeCommand, useToolChangeDetection } from '@/hooks'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
+import { useGetSettingsQuery } from '@/services/api'
 import type { MachineReadinessStatus } from '@/types/machine'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store'
 
@@ -21,6 +23,7 @@ interface JobStatusBarProps {
   onFlashStatus?: () => void
   disabled?: boolean
   hasFile?: boolean
+  onStartWizard?: (method: ZeroingMethod | 'ask' | null) => void
 }
 
 export function JobStatusBar({
@@ -33,9 +36,11 @@ export function JobStatusBar({
   onFlashStatus,
   disabled = false,
   hasFile = false,
+  onStartWizard,
 }: JobStatusBarProps) {
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const { data: settings } = useGetSettingsQuery()
   
   // Get completion state from Redux
   const completion = useSelector((state: RootState) => state.job.completion)
@@ -94,16 +99,60 @@ export function JobStatusBar({
       return
     }
     
-    // Otherwise start directly
-    sendCommand('gcode:start')
-  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand])
+    // Check zeroing strategy before starting
+    const strategy = settings?.zeroingStrategies?.initialSetup
+    const methods = settings?.zeroingMethods?.methods ?? []
+    
+    if (strategy === 'skip') {
+      // Skip zeroing - start directly
+      sendCommand('gcode:start')
+    } else if (strategy === 'ask' && onStartWizard) {
+      // Show method selection dialog
+      onStartWizard('ask')
+    } else if (strategy && strategy !== 'ask' && strategy !== 'skip' && onStartWizard) {
+      // Find method by ID and open wizard
+      const method = methods.find((m: ZeroingMethod) => m.id === strategy)
+      if (method && method.enabled) {
+        onStartWizard(method)
+      } else {
+        // Method not found or disabled - start anyway (fallback)
+        sendCommand('gcode:start')
+      }
+    } else {
+      // No wizard handler or strategy not set - start directly
+      sendCommand('gcode:start')
+    }
+  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard])
 
   const handleStartConfirmed = useCallback(() => {
     if (!isConnected || !connectedPort) {
       return
     }
-    sendCommand('gcode:start')
-  }, [isConnected, connectedPort, sendCommand])
+    
+    // Check zeroing strategy before starting (same logic as handleStartClick)
+    const strategy = settings?.zeroingStrategies?.initialSetup
+    const methods = settings?.zeroingMethods?.methods ?? []
+    
+    if (strategy === 'skip') {
+      // Skip zeroing - start directly
+      sendCommand('gcode:start')
+    } else if (strategy === 'ask' && onStartWizard) {
+      // Show method selection dialog
+      onStartWizard('ask')
+    } else if (strategy && strategy !== 'ask' && strategy !== 'skip' && onStartWizard) {
+      // Find method by ID and open wizard
+      const method = methods.find((m: ZeroingMethod) => m.id === strategy)
+      if (method && method.enabled) {
+        onStartWizard(method)
+      } else {
+        // Method not found or disabled - start anyway (fallback)
+        sendCommand('gcode:start')
+      }
+    } else {
+      // No wizard handler or strategy not set - start directly
+      sendCommand('gcode:start')
+    }
+  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard])
 
   const handlePause = useCallback(() => {
     if (!isConnected || !connectedPort) {

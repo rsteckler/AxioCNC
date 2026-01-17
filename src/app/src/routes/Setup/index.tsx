@@ -68,6 +68,7 @@ import { JogPanel } from './panels/JogPanel'
 import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
+import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { RapidPanel } from './panels/RapidPanel'
 import { FilePanel } from './panels/FilePanel'
 import { ToolsPanel } from './panels/ToolsPanel'
@@ -338,6 +339,44 @@ export default function Setup() {
   
   // Wizard state
   const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
+  const [showMethodSelectDialog, setShowMethodSelectDialog] = useState(false)
+  const [pendingJobStart, setPendingJobStart] = useState(false) // Track if we need to start job after wizard completes
+
+  // Handler for starting wizard from job start (called by JobStatusBar)
+  const handleStartWizard = useCallback((method: ZeroingMethod | 'ask' | null) => {
+    if (method === 'ask') {
+      // Show method selection dialog
+      setShowMethodSelectDialog(true)
+      setPendingJobStart(true) // Mark that we need to start job after wizard
+    } else if (method) {
+      // Open wizard with specific method
+      setWizardMethod(method)
+      setPendingJobStart(true) // Mark that we need to start job after wizard
+      // Wizard tab switch is handled automatically by VisualizerPanel when wizardMethod is set
+    }
+  }, [])
+
+  // Handle method selection from dialog
+  const handleMethodSelect = useCallback((method: ZeroingMethod) => {
+    setShowMethodSelectDialog(false)
+    setWizardMethod(method)
+    // Switch to wizard tab is handled by VisualizerPanel when wizardMethod is set
+  }, [])
+
+  // Handle wizard close - start job if pending
+  const handleWizardClose = useCallback(() => {
+    setWizardMethod(null)
+    // If we were starting a job, start it now that wizard is complete
+    if (pendingJobStart) {
+      setPendingJobStart(false)
+      // Small delay to ensure wizard tab is closed before starting
+      setTimeout(() => {
+        if (connectedPort) {
+          sendCommand('gcode:start')
+        }
+      }, 100)
+    }
+  }, [pendingJobStart, connectedPort, sendCommand])
   
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineReadinessStatus>(machineStatus)
@@ -788,7 +827,7 @@ export default function Setup() {
         <div className="flex gap-1 ml-6">
           <Button variant="default" size="sm">Setup</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
-          <Button variant="ghost" size="sm">Stats</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
         </div>
         
@@ -858,6 +897,7 @@ export default function Setup() {
         onFlashStatus={flashStatus}
         disabled={!isConnected || machineStatus === 'alarm'}
         hasFile={!!jobState?.name}
+        onStartWizard={handleStartWizard}
       />
       
       {/* Dashboard - Two column flex layout */}
@@ -939,7 +979,7 @@ export default function Setup() {
               isConnected={isConnected} 
               connectedPort={connectedPort}
               wizardMethod={wizardMethod}
-              onWizardClose={() => setWizardMethod(null)}
+              onWizardClose={handleWizardClose}
               machinePosition={machinePosition}
               workPosition={workPosition}
               probeContact={probeContact}
@@ -1036,6 +1076,16 @@ export default function Setup() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Method selection dialog for "ask" strategy */}
+      <ZeroingMethodSelectDialog
+        open={showMethodSelectDialog}
+        onOpenChange={setShowMethodSelectDialog}
+        methods={settings?.zeroingMethods?.methods ?? []}
+        title="Select Zeroing Method"
+        description="Choose a zeroing method to use before starting the job:"
+        onSelect={handleMethodSelect}
+      />
     </div>
   )
 }

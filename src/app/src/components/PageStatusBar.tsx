@@ -1,5 +1,6 @@
 import { MachineStatusBar } from './MachineStatusBar'
 import { JobStatusBar } from './JobStatusBar'
+import type { ZeroingMethod } from '../../../shared/schemas/settings'
 
 interface PageStatusBarProps {
   // MachineStatusBar props
@@ -14,6 +15,7 @@ interface PageStatusBarProps {
   onFlashStatus?: () => void
   disabled?: boolean
   hasFile?: boolean
+  onStartWizard?: (method: ZeroingMethod | 'ask' | null) => void
 }
 
 export function PageStatusBar({
@@ -26,6 +28,7 @@ export function PageStatusBar({
   onFlashStatus,
   disabled,
   hasFile,
+  onStartWizard,
 }: PageStatusBarProps) {
   return (
     <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
@@ -40,6 +43,7 @@ export function PageStatusBar({
         onFlashStatus={onFlashStatus}
         disabled={disabled}
         hasFile={hasFile}
+        onStartWizard={onStartWizard}
       />
     </div>
   )
