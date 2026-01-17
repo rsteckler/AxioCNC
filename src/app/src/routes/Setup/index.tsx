@@ -342,6 +342,9 @@ export default function Setup() {
   const [showMethodSelectDialog, setShowMethodSelectDialog] = useState(false)
   const [pendingJobStart, setPendingJobStart] = useState(false) // Track if we need to start job after wizard completes
 
+  // G-code command hook - must be declared before use in callbacks
+  const { sendCommand } = useGcodeCommand(connectedPort)
+
   // Handler for starting wizard from job start (called by JobStatusBar)
   const handleStartWizard = useCallback((method: ZeroingMethod | 'ask' | null) => {
     if (method === 'ask') {
@@ -406,9 +409,6 @@ export default function Setup() {
   // const { data: controllersData } = useGetControllersQuery(undefined, {
   //   refetchOnMountOrArgChange: true, // Always refetch when component mounts
   // })
-  
-  // G-code command hook for main component handlers
-  const { sendCommand } = useGcodeCommand(connectedPort)
   
   // Client-side joystick input hook
   useJoystickInput({
