@@ -11,6 +11,7 @@ interface CustomZeroingWizardProps {
   isConnected: boolean
   connectedPort: string | null
   onProbe: () => void
+  isJobPaused?: boolean
 }
 
 /**
@@ -24,6 +25,7 @@ export function CustomZeroingWizard({
   isConnected,
   connectedPort,
   onProbe,
+  isJobPaused = false,
 }: CustomZeroingWizardProps) {
   const isProbing = probeStatus === 'probing'
   const isProbeComplete = probeStatus === 'complete'
@@ -115,6 +117,7 @@ export function CustomZeroingWizard({
       )
     case 2:
       // Step 2: Complete (only shown after G-code is done)
+      // If job is paused, show this as intermediate step, then case 3 will be the final Complete step
       return (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -136,6 +139,40 @@ export function CustomZeroingWizard({
           </div>
         </div>
       )
+    case 3: {
+      // Step 3: Complete (only shown if job is paused)
+      if (!isJobPaused) {
+        return null
+      }
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold">Step 3: Complete</h3>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                The zeroing wizard is complete! The custom G-code has been executed.
+              </p>
+              <p className="font-medium text-foreground mt-3">
+                Next steps:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
+                <li>Press <strong>Resume</strong> on the job status indicator to continue the job</li>
+              </ol>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+              <p className="font-medium">Zeroing complete</p>
+              <p>
+                The custom G-code probe sequence has finished. You can now resume the job.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
     default:
       return null
   }

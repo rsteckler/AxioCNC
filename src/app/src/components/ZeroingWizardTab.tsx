@@ -1314,6 +1314,7 @@ export function ZeroingWizardTab({
           currentStep={currentStep}
           machinePosition={machinePosition}
           workPosition={workPosition}
+          isJobPaused={isJobPaused}
         />
       )
     }
@@ -1388,6 +1389,7 @@ export function ZeroingWizardTab({
           isConnected={isConnected}
           connectedPort={connectedPort}
           onProbe={handleBitZeroProbe}
+          isJobPaused={isJobPaused}
         />
       )
     }
@@ -1401,6 +1403,7 @@ export function ZeroingWizardTab({
           isConnected={isConnected}
           connectedPort={connectedPort}
           onProbe={handleCustomProbe}
+          isJobPaused={isJobPaused}
         />
       )
     }

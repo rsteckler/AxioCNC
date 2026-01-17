@@ -1,5 +1,5 @@
 import React from 'react'
-import { HelpCircle, RotateCcw } from 'lucide-react'
+import { HelpCircle, RotateCcw, Check } from 'lucide-react'
 import { getAxesLabel } from './utils'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 
@@ -8,6 +8,7 @@ interface ManualZeroingWizardProps {
   currentStep: number
   machinePosition: { x: number; y: number; z: number }
   workPosition: { x: number; y: number; z: number }
+  isJobPaused?: boolean
 }
 
 /**
@@ -18,6 +19,7 @@ export function ManualZeroingWizard({
   currentStep,
   machinePosition,
   workPosition,
+  isJobPaused = false,
 }: ManualZeroingWizardProps) {
   const axes = method.axes
 
@@ -195,6 +197,40 @@ export function ManualZeroingWizard({
               </div>
             </div>
           )}
+        </div>
+      )
+    }
+    case 4: {
+      // Step 4: Complete (only shown if job is paused)
+      if (!isJobPaused) {
+        return null
+      }
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold">Step 4: Complete</h3>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                The zeroing wizard is complete! Zero has been set for {getAxesLabel(method.axes)}.
+              </p>
+              <p className="font-medium text-foreground mt-3">
+                Next steps:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
+                <li>Press <strong>Resume</strong> on the job status indicator to continue the job</li>
+              </ol>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+              <p className="font-medium">Zeroing complete</p>
+              <p>
+                Zero has been set for {getAxesLabel(method.axes)}. You can now resume the job.
+              </p>
+            </div>
+          </div>
         </div>
       )
     }

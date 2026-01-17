@@ -14,7 +14,8 @@ export function getAxesLabel(axes: string): string {
  */
 export function getTotalSteps(method: { type: string; requireCheck?: boolean }, isToolChange = false, isFirstToolChange = true, isJobPaused = false): number {
   if (method.type === 'manual') {
-    return 3
+    // Manual: 3 steps normally, add 1 if job is paused (Complete step)
+    return isJobPaused ? 4 : 3
   }
   if (method.type === 'touchplate') {
     // If requireCheck is false, skip the verification step (3 steps instead of 4)
@@ -37,11 +38,14 @@ export function getTotalSteps(method: { type: string; requireCheck?: boolean }, 
   }
   if (method.type === 'bitzero') {
     // If requireCheck is false, skip the verification step (4 steps instead of 5)
-    return method.requireCheck === false ? 4 : 5
+    // Add 1 step if job is paused (Complete step)
+    const baseSteps = method.requireCheck === false ? 4 : 5
+    return isJobPaused ? baseSteps + 1 : baseSteps
   }
   if (method.type === 'custom') {
     // Custom G-code: step 1 = run G-code, step 2 = complete
-    return 2
+    // Add 1 step if job is paused (Complete step after G-code complete step)
+    return isJobPaused ? 3 : 2
   }
   // Other methods will be implemented later
   return 1

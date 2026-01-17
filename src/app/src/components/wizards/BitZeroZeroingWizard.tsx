@@ -14,6 +14,7 @@ interface BitZeroZeroingWizardProps {
   isConnected: boolean
   connectedPort: string | null
   onProbe: () => void
+  isJobPaused?: boolean
 }
 
 /**
@@ -30,6 +31,7 @@ export function BitZeroZeroingWizard({
   isConnected,
   connectedPort,
   onProbe,
+  isJobPaused = false,
 }: BitZeroZeroingWizardProps) {
   // Map step numbers based on requireCheck setting
   // If requireCheck is false, skip step 1 (verification), so step 1->place, step 2->jog, step 3->probe, step 4->remove
@@ -311,6 +313,40 @@ export function BitZeroZeroingWizard({
           </div>
         </div>
       )
+    case 6: {
+      // Step 6: Complete (only shown if job is paused, shown as step 5 if requireCheck is false)
+      if (!isJobPaused) {
+        return null
+      }
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold">Step {skipVerification ? 5 : 6}: Complete</h3>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                The zeroing wizard is complete! XYZ zero has been set at the corner of your workpiece.
+              </p>
+              <p className="font-medium text-foreground mt-3">
+                Next steps:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
+                <li>Press <strong>Resume</strong> on the job status indicator to continue the job</li>
+              </ol>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+              <p className="font-medium">Zeroing complete</p>
+              <p>
+                XYZ zero has been set at the corner of your workpiece ({currentWCS}). You can now resume the job.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
     default:
       return null
   }
