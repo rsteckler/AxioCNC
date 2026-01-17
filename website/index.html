@@ -140,6 +140,7 @@
                 <div class="hidden md:flex space-x-8">
                     <a href="#benefits" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to Benefits section">Benefits</a>
                     <a href="#how-it-works" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to How It Works section">How It Works</a>
+                    <a href="#screenshots" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to Screenshots section">Screenshots</a>
                     <a href="#download" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="Go to Download section">Download</a>
                     <a href="docs.html" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="View documentation">Docs</a>
                     <a href="https://github.com/rsteckler/AxioCNC" class="text-zinc-600 dark:text-zinc-400 hover:text-primary-light transition-colors" aria-label="View GitHub repository" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -159,6 +160,7 @@
                 <div class="py-4 space-y-2">
                     <a href="#benefits" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to Benefits section">Benefits</a>
                     <a href="#how-it-works" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to How It Works section">How It Works</a>
+                    <a href="#screenshots" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to Screenshots section">Screenshots</a>
                     <a href="#download" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="Go to Download section">Download</a>
                     <a href="docs.html" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="View documentation">Docs</a>
                     <a href="https://github.com/rsteckler/AxioCNC" class="block px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-primary-light hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded" aria-label="View GitHub repository" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -397,6 +399,98 @@
         </div>
     </section>
 
+    <!-- Screenshots Section -->
+    <section id="screenshots" class="py-20 fade-in">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-4xl font-bold mb-4">Screenshots</h2>
+                <div class="h-1 w-24 bg-primary-light mb-6"></div>
+                <p class="text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl">
+                    See AxioCNC in action. Click any screenshot to view full size.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Monitor Screen -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-monitor.png" alt="Monitor Screen - Main interface for running jobs" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-monitor.png', 'Monitor Screen - Main interface for running jobs')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Monitor Screen</p>
+                </div>
+
+                <!-- Setup Screen -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-setup.png" alt="Setup Screen - Machine setup and zeroing" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-setup.png', 'Setup Screen - Machine setup and zeroing')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Setup Screen</p>
+                </div>
+
+                <!-- Machine Configuration -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-machines.png" alt="Machine Configuration - Configure CNC controllers" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-machines.png', 'Machine Configuration - Configure CNC controllers')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Machine Configuration</p>
+                </div>
+
+                <!-- Joystick Settings -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-joystick.png" alt="Joystick Settings - Configure USB gamepad/joystick controls" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-joystick.png', 'Joystick Settings - Configure USB gamepad/joystick controls')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Joystick Settings</p>
+                </div>
+
+                <!-- Tool Library -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-tools.png" alt="Tool Library - Human-readable tool names and specifications" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-tools.png', 'Tool Library - Human-readable tool names and specifications')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Tool Library</p>
+                </div>
+
+                <!-- Theme Settings -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-themes.png" alt="Theme Settings - Light and dark modes with accent colors" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-themes.png', 'Theme Settings - Light and dark modes with accent colors')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Theme Settings</p>
+                </div>
+
+                <!-- Probing Strategies -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-probes.png" alt="Probing Strategies - Touch plate and edge finder support" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-probes.png', 'Probing Strategies - Touch plate and edge finder support')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Probing Strategies</p>
+                </div>
+
+                <!-- Statistics Dashboard -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-stats.png" alt="Statistics Dashboard - Machine usage and job statistics" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-stats.png', 'Statistics Dashboard - Machine usage and job statistics')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Statistics Dashboard</p>
+                </div>
+
+                <!-- Camera Feed -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-camera.png" alt="Camera Feed - Monitor your machine remotely" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-camera.png', 'Camera Feed - Monitor your machine remotely')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Camera Feed</p>
+                </div>
+
+                <!-- Macro Definition -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-macro-define-param.png" alt="Macro Definition - Create parameterized macros" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-macro-define-param.png', 'Macro Definition - Create parameterized macros')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Macro Definition</p>
+                </div>
+
+                <!-- Macro Execution -->
+                <div class="group cursor-pointer">
+                    <img src="media/screen-macro-run-param.png" alt="Macro Execution - Run macros with custom parameters" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-800 group-hover:opacity-90 transition-opacity shadow-md" onclick="openLightbox('media/screen-macro-run-param.png', 'Macro Execution - Run macros with custom parameters')" />
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 text-center">Macro Execution</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="fixed inset-0 bg-black/90 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="lightbox-caption">
+        <button id="lightbox-close" class="absolute top-4 right-4 text-white hover:text-zinc-300 transition-colors z-10" aria-label="Close lightbox">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        <img id="lightbox-image" src="" alt="" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
+        <p id="lightbox-caption" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center bg-black/50 px-4 py-2 rounded-lg max-w-2xl"></p>
+    </div>
+
     <!-- Download Section -->
     <section id="download" class="py-20 fade-in">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -611,6 +705,45 @@
         if (heroSection) {
             heroSection.classList.add('visible');
         }
+        
+        // Lightbox functionality
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        const lightboxClose = document.getElementById('lightbox-close');
+        
+        window.openLightbox = function(src, caption) {
+            lightboxImage.src = src;
+            lightboxCaption.textContent = caption;
+            lightboxImage.alt = caption;
+            lightbox.classList.remove('hidden');
+            lightbox.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        };
+        
+        function closeLightbox() {
+            lightbox.classList.add('hidden');
+            lightbox.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+        
+        if (lightboxClose) {
+            lightboxClose.addEventListener('click', closeLightbox);
+        }
+        
+        // Close on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !lightbox.classList.contains('hidden')) {
+                closeLightbox();
+            }
+        });
+        
+        // Close on backdrop click
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) {
+                closeLightbox();
+            }
+        });
     </script>
 </body>
 </html>

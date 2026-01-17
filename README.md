@@ -34,7 +34,41 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 
 ## 📸 Screenshots
 
-> **Note:** Screenshots coming soon. [Visit our website](https://axiocnc.com) to see the interface in action.
+### Main Interface
+
+<div align="center">
+  <img src="website/media/screen-monitor.png" alt="Monitor Screen" width="45%"/>
+  <img src="website/media/screen-setup.png" alt="Setup Screen" width="45%"/>
+</div>
+
+### Machine Management & Configuration
+
+<div align="center">
+  <img src="website/media/screen-machines.png" alt="Machine Configuration" width="45%"/>
+  <img src="website/media/screen-joystick.png" alt="Joystick Settings" width="45%"/>
+</div>
+
+### Tools & Themes
+
+<div align="center">
+  <img src="website/media/screen-tools.png" alt="Tool Library" width="45%"/>
+  <img src="website/media/screen-themes.png" alt="Theme Settings" width="45%"/>
+</div>
+
+### Advanced Features
+
+<div align="center">
+  <img src="website/media/screen-probes.png" alt="Probing Strategies" width="45%"/>
+  <img src="website/media/screen-stats.png" alt="Statistics Dashboard" width="45%"/>
+  <img src="website/media/screen-camera.png" alt="Camera Feed" width="45%"/>
+</div>
+
+### Macros
+
+<div align="center">
+  <img src="website/media/screen-macro-define-param.png" alt="Macro Definition with Parameters" width="45%"/>
+  <img src="website/media/screen-macro-run-param.png" alt="Macro Execution with Parameters" width="45%"/>
+</div>
 
 ---
 
