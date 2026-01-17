@@ -524,6 +524,12 @@ export default function Settings() {
   // Debounced function that sends accumulated changes
   const flushPendingChanges = useDebouncedCallback(
     async () => {
+      // Don't save if component is unmounting/unmounted
+      if (!isMountedRef.current) {
+        pendingChanges.current = {}
+        return
+      }
+      
       const changes = pendingChanges.current
       pendingChanges.current = {}
       
@@ -532,11 +538,17 @@ export default function Settings() {
       setIsSaving(true)
       try {
         await setSettings(changes).unwrap()
-        setLastSaved(new Date())
+        // Check again after async operation - component might have unmounted
+        if (isMountedRef.current) {
+          setLastSaved(new Date())
+        }
       } catch (error) {
         console.error('Failed to save settings:', error)
       } finally {
-        setIsSaving(false)
+        // Only update state if still mounted
+        if (isMountedRef.current) {
+          setIsSaving(false)
+        }
       }
     },
     500
@@ -1159,6 +1171,10 @@ export default function Settings() {
       return
     }
 
+    // Track pending timeouts and animation frames to cancel on unmount
+    let pendingRaf: number | null = null
+    let pendingTimeout: ReturnType<typeof setTimeout> | null = null
+
     const handleGamepadConnected = async (e: GamepadEvent) => {
       const gamepad = e.gamepad
       if (!gamepad) return
@@ -1178,8 +1194,10 @@ export default function Settings() {
       
       // Wait for React state to update after refresh, then check if we should auto-select
       // Use requestAnimationFrame + setTimeout to ensure state has propagated
-      requestAnimationFrame(() => {
-        setTimeout(() => {
+      pendingRaf = requestAnimationFrame(() => {
+        pendingRaf = null
+        pendingTimeout = setTimeout(() => {
+          pendingTimeout = null
           // Check if component is still mounted before updating state
           if (!isMountedRef.current) {
             return
@@ -1231,15 +1249,31 @@ export default function Settings() {
     }
 
     return () => {
+      // Cancel any pending animation frames and timeouts to prevent state updates after unmount
+      if (pendingRaf !== null) {
+        cancelAnimationFrame(pendingRaf)
+      }
+      if (pendingTimeout !== null) {
+        clearTimeout(pendingTimeout)
+      }
       window.removeEventListener('gamepadconnected', handleGamepadConnected)
       window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected)
     }
   }, [joystickConfig.connectionLocation, joystickConfig.enabled, joystickConfig.selectedGamepad, handleRefreshGamepads, handleJoystickConfigChange])
 
-  // Mark component as unmounted on cleanup
+  // Mark component as mounted on mount and unmounted on cleanup
   useEffect(() => {
+    isMountedRef.current = true
     return () => {
       isMountedRef.current = false
+    }
+  }, [])
+  
+  // Cancel any pending debounced saves when unmounting
+  useEffect(() => {
+    return () => {
+      // Cancel pending flush when component unmounts
+      pendingChanges.current = {}
     }
   }, [])
 
@@ -1262,6 +1296,11 @@ export default function Settings() {
               size="sm" 
               className="gap-2"
               onClick={() => {
+                // Mark as unmounting to prevent any pending state updates
+                isMountedRef.current = false
+                // Clear any pending debounced saves
+                pendingChanges.current = {}
+                // Navigate
                 navigate('/')
               }}
             >
