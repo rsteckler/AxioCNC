@@ -25,7 +25,8 @@ class GrblLineParserResultStatus {
     // Pattern matches: parameter name optionally followed by colon and value(s)
     // Values can be numbers (for MPos, Bf, FS, etc.) or letters (for Pn, A, etc.)
     // Examples: MPos:0.000,0.000,0.000, Bf:14,128, Pn:P, A:SFM
-    const pattern = /[a-zA-Z]+(:[a-zA-Z0-9\.\-]+(,[a-zA-Z0-9\.\-]+){0,5})?/g;
+    // Stops when it encounters a comma followed by a parameter name (letters + colon)
+    const pattern = /[A-Za-z]+(?::(?:[0-9.\-]+|[A-Za-z]+)(?:,(?![A-Za-z]+:)(?:[0-9.\-]+|[A-Za-z]+))*)?/g;
     const params = r[1].match(pattern);
     const result = {};
 
