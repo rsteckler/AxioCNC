@@ -230,6 +230,9 @@ export function VisualizerPanel({
   useEffect(() => {
     if (isToolChangePending) {
       setTab('toolchange')
+    } else {
+      // When tool change tab closes, switch back to 3D view
+      setTab(prevTab => prevTab === 'toolchange' ? '3d' : prevTab)
     }
   }, [isToolChangePending])
   // G-code state for visualizer

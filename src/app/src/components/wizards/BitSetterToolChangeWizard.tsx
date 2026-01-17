@@ -326,6 +326,37 @@ export function BitSetterToolChangeWizard({
         </div>
       )
     }
+    case 5: {
+      // Step 5: Complete Tool Change (only shown if requireCheck is true, shown as step 4 if requireCheck is false)
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold">Step {skipVerification ? 4 : 5}: Complete Tool Change</h3>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                The tool change wizard is complete! The tool length has been measured and stored, and the Z zero has been adjusted automatically.
+              </p>
+              <p className="font-medium text-foreground mt-3">
+                Next steps:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
+                <li>Press <strong>Resume</strong> on the job status indicator to continue the job with the new tool</li>
+              </ol>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
+              <p className="font-medium">Tool change complete</p>
+              <p>
+                The tool reference for {currentWCS} has been saved and Z zero has been adjusted. You can now resume the job.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
     default:
       return null
   }

@@ -22,11 +22,16 @@ export function getTotalSteps(method: { type: string; requireCheck?: boolean }, 
   }
   if (method.type === 'bitsetter') {
     if (isToolChange && !isFirstToolChange) {
-      // Subsequent tool change: Includes "Install Next Tool" step
-      // Steps: Verify (if requireCheck), Navigate, Install Next Tool, Run Probe
-      return method.requireCheck === false ? 3 : 4
+      // Subsequent tool change: Includes "Install Next Tool" step and final completion step
+      // Steps: Verify (if requireCheck), Navigate, Install Next Tool, Run Probe, Complete
+      return method.requireCheck === false ? 4 : 5
     }
-    // First tool change or initial setup: Include "Install First Tool" step
+    if (isToolChange && isFirstToolChange) {
+      // First tool change: Include "Install First Tool" step and final completion step
+      // Steps: Verify (if requireCheck), Navigate, Install First Tool, Run Probe, Complete
+      return method.requireCheck === false ? 4 : 5
+    }
+    // Initial setup (not a tool change): Include "Install First Tool" step
     // Steps: Verify (if requireCheck), Navigate, Install First Tool, Run Probe
     return method.requireCheck === false ? 3 : 4
   }

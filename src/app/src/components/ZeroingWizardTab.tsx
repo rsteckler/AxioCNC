@@ -1436,6 +1436,18 @@ export function ZeroingWizardTab({
             ((!isFirstToolChange && currentStep === (method.requireCheck === false ? 1 : 2)) ||
              (isFirstToolChange && currentStep === (method.requireCheck === false ? 1 : 2))) &&
             !bitsetterNavigated) ||
+           (method.type === 'bitsetter' && 
+            isToolChange && !isFirstToolChange &&
+            // For bitsetter subsequent tool changes, probe step requires probe to be complete
+            // Probe step: step 3 (if requireCheck false) or step 4 (if requireCheck true)
+            currentStep === (method.requireCheck === false ? 3 : 4) &&
+            probeStatus !== 'complete') ||
+           (method.type === 'bitsetter' && 
+            isToolChange && isFirstToolChange &&
+            // For bitsetter first tool changes, probe step requires probe to be complete
+            // Probe step: step 3 (if requireCheck false) or step 4 (if requireCheck true)
+            currentStep === (method.requireCheck === false ? 3 : 4) &&
+            probeStatus !== 'complete') ||
            (method.type === 'bitzero' && 
             currentStep === (method.requireCheck === false ? 3 : 4) &&
             probeStatus !== 'complete')
