@@ -12,7 +12,7 @@ export function getAxesLabel(axes: string): string {
 /**
  * Calculate total steps for a zeroing method
  */
-export function getTotalSteps(method: { type: string; requireCheck?: boolean }, isToolChange = false, isFirstToolChange = true): number {
+export function getTotalSteps(method: { type: string; requireCheck?: boolean }, isToolChange = false, isFirstToolChange = true, isJobPaused = false): number {
   if (method.type === 'manual') {
     return 3
   }
@@ -22,14 +22,14 @@ export function getTotalSteps(method: { type: string; requireCheck?: boolean }, 
   }
   if (method.type === 'bitsetter') {
     if (isToolChange && !isFirstToolChange) {
-      // Subsequent tool change: Includes "Install Next Tool" step and final completion step
-      // Steps: Verify (if requireCheck), Navigate, Install Next Tool, Run Probe, Complete
-      return method.requireCheck === false ? 4 : 5
+      // Subsequent tool change: Includes "Install Next Tool" step
+      // Steps: Verify (if requireCheck), Navigate, Install Next Tool, Run Probe, Complete (if job paused)
+      return method.requireCheck === false ? (isJobPaused ? 4 : 3) : (isJobPaused ? 5 : 4)
     }
     if (isToolChange && isFirstToolChange) {
-      // First tool change: Include "Install First Tool" step and final completion step
-      // Steps: Verify (if requireCheck), Navigate, Install First Tool, Run Probe, Complete
-      return method.requireCheck === false ? 4 : 5
+      // First tool change: Include "Install First Tool" step
+      // Steps: Verify (if requireCheck), Navigate, Install First Tool, Run Probe, Complete (if job paused)
+      return method.requireCheck === false ? (isJobPaused ? 4 : 3) : (isJobPaused ? 5 : 4)
     }
     // Initial setup (not a tool change): Include "Install First Tool" step
     // Steps: Verify (if requireCheck), Navigate, Install First Tool, Run Probe

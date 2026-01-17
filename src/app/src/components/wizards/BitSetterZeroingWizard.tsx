@@ -16,6 +16,7 @@ interface BitSetterZeroingWizardProps {
   connectedPort: string | null
   onNavigate: () => void
   onProbe: () => void
+  isJobPaused?: boolean
 }
 
 /**
@@ -34,6 +35,7 @@ export function BitSetterZeroingWizard({
   connectedPort,
   onNavigate,
   onProbe,
+  isJobPaused = false,
 }: BitSetterZeroingWizardProps) {
   // Map step numbers based on requireCheck setting
   // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->tool change, step 3->probe
@@ -326,7 +328,10 @@ export function BitSetterZeroingWizard({
     }
     case 5: {
       // Step 5: Complete Tool Change (shown as step 4 if requireCheck is false)
-      // This step is only shown during tool changes (first tool change), not during initial setup
+      // This step is only shown during tool changes (first tool change) when job is paused, not during initial setup
+      if (!isJobPaused) {
+        return null
+      }
       return (
         <div className="space-y-4">
           <div className="space-y-2">

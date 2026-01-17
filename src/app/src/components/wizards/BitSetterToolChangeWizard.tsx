@@ -16,6 +16,7 @@ interface BitSetterToolChangeWizardProps {
   connectedPort: string | null
   onNavigate: () => void
   onProbe: () => void
+  isJobPaused?: boolean
 }
 
 /**
@@ -35,6 +36,7 @@ export function BitSetterToolChangeWizard({
   connectedPort,
   onNavigate,
   onProbe,
+  isJobPaused = false,
 }: BitSetterToolChangeWizardProps) {
   // Map step numbers based on requireCheck setting
   // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->probe
@@ -327,7 +329,10 @@ export function BitSetterToolChangeWizard({
       )
     }
     case 5: {
-      // Step 5: Complete Tool Change (only shown if requireCheck is true, shown as step 4 if requireCheck is false)
+      // Step 5: Complete Tool Change (only shown if requireCheck is true AND job is paused, shown as step 4 if requireCheck is false AND job is paused)
+      if (!isJobPaused) {
+        return null
+      }
       return (
         <div className="space-y-4">
           <div className="space-y-2">

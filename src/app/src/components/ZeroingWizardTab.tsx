@@ -16,7 +16,7 @@ import { BitSetterToolChangeWizard } from './wizards/BitSetterToolChangeWizard'
 import { BitZeroZeroingWizard } from './wizards/BitZeroZeroingWizard'
 import { CustomZeroingWizard } from './wizards/CustomZeroingWizard'
 import { useToolChange } from '@/contexts/ToolChangeContext'
-import { useJobState } from '@/store/hooks'
+import { useJobState, useWorkflowState } from '@/store/hooks'
 
 interface ZeroingWizardTabProps {
   method: ZeroingMethod
@@ -66,6 +66,10 @@ export function ZeroingWizardTab({
   const jobState = useJobState()
   const jobId = jobState?.jobId
   
+  // Get workflow state to check if there's an active job in pause state
+  const workflowState = useWorkflowState()
+  const isJobPaused = workflowState === 'paused'
+  
   // Get initial tool reference for subsequent tool changes (from first tool change)
   const toolReferenceKey = `bitsetter.toolReference.${currentWCS}`
   const { data: toolReferenceData } = useGetExtensionsQuery(
@@ -88,7 +92,7 @@ export function ZeroingWizardTab({
     setBitsetterNavigated(false)
   }, [method.id])
   
-  const totalSteps = getTotalSteps(method, isToolChange, isFirstToolChange)
+  const totalSteps = getTotalSteps(method, isToolChange, isFirstToolChange, isJobPaused)
   const isLastStep = currentStep === totalSteps
   const isFirstStep = currentStep === 1
   
@@ -1348,6 +1352,7 @@ export function ZeroingWizardTab({
             connectedPort={connectedPort}
             onNavigate={handleBitsetterNavigate}
             onProbe={handleBitsetterProbe}
+            isJobPaused={isJobPaused}
           />
         )
       }
@@ -1366,6 +1371,7 @@ export function ZeroingWizardTab({
           connectedPort={connectedPort}
           onNavigate={handleBitsetterNavigate}
           onProbe={handleBitsetterProbe}
+          isJobPaused={isJobPaused}
         />
       )
     }
