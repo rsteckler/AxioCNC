@@ -1,7 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Bug } from 'lucide-react'
 import type { PanelProps } from '../types'
+import { useGetExtensionsQuery } from '@/services/api'
 import { 
   useMachineState,
   useIsConnected,
@@ -38,6 +39,27 @@ export function DebugPanel({
   const rxBufferSize = useRxBufferSize()
   const currentTool = useCurrentTool()
   const plannerQueue = usePlannerQueue()
+
+  // Get tool reference for G54
+  const toolReferenceKey = 'bitsetter.toolReference.G54'
+  const { data: toolReferenceData } = useGetExtensionsQuery({ key: toolReferenceKey })
+  
+  // Extract tool offset value from the reference data
+  const toolOffset = useMemo(() => {
+    if (!toolReferenceData) return null
+    
+    // Handle both direct value and object with value property
+    if (typeof toolReferenceData === 'number') {
+      return toolReferenceData
+    }
+    
+    if (typeof toolReferenceData === 'object' && toolReferenceData !== null && 'value' in toolReferenceData) {
+      const value = (toolReferenceData as { value?: unknown }).value
+      return typeof value === 'number' ? value : null
+    }
+    
+    return null
+  }, [toolReferenceData])
 
   // Get pin state and accessory state from backend status
   const pinState = machineState.backendStatus?.controllerState?.pinState || ''
@@ -204,6 +226,21 @@ export function DebugPanel({
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">No accessories active</p>
+          )}
+        </div>
+
+        {/* Tool Offset (G54) */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Tool Offset (G54)</h4>
+          {toolOffset !== null ? (
+            <div className="px-2 py-1 rounded bg-muted/50 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Offset:</span>
+                <span className="font-mono font-medium">{toolOffset.toFixed(3)}mm</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No tool offset stored for G54</p>
           )}
         </div>
       </div>

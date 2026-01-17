@@ -2,11 +2,44 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import type { PanelProps } from '../../Setup/types'
 import { formatTime } from '@/utils/formatTime'
-import { useGetToolsQuery } from '@/services/api'
+import { useGetToolsQuery, useGetExtensionsQuery } from '@/services/api'
+import { useMachineState } from '@/store/hooks'
+import { useMemo } from 'react'
 
 export function ToolsUsedPanel(props: PanelProps) {
   const { senderState, currentTool } = props
   const { data: toolsData } = useGetToolsQuery()
+  const machineState = useMachineState()
+  
+  // Get current WCS from machine state (default to G54)
+  const currentWCS = useMemo(() => {
+    const wcs = machineState.backendStatus?.parserstate?.modal?.wcs
+    return wcs || 'G54'
+  }, [machineState])
+  
+  // Get tool reference for current WCS
+  const toolReferenceKey = `bitsetter.toolReference.${currentWCS}`
+  const { data: toolReferenceData } = useGetExtensionsQuery({ key: toolReferenceKey }, {
+    skip: !currentWCS, // Skip if no WCS available
+  })
+  
+  // Extract tool offset value from the reference data
+  // The API returns the data directly: { value: number, wcs: string, timestamp: string }
+  const toolOffset = useMemo(() => {
+    if (!toolReferenceData) return null
+    
+    // Handle both direct value and object with value property
+    if (typeof toolReferenceData === 'number') {
+      return toolReferenceData
+    }
+    
+    if (typeof toolReferenceData === 'object' && toolReferenceData !== null && 'value' in toolReferenceData) {
+      const value = (toolReferenceData as { value?: unknown }).value
+      return typeof value === 'number' ? value : null
+    }
+    
+    return null
+  }, [toolReferenceData])
   
   const nextM6ToolNumber = senderState?.nextM6ToolNumber
   const remainingTimeToNextM6 = senderState?.remainingTimeToNextM6 ?? 0
@@ -45,8 +78,15 @@ export function ToolsUsedPanel(props: PanelProps) {
                     <span className="text-xs text-muted-foreground">Ø{currentToolData.diameter}{currentToolData.diameterUnit || 'mm'}</span>
                   )}
                 </div>
-                <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
-                  Current Tool
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                    Current Tool
+                  </div>
+                  {toolOffset !== null && (
+                    <div className="text-xs text-muted-foreground">
+                      Offset: <span className="font-mono">{toolOffset.toFixed(3)}mm</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}
