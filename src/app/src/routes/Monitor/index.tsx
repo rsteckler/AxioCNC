@@ -520,52 +520,53 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
       </div>
 
       {/* View mode controls */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg px-2 py-1.5 shadow-lg">
+      <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-1.5 shadow-lg">
         <Button
           variant={viewMode === 'side-by-side' ? 'default' : 'ghost'}
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs justify-start"
           onClick={() => setViewMode('side-by-side')}
         >
-          <Columns3 className="w-3 h-3 mr-1" />
+          <Columns3 className="w-3 h-3 mr-1.5" />
           Side-by-Side
         </Button>
         <Button
           variant={viewMode === 'visual-only' ? 'default' : 'ghost'}
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs justify-start"
           onClick={() => setViewMode('visual-only')}
         >
-          <Maximize2 className="w-3 h-3 mr-1" />
+          <Maximize2 className="w-3 h-3 mr-1.5" />
           3D View Only
         </Button>
         <Button
           variant={viewMode === 'camera-only' ? 'default' : 'ghost'}
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs justify-start"
           onClick={() => setViewMode('camera-only')}
         >
-          <Camera className="w-3 h-3 mr-1" />
+          <Camera className="w-3 h-3 mr-1.5" />
           Camera Only
         </Button>
-        <div className="w-px h-4 bg-border mx-1" />
+        <div className="w-full h-px bg-border my-0.5" />
         <Button
           variant={viewMode === 'pip-visual' || viewMode === 'pip-camera' ? 'default' : 'ghost'}
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs justify-start"
           onClick={() => setViewMode(viewMode === 'pip-visual' || viewMode === 'pip-camera' ? 'side-by-side' : 'pip-visual')}
         >
-          <PictureInPicture className="w-3 h-3 mr-1" />
+          <PictureInPicture className="w-3 h-3 mr-1.5" />
           PiP
         </Button>
         {(viewMode === 'pip-visual' || viewMode === 'pip-camera') && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
+            className="h-7 text-xs justify-start"
             onClick={handleSwapPiP}
           >
-            <ArrowLeftRight className="w-3 h-3" />
+            <ArrowLeftRight className="w-3 h-3 mr-1.5" />
+            Swap
           </Button>
         )}
       </div>
