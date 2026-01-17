@@ -61,7 +61,10 @@ const createServer = (options, callback) => {
   settings.rcfile = rcfile;
 
   // jobhistory service
-  const jobHistoryFile = path.resolve(path.dirname(rcfile), 'jobhistory.json');
+  const getUserHome = () => (process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']);
+  const homeDir = getUserHome();
+  const axiocncDir = path.resolve(homeDir, '.axiocnc');
+  const jobHistoryFile = path.resolve(axiocncDir, 'jobhistory.json');
   log.info(`Loading job history from ${chalk.yellow(JSON.stringify(jobHistoryFile))}`);
   jobHistory.load(jobHistoryFile);
   
