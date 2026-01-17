@@ -143,7 +143,7 @@ const METHOD_TYPES: Record<ZeroingMethodType, {
     title: 'BitZero',
     description: 'Corner, edge, or center probe for X, Y, and Z zeroing',
     defaultAxes: 'xyz',
-    canChangeAxes: true,
+    canChangeAxes: false,
   },
   'touchplate': {
     icon: <SquareDashedBottom className="w-5 h-5" />,
@@ -201,7 +201,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         ...base,
         type: 'bitzero',
         axes: 'xyz',
-        probeThickness: 12.7, // 0.5" is common
+        probeThickness: 13,
         probeFeedrate: 100,
         probeDistance: 25,
         requireCheck: true,

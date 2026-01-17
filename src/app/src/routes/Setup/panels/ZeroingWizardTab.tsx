@@ -1403,6 +1403,18 @@ export function ZeroingWizardTab({
                 </p>
               </div>
             </div>
+            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
+                <p className="font-medium">Jogging Tips:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Use large movements to get close to the hole</li>
+                  <li>Switch to small movements (0.1mm or less) when approaching the hole</li>
+                  <li>Ensure the tool is positioned below the Z surface of the probe</li>
+                  <li>The tool should be centered in the hole as much as possible</li>
+                </ul>
+              </div>
+            </div>
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="text-sm font-medium">Current Work Position:</div>
               <div className="grid grid-cols-3 gap-4 text-sm">
@@ -1418,18 +1430,6 @@ export function ZeroingWizardTab({
                   <span className="text-muted-foreground">Z: </span>
                   <span className="font-mono">{workPosition.z.toFixed(3)}</span>
                 </div>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
-                <p className="font-medium">Jogging Tips:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Use large movements to get close to the hole</li>
-                  <li>Switch to small movements (0.1mm or less) when approaching the hole</li>
-                  <li>Ensure the tool is positioned below the Z surface of the probe</li>
-                  <li>The tool should be centered in the hole as much as possible</li>
-                </ul>
               </div>
             </div>
           </div>
@@ -1452,6 +1452,60 @@ export function ZeroingWizardTab({
                 <p>
                   After probing, XYZ zero will be set at the corner of your workpiece.
                 </p>
+              </div>
+            </div>
+            
+            {!isProbing && !isProbeComplete && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                  <strong>Warning:</strong> Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.
+                </p>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-center py-4">
+              <Button
+                onClick={handleBitZeroProbe}
+                variant="default"
+                size="lg"
+                className="gap-2"
+                disabled={!isConnected || !connectedPort || isProbing}
+              >
+                {isProbing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {probeStatus === 'probing' && 'Probing...'}
+                    {probeStatus === 'complete' && 'Complete'}
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-5 h-5" />
+                    Start BitZero Probe
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="text-sm font-medium">Probe Settings:</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Probe Feedrate: </span>
+                  <span className="font-mono">{bitzeroMethod.probeFeedrate}mm/min</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Distance: </span>
+                  <span className="font-mono">{bitzeroMethod.probeDistance}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Probe Thickness: </span>
+                  <span className="font-mono">{bitzeroMethod.probeThickness}mm</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Work Coordinate: </span>
+                  <span className="font-mono">{currentWCS}</span>
+                </div>
               </div>
             </div>
             
@@ -1510,60 +1564,6 @@ export function ZeroingWizardTab({
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="text-sm font-medium">Probe Settings:</div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Probe Feedrate: </span>
-                  <span className="font-mono">{bitzeroMethod.probeFeedrate}mm/min</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Probe Distance: </span>
-                  <span className="font-mono">{bitzeroMethod.probeDistance}mm</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Probe Thickness: </span>
-                  <span className="font-mono">{bitzeroMethod.probeThickness}mm</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Work Coordinate: </span>
-                  <span className="font-mono">{currentWCS}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-center py-4">
-              <Button
-                onClick={handleBitZeroProbe}
-                variant="default"
-                size="lg"
-                className="gap-2"
-                disabled={!isConnected || !connectedPort || isProbing}
-              >
-                {isProbing ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    {probeStatus === 'probing' && 'Probing...'}
-                    {probeStatus === 'complete' && 'Complete'}
-                  </>
-                ) : (
-                  <>
-                    <Target className="w-5 h-5" />
-                    Start BitZero Probe
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {!isProbing && !isProbeComplete && (
-              <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                  <strong>Warning:</strong> Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.
-                </p>
               </div>
             )}
           </div>
@@ -2080,7 +2080,10 @@ export function ZeroingWizardTab({
                probeStatus !== 'complete') ||
               (method.type === 'bitsetter' && 
                currentStep === (method.requireCheck === false ? 1 : 2) &&
-               !bitsetterNavigated)
+               !bitsetterNavigated) ||
+              (method.type === 'bitzero' && 
+               currentStep === (method.requireCheck === false ? 3 : 4) &&
+               probeStatus !== 'complete')
             }
           >
             Next
