@@ -15,7 +15,8 @@ test('GrblLineParserResultStatus: all zeroes in the mask ($10=0)', (t) => {
     t.equal(raw, '<Idle>');
     t.same(status, {
       activeState: 'Idle',
-      subState: 0
+      subState: 0,
+      pinState: ''
     });
     t.end();
   });
@@ -40,7 +41,8 @@ test('GrblLineParserResultStatus: default ($10=3)', (t) => {
         x: '1.529',
         y: '-5.440',
         z: '-0.000'
-      }
+      },
+      pinState: ''
     });
     t.end();
   });
@@ -71,7 +73,8 @@ test('GrblLineParserResultStatus: 6-axis', (t) => {
         a: '0.100',
         b: '0.250',
         c: '0.500'
-      }
+      },
+      pinState: ''
     });
     t.end();
   });
@@ -108,6 +111,238 @@ test('GrblLineParserResultStatus: set all bits to 1 ($10=31)', (t) => {
 
   const line = '<Idle,MPos:5.529,0.560,7.000,WPos:1.529,-5.440,-0.000,Buf:0,RX:0,Lim:000>';
   runner.parse(line);
+});
+
+test('GrblLineParserResultStatus: v1.1 format with pipe separators', (t) => {
+  t.test('Basic v1.1 format with MPos, Bf, FS, Pn', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0|Pn:P>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 0,
+        spindle: 0,
+        pinState: 'P'
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0|Pn:P>';
+    runner.parse(line);
+  });
+
+  t.test('v1.1 format without Pn', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 0,
+        spindle: 0,
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0>';
+    runner.parse(line);
+  });
+
+  t.test('v1.1 format with WCO (Work Coordinate Offset)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0|Pn:P|WCO:-625.000,-625.000,-91.500>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '625.000',
+          y: '625.000',
+          z: '91.500'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 0,
+        spindle: 0,
+        pinState: 'P',
+        wco: {
+          x: '-625.000',
+          y: '-625.000',
+          z: '-91.500'
+        }
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:0,0|Pn:P|WCO:-625.000,-625.000,-91.500>';
+    runner.parse(line);
+  });
+
+  t.test('v1.1 format with Accessory State (A)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,8000|A:SFM>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 500,
+        spindle: 8000,
+        accessoryState: 'SFM',
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,8000|A:SFM>';
+    runner.parse(line);
+  });
+
+  t.end();
+});
+
+test('GrblLineParserResultStatus: v0.9 format with MPos and WPos (regression fix)', (t) => {
+  t.test('v0.9 format - both MPos and WPos correctly separated', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle,MPos:-31.000,-31.000,-1.000,WPos:0.000,0.000,0.000>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '-31.000',
+          y: '-31.000',
+          z: '-1.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        pinState: ''
+      });
+      // Critical: ensure WPos is not parsed as part of MPos (no "a": "WPos" field)
+      t.notOk(status.mpos.a, 'MPos should not have an "a" axis with value "WPos"');
+      t.end();
+    });
+
+    const line = '<Idle,MPos:-31.000,-31.000,-1.000,WPos:0.000,0.000,0.000>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format - MPos and WPos with all parameters', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle,MPos:5.529,0.560,7.000,WPos:1.529,-5.440,-0.000,Buf:0,RX:0,Lim:000>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '5.529',
+          y: '0.560',
+          z: '7.000'
+        },
+        wpos: {
+          x: '1.529',
+          y: '-5.440',
+          z: '-0.000'
+        },
+        buf: {
+          planner: 0,
+          rx: 0
+        },
+        pinState: ''
+      });
+      // Ensure WPos is not incorrectly parsed as part of MPos
+      t.notOk(status.mpos.a, 'MPos should not have an "a" axis with value "WPos"');
+      t.end();
+    });
+
+    const line = '<Idle,MPos:5.529,0.560,7.000,WPos:1.529,-5.440,-0.000,Buf:0,RX:0,Lim:000>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format - handles Pn parameter with letters correctly', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Pn:PX>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        pinState: 'PX'
+      });
+      // Ensure Pn is parsed correctly (letters after colon)
+      t.equal(status.pinState, 'PX');
+      // Ensure WPos is not part of MPos
+      t.notOk(status.mpos.a, 'MPos should not have an "a" axis');
+      t.end();
+    });
+
+    const line = '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Pn:PX>';
+    runner.parse(line);
+  });
+
+  t.end();
 });
 
 test('GrblLineParserResultOk', (t) => {
