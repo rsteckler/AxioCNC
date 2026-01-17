@@ -59,22 +59,22 @@ export const fetch = (req, res) => {
         totalRecords: Number(totalRecords)
       },
       records: pagedRecords.map(record => {
-        const { id, mtime, toolId, name, description, diameter, diameterUnit, type, flutes } = { ...record };
-        return { id, mtime, toolId, name, description, diameter, diameterUnit, type, flutes };
+        const { id, mtime, toolId, name, description, diameter, diameterUnit, type } = { ...record };
+        return { id, mtime, toolId, name, description, diameter, diameterUnit, type };
       })
     });
   } else {
     res.send({
       records: records.map(record => {
-        const { id, mtime, toolId, name, description, diameter, diameterUnit, type, flutes } = { ...record };
-        return { id, mtime, toolId, name, description, diameter, diameterUnit, type, flutes };
+        const { id, mtime, toolId, name, description, diameter, diameterUnit, type } = { ...record };
+        return { id, mtime, toolId, name, description, diameter, diameterUnit, type };
       })
     });
   }
 };
 
 export const create = (req, res) => {
-  const { toolId, name, description = '', diameter, diameterUnit = 'mm', type = '', flutes } = { ...req.body };
+  const { toolId, name, description = '', diameter, diameterUnit = 'mm', type = '' } = { ...req.body };
 
   if (typeof toolId !== 'number' && typeof toolId !== 'string') {
     res.status(ERR_BAD_REQUEST).send({
@@ -119,8 +119,7 @@ export const create = (req, res) => {
       description: description ? String(description).trim() : '',
       diameter: diameter != null && diameter !== '' ? Number(diameter) : null,
       diameterUnit: (diameterUnit === 'mm' || diameterUnit === 'in') ? diameterUnit : 'mm',
-      type: type ? String(type).trim() : '',
-      flutes: flutes != null && flutes !== '' ? Number(flutes) : null
+      type: type ? String(type).trim() : ''
     };
 
     records.push(record);
@@ -149,8 +148,8 @@ export const read = (req, res) => {
     return;
   }
 
-  const { mtime, toolId, name, description, diameter, diameterUnit, type, flutes } = { ...record };
-  res.send({ id, mtime, toolId, name, description, diameter, diameterUnit, type, flutes });
+  const { mtime, toolId, name, description, diameter, diameterUnit, type } = { ...record };
+  res.send({ id, mtime, toolId, name, description, diameter, diameterUnit, type });
 };
 
 export const update = (req, res) => {
@@ -171,8 +170,7 @@ export const update = (req, res) => {
     description = record.description,
     diameter = record.diameter,
     diameterUnit = record.diameterUnit,
-    type = record.type,
-    flutes = record.flutes
+    type = record.type
   } = { ...req.body };
 
   // Validate toolId if provided
@@ -215,7 +213,6 @@ export const update = (req, res) => {
     record.diameter = diameter != null && diameter !== '' ? Number(diameter) : null;
     record.diameterUnit = (diameterUnit === 'mm' || diameterUnit === 'in') ? diameterUnit : (record.diameterUnit || 'mm');
     record.type = type != null ? String(type).trim() : '';
-    record.flutes = flutes != null && flutes !== '' ? Number(flutes) : null;
 
     // Sort by toolId after update
     records.sort((a, b) => (a.toolId || 0) - (b.toolId || 0));

@@ -50,7 +50,6 @@ export interface Tool {
   diameter?: number | null  // Diameter value (null if not specified)
   diameterUnit?: 'mm' | 'in'  // Unit for diameter (defaults to 'mm' if not specified)
   type?: string  // Tool type (ballnose, straight, vbit, engraver, drill, chamfer, etc.)
-  flutes?: number | null  // Number of flutes (null if not specified)
   mtime?: number
 }
 
@@ -90,7 +89,6 @@ export function ToolLibrarySection({
   const [formDiameter, setFormDiameter] = useState('')
   const [formDiameterUnit, setFormDiameterUnit] = useState<'mm' | 'in'>('mm')
   const [formType, setFormType] = useState<string>('')
-  const [formFlutes, setFormFlutes] = useState('')
   const [isTypeCustom, setIsTypeCustom] = useState(false)
 
   const resetForm = () => {
@@ -100,7 +98,6 @@ export function ToolLibrarySection({
     setFormDiameter('')
     setFormDiameterUnit('mm')
     setFormType('')
-    setFormFlutes('')
     setIsTypeCustom(false)
   }
 
@@ -119,15 +116,6 @@ export function ToolLibrarySection({
       }
     }
 
-    // Parse flutes
-    let flutesNum: number | null = null
-    if (formFlutes.trim()) {
-      const flutesValue = parseInt(formFlutes, 10)
-      if (!isNaN(flutesValue) && flutesValue > 0) {
-        flutesNum = flutesValue
-      }
-    }
-
     onAdd({
       toolId: toolIdNum,
       name: formName.trim(),
@@ -135,7 +123,6 @@ export function ToolLibrarySection({
       diameter: diameterValue,
       diameterUnit: diameterValue != null ? formDiameterUnit : undefined,
       type: formType.trim() || undefined,
-      flutes: flutesNum,
     })
     resetForm()
     setIsAddOpen(false)
@@ -157,15 +144,6 @@ export function ToolLibrarySection({
         }
       }
 
-      // Parse flutes
-      let flutesNum: number | null = null
-      if (formFlutes.trim()) {
-        const flutesValue = parseInt(formFlutes, 10)
-        if (!isNaN(flutesValue) && flutesValue > 0) {
-          flutesNum = flutesValue
-        }
-      }
-
       onEdit({
         ...editingTool,
         toolId: toolIdNum,
@@ -174,7 +152,6 @@ export function ToolLibrarySection({
         diameter: diameterValue,
         diameterUnit: diameterValue != null ? formDiameterUnit : undefined,
         type: formType.trim() || undefined,
-        flutes: flutesNum,
       })
       resetForm()
       setEditingTool(null)
@@ -190,7 +167,6 @@ export function ToolLibrarySection({
     setFormDiameterUnit(tool.diameterUnit || 'mm')  // Use stored unit, default to mm
     const toolType = tool.type || ''
     setFormType(toolType)
-    setFormFlutes(tool.flutes?.toString() || '')
     setIsTypeCustom(!TOOL_TYPE_OPTIONS.includes(toolType as ToolTypeOption))
     setEditingTool(tool)
   }
@@ -362,21 +338,6 @@ export function ToolLibrarySection({
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tool-flutes">Number of Flutes</Label>
-                  <Input
-                    id="tool-flutes"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={formFlutes}
-                    onChange={(e) => setFormFlutes(e.target.value)}
-                    placeholder="e.g., 2, 4"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Number of cutting edges on the tool
-                  </p>
-                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -402,7 +363,6 @@ export function ToolLibrarySection({
                 <TableHead className="w-48">Name</TableHead>
                 <TableHead className="w-32">Diameter</TableHead>
                 <TableHead className="w-32">Type</TableHead>
-                <TableHead className="w-24">Flutes</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-28">Modified</TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
@@ -411,7 +371,7 @@ export function ToolLibrarySection({
             <TableBody>
               {sortedTools.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No tools configured</p>
                     <p className="text-xs mt-1">Add tools to build your tool library</p>
@@ -450,13 +410,6 @@ export function ToolLibrarySection({
                     <TableCell>
                       {tool.type ? (
                         <span className="text-sm">{tool.type}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {tool.flutes != null ? (
-                        <span className="text-sm">{tool.flutes}</span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -604,21 +557,6 @@ export function ToolLibrarySection({
                                     />
                                   )}
                                 </div>
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="edit-tool-flutes">Number of Flutes</Label>
-                                <Input
-                                  id="edit-tool-flutes"
-                                  type="number"
-                                  min="1"
-                                  step="1"
-                                  value={formFlutes}
-                                  onChange={(e) => setFormFlutes(e.target.value)}
-                                  placeholder="e.g., 2, 4"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Number of cutting edges on the tool
-                                </p>
                               </div>
                             </div>
                             <DialogFooter>

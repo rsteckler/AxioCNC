@@ -88,7 +88,6 @@ export function ToolsPanel() {
   const [formDiameter, setFormDiameter] = useState('')
   const [formDiameterUnit, setFormDiameterUnit] = useState<'mm' | 'in'>('mm')
   const [formType, setFormType] = useState<string>('')
-  const [formFlutes, setFormFlutes] = useState('')
   const [isTypeCustom, setIsTypeCustom] = useState(false)
   
   // Track loaded G-code content and filename
@@ -245,7 +244,6 @@ export function ToolsPanel() {
       setFormDiameter(existingTool.diameter?.toString() || '')
       setFormDiameterUnit(existingTool.diameterUnit || 'mm')
       setFormType(existingTool.type || '')
-      setFormFlutes(existingTool.flutes?.toString() || '')
       setIsTypeCustom(existingTool.type ? !TOOL_TYPE_OPTIONS.includes(existingTool.type as ToolTypeOption) : false)
     } else {
       // New tool - start with placeholder data
@@ -254,7 +252,6 @@ export function ToolsPanel() {
       setFormDiameter('')
       setFormDiameterUnit('mm')
       setFormType('')
-      setFormFlutes('')
       setIsTypeCustom(false)
     }
     setEditingToolId(toolId)
@@ -285,15 +282,6 @@ export function ToolsPanel() {
       }
     }
     
-    // Parse flutes
-    let flutesNum: number | null = null
-    if (formFlutes.trim()) {
-      const flutesValue = parseInt(formFlutes, 10)
-      if (!isNaN(flutesValue) && flutesValue > 0) {
-        flutesNum = flutesValue
-      }
-    }
-    
     const toolData: Omit<Tool, 'id' | 'mtime'> = {
       toolId: toolIdNum,
       name: formName.trim(),
@@ -301,7 +289,6 @@ export function ToolsPanel() {
       diameter: diameterValue,
       diameterUnit: diameterValue != null ? formDiameterUnit : undefined,
       type: formType.trim() || undefined,
-      flutes: flutesNum,
     }
     
     try {
@@ -322,7 +309,6 @@ export function ToolsPanel() {
       setFormDiameter('')
       setFormDiameterUnit('mm')
       setFormType('')
-      setFormFlutes('')
       setIsTypeCustom(false)
     } catch (error) {
       console.error('Failed to save tool:', error)
@@ -337,7 +323,6 @@ export function ToolsPanel() {
     setFormDiameter('')
     setFormDiameterUnit('mm')
     setFormType('')
-    setFormFlutes('')
     setIsTypeCustom(false)
   }
 
@@ -383,9 +368,6 @@ export function ToolsPanel() {
                       ) : null}
                       {tool.type && (
                         <> • {tool.type}</>
-                      )}
-                      {tool.flutes != null && (
-                        <> • {tool.flutes} fl{tool.flutes === 1 ? 'ute' : 'utes'}</>
                       )}
                     </div>
                     {tool.description && (
@@ -458,9 +440,6 @@ export function ToolsPanel() {
                       ) : null}
                       {tool.type && (
                         <> • {tool.type}</>
-                      )}
-                      {tool.flutes != null && (
-                        <> • {tool.flutes} fl{tool.flutes === 1 ? 'ute' : 'utes'}</>
                       )}
                     </div>
                     {tool.description && (
@@ -576,18 +555,6 @@ export function ToolsPanel() {
                   />
                 )}
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tool-flutes">Number of Flutes</Label>
-              <Input
-                id="tool-flutes"
-                type="number"
-                min="1"
-                step="1"
-                value={formFlutes}
-                onChange={(e) => setFormFlutes(e.target.value)}
-                placeholder="e.g., 2, 4"
-              />
             </div>
           </div>
           <DialogFooter>

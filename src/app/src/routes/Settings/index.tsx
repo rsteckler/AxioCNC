@@ -1024,7 +1024,7 @@ export default function Settings() {
 
   const handleEditTool = useCallback(async (tool: Tool) => {
     try {
-      await updateTool({ id: tool.id, updates: { toolId: tool.toolId, name: tool.name, description: tool.description, diameter: tool.diameter, diameterUnit: tool.diameterUnit, type: tool.type, flutes: tool.flutes } }).unwrap()
+      await updateTool({ id: tool.id, updates: { toolId: tool.toolId, name: tool.name, description: tool.description, diameter: tool.diameter, diameterUnit: tool.diameterUnit, type: tool.type } }).unwrap()
     } catch (error) {
       console.error('Failed to update tool:', error)
     }

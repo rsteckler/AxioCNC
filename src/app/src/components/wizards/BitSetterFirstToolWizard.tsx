@@ -212,9 +212,6 @@ export function BitSetterFirstToolWizard({
                   {toolData.type && (
                     <div>Type: {toolData.type}</div>
                   )}
-                  {toolData.flutes != null && (
-                    <div>{toolData.flutes} fl{toolData.flutes === 1 ? 'ute' : 'utes'}</div>
-                  )}
                   {toolData.description && (
                     <div className="mt-1 pt-1 border-t border-primary/20">
                       {toolData.description}

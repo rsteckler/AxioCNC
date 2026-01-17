@@ -200,7 +200,6 @@ export interface Tool {
   diameter?: number | null  // Diameter value (null if not specified)
   diameterUnit?: 'mm' | 'in'  // Unit for diameter (defaults to 'mm' if not specified)
   type?: string  // Tool type (ballnose, straight, vbit, engraver, drill, chamfer, etc.)
-  flutes?: number | null  // Number of flutes (null if not specified)
   mtime?: number
 }
 
