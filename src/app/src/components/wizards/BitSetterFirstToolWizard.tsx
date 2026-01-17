@@ -1,6 +1,10 @@
 import React from 'react'
 import { Target, AlertCircle, HelpCircle, Navigation, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { useGetToolsQuery } from '@/services/api'
+import { useJobState } from '@/store/hooks'
+import { mmToInches } from '@/utils/units'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 
 interface BitSetterFirstToolWizardProps {
@@ -41,6 +45,18 @@ export function BitSetterFirstToolWizard({
   // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->tool change, step 3->probe
   const skipVerification = method.requireCheck === false
   const actualStep = skipVerification ? currentStep + 1 : currentStep
+
+  // Get tools from tool library
+  const { data: toolsData } = useGetToolsQuery()
+  const jobState = useJobState()
+  
+  // Get the first tool number from job state
+  const firstToolNumber = jobState?.nextM6ToolNumber
+  
+  // Find tool data from tool library
+  const toolData = firstToolNumber !== undefined && firstToolNumber >= 0
+    ? toolsData?.records?.find(t => t.toolId === firstToolNumber)
+    : null
 
   switch (actualStep) {
     case 1:
@@ -167,6 +183,47 @@ export function BitSetterFirstToolWizard({
               </p>
             </div>
           </div>
+          {/* Tool Information Panel */}
+          {firstToolNumber !== undefined && firstToolNumber >= 0 && (
+            <div className="p-3 rounded border bg-primary/10 border-primary/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="default" className="text-xs">
+                  T{firstToolNumber}
+                </Badge>
+                {toolData ? (
+                  <span className="text-sm font-medium">{toolData.name}</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Tool T{firstToolNumber}</span>
+                )}
+              </div>
+              {toolData && (
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {toolData.diameter != null ? (
+                    <div>
+                      Diameter: Ø{toolData.diameter.toFixed(3)}{toolData.diameterUnit || 'mm'}
+                      {toolData.diameterUnit === 'in' && (
+                        <> • {(toolData.diameter * 25.4).toFixed(3)}mm</>
+                      )}
+                      {(!toolData.diameterUnit || toolData.diameterUnit === 'mm') && mmToInches(toolData.diameter) && (
+                        <> • {mmToInches(toolData.diameter)}in</>
+                      )}
+                    </div>
+                  ) : null}
+                  {toolData.type && (
+                    <div>Type: {toolData.type}</div>
+                  )}
+                  {toolData.flutes != null && (
+                    <div>{toolData.flutes} fl{toolData.flutes === 1 ? 'ute' : 'utes'}</div>
+                  )}
+                  {toolData.description && (
+                    <div className="mt-1 pt-1 border-t border-primary/20">
+                      {toolData.description}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">

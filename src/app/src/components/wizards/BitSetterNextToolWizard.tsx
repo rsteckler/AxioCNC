@@ -1,6 +1,10 @@
 import React from 'react'
 import { Target, AlertCircle, HelpCircle, Navigation, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { useGetToolsQuery } from '@/services/api'
+import { useJobState } from '@/store/hooks'
+import { mmToInches } from '@/utils/units'
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
 
 interface BitSetterNextToolWizardProps {
@@ -43,6 +47,18 @@ export function BitSetterNextToolWizard({
   // Note: This wizard skips "Install First Tool" since the tool has already been changed
   const skipVerification = method.requireCheck === false
   const actualStep = skipVerification ? currentStep + 1 : currentStep
+
+  // Get tools from tool library
+  const { data: toolsData } = useGetToolsQuery()
+  const jobState = useJobState()
+  
+  // Get the next tool number from job state
+  const nextToolNumber = jobState?.nextM6ToolNumber
+  
+  // Find tool data from tool library
+  const toolData = nextToolNumber !== undefined && nextToolNumber >= 0
+    ? toolsData?.records?.find(t => t.toolId === nextToolNumber)
+    : null
 
   switch (actualStep) {
     case 1:
@@ -169,6 +185,47 @@ export function BitSetterNextToolWizard({
               </p>
             </div>
           </div>
+          {/* Tool Information Panel */}
+          {nextToolNumber !== undefined && nextToolNumber >= 0 && (
+            <div className="p-3 rounded border bg-primary/10 border-primary/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="default" className="text-xs">
+                  T{nextToolNumber}
+                </Badge>
+                {toolData ? (
+                  <span className="text-sm font-medium">{toolData.name}</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Tool T{nextToolNumber}</span>
+                )}
+              </div>
+              {toolData && (
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {toolData.diameter != null ? (
+                    <div>
+                      Diameter: Ø{toolData.diameter.toFixed(3)}{toolData.diameterUnit || 'mm'}
+                      {toolData.diameterUnit === 'in' && (
+                        <> • {(toolData.diameter * 25.4).toFixed(3)}mm</>
+                      )}
+                      {(!toolData.diameterUnit || toolData.diameterUnit === 'mm') && mmToInches(toolData.diameter) && (
+                        <> • {mmToInches(toolData.diameter)}in</>
+                      )}
+                    </div>
+                  ) : null}
+                  {toolData.type && (
+                    <div>Type: {toolData.type}</div>
+                  )}
+                  {toolData.flutes != null && (
+                    <div>{toolData.flutes} fl{toolData.flutes === 1 ? 'ute' : 'utes'}</div>
+                  )}
+                  {toolData.description && (
+                    <div className="mt-1 pt-1 border-t border-primary/20">
+                      {toolData.description}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">
