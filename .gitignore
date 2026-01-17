@@ -21,3 +21,6 @@ yarn-error.log
 
 # Grbl simulator build directory (contains cloned git repo)
 examples/grbl-sim-build/
+
+# TypeScript build info files
+*.tsbuildinfo
