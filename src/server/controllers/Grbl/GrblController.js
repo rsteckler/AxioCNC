@@ -239,12 +239,19 @@ class GrblController {
             log.debug('M6 Tool Change');
             this.feeder.hold({ data: 'M6', msg: originalLine }); // Hold reason
 
-            // Surround M6 with parentheses to ignore
-            // unsupported command error. If we nuke the whole
-            // line, then we'll likely lose other commands that
-            // share the line, like a T~.  This makes tool
-            // changes complicated.
-            line = line.replace('M6', '(M6)');
+            // Remove M6 from the line to avoid unsupported command error
+            // while preserving other commands that might share the line (e.g., T~)
+            line = line.replace(/\bM6\b/gi, '');
+          }
+
+          // Remove all parentheses content to avoid Shapeoko Grbl lockup
+          // Parentheses are never sent to hardware
+          line = line.replace(/\([^)]*\)/g, '');
+
+          // If line is empty after removing parens/M6, add placeholder comment
+          line = line.trim();
+          if (line.length === 0) {
+            line = ';0';
           }
 
           return line;
@@ -339,8 +346,19 @@ class GrblController {
 
             this.workflow.pause({ data: 'M6', msg: originalLine });
 
-            // Surround M6 with parentheses to ignore unsupported command error
-            line = line.replace('M6', '(M6)');
+            // Remove M6 from the line to avoid unsupported command error
+            // while preserving other commands that might share the line (e.g., T~)
+            line = line.replace(/\bM6\b/gi, '');
+          }
+
+          // Remove all parentheses content to avoid Shapeoko Grbl lockup
+          // Parentheses are never sent to hardware
+          line = line.replace(/\([^)]*\)/g, '');
+
+          // If line is empty after removing parens/M6, add placeholder comment
+          line = line.trim();
+          if (line.length === 0) {
+            line = ';0';
           }
 
           return line;
