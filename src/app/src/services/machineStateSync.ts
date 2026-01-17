@@ -4,7 +4,7 @@ import {
   setBackendStatus,
   setMaxSpindleSpeed,
 } from '@/store/machineSlice'
-import { setJobState, clearJobState } from '@/store/jobSlice'
+import { setJobState, clearJobState, setJobCompletion, clearJobCompletion } from '@/store/jobSlice'
 import { socketService } from './socket'
 // useLazyGetMachineStatusQuery not currently used but may be needed in future
 // import { useLazyGetMachineStatusQuery } from '@/services/api'
@@ -23,6 +23,7 @@ class MachineStateSyncService {
   private handleMachineStatusBound?: (...args: unknown[]) => void
   private handleWorkflowStateBound?: (...args: unknown[]) => void
   private handleSenderStatusBound?: (...args: unknown[]) => void
+  private handleJobCompleteBound?: (...args: unknown[]) => void
 
   /**
    * Initialize the service - set up Socket.IO listeners
@@ -39,6 +40,7 @@ class MachineStateSyncService {
     this.handleMachineStatusBound = this.handleMachineStatus.bind(this)
     this.handleWorkflowStateBound = this.handleWorkflowState.bind(this)
     this.handleSenderStatusBound = this.handleSenderStatus.bind(this)
+    this.handleJobCompleteBound = this.handleJobComplete.bind(this)
 
     // Listen to connection events
     socketService.on('serialport:open', this.handleSerialPortOpenBound)
@@ -53,6 +55,8 @@ class MachineStateSyncService {
     // Listen to sender status updates (job progress)
     socketService.on('sender:status', this.handleSenderStatusBound)
 
+    // Listen to job completion events
+    socketService.on('job:complete', this.handleJobCompleteBound)
     
     // NOTE: We don't listen to gcode:load/unload here because:
     // 1. Components (FilePanel, VisualizerPanel) need to handle these events directly
@@ -85,6 +89,9 @@ class MachineStateSyncService {
     }
     if (this.handleSenderStatusBound) {
       socketService.off('sender:status', this.handleSenderStatusBound)
+    }
+    if (this.handleJobCompleteBound) {
+      socketService.off('job:complete', this.handleJobCompleteBound)
     }
     // NOTE: We don't listen to gcode:load/unload, so no cleanup needed
 
@@ -223,7 +230,13 @@ class MachineStateSyncService {
       }))
     }
 
+    // Clear completion state when a new job starts
+    if (workflowState === 'running') {
+      store.dispatch(clearJobCompletion())
+    }
+
     // Reset timer when workflow goes to idle (job stopped)
+    // Note: Completion details are handled by job:complete event, not here
     if (workflowState === 'idle') {
       // Reset timer fields but keep other job state (name, size, total, etc.)
       store.dispatch(setJobState({
@@ -268,6 +281,26 @@ class MachineStateSyncService {
       store.dispatch(setJobState(jobStateUpdate))
     } else {
       console.warn('[machineStateSync] sender:status received invalid data:', args)
+    }
+  }
+
+  private handleJobComplete(...args: unknown[]) {
+    const completion = args[0] as {
+      reason: 'completed' | 'stopped' | 'reset' | 'error' | 'unload' | 'connection_lost' | 'connection_reset' | 'unknown'
+      timestamp: number
+      wasSuccessful: boolean
+      senderState: { received: number; total: number; finishTime: number; name: string }
+    }
+
+    if (completion && typeof completion === 'object') {
+      store.dispatch(setJobCompletion({
+        reason: completion.reason,
+        timestamp: completion.timestamp,
+        wasSuccessful: completion.wasSuccessful,
+        senderState: completion.senderState,
+      }))
+    } else {
+      console.warn('[machineStateSync] job:complete received invalid data:', args)
     }
   }
 

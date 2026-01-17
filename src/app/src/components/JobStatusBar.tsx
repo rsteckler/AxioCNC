@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useMemo } from 'react'
 import { Play, Square, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +6,8 @@ import { useGcodeCommand, useToolChangeDetection } from '@/hooks'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { MachineReadinessStatus } from '@/types/machine'
+import { useSelector } from 'react-redux'
+import type { RootState } from '@/store'
 
 export type JobStatus = 'not_started' | 'running' | 'paused' | 'complete'
 
@@ -35,23 +37,45 @@ export function JobStatusBar({
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   
+  // Get completion state from Redux
+  const completion = useSelector((state: RootState) => state.job.completion)
+  
   // Detect M6 tool changes and trigger tool change flow
   useToolChangeDetection(connectedPort)
-  // Determine status from props
-  let jobStatus: JobStatus = status || 'not_started'
   
-  if (!status) {
+  // Determine status from props, workflow state, and completion
+  const jobStatus: JobStatus = useMemo(() => {
+    if (status) {
+      return status
+    }
+    
+    // Check if job completed successfully
+    if (completion?.reason === 'completed' && completion.wasSuccessful) {
+      return 'complete'
+    }
+    
     // Derive status from workflowState and isJobRunning
     if (workflowState === 'running' || isJobRunning) {
-      jobStatus = 'running'
+      return 'running'
     } else if (workflowState === 'paused') {
-      jobStatus = 'paused'
+      return 'paused'
     } else if (workflowState === 'idle' && !isJobRunning) {
-      // If we were running before and now idle, consider it complete
-      // Otherwise, it's not started
-      jobStatus = 'not_started'
+      // Check if we have completion info indicating it was stopped/error
+      if (completion?.reason && completion.reason !== 'completed') {
+        // Job was stopped, reset, or had an error - show as not_started for now
+        // (could add 'stopped' or 'error' status types later)
+        return 'not_started'
+      }
+      return 'not_started'
     }
-  }
+    
+    return 'not_started'
+  }, [status, workflowState, isJobRunning, completion])
+  
+  // Format completion timestamp
+  const completionTime = completion?.timestamp 
+    ? new Date(completion.timestamp).toLocaleTimeString()
+    : null
 
   // Check if machine is in a ready state (can start job)
   const isReadyState = machineStatus === 'connected_pre_home' || machineStatus === 'connected_post_home'
@@ -152,10 +176,52 @@ export function JobStatusBar({
           </Badge>
         )
       case 'complete':
+        const completionReason = completion?.reason || 'completed'
+        const badgeText = completionReason === 'completed' 
+          ? 'Complete' 
+          : completionReason === 'stopped'
+          ? 'Stopped'
+          : completionReason === 'reset'
+          ? 'Reset'
+          : completionReason === 'error'
+          ? 'Error'
+          : 'Complete'
+        
+        const badgeColor = completionReason === 'completed'
+          ? 'bg-blue-600 hover:bg-blue-700'
+          : completionReason === 'stopped'
+          ? 'bg-orange-600 hover:bg-orange-700'
+          : completionReason === 'reset'
+          ? 'bg-purple-600 hover:bg-purple-700'
+          : completionReason === 'error'
+          ? 'bg-red-600 hover:bg-red-700'
+          : 'bg-blue-600 hover:bg-blue-700'
+        
         return (
-          <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
-            Complete
-          </Badge>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="default" className={badgeColor}>
+                  {badgeText}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1">
+                  <p className="font-medium">{badgeText}</p>
+                  {completionTime && (
+                    <p className="text-xs text-muted-foreground">
+                      Completed at {completionTime}
+                    </p>
+                  )}
+                  {completion?.senderState && (
+                    <p className="text-xs text-muted-foreground">
+                      {completion.senderState.received} / {completion.senderState.total} lines
+                    </p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )
       case 'not_started':
       default:

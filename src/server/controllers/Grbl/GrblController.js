@@ -399,9 +399,28 @@ class GrblController {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
       });
-      this.workflow.on('stop', (...args) => {
+      this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
+        
+        // Emit job completion event
+        const senderState = this.sender.toJSON();
+        const completionInfo = {
+          reason: reason || 'unknown',
+          timestamp: new Date().getTime(),
+          previousState: previousState || 'idle',
+          senderState: {
+            received: senderState.received || 0,
+            total: senderState.total || 0,
+            finishTime: senderState.finishTime || 0,
+            name: senderState.name || '',
+          },
+          wasSuccessful: reason === 'completed' && 
+                         (senderState.received || 0) >= (senderState.total || 0) && 
+                         (senderState.total || 0) > 0
+        };
+        
+        this.emit('job:complete', completionInfo);
       });
       this.workflow.on('pause', (...args) => {
         this.emit('workflow:state', this.workflow.state);
@@ -794,8 +813,8 @@ class GrblController {
 
             this.actionTime.senderFinishTime = 0;
 
-            // Stop workflow
-            this.command('gcode:stop');
+            // Stop workflow with completion reason
+            this.command('gcode:stop', { reason: 'completed' });
           }
         }
       }, 250);
@@ -1025,7 +1044,7 @@ class GrblController {
 
         log.debug(`Connected to serial port "${port}"`);
 
-        this.workflow.stop();
+        this.workflow.stop('connection_reset');
 
         // Clear action values
         this.clearActionValues();
@@ -1175,14 +1194,14 @@ class GrblController {
 
           log.debug(`Load G-code: name="${this.sender.state.name}", size=${this.sender.state.gcode.length}, total=${this.sender.state.total}`);
 
-          this.workflow.stop();
+          this.workflow.stop('unload');
 
           callback(null, this.sender.toJSON());
         },
         'gcode:unload': () => {
           log.debug('[gcode:unload] Command received, unloading G-code');
 
-          this.workflow.stop();
+          this.workflow.stop('unload');
 
           // Sender
           this.sender.unload();
@@ -1220,9 +1239,11 @@ class GrblController {
         'gcode:stop': async () => {
           this.event.trigger('gcode:stop');
 
-          this.workflow.stop();
-
+          // Determine stop reason - if called from automatic completion, reason will be passed via args
           const [options] = args;
+          const reason = (options && options.reason) ? options.reason : 'stopped';
+          this.workflow.stop(reason);
+
           const { force = false } = { ...options };
           if (force) {
             let activeState;
@@ -1302,7 +1323,7 @@ class GrblController {
           this.writeln('$X');
         },
         'reset': () => {
-          this.workflow.stop();
+          this.workflow.stop('reset');
 
           this.feeder.reset();
 

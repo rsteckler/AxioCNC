@@ -27,10 +27,11 @@ class Workflow extends events.EventEmitter {
       }
     }
 
-    stop(...args) {
+    stop(reason = 'unknown', ...args) {
       if (this.state !== WORKFLOW_STATE_IDLE) {
+        const previousState = this.state;
         this.state = WORKFLOW_STATE_IDLE;
-        this.emit('stop', ...args);
+        this.emit('stop', reason, previousState, ...args);
       }
     }
 

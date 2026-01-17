@@ -40,6 +40,18 @@ export type SocketEvents = {
   
   // Workflow and job events
   'workflow:state': [state: 'idle' | 'running' | 'paused']
+  'job:complete': [completion: {
+    reason: 'completed' | 'stopped' | 'reset' | 'error' | 'unload' | 'connection_lost' | 'connection_reset' | 'unknown'
+    timestamp: number
+    previousState: 'running' | 'paused' | 'idle'
+    senderState: {
+      received: number
+      total: number
+      finishTime: number
+      name: string
+    }
+    wasSuccessful: boolean
+  }]
   'sender:status': [state: {
     name?: string
     size?: number
