@@ -590,8 +590,6 @@ class TinyGController {
           const err = _.find(TINYG_STATUS_CODES, { code: code }) || {};
 
           if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
-            const ignoreErrors = config.get('state.controller.exception.ignoreErrors');
-            const pauseError = !ignoreErrors;
             const { lines, received } = this.sender.state;
             const line = lines[received - 1] || '';
 
@@ -612,9 +610,7 @@ class TinyGController {
               data: line.trim()
             });
 
-            if (pauseError) {
-              this.workflow.pause({ err: true, msg: err.msg });
-            }
+            this.workflow.pause({ err: true, msg: err.msg });
 
             return;
           }

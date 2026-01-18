@@ -19,8 +19,9 @@ export const GeneralSettingsSchema = z.object({
 // =============================================================================
 
 export const ControllerSettingsSchema = z.object({
-  exception: z.object({
-    ignoreErrors: z.boolean().default(false),
+  toolSpinup: z.object({
+    enabled: z.boolean().default(false),
+    delaySeconds: z.number().min(0).max(60).default(2),
   }).default({}),
 });
 

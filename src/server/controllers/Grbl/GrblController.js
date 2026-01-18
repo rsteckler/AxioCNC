@@ -351,6 +351,25 @@ class GrblController {
             line = line.replace(/\bM6\b/gi, '');
           }
 
+          // M3 Spindle On - Tool Spinup Delay
+          if (_.includes(words, 'M3')) {
+            const toolSpinup = config.get('settings.controller.toolSpinup', {});
+            if (toolSpinup.enabled && toolSpinup.delaySeconds > 0) {
+              const delaySeconds = toolSpinup.delaySeconds;
+              const dwellCommand = `G4 P${delaySeconds}`;
+              
+              log.debug(`M3 detected with tool spinup delay: line=${sent + 1}, delay=${delaySeconds}s`);
+              
+              // Insert G4 Px command after the current M3 line
+              // The current line is at index 'sent', so we insert at 'sent + 1'
+              const insertIndex = sent + 1;
+              this.sender.state.lines.splice(insertIndex, 0, dwellCommand);
+              this.sender.state.total = this.sender.state.lines.length;
+              
+              log.debug(`Inserted ${dwellCommand} after M3 at line ${insertIndex + 1}`);
+            }
+          }
+
           // Remove all parentheses content to avoid Shapeoko Grbl lockup
           // Parentheses are never sent to hardware
           line = line.replace(/\([^)]*\)/g, '');
@@ -561,8 +580,6 @@ class GrblController {
         const error = _.find(GRBL_ERRORS, { code: code });
 
         if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
-          const ignoreErrors = config.get('state.controller.exception.ignoreErrors');
-          const pauseError = !ignoreErrors;
           const { lines, received } = this.sender.state;
           const line = lines[received] || '';
 
@@ -570,17 +587,11 @@ class GrblController {
           if (error) {
             // Grbl v1.1
             this.emit('serialport:read', `error:${code} (${error.message})`);
-
-            if (pauseError) {
-              this.workflow.pause({ err: true, msg: `error:${code} (${error.message})` });
-            }
+            this.workflow.pause({ err: true, msg: `error:${code} (${error.message})` });
           } else {
             // Grbl v0.9
             this.emit('serialport:read', res.raw);
-
-            if (pauseError) {
-              this.workflow.pause({ err: true, msg: res.raw });
-            }
+            this.workflow.pause({ err: true, msg: res.raw });
           }
 
           this.sender.ack();

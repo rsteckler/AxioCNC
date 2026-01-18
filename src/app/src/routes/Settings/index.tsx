@@ -98,7 +98,8 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
     zmax: 0,
   },
   homingCorner: 'front-left',  // Most common homing position
-  ignoreErrors: false,         // Safer to halt on errors
+  toolSpinupDelayEnabled: false,  // Disabled by default
+  toolSpinupDelaySeconds: 2,      // 2 seconds default delay
 }
 
 // Default camera configuration
@@ -382,8 +383,11 @@ export default function Settings() {
       }
       
       // Controller settings
-      if (settings.controller?.exception?.ignoreErrors !== undefined) {
-        setMachineConfig(prev => ({ ...prev, ignoreErrors: settings.controller!.exception!.ignoreErrors! }))
+      if (settings.controller?.toolSpinup?.enabled !== undefined) {
+        setMachineConfig(prev => ({ ...prev, toolSpinupDelayEnabled: settings.controller!.toolSpinup!.enabled! }))
+      }
+      if (settings.controller?.toolSpinup?.delaySeconds !== undefined) {
+        setMachineConfig(prev => ({ ...prev, toolSpinupDelaySeconds: settings.controller!.toolSpinup!.delaySeconds! }))
       }
       
       // Connection config
@@ -651,7 +655,6 @@ export default function Settings() {
     }
     
     // Save to backend (theme is saved via setTheme/setAccentColor/setCustomTheme)
-    // Note: ignoreErrors is stored under controller.exception in the backend
     debouncedSave({
       lang: DEFAULT_LANGUAGE,
       checkForUpdates: DEFAULT_CHECK_FOR_UPDATES,
@@ -662,8 +665,9 @@ export default function Settings() {
         limits: DEFAULT_MACHINE_CONFIG.limits,
       },
       controller: {
-        exception: {
-          ignoreErrors: DEFAULT_MACHINE_CONFIG.ignoreErrors,
+        toolSpinup: {
+          enabled: DEFAULT_MACHINE_CONFIG.toolSpinupDelayEnabled,
+          delaySeconds: DEFAULT_MACHINE_CONFIG.toolSpinupDelaySeconds,
         },
       },
       camera: DEFAULT_CAMERA_CONFIG,
@@ -824,8 +828,11 @@ export default function Settings() {
       if (changes.homingCorner !== undefined) {
         updated.homingCorner = changes.homingCorner
       }
-      if (changes.ignoreErrors !== undefined) {
-        updated.ignoreErrors = changes.ignoreErrors
+      if (changes.toolSpinupDelayEnabled !== undefined) {
+        updated.toolSpinupDelayEnabled = changes.toolSpinupDelayEnabled
+      }
+      if (changes.toolSpinupDelaySeconds !== undefined) {
+        updated.toolSpinupDelaySeconds = changes.toolSpinupDelaySeconds
       }
       return updated
     })
@@ -838,8 +845,17 @@ export default function Settings() {
       if (changes.limits) saveData.machine.limits = changes.limits
       if (changes.homingCorner !== undefined) saveData.machine.homingCorner = changes.homingCorner
     }
-    if (changes.ignoreErrors !== undefined) {
-      saveData.controller = { exception: { ignoreErrors: changes.ignoreErrors } }
+    if (changes.toolSpinupDelayEnabled !== undefined || changes.toolSpinupDelaySeconds !== undefined) {
+      saveData.controller = {}
+      if (changes.toolSpinupDelayEnabled !== undefined || changes.toolSpinupDelaySeconds !== undefined) {
+        saveData.controller.toolSpinup = {}
+        if (changes.toolSpinupDelayEnabled !== undefined) {
+          saveData.controller.toolSpinup.enabled = changes.toolSpinupDelayEnabled
+        }
+        if (changes.toolSpinupDelaySeconds !== undefined) {
+          saveData.controller.toolSpinup.delaySeconds = changes.toolSpinupDelaySeconds
+        }
+      }
     }
     if (Object.keys(saveData).length > 0) {
       debouncedSave(saveData)

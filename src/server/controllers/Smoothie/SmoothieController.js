@@ -469,17 +469,12 @@ class SmoothieController {
 
       this.runner.on('error', (res) => {
         if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
-          const ignoreErrors = config.get('state.controller.exception.ignoreErrors');
-          const pauseError = !ignoreErrors;
           const { lines, received } = this.sender.state;
           const line = lines[received] || '';
 
           this.emit('serialport:read', `> ${line.trim()} (line=${received + 1})`);
           this.emit('serialport:read', res.raw);
-
-          if (pauseError) {
-            this.workflow.pause({ err: true, msg: res.raw });
-          }
+          this.workflow.pause({ err: true, msg: res.raw });
 
           this.sender.ack();
           this.sender.next();

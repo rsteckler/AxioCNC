@@ -3,7 +3,6 @@ import { SettingsField } from '../SettingsField'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -12,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { AlertTriangle, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { useMemo, useState, useEffect } from 'react'
 import { dimensionsToLimits, limitsToDimensions, type HomingCorner, type MachineDimensions } from '@/lib/machineLimits'
 import { useGetMachinePresetsQuery, type MachinePreset } from '@/services/api'
@@ -28,7 +27,8 @@ export interface MachineConfig {
     zmax: number
   }
   homingCorner?: HomingCorner  // Optional: inferred if not provided
-  ignoreErrors: boolean
+  toolSpinupDelayEnabled: boolean
+  toolSpinupDelaySeconds: number
 }
 
 interface MachineSectionProps {
@@ -367,34 +367,39 @@ export function MachineSection({
       {/* Controller Behavior */}
       <div className="space-y-3 pt-4">
         <SettingsField
-          label="Continue on Error"
-          description="Continue G-code execution when an error is detected"
-          tooltip="When enabled, the controller will attempt to continue running the G-code program even if an error is detected. This can be useful for certain recovery scenarios but may cause unexpected machine behavior."
+          label="Tool Spinup Delay"
+          description="Delay motion to allow the tool to spin up when running or resuming a program"
+          tooltip="When enabled, the controller will wait for the specified number of seconds before starting motion after a program starts or resumes. This allows the spindle/router to reach full speed before cutting begins."
           horizontal
         >
           <Switch
-            checked={config.ignoreErrors}
-            onCheckedChange={(checked) => onConfigChange({ ignoreErrors: checked })}
+            checked={config.toolSpinupDelayEnabled}
+            onCheckedChange={(checked) => onConfigChange({ toolSpinupDelayEnabled: checked })}
           />
         </SettingsField>
 
-        {config.ignoreErrors && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
-            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">Safety Warning</span>
-                <Badge variant="outline" className="text-warning border-warning/50">
-                  Caution
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Enabling this option may cause machine damage if you don't have an 
-                Emergency Stop button to prevent dangerous situations. Only enable 
-                this if you fully understand the risks.
-              </p>
+        {config.toolSpinupDelayEnabled && (
+          <SettingsField
+            label="Delay Time"
+            description="Time in seconds to wait before starting motion"
+            tooltip="The number of seconds to delay motion after starting or resuming a program. Typical values are 1-5 seconds depending on your spindle/router startup time."
+          >
+            <div className="flex items-center gap-2 max-w-xs">
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="60"
+                value={config.toolSpinupDelaySeconds}
+                onChange={(e) => {
+                  const value = Math.max(0, Math.min(60, parseFloat(e.target.value) || 0))
+                  onConfigChange({ toolSpinupDelaySeconds: value })
+                }}
+                className="h-9"
+              />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">seconds</span>
             </div>
-          </div>
+          </SettingsField>
         )}
       </div>
     </SettingsSection>
