@@ -1,5 +1,28 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
+export interface JobStats {
+  totalDistance?: { x: number; y: number; z: number; total: number }
+  cuttingDistance?: { x: number; y: number; z: number; total: number }
+  transitionDistance?: { x: number; y: number; z: number; total: number }
+  retractDistance?: { x: number; y: number; z: number; total: number }
+  toolStats?: {
+    [toolNumber: number]: {
+      toolNumber: number
+      distance: { x: number; y: number; z: number; total: number }
+      time: number
+    }
+  }
+  currentTool?: number
+  toolStartTime?: number
+  position?: { x: number; y: number; z: number }
+  modalState?: {
+    motion?: string
+    spindle?: string
+    distance?: string
+    units?: string
+  }
+}
+
 interface JobCompletionState {
   reason: 'completed' | 'stopped' | 'reset' | 'error' | 'unload' | 'connection_lost' | 'connection_reset' | 'unknown' | null
   timestamp: number | null
@@ -12,7 +35,7 @@ interface JobCompletionState {
   } | null
 }
 
-interface JobState {
+export interface JobState {
   name?: string
   size?: number
   total?: number
@@ -24,6 +47,7 @@ interface JobState {
   remainingTimeToNextM6?: number
   jobId?: string | null
   m6Indices?: number[]
+  stats?: JobStats
   completion: JobCompletionState
 }
 

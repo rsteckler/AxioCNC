@@ -223,6 +223,11 @@ class JobHistoryService extends events.EventEmitter {
                     startTime: senderState.startTime || 0,
                     finishTime: senderState.finishTime || completionInfo.timestamp || Date.now(),
                     elapsedTime: senderState.elapsedTime || 0,
+                    // Distance statistics
+                    totalDistance: senderState.stats?.totalDistance || { x: 0, y: 0, z: 0, total: 0 },
+                    cuttingDistance: senderState.stats?.cuttingDistance || { x: 0, y: 0, z: 0, total: 0 },
+                    transitionDistance: senderState.stats?.transitionDistance || { x: 0, y: 0, z: 0, total: 0 },
+                    retractDistance: senderState.stats?.retractDistance || { x: 0, y: 0, z: 0, total: 0 },
                 },
                 
                 // Tool usage
@@ -256,28 +261,33 @@ class JobHistoryService extends events.EventEmitter {
         const tools = [];
         const toolUsageMap = new Map();
 
-        // Get M6 indices (tool change locations)
-        const m6Indices = senderState.m6Indices || [];
+        // Get tool stats from sender state
+        const toolStats = senderState.stats?.toolStats || {};
 
-        // Try to get tool information from parser state if available
-        // This would require tracking tool changes during job execution
-        // For now, we'll extract what we can from the sender state
+        // Convert tool stats to tool usage array
+        Object.values(toolStats).forEach((toolStat) => {
+            if (toolStat && toolStat.toolNumber !== undefined) {
+                // Calculate current tool's runtime time if job is still running
+                let toolTime = toolStat.time || 0;
+                const currentTool = senderState.stats?.currentTool;
+                const toolStartTime = senderState.stats?.toolStartTime;
+                
+                if (currentTool === toolStat.toolNumber && toolStartTime > 0 && senderState.startTime > 0) {
+                    // Add elapsed time for currently running tool
+                    const now = Date.now();
+                    toolTime += (now - toolStartTime);
+                }
 
-        // If we have context with tool information, use it
-        if (senderState.context && senderState.context.tool) {
-            const toolNumber = parseInt(senderState.context.tool, 10);
-            if (!isNaN(toolNumber)) {
-                toolUsageMap.set(toolNumber, {
-                    toolNumber: toolNumber,
-                    time: senderState.elapsedTime || 0,
-                    // Distance would need to be calculated from G-code
-                    distance: 0,
+                toolUsageMap.set(toolStat.toolNumber, {
+                    toolNumber: toolStat.toolNumber,
+                    time: toolTime,
+                    distance: toolStat.distance?.total || 0,
                 });
             }
-        }
+        });
 
         // Convert map to array
-        toolUsageMap.forEach((usage, toolNumber) => {
+        toolUsageMap.forEach((usage) => {
             tools.push(usage);
         });
 
@@ -314,9 +324,9 @@ class JobHistoryService extends events.EventEmitter {
             stats.totalLines += job.stats.received;
         }
 
-        // Accumulate distance if available
-        if (job.stats?.distance) {
-            stats.totalDistance += job.stats.distance;
+        // Accumulate distance statistics
+        if (job.stats?.totalDistance?.total) {
+            stats.totalDistance += job.stats.totalDistance.total;
         }
     }
 
@@ -352,8 +362,13 @@ class JobHistoryService extends events.EventEmitter {
             if (toolUsage.time) {
                 toolStat.totalTime += toolUsage.time;
             }
+            // Handle both old format (number) and new format (object with total)
             if (toolUsage.distance) {
-                toolStat.totalDistance += toolUsage.distance;
+                if (typeof toolUsage.distance === 'number') {
+                    toolStat.totalDistance += toolUsage.distance;
+                } else if (toolUsage.distance.total !== undefined) {
+                    toolStat.totalDistance += toolUsage.distance.total;
+                }
             }
         });
     }

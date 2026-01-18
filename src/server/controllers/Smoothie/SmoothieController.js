@@ -332,6 +332,11 @@ class SmoothieController {
       this.sender.on('unhold', noop);
       this.sender.on('start', (startTime) => {
         this.actionTime.senderFinishTime = 0;
+        // Initialize tool tracking when job starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.sender.on('end', (finishTime) => {
         this.actionTime.senderFinishTime = finishTime;
@@ -342,6 +347,11 @@ class SmoothieController {
       this.workflow.on('start', (...args) => {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
+        // Initialize tool tracking when workflow starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
@@ -533,6 +543,15 @@ class SmoothieController {
 
         if (this.actionMask.replyParserState) {
           this.emit('serialport:read', res.raw);
+        }
+
+        // Track tool changes during runtime
+        if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
+          const currentTool = this.runner.getTool();
+          const statsTool = this.sender.state.stats.currentTool;
+          if (currentTool !== null && currentTool !== undefined && currentTool !== statsTool) {
+            this.sender.trackToolChange(currentTool);
+          }
         }
       });
 

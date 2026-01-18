@@ -547,6 +547,11 @@ class MarlinController {
       this.sender.on('unhold', noop);
       this.sender.on('start', (startTime) => {
         this.senderFinishTime = 0;
+        // Initialize tool tracking when job starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.sender.on('end', (finishTime) => {
         this.senderFinishTime = finishTime;
@@ -557,6 +562,11 @@ class MarlinController {
       this.workflow.on('start', (...args) => {
         this.emit('workflow:state', this.workflow.state);
         this.sender.rewind();
+        // Initialize tool tracking when workflow starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
@@ -645,6 +655,16 @@ class MarlinController {
       });
 
       this.runner.on('pos', (res) => {
+        // Track tool changes during runtime
+        if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
+          const currentTool = this.runner.getTool();
+          const statsTool = this.sender.state.stats.currentTool;
+          if (currentTool !== null && currentTool !== undefined && currentTool !== statsTool) {
+            this.sender.trackToolChange(currentTool);
+          }
+        }
+
+        this.emit('serialport:read', res.raw);
         log.silly(`controller.on('pos'): source=${this.history.writeSource}, line=${JSON.stringify(this.history.writeLine)}, res=${JSON.stringify(res)}`);
 
         if (_.includes([WRITE_SOURCE_CLIENT, WRITE_SOURCE_FEEDER], this.history.writeSource)) {

@@ -1,4 +1,5 @@
 import type { ZeroingMethod } from '../../../../shared/schemas/settings'
+import type { JobStats } from '@/store/jobSlice'
 
 export interface PanelProps {
   isConnected: boolean
@@ -21,6 +22,7 @@ export interface PanelProps {
     remainingTime?: number
     nextM6ToolNumber?: number
     remainingTimeToNextM6?: number
+    stats?: JobStats
   }
   feedrate?: number
   rxBufferSize?: number

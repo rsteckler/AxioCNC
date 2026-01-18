@@ -304,6 +304,28 @@ class MachineStateSyncService {
       nextM6ToolNumber?: number
       remainingTimeToNextM6?: number
       jobId?: string | null
+      stats?: {
+        totalDistance?: { x: number; y: number; z: number; total: number }
+        cuttingDistance?: { x: number; y: number; z: number; total: number }
+        transitionDistance?: { x: number; y: number; z: number; total: number }
+        retractDistance?: { x: number; y: number; z: number; total: number }
+        toolStats?: {
+          [toolNumber: number]: {
+            toolNumber: number
+            distance: { x: number; y: number; z: number; total: number }
+            time: number
+          }
+        }
+        currentTool?: number
+        toolStartTime?: number
+        position?: { x: number; y: number; z: number }
+        modalState?: {
+          motion?: string
+          spindle?: string
+          distance?: string
+          units?: string
+        }
+      }
     }
 
     if (senderState && typeof senderState === 'object') {
@@ -319,6 +341,7 @@ class MachineStateSyncService {
         nextM6ToolNumber: senderState.nextM6ToolNumber,
         remainingTimeToNextM6: senderState.remainingTimeToNextM6,
         jobId: senderState.jobId,
+        stats: senderState.stats,
       }
       store.dispatch(setJobState(jobStateUpdate))
     } else {

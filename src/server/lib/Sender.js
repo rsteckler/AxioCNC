@@ -120,6 +120,7 @@ class SPCharCounting {
 }
 
 const uuid = require('uuid');
+const parser = require('gcode-parser');
 
 class Sender extends events.EventEmitter {
     // streaming protocol
@@ -143,7 +144,27 @@ class Sender extends events.EventEmitter {
       nextM6Index: -1,
       remainingTimeToNextM6: 0,
       nextM6ToolNumber: -1,
-      jobId: null
+      jobId: null,
+      stats: {
+        // Cumulative XYZ distances (calculated incrementally from G-code)
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        // Per-tool statistics
+        toolStats: {}, // Map<toolNumber, { distance: {...}, time: 0 }>
+        currentTool: 0, // Active tool number (runtime)
+        toolStartTime: 0, // When current tool started (runtime)
+        // Position and modal state tracking for incremental distance calculation
+        position: { x: 0, y: 0, z: 0 }, // Current position based on G-code
+        modalState: {
+          motion: 'G0', // G0, G1, G2, G3
+          spindle: 'M5', // M3, M4, M5
+          distance: 'G90', // G90 (absolute), G91 (relative)
+          units: 'G21', // G20 (inches), G21 (mm)
+          plane: 'G17', // G17 (XY plane), G18 (XZ plane), G19 (YZ plane)
+        },
+      }
     };
 
     stateChanged = false;
@@ -230,6 +251,19 @@ class Sender extends events.EventEmitter {
     }
 
     toJSON() {
+      // Calculate current tool's runtime time if job is running
+      const stats = { ...this.state.stats };
+      if (stats.currentTool !== null && stats.toolStartTime > 0 && this.state.startTime > 0) {
+        const now = Date.now();
+        const elapsedTime = now - stats.toolStartTime;
+        if (stats.toolStats[stats.currentTool]) {
+          stats.toolStats[stats.currentTool] = {
+            ...stats.toolStats[stats.currentTool],
+            time: stats.toolStats[stats.currentTool].time + elapsedTime
+          };
+        }
+      }
+
       return {
         sp: this.sp.type,
         hold: this.state.hold,
@@ -248,7 +282,8 @@ class Sender extends events.EventEmitter {
         nextM6Index: this.state.nextM6Index,
         nextM6ToolNumber: this.state.nextM6ToolNumber,
         remainingTimeToNextM6: this.state.remainingTimeToNextM6,
-        jobId: this.state.jobId
+        jobId: this.state.jobId,
+        stats: stats
       };
     }
 
@@ -298,6 +333,9 @@ class Sender extends events.EventEmitter {
       this.state.elapsedTime = 0;
       this.state.remainingTime = 0;
 
+      // Reset stats
+      this.resetStats();
+
       // Scan for M6 tool change commands and extract tool numbers
       const m6Pattern = /\bM0*6\b/i;
       const toolPattern = /\bT(\d+)\b/i;
@@ -330,6 +368,24 @@ class Sender extends events.EventEmitter {
       // Generate new UUID for this job
       this.state.jobId = uuid.v4();
 
+      // Initialize position and modal state
+      this.state.stats.position = { x: 0, y: 0, z: 0 };
+      this.state.stats.modalState = {
+        motion: 'G0',
+        spindle: 'M5',
+        distance: 'G90',
+        units: 'G21',
+        plane: 'G17',
+      };
+      this.state.stats.currentTool = 0;
+      if (!this.state.stats.toolStats[0]) {
+        this.state.stats.toolStats[0] = {
+          toolNumber: 0,
+          distance: { x: 0, y: 0, z: 0, total: 0 },
+          time: 0,
+        };
+      }
+
       this.emit('load', name, gcode, context);
       this.emit('change');
 
@@ -359,6 +415,9 @@ class Sender extends events.EventEmitter {
       this.state.remainingTimeToNextM6 = 0;
       this.state.jobId = null;
 
+      // Reset stats
+      this.resetStats();
+
       this.emit('unload');
       this.emit('change');
     }
@@ -372,6 +431,12 @@ class Sender extends events.EventEmitter {
 
       if (this.state.received >= this.state.sent) {
         return false;
+      }
+
+      // Process the line that was just acknowledged to calculate distance
+      const lineIndex = this.state.received;
+      if (lineIndex < this.state.lines.length) {
+        this.processLineForDistance(this.state.lines[lineIndex], lineIndex);
       }
 
       this.state.received++;
@@ -458,6 +523,16 @@ class Sender extends events.EventEmitter {
       this.state.nextM6Index = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].index : -1;
       this.state.nextM6ToolNumber = this.state.m6Indices.length > 0 ? this.state.m6Indices[0].toolNumber : -1;
       this.state.remainingTimeToNextM6 = 0;
+
+      // Reset position and modal state when rewinding (job restart)
+      this.state.stats.position = { x: 0, y: 0, z: 0 };
+      this.state.stats.modalState = {
+        motion: 'G0',
+        spindle: 'M5',
+        distance: 'G90',
+        units: 'G21',
+      };
+
       this.emit('change');
 
       return true;
@@ -469,6 +544,530 @@ class Sender extends events.EventEmitter {
       const stateChanged = this.stateChanged;
       this.stateChanged = false;
       return stateChanged;
+    }
+
+    // Reset stats to initial state
+    resetStats() {
+      this.state.stats = {
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        toolStats: {},
+        currentTool: 0,
+        toolStartTime: 0,
+        position: { x: 0, y: 0, z: 0 },
+        modalState: {
+          motion: 'G0',
+          spindle: 'M5',
+          distance: 'G90',
+          units: 'G21',
+          plane: 'G17',
+        },
+      };
+    }
+
+    // Constants for numerical calculations
+    static EPSILON = 0.0001; // Minimum radius/magnitude to avoid numerical errors
+    static INTEGRATION_STEP_RADIANS = Math.PI / 20; // ~9 degrees per sample
+    static MIN_INTEGRATION_SAMPLES = 20;
+
+    // Calculate distance between two points (straight line / chord distance)
+    calculateDistance(p1, p2) {
+      const dx = Math.abs((p1.x || 0) - (p2.x || 0));
+      const dy = Math.abs((p1.y || 0) - (p2.y || 0));
+      const dz = Math.abs((p1.z || 0) - (p2.z || 0));
+      const total = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      return { x: dx, y: dy, z: dz, total };
+    }
+
+    // Calculate arc length for G2/G3 arc commands
+    // start: start point {x, y, z}
+    // end: end point {x, y, z}
+    // ijk: arc center offset {i, j, k} relative to start point
+    // plane: 'G17' (XY), 'G18' (XZ), 'G19' (YZ)
+    // direction: 'G2' (clockwise), 'G3' (counter-clockwise)
+    calculateArcLength(start, end, ijk, plane = 'G17', direction = 'G3') {
+      // Calculate arc center (relative to start point)
+      const center = {
+        x: (start.x || 0) + (ijk.i || 0),
+        y: (start.y || 0) + (ijk.j || 0),
+        z: (start.z || 0) + (ijk.k || 0),
+      };
+
+      // Determine which plane we're working in
+      let axis3;
+      let dxStart, dyStart, dzStart, dxEnd, dyEnd, dzEnd;
+
+      // Calculate vectors from center to start and end points
+      dxStart = (start.x || 0) - center.x;
+      dyStart = (start.y || 0) - center.y;
+      dzStart = (start.z || 0) - center.z;
+      dxEnd = (end.x || 0) - center.x;
+      dyEnd = (end.y || 0) - center.y;
+      dzEnd = (end.z || 0) - center.z;
+
+      // Calculate radius in the plane (only use the two axes of the plane)
+      let radius, v1, v2;
+
+      if (plane === 'G18') {
+        // XZ plane - radius is in XZ plane
+        v1 = { x: dxStart, y: dzStart };
+        v2 = { x: dxEnd, y: dzEnd };
+        axis3 = 'y';
+        radius = Math.sqrt(dxStart * dxStart + dzStart * dzStart);
+      } else if (plane === 'G19') {
+        // YZ plane - radius is in YZ plane
+        v1 = { x: dyStart, y: dzStart };
+        v2 = { x: dyEnd, y: dzEnd };
+        axis3 = 'x';
+        radius = Math.sqrt(dyStart * dyStart + dzStart * dzStart);
+      } else {
+        // G17 - XY plane (default) - radius is in XY plane
+        v1 = { x: dxStart, y: dyStart };
+        v2 = { x: dxEnd, y: dyEnd };
+        axis3 = 'z';
+        radius = Math.sqrt(dxStart * dxStart + dyStart * dyStart);
+      }
+
+      if (radius < Sender.EPSILON) {
+        // Zero radius, fall back to straight line distance
+        return this.calculateDistance(start, end);
+      }
+
+      // Calculate angle between vectors (using dot product)
+      const dot = v1.x * v2.x + v1.y * v2.y;
+      const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+      const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+
+      // Avoid division by zero
+      if (mag1 < Sender.EPSILON || mag2 < Sender.EPSILON) {
+        return this.calculateDistance(start, end);
+      }
+
+      let cosAngle = dot / (mag1 * mag2);
+      // Clamp to [-1, 1] to avoid NaN from Math.acos
+      cosAngle = Math.max(-1, Math.min(1, cosAngle));
+
+      // Calculate signed angle using cross product for direction
+      const cross = v1.x * v2.y - v1.y * v2.x;
+      let angle = Math.acos(cosAngle);
+
+      // Determine direction: G2 (clockwise) has negative cross product, G3 (counter-clockwise) has positive
+      // But we need to handle full circles and ensure we get the correct arc length
+      if (direction === 'G2') {
+        // Clockwise: if cross is positive, we need to go the long way, so subtract from 2π
+        if (cross > 0) {
+          angle = 2 * Math.PI - angle;
+        }
+        // If cross is negative or zero, angle is already correct (or is 0/180)
+      } else if (cross < 0) {
+        // G3 counter-clockwise: if cross is negative, go the long way
+        angle = 2 * Math.PI - angle;
+      }
+
+      // Calculate arc length
+      const arcLength = radius * angle;
+
+      // For linear motion along the third axis (if any), add that distance
+      const linearAxis3 = Math.abs((end[axis3] || 0) - (start[axis3] || 0));
+
+      // Total distance is the arc length in the plane plus any linear motion
+      const total = Math.sqrt(arcLength * arcLength + linearAxis3 * linearAxis3);
+
+      // Calculate component distances based on the actual arc path traveled
+      // For a circular arc: x(θ) = center_x + radius * cos(θ), y(θ) = center_y + radius * sin(θ)
+      // The path length along each axis requires integrating |dx/dθ| or |dy/dθ| over the angle
+      // dx/dθ = -radius * sin(θ), so path along X = ∫|dx/dθ| dθ = radius * ∫|sin(θ)| dθ
+      // dy/dθ = radius * cos(θ), so path along Y = ∫|dy/dθ| dθ = radius * ∫|cos(θ)| dθ
+
+      const angle1Start = Math.atan2(v1.y, v1.x);
+      const angle1End = Math.atan2(v2.y, v2.x);
+
+      // Normalize angles for calculation
+      let angleStart = angle1Start;
+      let angleEnd = angle1End;
+
+      // Adjust for direction (we already calculated the actual angle above, but need angles for integration)
+      // The integration needs to match the actual arc path traveled
+      if (direction === 'G2' && cross > Sender.EPSILON) {
+        // Going long way clockwise
+        if (angleEnd > angleStart) {
+          angleEnd -= 2 * Math.PI;
+        }
+      } else if (direction === 'G3' && cross < -Sender.EPSILON) {
+        // Going long way counter-clockwise
+        if (angleEnd < angleStart) {
+          angleEnd += 2 * Math.PI;
+        }
+      }
+
+      // Calculate axis distances using numerical integration of |sin(θ)| and |cos(θ)|
+      // For a circular arc:
+      // - axis1 (X): dx/dθ = -radius * sin(θ), so path length = radius * ∫|sin(θ)| dθ
+      // - axis2 (Y): dy/dθ = radius * cos(θ), so path length = radius * ∫|cos(θ)| dθ
+      // We integrate from angleStart to angleEnd to get the actual path traveled along each axis
+      // Use the same angle range that matches the calculated arc length
+      const integrationAngle = Math.abs(angleEnd - angleStart);
+      const numSamples = Math.max(Sender.MIN_INTEGRATION_SAMPLES, Math.ceil(integrationAngle / Sender.INTEGRATION_STEP_RADIANS));
+      let axis1PathSum = 0;
+      let axis2PathSum = 0;
+
+      const dTheta = Math.abs(angleEnd - angleStart) / numSamples;
+
+      for (let i = 0; i < numSamples; i++) {
+        const theta = angleStart + i * dTheta;
+
+        // For axis1 (X): integrate |sin(θ)| - this gives the path length along X
+        // For axis2 (Y): integrate |cos(θ)| - this gives the path length along Y
+        axis1PathSum += Math.abs(Math.sin(theta)) * dTheta;
+        axis2PathSum += Math.abs(Math.cos(theta)) * dTheta;
+      }
+
+      // Scale by radius to get actual path distances
+      // These represent the actual path length traveled along each axis
+      // For orthogonal path components, they don't sum to arcLength (they're independent)
+      // axis1ArcDist = radius * ∫|sin(θ)| dθ from start to end
+      // axis2ArcDist = radius * ∫|cos(θ)| dθ from start to end
+      let axis1ArcDist = radius * axis1PathSum;
+      let axis2ArcDist = radius * axis2PathSum;
+
+      // These are the actual path distances along each axis - no normalization needed
+      // For example, a semicircle from 0 to π:
+      // - ∫|sin(θ)| dθ from 0 to π = 2 (goes from 0 to 1 and back to 0)
+      // - ∫|cos(θ)| dθ from 0 to π = 2 (goes from 1 to -1, absolute value)
+      // So axis1Dist = radius * 2, axis2Dist = radius * 2, arcLength = radius * π
+      // They don't sum directly because they're orthogonal components
+
+      // Declare variables for final distances
+      let xDist, yDist, zDist;
+
+      // Assign to x, y, z based on plane
+      if (plane === 'G18') {
+        // XZ plane
+        xDist = axis1ArcDist;
+        yDist = linearAxis3; // Y is the third axis
+        zDist = axis2ArcDist;
+      } else if (plane === 'G19') {
+        // YZ plane
+        xDist = linearAxis3; // X is the third axis
+        yDist = axis1ArcDist;
+        zDist = axis2ArcDist;
+      } else {
+        // G17 - XY plane (default)
+        xDist = axis1ArcDist;
+        yDist = axis2ArcDist;
+        zDist = linearAxis3; // Z is the third axis
+      }
+
+      return { x: xDist, y: yDist, z: zDist, total };
+    }
+
+    // Add distance to stats
+    addDistance(stats, distance) {
+      stats.x += distance.x;
+      stats.y += distance.y;
+      stats.z += distance.z;
+      stats.total += distance.total;
+    }
+
+    // Parse a G-code word into its components
+    // Returns { letter, numericPart, value, isValid } or null if invalid
+    parseGcodeWord(word) {
+      if (typeof word !== 'string' || word.length === 0) {
+        return null;
+      }
+      const letter = word[0].toUpperCase();
+      const numericPart = word.substring(1);
+      const value = parseFloat(numericPart);
+      return {
+        letter,
+        numericPart,
+        value,
+        isValid: !Number.isNaN(value),
+      };
+    }
+
+    // Process a single G-code line and calculate distance incrementally
+    processLineForDistance(line, lineIndex) {
+      if (!line || typeof line !== 'string') {
+        return;
+      }
+
+      const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith(';')) {
+        return;
+      }
+
+      // Remove comments (everything after ;)
+      const codePart = trimmedLine.split(';')[0].trim();
+      if (!codePart) {
+        return;
+      }
+
+      try {
+        const data = parser.parseLine(codePart, { flatten: true });
+        const words = Array.isArray(data.words) ? data.words : [];
+
+        // Store previous position reference (only copy if position changes)
+        const previousPositionRef = this.state.stats.position;
+        let previousPosition = null; // Will be copied only if needed
+        let positionChanged = false;
+        let toolChangeDetected = false;
+        let newToolNumber = this.state.stats.currentTool;
+
+        // Process all words to update modal state and extract coordinates
+        for (const word of words) {
+          const parsed = this.parseGcodeWord(word);
+          if (!parsed) {
+            continue;
+          }
+
+          const { letter, value } = parsed;
+
+          if (letter === 'G') {
+            // G-code values are parsed from string like "G17" -> 17
+            if (parsed.isValid) {
+              if (value === 0 || value === 0.0) {
+                this.state.stats.modalState.motion = 'G0';
+              } else if (value === 1 || value === 1.0) {
+                this.state.stats.modalState.motion = 'G1';
+              } else if (value === 2 || value === 2.0) {
+                this.state.stats.modalState.motion = 'G2';
+              } else if (value === 3 || value === 3.0) {
+                this.state.stats.modalState.motion = 'G3';
+              } else if (value === 90 || value === 90.1) {
+                this.state.stats.modalState.distance = 'G90';
+              } else if (value === 91 || value === 91.1) {
+                this.state.stats.modalState.distance = 'G91';
+              } else if (value === 20 || value === 20.0) {
+                this.state.stats.modalState.units = 'G20';
+              } else if (value === 21 || value === 21.0) {
+                this.state.stats.modalState.units = 'G21';
+              } else if (value === 17 || value === 17.0) {
+                this.state.stats.modalState.plane = 'G17';
+              } else if (value === 18 || value === 18.0) {
+                this.state.stats.modalState.plane = 'G18';
+              } else if (value === 19 || value === 19.0) {
+                this.state.stats.modalState.plane = 'G19';
+              } else if (value === 28 || value === 30) {
+                // Homing - reset position
+                this.state.stats.position = { x: 0, y: 0, z: 0 };
+                positionChanged = true;
+              } else if (value === 92 || value === 92.0) {
+                // Coordinate system offset - handled by coordinates below
+              }
+            }
+          } else if (letter === 'M') {
+            // M-code values are parsed from string like "M3" -> 3
+            if (parsed.isValid) {
+              if (value === 3 || value === 3.0) {
+                this.state.stats.modalState.spindle = 'M3';
+              } else if (value === 4 || value === 4.0) {
+                this.state.stats.modalState.spindle = 'M4';
+              } else if (value === 5 || value === 5.0) {
+                this.state.stats.modalState.spindle = 'M5';
+              } else if (value === 6 || value === 6.0) {
+                toolChangeDetected = true;
+              }
+            }
+          } else if (letter === 'T') {
+            // Tool selection - word is like "T4"
+            if (parsed.isValid) {
+              newToolNumber = Math.floor(value);
+            }
+          }
+          // Note: X, Y, Z coordinates are processed in the motion command section below
+        }
+
+        // Handle tool change
+        if (toolChangeDetected || (newToolNumber !== this.state.stats.currentTool && newToolNumber !== undefined)) {
+          if (newToolNumber !== this.state.stats.currentTool) {
+            // Track tool change for time tracking
+            if (this.state.startTime > 0) {
+              this.trackToolChange(newToolNumber);
+            } else {
+              this.state.stats.currentTool = newToolNumber;
+            }
+          }
+        }
+
+        // Process coordinates for motion commands (G0, G1, G2, G3)
+        // Modal state persists across lines, so a line without explicit G command
+        // still uses the previously established motion mode (e.g., G3 arc commands)
+        const motion = this.state.stats.modalState.motion;
+        const isMotionCommand = ['G0', 'G00', 'G1', 'G01', 'G2', 'G02', 'G3', 'G03'].includes(motion);
+
+        // Check if this line has any coordinates (X, Y, Z, I, J, K, R, etc.)
+        // If it has coordinates and we're in a motion mode, it's a motion command
+        const hasCoordinates = words.some(word => {
+          const letter = word[0];
+          return ['X', 'Y', 'Z', 'I', 'J', 'K', 'R', 'U', 'V', 'W'].includes(letter);
+        });
+
+        // Process if: 1) we're in a motion command mode AND 2) line has coordinates
+        // This handles cases like "X-1.587 Z-0.166 I-1.587 J0" where G3 is held from previous line
+        if (isMotionCommand && hasCoordinates) {
+          // Extract coordinates and arc parameters
+          const arcParams = { i: 0, j: 0, k: 0 };
+          let hasArcParams = false;
+
+          // Map coordinate letters to position axes
+          const axisMap = { 'X': 'x', 'Y': 'y', 'Z': 'z' };
+
+          for (const word of words) {
+            const parsed = this.parseGcodeWord(word);
+            if (!parsed || !parsed.isValid) {
+              continue;
+            }
+
+            const { letter: coordLetter, value: coordValue } = parsed;
+
+            // Update position for X, Y, Z coordinates
+            if (axisMap[coordLetter]) {
+              const axis = axisMap[coordLetter];
+              if (this.state.stats.modalState.distance === 'G90') {
+                this.state.stats.position[axis] = coordValue;
+              } else {
+                this.state.stats.position[axis] += coordValue;
+              }
+              positionChanged = true;
+              // Copy previous position only when we know position will change
+              if (previousPosition === null) {
+                previousPosition = { ...previousPositionRef };
+              }
+            } else if (coordLetter === 'I') {
+              arcParams.i = coordValue;
+              hasArcParams = true;
+            } else if (coordLetter === 'J') {
+              arcParams.j = coordValue;
+              hasArcParams = true;
+            } else if (coordLetter === 'K') {
+              arcParams.k = coordValue;
+              hasArcParams = true;
+            }
+            // Note: R (arc radius) is supported in G-code but we use I/J/K for center-based arcs
+          }
+
+          // If position changed but we didn't copy it yet (shouldn't happen, but safety check)
+          if (positionChanged && previousPosition === null) {
+            previousPosition = { ...previousPositionRef };
+          }
+
+          // Calculate distance if position changed
+          if (positionChanged && previousPosition !== null) {
+            let distance;
+
+            // For arc commands (G2/G3), calculate actual arc length
+            // For linear/rapid commands (G0/G1), use straight-line distance
+            if ((motion === 'G2' || motion === 'G3') && hasArcParams) {
+              // Get plane (default to G17 = XY plane)
+              const plane = this.state.stats.modalState.plane || 'G17';
+              distance = this.calculateArcLength(
+                previousPosition,
+                this.state.stats.position,
+                arcParams,
+                plane,
+                motion
+              );
+            } else {
+              // Straight line distance for G0/G1
+              distance = this.calculateDistance(previousPosition, this.state.stats.position);
+            }
+
+            const isRetract = this.state.stats.position.z > previousPosition.z;
+            const modalState = this.state.stats.modalState;
+            const isCutting = (modalState.motion === 'G1' ||
+                              modalState.motion === 'G2' ||
+                              modalState.motion === 'G3') &&
+                              (modalState.spindle === 'M3' || modalState.spindle === 'M4');
+            const isTransition = modalState.motion === 'G0' || !isCutting;
+
+            // Add to total distance
+            this.addDistance(this.state.stats.totalDistance, distance);
+
+            // Add to appropriate category
+            if (isCutting) {
+              this.addDistance(this.state.stats.cuttingDistance, distance);
+            }
+            if (isTransition) {
+              this.addDistance(this.state.stats.transitionDistance, distance);
+            }
+            if (isRetract) {
+              this.addDistance(this.state.stats.retractDistance, distance);
+            }
+
+            // Add to current tool stats
+            const currentTool = this.state.stats.currentTool;
+            if (!this.state.stats.toolStats[currentTool]) {
+              this.state.stats.toolStats[currentTool] = {
+                toolNumber: currentTool,
+                distance: { x: 0, y: 0, z: 0, total: 0 },
+                time: 0,
+              };
+            }
+            this.addDistance(this.state.stats.toolStats[currentTool].distance, distance);
+          }
+        }
+      } catch (err) {
+        // Skip malformed lines, continue processing
+        return;
+      }
+    }
+
+    // Track tool change during runtime
+    trackToolChange(toolNumber) {
+      const now = Date.now();
+      const currentTool = this.state.stats.currentTool;
+      const toolStartTime = this.state.stats.toolStartTime;
+
+      // Update previous tool's time if it was running
+      if (currentTool !== null && toolStartTime > 0) {
+        const elapsedTime = now - toolStartTime;
+        if (!this.state.stats.toolStats[currentTool]) {
+          this.state.stats.toolStats[currentTool] = {
+            toolNumber: currentTool,
+            distance: { x: 0, y: 0, z: 0, total: 0 },
+            time: 0,
+          };
+        }
+        this.state.stats.toolStats[currentTool].time += elapsedTime;
+      }
+
+      // Start new tool
+      this.state.stats.currentTool = toolNumber;
+      this.state.stats.toolStartTime = now;
+
+      // Initialize tool stats if needed
+      if (!this.state.stats.toolStats[toolNumber]) {
+        this.state.stats.toolStats[toolNumber] = {
+          toolNumber: toolNumber,
+          distance: { x: 0, y: 0, z: 0, total: 0 },
+          time: 0,
+        };
+      }
+
+      this.emit('change');
+    }
+
+    // Update current tool's elapsed time
+    updateToolTime() {
+      const currentTool = this.state.stats.currentTool;
+      const toolStartTime = this.state.stats.toolStartTime;
+
+      if (currentTool !== null && toolStartTime > 0) {
+        if (!this.state.stats.toolStats[currentTool]) {
+          this.state.stats.toolStats[currentTool] = {
+            toolNumber: currentTool,
+            distance: { x: 0, y: 0, z: 0, total: 0 },
+            time: 0,
+          };
+        }
+
+        // Time is calculated on-demand in toJSON() when stats are serialized
+        // This method ensures the tool stats object exists for the current tool
+        this.emit('change');
+      }
     }
 }
 

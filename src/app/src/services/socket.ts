@@ -62,6 +62,30 @@ export type SocketEvents = {
     remainingTime?: number
     nextM6ToolNumber?: number
     remainingTimeToNextM6?: number
+    jobId?: string | null
+    m6Indices?: number[]
+    stats?: {
+      totalDistance?: { x: number; y: number; z: number; total: number }
+      cuttingDistance?: { x: number; y: number; z: number; total: number }
+      transitionDistance?: { x: number; y: number; z: number; total: number }
+      retractDistance?: { x: number; y: number; z: number; total: number }
+      toolStats?: {
+        [toolNumber: number]: {
+          toolNumber: number
+          distance: { x: number; y: number; z: number; total: number }
+          time: number
+        }
+      }
+      currentTool?: number
+      toolStartTime?: number
+      position?: { x: number; y: number; z: number }
+      modalState?: {
+        motion?: string
+        spindle?: string
+        distance?: string
+        units?: string
+      }
+    }
     [key: string]: unknown
   }]
   'feeder:status': [status: unknown]

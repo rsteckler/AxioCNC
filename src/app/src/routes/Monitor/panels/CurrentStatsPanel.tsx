@@ -1,20 +1,30 @@
 import type { PanelProps } from '../../Setup/types'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function CurrentStatsPanel(_props: PanelProps) {
-  // Mock operation type breakdown (for pie chart)
-  // TODO: Replace with real data from sender/feeder when available
-  const operationTypes = [
-    { type: 'Cutting', percent: 45, color: 'rgb(59 130 246)', bgColor: 'bg-blue-500' },
-    { type: 'Positioning', percent: 30, color: 'rgb(34 197 94)', bgColor: 'bg-green-500' },
-    { type: 'Retracting/Plunging', percent: 25, color: 'rgb(249 115 22)', bgColor: 'bg-orange-500' },
-  ]
+export function CurrentStatsPanel(props: PanelProps) {
+  const stats = props.senderState?.stats
   
-  // Mock travel distances
-  // TODO: Replace with real data from sender when available
-  const totalTravelX = 6234.2 // mm
-  const totalTravelY = 6216.3 // mm
-  const totalTravelZ = 234.8 // mm
+  // Get distances from stats
+  const totalDistance = stats?.totalDistance || { x: 0, y: 0, z: 0, total: 0 }
+  const cuttingDistance = stats?.cuttingDistance || { x: 0, y: 0, z: 0, total: 0 }
+  const transitionDistance = stats?.transitionDistance || { x: 0, y: 0, z: 0, total: 0 }
+  const retractDistance = stats?.retractDistance || { x: 0, y: 0, z: 0, total: 0 }
+  
+  // Calculate operation type breakdown (for pie chart)
+  const totalDistanceTotal = totalDistance.total || 1 // Avoid division by zero
+  const cuttingPercent = totalDistanceTotal > 0 ? (cuttingDistance.total / totalDistanceTotal) * 100 : 0
+  const transitionPercent = totalDistanceTotal > 0 ? (transitionDistance.total / totalDistanceTotal) * 100 : 0
+  const retractPercent = totalDistanceTotal > 0 ? (retractDistance.total / totalDistanceTotal) * 100 : 0
+  
+  const operationTypes = [
+    { type: 'Cutting', percent: cuttingPercent, color: 'rgb(59 130 246)', bgColor: 'bg-blue-500', distance: cuttingDistance.total },
+    { type: 'Transition', percent: transitionPercent, color: 'rgb(34 197 94)', bgColor: 'bg-green-500', distance: transitionDistance.total },
+    { type: 'Retract', percent: retractPercent, color: 'rgb(249 115 22)', bgColor: 'bg-orange-500', distance: retractDistance.total },
+  ].filter(op => op.percent > 0) // Only show operations with distance
+  
+  // Use real travel distances from stats
+  const totalTravelX = totalDistance.x || 0
+  const totalTravelY = totalDistance.y || 0
+  const totalTravelZ = totalDistance.z || 0
   
   return (
     <div className="p-4 space-y-4">
@@ -70,13 +80,18 @@ export function CurrentStatsPanel(_props: PanelProps) {
             </svg>
           </div>
           <div className="flex-1 space-y-0.5">
-            {operationTypes.map(({ type, percent, bgColor }) => (
-              <div key={type} className="flex items-center gap-2 text-xs">
-                <div className={`w-2.5 h-2.5 rounded ${bgColor}`} />
-                <span className="flex-1 text-muted-foreground truncate">{type}</span>
-                <span className="font-medium">{percent}%</span>
-              </div>
-            ))}
+            {operationTypes.length > 0 ? (
+              operationTypes.map(({ type, percent, bgColor, distance }) => (
+                <div key={type} className="flex items-center gap-2 text-xs">
+                  <div className={`w-2.5 h-2.5 rounded ${bgColor}`} />
+                  <span className="flex-1 text-muted-foreground truncate">{type}</span>
+                  <span className="font-medium">{percent.toFixed(1)}%</span>
+                  <span className="font-mono text-muted-foreground">({distance.toFixed(1)}mm)</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-muted-foreground">No distance data available</div>
+            )}
           </div>
         </div>
       </div>

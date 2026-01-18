@@ -44,6 +44,27 @@ export function ToolsUsedPanel(props: PanelProps) {
   const nextM6ToolNumber = senderState?.nextM6ToolNumber
   const remainingTimeToNextM6 = senderState?.remainingTimeToNextM6 ?? 0
   
+  // Get tool stats from sender state
+  const toolStats = senderState?.stats?.toolStats || {}
+  const currentToolStats = currentTool !== undefined && currentTool > 0
+    ? toolStats[currentTool]
+    : null
+  
+  // Get current tool time (including active time if tool is currently active)
+  const currentToolTime = useMemo(() => {
+    if (!currentToolStats) return 0
+    let time = currentToolStats.time || 0
+    
+    // If this tool is currently active, add elapsed time since tool start
+    if (senderState?.stats?.currentTool === currentTool && senderState?.stats?.toolStartTime) {
+      const now = Date.now()
+      const elapsed = now - senderState.stats.toolStartTime
+      time += elapsed
+    }
+    
+    return time
+  }, [currentToolStats, senderState?.stats?.currentTool, senderState?.stats?.toolStartTime, currentTool])
+  
   // Find current tool info from tool library if available
   const currentToolData = currentTool !== undefined && currentTool > 0
     ? toolsData?.records?.find(t => t.toolId === currentTool)
@@ -53,6 +74,13 @@ export function ToolsUsedPanel(props: PanelProps) {
   const nextTool = nextM6ToolNumber !== undefined && nextM6ToolNumber >= 0
     ? toolsData?.records?.find(t => t.toolId === nextM6ToolNumber)
     : null
+  
+  // Get all tools that have been used (sorted by tool number)
+  const usedTools = useMemo(() => {
+    return Object.values(toolStats)
+      .filter(tool => tool && (tool.distance?.total > 0 || tool.time > 0))
+      .sort((a, b) => (a.toolNumber || 0) - (b.toolNumber || 0))
+  }, [toolStats])
 
   return (
     <div className="p-4 flex flex-col" style={{ minHeight: 0, maxHeight: '100%' }}>
@@ -88,6 +116,22 @@ export function ToolsUsedPanel(props: PanelProps) {
                     </div>
                   )}
                 </div>
+                {currentToolStats && (currentToolStats.distance?.total > 0 || currentToolTime > 0) && (
+                  <div className="mt-1.5 pt-1.5 border-t border-green-500/20 space-y-0.5">
+                    {currentToolStats.distance?.total > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Distance:</span>
+                        <span className="font-mono font-medium">{currentToolStats.distance.total.toFixed(1)} mm</span>
+                      </div>
+                    )}
+                    {currentToolTime > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Time:</span>
+                        <span className="font-mono font-medium">{formatTime(currentToolTime)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
             
@@ -127,6 +171,54 @@ export function ToolsUsedPanel(props: PanelProps) {
                 No tool loaded
               </div>
             ) : null}
+            
+            {/* Previously used tools - show below current/next tool */}
+            {usedTools.length > 0 && (
+              <>
+                {(currentTool !== undefined && currentTool > 0) || (nextM6ToolNumber !== undefined && nextM6ToolNumber >= 0) ? (
+                  <div className="pt-2 mt-2 border-t border-border">
+                    <div className="text-xs text-muted-foreground mb-2">Used Tools</div>
+                  </div>
+                ) : null}
+                {usedTools.map((toolStat) => {
+                  // Skip current tool (already shown above)
+                  if (toolStat.toolNumber === currentTool) return null
+                  
+                  // Skip next tool (already shown above)
+                  if (toolStat.toolNumber === nextM6ToolNumber) return null
+                  
+                  const toolData = toolsData?.records?.find(t => t.toolId === toolStat.toolNumber)
+                  
+                  return (
+                    <div key={toolStat.toolNumber} className="px-3 py-2 rounded border bg-muted/30 border-border">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-medium">T{toolStat.toolNumber}</span>
+                          {toolData ? (
+                            <span className="text-xs font-medium">{toolData.name || 'Tool ' + toolStat.toolNumber}</span>
+                          ) : null}
+                        </div>
+                        {toolData?.diameter && (
+                          <span className="text-xs text-muted-foreground">Ø{toolData.diameter}{toolData.diameterUnit || 'mm'}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-1 space-x-4">
+                        {toolStat.distance?.total > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-mono font-medium">{toolStat.distance.total.toFixed(1)} mm</span>
+                          </div>
+                        )}
+                        {toolStat.time > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-mono font-medium">{formatTime(toolStat.time)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         </OverlayScrollbarsComponent>
       </div>

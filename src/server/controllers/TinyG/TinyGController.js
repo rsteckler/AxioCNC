@@ -372,6 +372,11 @@ class TinyGController {
       this.sender.on('unhold', noop);
       this.sender.on('start', (startTime) => {
         this.actionTime.senderFinishTime = 0;
+        // Initialize tool tracking when job starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.sender.on('end', (finishTime) => {
         this.actionTime.senderFinishTime = finishTime;
@@ -384,6 +389,11 @@ class TinyGController {
         this.blocked = false;
         this.senderStatus = SENDER_STATUS_NONE;
         this.sender.rewind();
+        // Initialize tool tracking when workflow starts
+        const currentTool = this.runner.getTool();
+        if (currentTool !== null && currentTool !== undefined) {
+          this.sender.trackToolChange(currentTool);
+        }
       });
       this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
@@ -582,6 +592,14 @@ class TinyGController {
       });
 
       this.runner.on('sr', (sr) => {
+        // Track tool changes during runtime
+        if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
+          const currentTool = this.runner.getTool();
+          const statsTool = this.sender.state.stats.currentTool;
+          if (currentTool !== null && currentTool !== undefined && currentTool !== statsTool) {
+            this.sender.trackToolChange(currentTool);
+          }
+        }
       });
 
       this.runner.on('fb', (fb) => {
