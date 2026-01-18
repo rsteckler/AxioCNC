@@ -57,8 +57,9 @@ jobs:
       - name: Prepare deployment artifact
         run: |
           mkdir -p _site/docs
-          # Copy static website files to root
+          # Copy static website files to root (exclude docs.html since Docusaurus handles /docs/)
           cp -r website/static/* _site/ 2>/dev/null || true
+          rm -f _site/docs.html
           # Copy Docusaurus build to docs subdirectory
           cp -r website/docs/build/* _site/docs/
           # Ensure .nojekyll exists for GitHub Pages
