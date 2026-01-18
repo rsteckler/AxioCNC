@@ -47,6 +47,7 @@ export interface JobState {
   remainingTimeToNextM6?: number
   jobId?: string | null
   m6Indices?: number[]
+  m6ToolNumbers?: number[]
   stats?: JobStats
   completion: JobCompletionState
 }

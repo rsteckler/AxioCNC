@@ -75,12 +75,65 @@ export function ToolsUsedPanel(props: PanelProps) {
     ? toolsData?.records?.find(t => t.toolId === nextM6ToolNumber)
     : null
   
-  // Get all tools that have been used (sorted by tool number)
+  // Check if G-code file is loaded
+  const isFileLoaded = !!senderState?.name
+  
+  // Get all tools scheduled in the job (from M6 indices) or with stats
+  const scheduledToolNumbers = isFileLoaded ? (senderState?.m6ToolNumbers || []) : []
+  const currentToolNum = isFileLoaded ? (senderState?.stats?.currentTool) : undefined
+  
+  // Get all tools that have been used OR are scheduled in the job (sorted by tool number)
   const usedTools = useMemo(() => {
-    return Object.values(toolStats)
-      .filter(tool => tool && (tool.distance?.total > 0 || tool.time > 0))
+    // If no file is loaded, don't show any tools
+    if (!isFileLoaded) {
+      return []
+    }
+    
+    // Start with all tool numbers that are in the job (from M6 indices or current tool)
+    const toolNumbersInJob = new Set<number>()
+    
+    // Add current tool if set and > 0 (T0 is not a valid tool)
+    if (currentToolNum !== undefined && currentToolNum !== null && currentToolNum > 0) {
+      toolNumbersInJob.add(currentToolNum)
+    }
+    
+    // Add all scheduled tools from M6 indices (filter out T0)
+    scheduledToolNumbers.forEach(toolNum => {
+      if (toolNum > 0) {
+        toolNumbersInJob.add(toolNum)
+      }
+    })
+    
+    // Add next tool if scheduled (filter out T0)
+    if (nextM6ToolNumber !== undefined && nextM6ToolNumber > 0) {
+      toolNumbersInJob.add(nextM6ToolNumber)
+    }
+    
+    // Build list of tools: those with stats, or those scheduled in the job
+    const toolsMap = new Map<number, typeof toolStats[keyof typeof toolStats]>()
+    
+    // First, add all tools with stats (filter out T0)
+    Object.values(toolStats).forEach(tool => {
+      if (tool && tool.toolNumber !== undefined && tool.toolNumber > 0) {
+        toolsMap.set(tool.toolNumber, tool)
+      }
+    })
+    
+    // Then, ensure all scheduled tools are included (even without stats yet)
+    toolNumbersInJob.forEach(toolNum => {
+      if (!toolsMap.has(toolNum)) {
+        // Create placeholder entry for scheduled tool without stats yet
+        toolsMap.set(toolNum, {
+          toolNumber: toolNum,
+          distance: { x: 0, y: 0, z: 0, total: 0 },
+          time: 0,
+        })
+      }
+    })
+    
+    return Array.from(toolsMap.values())
       .sort((a, b) => (a.toolNumber || 0) - (b.toolNumber || 0))
-  }, [toolStats])
+  }, [toolStats, scheduledToolNumbers, currentToolNum, nextM6ToolNumber, isFileLoaded])
 
   return (
     <div className="p-4 flex flex-col" style={{ minHeight: 0, maxHeight: '100%' }}>
@@ -92,8 +145,8 @@ export function ToolsUsedPanel(props: PanelProps) {
           options={{ scrollbars: { autoHide: 'scroll', autoHideDelay: 400 } }}
         >
           <div className="space-y-1.5 pr-2">
-            {/* Current tool - always show if available */}
-            {currentTool !== undefined && currentTool > 0 ? (
+            {/* Current tool - always show if available and file is loaded */}
+            {isFileLoaded && currentTool !== undefined && currentTool > 0 ? (
               <div className="px-3 py-2 rounded border bg-green-500/10 border-green-500/30">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
@@ -135,8 +188,8 @@ export function ToolsUsedPanel(props: PanelProps) {
               </div>
             ) : null}
             
-            {/* Next tool change - show below current tool if scheduled */}
-            {nextTool ? (
+            {/* Next tool change - show below current tool if scheduled and file is loaded */}
+            {isFileLoaded && nextTool ? (
               <div className="px-3 py-2 rounded border bg-primary/10 border-primary/30 text-primary">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
@@ -153,7 +206,7 @@ export function ToolsUsedPanel(props: PanelProps) {
                   </div>
                 )}
               </div>
-            ) : nextM6ToolNumber !== undefined && nextM6ToolNumber >= 0 ? (
+            ) : isFileLoaded && nextM6ToolNumber !== undefined && nextM6ToolNumber > 0 ? (
               <div className="px-3 py-2 rounded border bg-primary/10 border-primary/30 text-primary">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
@@ -166,16 +219,16 @@ export function ToolsUsedPanel(props: PanelProps) {
                   </div>
                 )}
               </div>
-            ) : currentTool === undefined || currentTool === 0 ? (
+            ) : !isFileLoaded || currentTool === undefined || currentTool === 0 ? (
               <div className="px-3 py-2 rounded border bg-background border-border text-muted-foreground text-xs">
-                No tool loaded
+                {!isFileLoaded ? 'No file loaded' : 'No tool loaded'}
               </div>
             ) : null}
             
             {/* Previously used tools - show below current/next tool */}
-            {usedTools.length > 0 && (
+            {isFileLoaded && usedTools.length > 0 && (
               <>
-                {(currentTool !== undefined && currentTool > 0) || (nextM6ToolNumber !== undefined && nextM6ToolNumber >= 0) ? (
+                {(currentTool !== undefined && currentTool > 0) || (nextM6ToolNumber !== undefined && nextM6ToolNumber > 0) ? (
                   <div className="pt-2 mt-2 border-t border-border">
                     <div className="text-xs text-muted-foreground mb-2">Used Tools</div>
                   </div>
@@ -188,32 +241,37 @@ export function ToolsUsedPanel(props: PanelProps) {
                   if (toolStat.toolNumber === nextM6ToolNumber) return null
                   
                   const toolData = toolsData?.records?.find(t => t.toolId === toolStat.toolNumber)
+                  const hasStats = (toolStat.distance?.total > 0 || toolStat.time > 0)
                   
                   return (
-                    <div key={toolStat.toolNumber} className="px-3 py-2 rounded border bg-muted/30 border-border">
+                    <div key={toolStat.toolNumber} className={`px-3 py-2 rounded border ${hasStats ? 'bg-muted/30 border-border' : 'bg-muted/10 border-border/50'}`}>
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-medium">T{toolStat.toolNumber}</span>
                           {toolData ? (
                             <span className="text-xs font-medium">{toolData.name || 'Tool ' + toolStat.toolNumber}</span>
+                          ) : !hasStats ? (
+                            <span className="text-xs text-muted-foreground italic">Scheduled</span>
                           ) : null}
                         </div>
                         {toolData?.diameter && (
                           <span className="text-xs text-muted-foreground">Ø{toolData.diameter}{toolData.diameterUnit || 'mm'}</span>
                         )}
                       </div>
-                      <div className="flex items-center justify-between mt-1 space-x-4">
-                        {toolStat.distance?.total > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            <span className="font-mono font-medium">{toolStat.distance.total.toFixed(1)} mm</span>
-                          </div>
-                        )}
-                        {toolStat.time > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            <span className="font-mono font-medium">{formatTime(toolStat.time)}</span>
-                          </div>
-                        )}
-                      </div>
+                      {hasStats && (
+                        <div className="flex items-center justify-between mt-1 space-x-4">
+                          {toolStat.distance?.total > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              <span className="font-mono font-medium">{toolStat.distance.total.toFixed(1)} mm</span>
+                            </div>
+                          )}
+                          {toolStat.time > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              <span className="font-mono font-medium">{formatTime(toolStat.time)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

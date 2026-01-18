@@ -565,10 +565,10 @@ class Sender extends events.EventEmitter {
     static EPSILON = 0.0001; // Minimum radius/magnitude to avoid numerical errors
     static INTEGRATION_STEP_RADIANS = Math.PI / 20; // ~9 degrees per sample
     static MIN_INTEGRATION_SAMPLES = 20;
-    
+
     // Tool tracking constants
     static NO_TOOL = 0; // Tool 0 means "no tool loaded"
-    
+
     // Helper: Check if a tool number is valid (not null, undefined, or 0)
     static isValidTool(toolNumber) {
       return toolNumber !== null && toolNumber !== undefined && toolNumber !== Sender.NO_TOOL;
@@ -816,7 +816,7 @@ class Sender extends events.EventEmitter {
         let previousPosition = null; // Will be copied only if needed
         let positionChanged = false;
         let toolChangeDetected = false;
-        let newToolNumber = undefined; // Only set if T command is found on this line
+        let newToolNumber; // Only set if T command is found on this line
 
         // Process all words to update modal state and extract coordinates
         for (const word of words) {

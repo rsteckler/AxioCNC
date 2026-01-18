@@ -25,6 +25,7 @@ export function CurrentStatsPanel(props: PanelProps) {
   const totalTravelX = totalDistance.x || 0
   const totalTravelY = totalDistance.y || 0
   const totalTravelZ = totalDistance.z || 0
+  const totalDistanceSum = totalTravelX + totalTravelY + totalTravelZ
   
   return (
     <div className="p-4 space-y-4">
@@ -43,6 +44,10 @@ export function CurrentStatsPanel(props: PanelProps) {
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">Z:</span>
             <span className="text-xs font-mono font-medium">{totalTravelZ.toFixed(1)} mm</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border">
+            <span className="text-xs font-medium">Total:</span>
+            <span className="text-xs font-mono font-semibold">{totalDistanceSum.toFixed(1)} mm</span>
           </div>
         </div>
       </div>

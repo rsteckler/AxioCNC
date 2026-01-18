@@ -64,6 +64,7 @@ export type SocketEvents = {
     remainingTimeToNextM6?: number
     jobId?: string | null
     m6Indices?: number[]
+    m6ToolNumbers?: number[]
     stats?: {
       totalDistance?: { x: number; y: number; z: number; total: number }
       cuttingDistance?: { x: number; y: number; z: number; total: number }

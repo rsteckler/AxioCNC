@@ -23,8 +23,7 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { useGetToolsQuery, useGetControllersQuery, useCreateToolMutation, useUpdateToolMutation, type Tool } from '@/services/api'
-import { socketService } from '@/services/socket'
-import { parseToolsFromGcode } from '@/utils/gcode'
+import { useJobState } from '@/store/hooks'
 import { mmToInches, inchesToMm } from '@/utils/units'
 
 // Tool type options for quick selection
@@ -76,9 +75,17 @@ export function ToolsPanel() {
   const [createTool] = useCreateToolMutation()
   const [updateTool] = useUpdateToolMutation()
   
-  // Get connected port from controllers
-  const { data: controllers } = useGetControllersQuery()
-  const connectedPort = controllers?.[0]?.port || null
+  // Get job state (sender state) from Redux
+  const jobState = useJobState()
+  
+  // Get tools scheduled in the job from backend M6 indices
+  const toolsInUse = useMemo(() => {
+    const toolNumbers = jobState?.m6ToolNumbers || []
+    return new Set(toolNumbers.filter(tn => tn > 0)) // Filter out T0 (not a valid tool)
+  }, [jobState?.m6ToolNumbers])
+  
+  // Check if G-code is loaded (has a name)
+  const gcodeLoaded = !!jobState?.name
   
   // Dialog state for editing missing tools
   const [editingToolId, setEditingToolId] = useState<number | null>(null)
@@ -89,120 +96,6 @@ export function ToolsPanel() {
   const [formDiameterUnit, setFormDiameterUnit] = useState<'mm' | 'in'>('mm')
   const [formType, setFormType] = useState<string>('')
   const [isTypeCustom, setIsTypeCustom] = useState(false)
-  
-  // Track loaded G-code content and filename
-  const [gcodeContent, setGcodeContent] = useState<string | null>(null)
-  const [gcodeLoaded, setGcodeLoaded] = useState(false)
-  // loadedFileName may be needed in future - keeping setLoadedFileName for now
-  const [, setLoadedFileName] = useState<string | null>(null)
-  
-  // Parse tools from G-code
-  const toolsInUse = useMemo(() => {
-    if (!gcodeLoaded || !gcodeContent) {
-      return new Set<number>() // No G-code loaded, no tools in use
-    }
-    return parseToolsFromGcode(gcodeContent)
-  }, [gcodeContent, gcodeLoaded])
-  
-  const fetchGcodeContent = async () => {
-    if (!connectedPort) return
-    
-    try {
-      const token = localStorage.getItem('axiocnc-token')
-      const response = await fetch(`/api/gcode?port=${encodeURIComponent(connectedPort)}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (data.data && data.name) {
-          // G-code is loaded
-          setGcodeContent(data.data)
-          setGcodeLoaded(true)
-          setLoadedFileName(data.name)
-        } else {
-          // No G-code loaded
-          setGcodeContent(null)
-          setGcodeLoaded(false)
-          setLoadedFileName(null)
-        }
-      } else if (response.status === 404 || response.status === 400) {
-        // No G-code loaded for this port
-        setGcodeContent(null)
-        setGcodeLoaded(false)
-        setLoadedFileName(null)
-      }
-    } catch (error) {
-      console.error('Failed to fetch G-code:', error)
-      setGcodeContent(null)
-      setGcodeLoaded(false)
-      setLoadedFileName(null)
-    }
-  }
-    
-  // Listen for sender:status events to detect loaded G-code
-  useEffect(() => {
-    if (!connectedPort) {
-      setGcodeContent(null)
-      setGcodeLoaded(false)
-      return
-    }
-    
-    // Initial fetch if we have a connected port
-    fetchGcodeContent()
-    
-  }, [connectedPort])
-
-  useEffect(() => {
-    const handleSenderStatus = (...args: unknown[]) => {
-      const senderData = args[0] as {
-        name?: string
-        total?: number
-        size?: number
-      }
-      
-      if (senderData?.name) {
-        // G-code file is loaded (has a name) - fetch content
-        fetchGcodeContent()
-      } else {
-        // No G-code loaded (no name)
-        setGcodeContent(null)
-        setGcodeLoaded(false)
-        setLoadedFileName(null)
-      }
-    }
-    
-    // gcode:load emits (name, gcode, context) as separate arguments
-    const handleGcodeLoad = (name: string, gcode: string) => {
-      if (name && gcode) {
-        // G-code was loaded - use the content directly from the event
-        setGcodeContent(gcode)
-        setGcodeLoaded(true)
-        setLoadedFileName(name)
-      } else {
-        // Fallback: fetch from API if event didn't include content
-        fetchGcodeContent()
-      }
-    }
-    
-    const handleGcodeUnload = () => {
-      setGcodeContent(null)
-      setGcodeLoaded(false)
-      setLoadedFileName(null)
-    }
-
-    socketService.on('sender:status', handleSenderStatus)
-    socketService.on('gcode:load', handleGcodeLoad)
-    socketService.on('gcode:unload', handleGcodeUnload)
-
-    return () => {
-      socketService.off('sender:status', handleSenderStatus)
-      socketService.off('gcode:load', handleGcodeLoad)
-      socketService.off('gcode:unload', handleGcodeUnload)
-    }
-  }, [])
 
 
   // Convert vertical wheel to horizontal scroll

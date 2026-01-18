@@ -306,6 +306,7 @@ class MachineStateSyncService {
       elapsedTime?: number
       remainingTime?: number
       m6Indices?: number[]
+      m6ToolNumbers?: number[]
       nextM6ToolNumber?: number
       remainingTimeToNextM6?: number
       jobId?: string | null
@@ -343,6 +344,7 @@ class MachineStateSyncService {
         elapsedTime: senderState.elapsedTime,
         remainingTime: senderState.remainingTime,
         m6Indices: senderState.m6Indices,
+        m6ToolNumbers: senderState.m6ToolNumbers,
         nextM6ToolNumber: senderState.nextM6ToolNumber,
         remainingTimeToNextM6: senderState.remainingTimeToNextM6,
         jobId: senderState.jobId,

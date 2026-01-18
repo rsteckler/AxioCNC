@@ -22,6 +22,7 @@ export interface PanelProps {
     remainingTime?: number
     nextM6ToolNumber?: number
     remainingTimeToNextM6?: number
+    m6ToolNumbers?: number[]
     stats?: JobStats
   }
   feedrate?: number
