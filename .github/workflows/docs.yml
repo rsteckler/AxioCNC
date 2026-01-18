@@ -42,8 +42,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        working-directory: website/docs
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Docusaurus
         working-directory: website/docs

@@ -25,7 +25,8 @@
     "apps/web",
     "apps/server",
     "apps/desktop",
-    "packages/shared"
+    "packages/shared",
+    "website/docs"
   ],
   "scripts": {
     "clean": "del dist output",
