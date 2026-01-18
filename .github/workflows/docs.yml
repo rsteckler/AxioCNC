@@ -1,0 +1,90 @@
+# Workflow for building and deploying Docusaurus documentation to GitHub Pages
+name: Build and Deploy Docs
+
+on:
+  # Runs on pushes to website/docs directory
+  push:
+    branches: ["main"]
+    paths:
+      - 'website/docs/**'
+      - '.github/workflows/docs.yml'
+  
+  # Runs on pushes targeting the default branch (for full site rebuilds)
+  push:
+    branches: ["main"]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        working-directory: website/docs
+        run: yarn install --frozen-lockfile
+
+      - name: Build Docusaurus
+        working-directory: website/docs
+        env:
+          # Giscus configuration (optional - can be set in GitHub Secrets)
+          GISCUS_REPO: ${{ secrets.GISCUS_REPO || 'rsteckler/AxioCNC-Docs' }}
+          GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
+          GISCUS_CATEGORY: ${{ secrets.GISCUS_CATEGORY || 'Announcements' }}
+          GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
+        run: yarn build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare combined artifact
+        run: |
+          # Create a temporary directory for combined site
+          mkdir -p _site
+          # Copy static website files to root (preserves existing website)
+          if [ -d "website/static" ]; then
+            cp -r website/static/* _site/ || true
+          fi
+          # Copy Docusaurus build to docs subdirectory
+          if [ -d "website/docs/build" ]; then
+            mkdir -p _site/docs
+            cp -r website/docs/build/* _site/docs/
+          fi
+          # Ensure .nojekyll exists for GitHub Pages (needed for both root and docs)
+          touch _site/.nojekyll
+          if [ -d "_site/docs" ]; then
+            touch _site/docs/.nojekyll
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

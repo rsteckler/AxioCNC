@@ -1,10 +1,16 @@
 # Simple workflow for deploying static content to GitHub Pages
+# Note: This workflow runs when static files change. For docs changes, see docs.yml
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
+  # Runs on pushes to static files (but not docs)
   push:
     branches: ["main"]
+    paths:
+      - 'website/static/**'
+      - '.github/workflows/static.yml'
+    paths-ignore:
+      - 'website/docs/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
