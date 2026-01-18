@@ -251,18 +251,9 @@ class Sender extends events.EventEmitter {
     }
 
     toJSON() {
-      // Calculate current tool's runtime time if job is running
+      // Return stats as-is - frontend will calculate real-time elapsed time for current tool
+      // This avoids double-counting elapsed time
       const stats = { ...this.state.stats };
-      if (stats.currentTool !== null && stats.toolStartTime > 0 && this.state.startTime > 0) {
-        const now = Date.now();
-        const elapsedTime = now - stats.toolStartTime;
-        if (stats.toolStats[stats.currentTool]) {
-          stats.toolStats[stats.currentTool] = {
-            ...stats.toolStats[stats.currentTool],
-            time: stats.toolStats[stats.currentTool].time + elapsedTime
-          };
-        }
-      }
 
       return {
         sp: this.sp.type,
