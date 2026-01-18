@@ -16,6 +16,7 @@ import { Console } from '@/components/Console'
 import { ToolChangeTab } from '@/components/ToolChangeTab'
 import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
+import { NotificationSystem, useNotifications } from '@/components/NotificationSystem'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import type { ZeroingMethod } from '../../../shared/schemas/settings'
 import { ActionRequirements } from '@/utils/machineState'
@@ -1262,6 +1263,9 @@ export default function Monitor() {
         
         {/* Spacer */}
         <div className="flex-1" />
+        
+        {/* Notifications button */}
+        <NotificationSystem />
         
         {/* Emergency actions - Reset and E-Stop */}
         <div className="ml-4 flex items-center gap-2">

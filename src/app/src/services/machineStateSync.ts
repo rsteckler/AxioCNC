@@ -20,6 +20,7 @@ class MachineStateSyncService {
   private initialized = false
   private handleSerialPortOpenBound?: (...args: unknown[]) => void
   private handleSerialPortCloseBound?: (...args: unknown[]) => void
+  private handleSocketDisconnectBound?: (...args: unknown[]) => void
   private handleMachineStatusBound?: (...args: unknown[]) => void
   private handleWorkflowStateBound?: (...args: unknown[]) => void
   private handleSenderStatusBound?: (...args: unknown[]) => void
@@ -37,6 +38,7 @@ class MachineStateSyncService {
     // Store bound handlers so we can remove them in cleanup
     this.handleSerialPortOpenBound = this.handleSerialPortOpen.bind(this)
     this.handleSerialPortCloseBound = this.handleSerialPortClose.bind(this)
+    this.handleSocketDisconnectBound = this.handleSocketDisconnect.bind(this)
     this.handleMachineStatusBound = this.handleMachineStatus.bind(this)
     this.handleWorkflowStateBound = this.handleWorkflowState.bind(this)
     this.handleSenderStatusBound = this.handleSenderStatus.bind(this)
@@ -45,6 +47,8 @@ class MachineStateSyncService {
     // Listen to connection events
     socketService.on('serialport:open', this.handleSerialPortOpenBound)
     socketService.on('serialport:close', this.handleSerialPortCloseBound)
+    // Listen to socket disconnect to handle server crashes, network issues, etc.
+    socketService.on('disconnect', this.handleSocketDisconnectBound)
 
     // Listen to machine status updates (now includes full controller state including parserstate)
     socketService.on('machine:status', this.handleMachineStatusBound)
@@ -80,6 +84,9 @@ class MachineStateSyncService {
     }
     if (this.handleSerialPortCloseBound) {
       socketService.off('serialport:close', this.handleSerialPortCloseBound)
+    }
+    if (this.handleSocketDisconnectBound) {
+      socketService.off('disconnect', this.handleSocketDisconnectBound)
     }
     if (this.handleMachineStatusBound) {
       socketService.off('machine:status', this.handleMachineStatusBound)
@@ -189,6 +196,41 @@ class MachineStateSyncService {
     store.dispatch(setBackendStatus(null))
     store.dispatch(setConnecting(false))
     store.dispatch(clearJobState())
+  }
+
+  /**
+   * Handle socket disconnect event
+   * This fires when the websocket connection is lost (server crash, network issue, etc.)
+   * Note: This is different from serialport:close - the serial port may still be open
+   * but we can't communicate with it if the websocket is disconnected.
+   */
+  private handleSocketDisconnect(...args: unknown[]) {
+    const reason = args[0] as string | undefined
+    const reasonStr = reason || 'Connection lost'
+    
+    // Check if we were connected before disconnect
+    const currentStatus = store.getState().machine.backendStatus
+    const wasConnected = currentStatus?.connected === true
+
+    // Only update status and show notification if we were actually connected
+    // (avoid showing notification on initial connection failures)
+    if (wasConnected) {
+      // Clear backend status - we can't communicate with the machine anymore
+      store.dispatch(setBackendStatus(null))
+      store.dispatch(setConnecting(false))
+      store.dispatch(clearJobState())
+
+      // Emit custom event for notification system to pick up
+      // Components (like Setup page) can listen to this event and add notifications
+      const notificationEvent = new CustomEvent('machineStateSync:notification', {
+        detail: {
+          type: 'error',
+          title: 'Server Disconnected',
+          message: `Connection lost: ${reasonStr}. The server may have crashed or restarted.`,
+        },
+      })
+      window.dispatchEvent(notificationEvent)
+    }
   }
 
 
