@@ -25,6 +25,7 @@ class MachineStateSyncService {
   private handleWorkflowStateBound?: (...args: unknown[]) => void
   private handleSenderStatusBound?: (...args: unknown[]) => void
   private handleJobCompleteBound?: (...args: unknown[]) => void
+  private handleGcodeLoadBound?: (...args: unknown[]) => void
 
   /**
    * Initialize the service - set up Socket.IO listeners
@@ -43,6 +44,7 @@ class MachineStateSyncService {
     this.handleWorkflowStateBound = this.handleWorkflowState.bind(this)
     this.handleSenderStatusBound = this.handleSenderStatus.bind(this)
     this.handleJobCompleteBound = this.handleJobComplete.bind(this)
+    this.handleGcodeLoadBound = this.handleGcodeLoad.bind(this)
 
     // Listen to connection events
     socketService.on('serialport:open', this.handleSerialPortOpenBound)
@@ -62,10 +64,11 @@ class MachineStateSyncService {
     // Listen to job completion events
     socketService.on('job:complete', this.handleJobCompleteBound)
     
-    // NOTE: We don't listen to gcode:load/unload here because:
-    // 1. Components (FilePanel, VisualizerPanel) need to handle these events directly
-    // 2. Listening here with .bind(this) can interfere with component listeners
-    // 3. Job state is managed via sender:status events, not gcode:load/unload
+    // Listen to gcode:load to clear completion state when a new file is loaded
+    // This ensures job status goes back to "not_started" when loading a new file
+    // Note: Components (FilePanel, VisualizerPanel) can still listen to gcode:load
+    // for their own UI updates - multiple listeners are fine
+    socketService.on('gcode:load', this.handleGcodeLoadBound)
 
     this.initialized = true
     }
@@ -100,7 +103,9 @@ class MachineStateSyncService {
     if (this.handleJobCompleteBound) {
       socketService.off('job:complete', this.handleJobCompleteBound)
     }
-    // NOTE: We don't listen to gcode:load/unload, so no cleanup needed
+    if (this.handleGcodeLoadBound) {
+      socketService.off('gcode:load', this.handleGcodeLoadBound)
+    }
 
     this.initialized = false
   }
@@ -367,6 +372,18 @@ class MachineStateSyncService {
     } else {
       console.warn('[machineStateSync] job:complete received invalid data:', args)
     }
+  }
+
+  /**
+   * Handle gcode:load event
+   * Clear job completion state when a new file is loaded
+   * This ensures job status goes back to "not_started"
+   */
+  private handleGcodeLoad(..._args: unknown[]) {
+    // Clear completion state when a new file is loaded
+    // The workflow is already stopped by the controller (see GrblController.js line 1236)
+    // but we need to clear the completion state so the UI shows "not_started"
+    store.dispatch(clearJobCompletion())
   }
 
   /**
