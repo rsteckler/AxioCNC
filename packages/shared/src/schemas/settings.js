@@ -18,16 +18,17 @@ export const GeneralSettingsSchema = z.object({
 // Controller Settings
 // =============================================================================
 
-export const ControllerSettingsSchema = z.object({
-  toolSpinup: z.object({
-    enabled: z.boolean().default(false),
-    delaySeconds: z.number().min(0).max(60).default(2),
-  }).default({}),
-});
+export const ControllerSettingsSchema = z.object({}).passthrough();
 
 // =============================================================================
 // Machine Settings
 // =============================================================================
+
+// Define toolSpinup schema separately so we can use it for defaults
+const ToolSpinupSchema = z.object({
+  enabled: z.boolean().default(true),
+  delaySeconds: z.number().min(0).max(60).default(3),
+});
 
 export const MachineLimitsSchema = z.object({
   xmin: z.number().default(0),
@@ -40,8 +41,9 @@ export const MachineLimitsSchema = z.object({
 
 export const MachineSettingsSchema = z.object({
   name: z.string().default('My CNC Machine'),
-  limits: MachineLimitsSchema.default({}),
+  limits: MachineLimitsSchema.optional(),
   homingCorner: z.enum(['back-left', 'back-right', 'front-left', 'front-right']).optional(),
+  toolSpinup: ToolSpinupSchema.optional(),
 });
 
 // =============================================================================
@@ -207,10 +209,10 @@ export const SystemSettingsSchema = z.object({
   // General
   lang: z.string().default('en'),
   checkForUpdates: z.boolean().default(true),
-  allowAnonymousUsageDataCollection: z.boolean().default(false),
+  allowAnonymousUsageDataCollection: z.boolean().default(true),
   
-  // Controller behavior
-  controller: ControllerSettingsSchema.default({}),
+  // Controller behavior (optional, currently unused - kept for future use)
+  controller: ControllerSettingsSchema.optional(),
   
   // Machine configuration
   machine: MachineSettingsSchema.default({}),
@@ -238,7 +240,26 @@ export const SystemSettingsSchema = z.object({
 // Utility: Get defaults
 // =============================================================================
 
-export const getDefaultSettings = () => SystemSettingsSchema.parse({});
+export const getDefaultSettings = () => {
+  // Parse nested schemas explicitly to ensure all nested defaults are applied.
+  // This is needed because .default({}) on nested objects doesn't trigger
+  // recursive default application - it just uses the literal {}.
+  const base = {
+    machine: MachineSettingsSchema.parse({
+      limits: MachineLimitsSchema.parse({}),
+      toolSpinup: ToolSpinupSchema.parse({}),
+    }),
+    connection: ConnectionSettingsSchema.parse({}),
+    camera: CameraSettingsSchema.parse({}),
+    zeroingMethods: ZeroingMethodsSettingsSchema.parse({}),
+    zeroingStrategies: ZeroingStrategiesSettingsSchema.parse({}),
+    joystick: JoystickSettingsSchema.parse({}),
+    appearance: AppearanceSettingsSchema.parse({}),
+  };
+  
+  // Then parse through the full schema to ensure all top-level defaults are applied
+  return SystemSettingsSchema.parse(base);
+};
 
 // =============================================================================
 // Validation helpers

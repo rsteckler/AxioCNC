@@ -48,6 +48,8 @@ cp -af apps/web/dist/* output/axiocnc/app/
 cp -af apps/server/src/{i18n,views} output/axiocnc/server/
 # Copy config JSON files only (JS files already transformed by babel above)
 cp -af apps/server/src/config/*.json output/axiocnc/server/config/ 2>/dev/null || true
+# Copy assets (themes, default configs, etc.)
+cp -af apps/server/assets output/axiocnc/server/assets 2>/dev/null || true
 # Copy index.hbs template to app directory (needed by Express views)
 cp -af index.hbs output/axiocnc/app/ 2>/dev/null || true
 # Copy favicon if it exists

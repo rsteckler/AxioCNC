@@ -52,6 +52,8 @@ mkdir -p dist/axiocnc/server
 cp -af apps/server/src/{i18n,views} dist/axiocnc/server/
 # Copy config JSON files only (JS files already transformed by babel above)
 cp -af apps/server/src/config/*.json dist/axiocnc/server/config/ 2>/dev/null || true
+# Copy assets (themes, default configs, etc.)
+cp -af apps/server/assets dist/axiocnc/server/assets 2>/dev/null || true
 # Copy index.hbs template to app directory (needed by Express views)
 cp -af index.hbs dist/axiocnc/app/ 2>/dev/null || true
 

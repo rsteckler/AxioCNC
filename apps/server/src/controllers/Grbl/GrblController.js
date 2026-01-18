@@ -354,7 +354,7 @@ class GrblController {
 
           // M3 Spindle On - Tool Spinup Delay
           if (_.includes(words, 'M3')) {
-            const toolSpinup = config.get('settings.controller.toolSpinup', {});
+            const toolSpinup = config.get('settings.machine.toolSpinup', {});
             if (toolSpinup.enabled && toolSpinup.delaySeconds > 0) {
               const delaySeconds = toolSpinup.delaySeconds;
               const dwellCommand = `G4 P${delaySeconds}`;

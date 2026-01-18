@@ -98,8 +98,8 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
     zmax: 0,
   },
   homingCorner: 'front-left',  // Most common homing position
-  toolSpinupDelayEnabled: false,  // Disabled by default
-  toolSpinupDelaySeconds: 2,      // 2 seconds default delay
+  toolSpinupDelayEnabled: true,   // Enabled by default
+  toolSpinupDelaySeconds: 3,      // 3 seconds default delay
 }
 
 // Default camera configuration
@@ -383,11 +383,11 @@ export default function Settings() {
       }
       
       // Controller settings
-      if (settings.controller?.toolSpinup?.enabled !== undefined) {
-        setMachineConfig(prev => ({ ...prev, toolSpinupDelayEnabled: settings.controller!.toolSpinup!.enabled! }))
+      if (settings.machine?.toolSpinup?.enabled !== undefined) {
+        setMachineConfig(prev => ({ ...prev, toolSpinupDelayEnabled: settings.machine!.toolSpinup!.enabled! }))
       }
-      if (settings.controller?.toolSpinup?.delaySeconds !== undefined) {
-        setMachineConfig(prev => ({ ...prev, toolSpinupDelaySeconds: settings.controller!.toolSpinup!.delaySeconds! }))
+      if (settings.machine?.toolSpinup?.delaySeconds !== undefined) {
+        setMachineConfig(prev => ({ ...prev, toolSpinupDelaySeconds: settings.machine!.toolSpinup!.delaySeconds! }))
       }
       
       // Connection config
@@ -663,8 +663,6 @@ export default function Settings() {
       machine: {
         name: DEFAULT_MACHINE_CONFIG.name,
         limits: DEFAULT_MACHINE_CONFIG.limits,
-      },
-      controller: {
         toolSpinup: {
           enabled: DEFAULT_MACHINE_CONFIG.toolSpinupDelayEnabled,
           delaySeconds: DEFAULT_MACHINE_CONFIG.toolSpinupDelaySeconds,
@@ -846,15 +844,13 @@ export default function Settings() {
       if (changes.homingCorner !== undefined) saveData.machine.homingCorner = changes.homingCorner
     }
     if (changes.toolSpinupDelayEnabled !== undefined || changes.toolSpinupDelaySeconds !== undefined) {
-      saveData.controller = {}
-      if (changes.toolSpinupDelayEnabled !== undefined || changes.toolSpinupDelaySeconds !== undefined) {
-        saveData.controller.toolSpinup = {}
-        if (changes.toolSpinupDelayEnabled !== undefined) {
-          saveData.controller.toolSpinup.enabled = changes.toolSpinupDelayEnabled
-        }
-        if (changes.toolSpinupDelaySeconds !== undefined) {
-          saveData.controller.toolSpinup.delaySeconds = changes.toolSpinupDelaySeconds
-        }
+      saveData.machine = saveData.machine || {}
+      saveData.machine.toolSpinup = {}
+      if (changes.toolSpinupDelayEnabled !== undefined) {
+        saveData.machine.toolSpinup.enabled = changes.toolSpinupDelayEnabled
+      }
+      if (changes.toolSpinupDelaySeconds !== undefined) {
+        saveData.machine.toolSpinup.delaySeconds = changes.toolSpinupDelaySeconds
       }
     }
     if (Object.keys(saveData).length > 0) {
