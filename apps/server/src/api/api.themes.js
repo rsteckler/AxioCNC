@@ -15,23 +15,17 @@ const getUserHome = () => (process.env[(process.platform === 'win32') ? 'USERPRO
 const THEMES_DIR = path.resolve(getUserHome(), '.axiocnc', 'themes');
 
 // Get the bundled themes directory (shipped with the app)
-// Find project root by looking for the themes/ directory or package.json
-// In dev: output/axiocnc/server/api/ -> go up to find themes/ in project root
-// In prod: dist/axiocnc/server/api/ -> go up to find themes/ in project root
-const findProjectRoot = () => {
+// Find server root by looking for assets/themes/ directory
+// In dev: apps/server/src/api/ -> go up to apps/server/
+// In prod: dist/axiocnc/server/api/ -> go up to dist/axiocnc/
+const findServerRoot = () => {
   let current = __dirname;
-  // Start from __dirname and go up until we find themes/ directory or package.json with themes/
+  // Start from __dirname and go up until we find assets/themes/ directory
   for (let i = 0; i < 10; i++) {
-    const themesDir = path.join(current, 'themes');
-    const packageJson = path.join(current, 'package.json');
+    const assetsThemesDir = path.join(current, 'assets', 'themes');
 
-    // Check if themes directory exists (most reliable indicator of project root)
-    if (fs.existsSync(themesDir) && fs.statSync(themesDir).isDirectory()) {
-      return current;
-    }
-
-    // Also check for package.json and themes/ together
-    if (fs.existsSync(packageJson) && fs.existsSync(themesDir)) {
+    // Check if assets/themes directory exists
+    if (fs.existsSync(assetsThemesDir) && fs.statSync(assetsThemesDir).isDirectory()) {
       return current;
     }
 
@@ -45,8 +39,8 @@ const findProjectRoot = () => {
   // Fallback: try process.cwd() and go up if needed
   let fallback = process.cwd();
   for (let i = 0; i < 5; i++) {
-    const themesDir = path.join(fallback, 'themes');
-    if (fs.existsSync(themesDir) && fs.statSync(themesDir).isDirectory()) {
+    const assetsThemesDir = path.join(fallback, 'assets', 'themes');
+    if (fs.existsSync(assetsThemesDir) && fs.statSync(assetsThemesDir).isDirectory()) {
       return fallback;
     }
     const parent = path.dirname(fallback);
@@ -60,8 +54,8 @@ const findProjectRoot = () => {
   return process.cwd();
 };
 
-const PROJECT_ROOT = findProjectRoot();
-const BUNDLED_THEMES_DIR = path.resolve(PROJECT_ROOT, 'themes');
+const SERVER_ROOT = findServerRoot();
+const BUNDLED_THEMES_DIR = path.resolve(SERVER_ROOT, 'assets', 'themes');
 
 // Ensure themes directory exists
 const ensureThemesDir = () => {
@@ -79,7 +73,7 @@ const ensureThemesDir = () => {
 const copyBundledThemes = () => {
   try {
     log.info(`Looking for bundled themes at: ${BUNDLED_THEMES_DIR}`);
-    log.info(`Project root: ${PROJECT_ROOT}`);
+    log.info(`Server root: ${SERVER_ROOT}`);
     log.info(`Current working directory: ${process.cwd()}`);
 
     if (!fs.existsSync(BUNDLED_THEMES_DIR)) {
