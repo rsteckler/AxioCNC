@@ -3,7 +3,7 @@
 ## Project Context
 CNCjs frontend modernization — replacing legacy React/Webpack with modern React 18 + Vite + TypeScript + Tailwind + shadcn/ui. Backend is Express + Socket.IO (mostly unchanged).
 
-Read `aidocs/overview.md` for full project context and progress.
+Read `ai/docs/overview.md` for full project context and progress.
 
 ---
 
@@ -18,7 +18,7 @@ Read `aidocs/overview.md` for full project context and progress.
 - `apps/server/src/lib/EventTrigger.js` — Event trigger system
 - `apps/server/src/lib/MessageSlot.js` — M0/M1 pause handling
 
-These are safety-critical G-code sender components. Bugs can cause machine crashes, tool breakage, or injury. See `aidocs/protected-code.md` for details.
+These are safety-critical G-code sender components. Bugs can cause machine crashes, tool breakage, or injury. See `ai/docs/protected-code.md` for details.
 
 **If you need to modify protected code:** Stop, explain what you want to change and why, then wait for explicit permission.
 
@@ -56,11 +56,11 @@ yarn dev
 
 ## Code Conventions
 
-### Frontend (src/app/)
+### Frontend (apps/web/)
 - Use existing shadcn/ui components before creating new ones
 - Follow patterns in existing code — check similar files first
 - TypeScript for all new code
-- RTK Query for API calls (`src/app/src/services/api.ts`)
+- RTK Query for API calls (`apps/web/src/services/api.ts`)
 
 ### Naming
 - Handlers: `handle{Action}` (e.g., `handleLanguageChange`)
@@ -73,7 +73,7 @@ yarn dev
 - Tooltips for technical explanations, descriptions for user-friendly text
 - Axis colors: X=red, Y=green, Z=blue
 
-Read `aidocs/dev_prefs.md` for detailed UI patterns and component guidelines.
+Read `ai/docs/dev_prefs.md` for detailed UI patterns and component guidelines.
 
 ---
 
@@ -109,8 +109,10 @@ apps/
 packages/
 └── shared/                 # Shared schemas and utilities
     └── src/
-src/
-└── app-legacy/             # Original frontend (reference only)
+ai/
+├── docs/                   # Project documentation
+├── personas/               # AI agent personas
+└── plans/                  # Project plans
 ```
 
 ---
@@ -119,23 +121,23 @@ src/
 
 | File | Purpose |
 |------|---------|
-| `aidocs/overview.md` | Project context, progress, architecture |
-| `aidocs/dev_prefs.md` | UI patterns, code style, component guidelines |
-| `aidocs/protected-code.md` | Protected code boundaries and rationale |
+| `ai/docs/overview.md` | Project context, progress, architecture |
+| `ai/docs/dev_prefs.md` | UI patterns, code style, component guidelines |
+| `ai/docs/protected-code.md` | Protected code boundaries and rationale |
+| `ai/plans/` | Project plans and roadmaps |
 | `docs/API.md` | Complete REST API reference |
-| `docs/frontend-features.md` | Feature parity checklist |
 
 
 ---
 
 ## Planning & Architecture
 
-**Save project plans in `aidocs/` directory**, not in the default `.cursor/plans/` location. This ensures plans are:
+**Save project plans in `ai/plans/` directory**, not in the default `.cursor/plans/` location. This ensures plans are:
 - Version controlled with the project
 - Accessible to the team
 - Organized with other project documentation
 
-When creating project-specific plans, save them directly to `aidocs/` (e.g., `aidocs/controller-abstraction-layer-plan.md`) rather than using the tool's default home directory location.
+When creating project-specific plans, save them directly to `ai/plans/` (e.g., `ai/plans/controller-abstraction-layer-plan.md`) rather than using the tool's default home directory location.
 
 
 # Checking in
