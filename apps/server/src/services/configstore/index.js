@@ -4,7 +4,9 @@ import _ from 'lodash';
 import chalk from 'chalk';
 import logger from '../../lib/logger';
 import x from '../../lib/json-stringify';
-import { getDefaultSettings } from '../../../../packages/shared/src/schemas/settings';
+// Path relative to compiled output: output/axiocnc/server/services/configstore/ -> output/axiocnc/shared/
+// eslint-disable-next-line import/no-unresolved
+import { getDefaultSettings } from '../../../shared/schemas/settings';
 
 const log = logger('service:configstore');
 

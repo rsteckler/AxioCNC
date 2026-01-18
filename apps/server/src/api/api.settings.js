@@ -6,10 +6,13 @@
  */
 import _ from 'lodash';
 import config from '../services/configstore';
+/* eslint-disable import/no-unresolved */
+// Path relative to compiled output: output/axiocnc/server/api/ -> output/axiocnc/shared/
 import {
   SystemSettingsSchema,
   getDefaultSettings,
-} from '../../../../packages/shared/src/schemas/settings';
+} from '../../shared/schemas/settings';
+/* eslint-enable import/no-unresolved */
 import {
   ERR_BAD_REQUEST,
 } from '../constants';
