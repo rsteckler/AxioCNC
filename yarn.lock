@@ -36,6 +36,157 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@axiocnc/desktop@workspace:apps/desktop":
+  version: 0.0.0-use.local
+  resolution: "@axiocnc/desktop@workspace:apps/desktop"
+  dependencies:
+    chalk: ~4.1.1
+    electron-store: ~8.1.0
+    is-electron: ~2.2.1
+    mkdirp: ~0.5.1
+  languageName: unknown
+  linkType: soft
+
+"@axiocnc/server@workspace:apps/server":
+  version: 0.0.0-use.local
+  resolution: "@axiocnc/server@workspace:apps/server"
+  dependencies:
+    "@serialport/parser-readline": ^10.0.0
+    bcrypt-nodejs: 0.0.3
+    body-parser: ~1.18.3
+    chalk: ~4.1.1
+    commander: ~9.1.0
+    compression: ~1.7.4
+    connect-multiparty: ~2.2.0
+    connect-restreamer: ~1.0.3
+    consolidate: ~0.15.1
+    cookie-parser: ~1.4.4
+    core-js: ~3.26.1
+    debug: ~4.1.1
+    deep-keys: ~0.5.0
+    ensure-array: ^1.0.0
+    ensure-type: ^1.5.1
+    errorhandler: ~1.5.0
+    escodegen: ~1.11.1
+    esprima: ~4.0.1
+    expand-tilde: ~2.0.2
+    express: ~4.16.4
+    express-jwt: ~5.3.1
+    express-session: ~1.16.1
+    gcode-parser: ^2.2.0
+    hogan.js: ~3.0.2
+    http-proxy: ~1.18.1
+    i18next: ~15.0.9
+    i18next-express-middleware: ~1.8.0
+    i18next-node-fs-backend: ~2.1.3
+    is-electron: ~2.2.1
+    jsonwebtoken: ~9.0.0
+    lodash: ~4.17.11
+    method-override: ~3.0.0
+    minimatch: ~3.0.4
+    mkdirp: ~0.5.1
+    morgan: ~1.9.1
+    range_check: ~1.4.0
+    regenerator-runtime: ~0.13.10
+    registry-auth-token: ~3.4.0
+    registry-url: ~5.1.0
+    serialport: ^10.0.0
+    serve-favicon: ~2.5.0
+    serve-static: ~1.13.2
+    session-file-store: ~1.2.0
+    shortid: ~2.2.14
+    socket.io: ~2.2.0
+    socketio-jwt: ~4.5.0
+    spawn-default-shell: ~2.0.0
+    superagent: ~3.8.3
+    uuid: ~3.3.2
+    watch: ~1.0.2
+    webappengine: ~1.2.0
+    winston: ~3.14.1
+    zod: ^4.3.5
+  languageName: unknown
+  linkType: soft
+
+"@axiocnc/shared@workspace:packages/shared":
+  version: 0.0.0-use.local
+  resolution: "@axiocnc/shared@workspace:packages/shared"
+  dependencies:
+    zod: ^4.3.5
+  languageName: unknown
+  linkType: soft
+
+"@axiocnc/web@workspace:apps/web":
+  version: 0.0.0-use.local
+  resolution: "@axiocnc/web@workspace:apps/web"
+  dependencies:
+    "@codemirror/autocomplete": ^6.20.0
+    "@codemirror/basic-setup": ^0.20.0
+    "@codemirror/commands": ^6.10.1
+    "@codemirror/language": ^6.12.1
+    "@codemirror/state": ^6.5.3
+    "@codemirror/view": ^6.39.9
+    "@dnd-kit/core": ^6.3.1
+    "@dnd-kit/sortable": ^10.0.0
+    "@dnd-kit/utilities": ^3.2.2
+    "@eslint/js": ^9.15.0
+    "@lezer/highlight": ^1.2.3
+    "@radix-ui/react-alert-dialog": ^1.1.15
+    "@radix-ui/react-dialog": ^1.1.15
+    "@radix-ui/react-label": ^2.1.8
+    "@radix-ui/react-progress": ^1.1.8
+    "@radix-ui/react-radio-group": ^1.3.8
+    "@radix-ui/react-select": ^2.2.6
+    "@radix-ui/react-separator": ^1.1.8
+    "@radix-ui/react-slider": ^1.3.6
+    "@radix-ui/react-slot": ^1.2.4
+    "@radix-ui/react-switch": ^1.2.6
+    "@radix-ui/react-tooltip": ^1.2.8
+    "@react-three/drei": ^9.88.17
+    "@react-three/fiber": ^8.15.19
+    "@reduxjs/toolkit": ^2.3.0
+    "@types/minimatch": ^5.1.2
+    "@types/node": ^22.10.1
+    "@types/react": ^18.3.12
+    "@types/react-dom": ^18.3.1
+    "@types/react-grid-layout": ^1.3.6
+    "@types/three": ^0.182.0
+    "@uiw/react-codemirror": ^4.25.4
+    "@vitejs/plugin-react": ^4.3.4
+    autoprefixer: ^10.4.20
+    class-variance-authority: ^0.7.1
+    clsx: ^2.1.1
+    colornames: ^1.1.1
+    eslint: ^9.15.0
+    eslint-plugin-react-hooks: ^5.0.0
+    eslint-plugin-react-refresh: ^0.4.14
+    gcode-toolpath: ^3.0.0
+    globals: ^15.12.0
+    hls.js: ^1.6.15
+    i18next: ^24.0.5
+    i18next-browser-languagedetector: ^8.0.2
+    lucide-react: ^0.468.0
+    overlayscrollbars: ^2.13.0
+    overlayscrollbars-react: ^0.5.6
+    postcss: ^8.4.49
+    react: ^18.3.1
+    react-dom: ^18.3.1
+    react-grid-layout: ^2.2.2
+    react-i18next: ^15.1.3
+    react-redux: ^9.1.2
+    react-router-dom: ^7.0.2
+    socket.io-client: ^2.5.0
+    tailwind-merge: ^2.5.5
+    tailwindcss: ^3.4.16
+    tailwindcss-animate: ^1.0.7
+    three: ^0.160.0
+    typescript: ~5.6.2
+    typescript-eslint: ^8.15.0
+    vite: ^6.0.1
+    vite-plugin-node-polyfills: ^0.24.0
+    zod: ^4.3.5
+  languageName: unknown
+  linkType: soft
+
 "@babel/cli@npm:^7.25.9":
   version: 7.28.6
   resolution: "@babel/cli@npm:7.28.6"
@@ -7804,78 +7955,6 @@ __metadata:
   checksum: 92b3c79af3695bcebac0e7f3f90f4bc11d2b39ccdc670937290e8dacbc943473713cc06b771dea0563c66d57d93d940ed89e082bfdecccf9dd70782d4bb243c0
   languageName: node
   linkType: hard
-
-"axiocnc-app@workspace:src/app":
-  version: 0.0.0-use.local
-  resolution: "axiocnc-app@workspace:src/app"
-  dependencies:
-    "@codemirror/autocomplete": ^6.20.0
-    "@codemirror/basic-setup": ^0.20.0
-    "@codemirror/commands": ^6.10.1
-    "@codemirror/language": ^6.12.1
-    "@codemirror/state": ^6.5.3
-    "@codemirror/view": ^6.39.9
-    "@dnd-kit/core": ^6.3.1
-    "@dnd-kit/sortable": ^10.0.0
-    "@dnd-kit/utilities": ^3.2.2
-    "@eslint/js": ^9.15.0
-    "@lezer/highlight": ^1.2.3
-    "@radix-ui/react-alert-dialog": ^1.1.15
-    "@radix-ui/react-dialog": ^1.1.15
-    "@radix-ui/react-label": ^2.1.8
-    "@radix-ui/react-progress": ^1.1.8
-    "@radix-ui/react-radio-group": ^1.3.8
-    "@radix-ui/react-select": ^2.2.6
-    "@radix-ui/react-separator": ^1.1.8
-    "@radix-ui/react-slider": ^1.3.6
-    "@radix-ui/react-slot": ^1.2.4
-    "@radix-ui/react-switch": ^1.2.6
-    "@radix-ui/react-tooltip": ^1.2.8
-    "@react-three/drei": ^9.88.17
-    "@react-three/fiber": ^8.15.19
-    "@reduxjs/toolkit": ^2.3.0
-    "@types/minimatch": ^5.1.2
-    "@types/node": ^22.10.1
-    "@types/react": ^18.3.12
-    "@types/react-dom": ^18.3.1
-    "@types/react-grid-layout": ^1.3.6
-    "@types/three": ^0.182.0
-    "@uiw/react-codemirror": ^4.25.4
-    "@vitejs/plugin-react": ^4.3.4
-    autoprefixer: ^10.4.20
-    class-variance-authority: ^0.7.1
-    clsx: ^2.1.1
-    colornames: ^1.1.1
-    eslint: ^9.15.0
-    eslint-plugin-react-hooks: ^5.0.0
-    eslint-plugin-react-refresh: ^0.4.14
-    gcode-toolpath: ^3.0.0
-    globals: ^15.12.0
-    hls.js: ^1.6.15
-    i18next: ^24.0.5
-    i18next-browser-languagedetector: ^8.0.2
-    lucide-react: ^0.468.0
-    overlayscrollbars: ^2.13.0
-    overlayscrollbars-react: ^0.5.6
-    postcss: ^8.4.49
-    react: ^18.3.1
-    react-dom: ^18.3.1
-    react-grid-layout: ^2.2.2
-    react-i18next: ^15.1.3
-    react-redux: ^9.1.2
-    react-router-dom: ^7.0.2
-    socket.io-client: ^2.5.0
-    tailwind-merge: ^2.5.5
-    tailwindcss: ^3.4.16
-    tailwindcss-animate: ^1.0.7
-    three: ^0.160.0
-    typescript: ~5.6.2
-    typescript-eslint: ^8.15.0
-    vite: ^6.0.1
-    vite-plugin-node-polyfills: ^0.24.0
-    zod: ^4.3.5
-  languageName: unknown
-  linkType: soft
 
 "axiocnc@workspace:.":
   version: 0.0.0-use.local

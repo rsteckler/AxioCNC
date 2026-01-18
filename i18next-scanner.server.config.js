@@ -39,8 +39,8 @@ module.exports = {
     defaultNs: 'resource',
     defaultValue: '__L10N__', // to indicate that a default value has not been defined for the key
     resource: {
-      loadPath: 'src/server/i18n/{{lng}}/{{ns}}.json',
-      savePath: 'src/server/i18n/{{lng}}/{{ns}}.json', // or 'src/server/i18n/${lng}/${ns}.saveAll.json'
+      loadPath: 'apps/server/src/i18n/{{lng}}/{{ns}}.json',
+      savePath: 'apps/server/src/i18n/{{lng}}/{{ns}}.json',
       jsonIndent: 2,
     },
     nsSeparator: ':', // namespace separator

@@ -1,0 +1,13 @@
+{
+  "name": "@axiocnc/shared",
+  "version": "1.10.112",
+  "description": "AxioCNC Shared - Common schemas and utilities",
+  "private": true,
+  "main": "src/index.js",
+  "scripts": {
+    "build": "babel src -d dist --config-file ../../babel.config.js"
+  },
+  "dependencies": {
+    "zod": "^4.3.5"
+  }
+}

@@ -10,13 +10,13 @@ Read `aidocs/overview.md` for full project context and progress.
 ## 🛑 Protected Code (CRITICAL)
 
 **Do NOT modify these paths without explicit user permission:**
-- `src/server/controllers/**` — All CNC controller implementations
-- `src/server/lib/Sender.js` — G-code streaming engine
-- `src/server/lib/Feeder.js` — Real-time command queue
-- `src/server/lib/Workflow.js` — Workflow state machine
-- `src/server/lib/SerialConnection.js` — Serial port communication
-- `src/server/lib/EventTrigger.js` — Event trigger system
-- `src/server/lib/MessageSlot.js` — M0/M1 pause handling
+- `apps/server/src/controllers/**` — All CNC controller implementations
+- `apps/server/src/lib/Sender.js` — G-code streaming engine
+- `apps/server/src/lib/Feeder.js` — Real-time command queue
+- `apps/server/src/lib/Workflow.js` — Workflow state machine
+- `apps/server/src/lib/SerialConnection.js` — Serial port communication
+- `apps/server/src/lib/EventTrigger.js` — Event trigger system
+- `apps/server/src/lib/MessageSlot.js` — M0/M1 pause handling
 
 These are safety-critical G-code sender components. Bugs can cause machine crashes, tool breakage, or injury. See `aidocs/protected-code.md` for details.
 
@@ -40,14 +40,17 @@ These are safety-critical G-code sender components. Bugs can cause machine crash
 
 ```bash
 # Backend
-yarn start-server-dev              # Port 8000
+yarn dev:start-server              # Port 8000
 
 # Frontend  
-cd src/app && yarn dev     # Port 5173 (proxies to backend)
-cd src/app && yarn build   # Production build
+cd apps/web && yarn dev     # Port 5173 (proxies to backend)
+cd apps/web && yarn build   # Production build
+
+# Both (dev mode)
+yarn dev
 ```
 
-**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd src/app && yarn dev`, `yarn start-server-dev`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
+**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd apps/web && yarn dev`, `yarn dev:start-server`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
 
 ---
 
@@ -89,15 +92,25 @@ Backend REST API documented in `docs/API.md`. Key points:
 ## File Structure
 
 ```
-src/
-├── app/                    # Modern frontend (work here)
+apps/
+├── web/                    # Modern frontend (work here)
 │   └── src/
 │       ├── components/     # Reusable UI components
 │       ├── routes/         # Page components
 │       ├── services/       # API and Socket.IO
 │       └── store/          # Redux store
-├── app-legacy/             # Original frontend (reference only)
-└── server/                 # Backend (protected, mostly unchanged)
+├── server/                 # Backend (protected, mostly unchanged)
+│   └── src/
+│       ├── controllers/    # CNC controllers (PROTECTED)
+│       ├── lib/            # Core libs (PROTECTED)
+│       └── api/            # REST API endpoints
+├── desktop/                # Electron app
+│   └── src/
+packages/
+└── shared/                 # Shared schemas and utilities
+    └── src/
+src/
+└── app-legacy/             # Original frontend (reference only)
 ```
 
 ---

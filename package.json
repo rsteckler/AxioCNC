@@ -25,7 +25,10 @@
   "private": true,
   "preferGlobal": true,
   "workspaces": [
-    "src/app"
+    "apps/web",
+    "apps/server",
+    "apps/desktop",
+    "packages/shared"
   ],
   "scripts": {
     "clean": "del dist output",
@@ -53,14 +56,14 @@
     "dev:grblsim:clean:all": "bash scripts/grblsim/grblsim-clean.sh --all",
     "dev": "bash scripts/dev.sh",
     "win-dev": "powershell -ExecutionPolicy Bypass -File scripts/build-dev.ps1 && concurrently --names \"dev:start-app,dev:start-server\" \"yarn run dev:start-app\" \"yarn run dev:start-server\"",
-    "dev:start-app": "cd src/app && (test -f node_modules/.yarn-state.yml || yarn install) && yarn dev",
+    "dev:start-app": "cd apps/web && (test -f node_modules/.yarn-state.yml || yarn install) && yarn dev",
     "dev:start-server": "(test -d node_modules/.bin/nodemon || yarn install) && nodemon --config nodemon.server.json",
     "test:test": "tap test/*.js --allow-incomplete-coverage --timeout=0 --node-arg=--require --node-arg=@babel/register",
     "test:coverage": "tap test/*.js --coverage --coverage-report=text-lcov --nyc-arg=--require --nyc-arg=@babel/register",
     "test:lint": "concurrently --kill-others-on-fail --names \"test:lint:i18n,test:lint:eslint\" \"yarn test:lint:i18n\" \"yarn test:lint:eslint\"",
-    "test:lint:i18n": "bash -c 'find src/{app,server}/i18n -type f -name \"*.json\" | xargs -L1 -I{} -- bash -c \"echo Linting {}; jsonlint -q {}\"'",
-    "test:lint:eslint": "eslint --color src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
-    "test:lint:eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet src/server/**/*.js src/electron-app/**/*.js scripts/**/*.js test/**/*.js",
+    "test:lint:i18n": "bash -c 'find apps/{web,server}/src/i18n -type f -name \"*.json\" 2>/dev/null | xargs -L1 -I{} -- bash -c \"echo Linting {}; jsonlint -q {}\"'",
+    "test:lint:eslint": "eslint --color apps/server/src/**/*.js apps/desktop/src/**/*.js scripts/**/*.js test/**/*.js",
+    "test:lint:eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet apps/server/src/**/*.js apps/desktop/src/**/*.js scripts/**/*.js test/**/*.js",
     "postinstall": "opencollective postinstall"
   },
   "build": {
