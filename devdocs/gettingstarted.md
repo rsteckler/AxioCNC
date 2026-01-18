@@ -15,13 +15,7 @@ Quick setup guide for local development.
    cd AxioCNC
    ```
 
-2. **Install dependencies**
-   ```bash
-   yarn install
-   ```
-   This installs dependencies for both the root workspace and `src/app`.
-
-3. **Setup grbl-sim (optional)**
+2. **Setup grbl-sim (optional)**
    
    If you don't have a physical CNC machine, use grbl-sim for testing:
    
@@ -34,7 +28,9 @@ Quick setup guide for local development.
    
    > **Note:** Skip this step if you're connecting to a real machine.
 
-4. **Start the development servers**
+3. **Start the development servers**
+   
+   > **Note:** Dependencies are automatically installed when you run these commands if needed.
    
    Open two terminals:
    
@@ -50,13 +46,13 @@ Quick setup guide for local development.
    ```
    Frontend runs on port 5173.
 
-5. **Access the application**
+4. **Access the application**
    
    Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## Troubleshooting
 
-- **Frontend won't start**: Make sure you ran `yarn install` from the root directory (workspace dependencies are installed automatically).
+- **Servers won't start**: Dependencies are installed automatically, but if you encounter issues, run `yarn install` manually.
 - **Connection issues**: Ensure the backend is running on port 8000 before starting the frontend.
 - **grbl-sim issues**: Run `yarn dev:grblsim:clean` to reset, then repeat the setup steps.
 
