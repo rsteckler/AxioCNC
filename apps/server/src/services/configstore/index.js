@@ -1,5 +1,6 @@
 import events from 'events';
 import fs from 'fs';
+import path from 'path';
 import _ from 'lodash';
 import chalk from 'chalk';
 import logger from '../../lib/logger';
@@ -31,6 +32,12 @@ class ConfigStore extends events.EventEmitter {
       }
 
       try {
+        // Ensure the directory exists before creating the file
+        const dir = path.dirname(this.file);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
         if (!fs.existsSync(this.file)) {
           const content = JSON.stringify({});
           fs.writeFileSync(this.file, content, 'utf8');

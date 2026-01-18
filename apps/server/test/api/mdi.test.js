@@ -34,7 +34,7 @@ test('api.mdi', (t) => {
       },
       '../config/settings': {
         default: {
-          cncrc: '/path/to/cncrc.json'
+          rcfile: '/path/to/config.json'
         },
       },
     });

@@ -1,8 +1,7 @@
 import path from 'path';
 import pkg from '../../package.json';
 
-const RC_FILE = '.cncrc';
-const SESSION_PATH = '.axiocnc-sessions';
+const SESSION_PATH = '.axiocnc/sessions';
 
 // Secret
 const secret = pkg.version;
@@ -10,11 +9,11 @@ const secret = pkg.version;
 const getUserHome = () => (process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME']);
 
 export default {
-  rcfile: path.resolve(getUserHome(), RC_FILE),
+  rcfile: path.resolve(getUserHome(), '.axiocnc', 'config.json'),
   verbosity: 0,
   version: pkg.version,
 
-  // The secret key is loaded from the config file (defaults to "~/.cncrc")
+  // The secret key is loaded from the config file (defaults to "~/.axiocnc/config.json")
   // @see "src/app/index.js"
   secret: secret,
 

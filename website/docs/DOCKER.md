@@ -158,7 +158,7 @@ docker run -d -p 8000:8000 \
 ```
 
 **What's persisted:**
-- Settings (`~/.axiocnc/.cncrc`)
+- Settings (`~/.axiocnc/config.json`)
 - MediaMTX config (`~/.axiocnc/mediamtx/mediamtx.yml`)
 - MediaMTX logs (`~/.axiocnc/mediamtx/logs/`)
 - Job history (`~/.axiocnc/jobhistory.json`)
@@ -233,7 +233,7 @@ docker run -d -p 8000:8000 \
 - `--allow-remote-access` - Allow remote access (required for Docker)
 - `--verbose` - Increase verbosity (-v, -vv, -vvv)
 - `--controller <type>` - Specify controller: Grbl|Marlin|Smoothie|TinyG|g2core
-- `--config <filename>` - Set config file (default: ~/.cncrc)
+- `--config <filename>` - Set config file (default: ~/.axiocnc/config.json)
 
 See `docker run ghcr.io/rsteckler/axiocnc:latest --help` for full option list.
 

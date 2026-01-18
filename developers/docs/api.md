@@ -580,7 +580,7 @@ Retrieves all configured commands.
       "mtime": 1704067200000,
       "enabled": true,
       "title": "Backup Config",
-      "commands": "cp ~/.cncrc ~/.cncrc.backup"
+      "commands": "cp ~/.axiocnc/config.json ~/.axiocnc/config.json.backup"
     }
   ]
 }
@@ -638,7 +638,7 @@ Retrieves a specific command by ID.
   "mtime": 1704067200000,
   "enabled": true,
   "title": "Backup Config",
-  "commands": "cp ~/.cncrc ~/.cncrc.backup"
+  "commands": "cp ~/.axiocnc/config.json ~/.axiocnc/config.json.backup"
 }
 ```
 

@@ -129,7 +129,7 @@ const appMain = () => {
 
   try {
     // https://github.com/valery-barysok/session-file-store
-    const path = settings.middleware.session.path; // Defaults to './axiocnc-sessions'
+    const path = settings.middleware.session.path; // Defaults to '~/.axiocnc/sessions'
 
     // Ensure session directory exists (don't delete it first - preserve existing sessions)
     if (!fs.existsSync(path)) {
