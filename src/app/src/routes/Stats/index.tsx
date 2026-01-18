@@ -63,9 +63,16 @@ interface ToolStats {
   name: string
   diameter: number
   type: string
+  description?: string
   usageCount: number
   totalRuntime: number // milliseconds
   totalDistance: number // mm
+}
+
+interface JobToolUsage {
+  toolNumber: number
+  time: number // milliseconds
+  distance: number // mm
 }
 
 interface JobStats {
@@ -76,6 +83,7 @@ interface JobStats {
   status: 'completed' | 'failed' | 'cancelled'
   runtime: number // milliseconds
   toolsUsed: number[]
+  toolUsage: JobToolUsage[] // Full tool usage data with time and distance
   linesProcessed: number
   totalLines: number
   distance: number // mm (total)
@@ -106,7 +114,10 @@ export default function Stats() {
     if (!toolsData?.records) return new Map()
     const map = new Map()
     toolsData.records.forEach(tool => {
-      map.set(tool.toolNumber, tool)
+      const toolNum = Number(tool.toolId) // Use toolId, not toolNumber
+      if (!isNaN(toolNum)) {
+        map.set(toolNum, tool)
+      }
     })
     return map
   }, [toolsData])
@@ -139,8 +150,9 @@ export default function Stats() {
   }, [connectedPort, sendCommand])
 
   // Transform API stats to component format
+  // Calculate cumulative stats from job history since backend doesn't track axis distances or operation types separately
   const cumulativeStats: CumulativeStats = React.useMemo(() => {
-    if (!statsData) {
+    if (!statsData && !jobHistoryData) {
       return {
         totalJobs: 0,
         totalRuntime: 0,
@@ -155,56 +167,118 @@ export default function Stats() {
       }
     }
     
-    // For now, operation types are not tracked in backend stats
-    // We'll need to calculate from jobs or add to backend
+    // Calculate cumulative axis distances from all jobs
+    let cumulativeDistanceX = 0
+    let cumulativeDistanceY = 0
+    let cumulativeDistanceZ = 0
+    let cumulativeTotalDistance = 0
+    let cumulativeCuttingDistance = 0
+    let cumulativeTransitionDistance = 0
+    let cumulativeRetractDistance = 0
+    
+    if (jobHistoryData && jobHistoryData.length > 0) {
+      jobHistoryData.forEach(job => {
+        const totalDist = job.stats?.totalDistance || { x: 0, y: 0, z: 0, total: 0 }
+        const cuttingDist = job.stats?.cuttingDistance || { x: 0, y: 0, z: 0, total: 0 }
+        const transitionDist = job.stats?.transitionDistance || { x: 0, y: 0, z: 0, total: 0 }
+        const retractDist = job.stats?.retractDistance || { x: 0, y: 0, z: 0, total: 0 }
+        
+        cumulativeDistanceX += totalDist.x || 0
+        cumulativeDistanceY += totalDist.y || 0
+        cumulativeDistanceZ += totalDist.z || 0
+        cumulativeTotalDistance += totalDist.total || 0
+        cumulativeCuttingDistance += cuttingDist.total || 0
+        cumulativeTransitionDistance += transitionDist.total || 0
+        cumulativeRetractDistance += retractDist.total || 0
+      })
+    }
+    
+    // Calculate operation types percentages from cumulative distances
     const operationTypes: OperationType[] = []
+    if (cumulativeTotalDistance > 0) {
+      if (cumulativeCuttingDistance > 0) {
+        operationTypes.push({
+          type: 'Cutting',
+          percent: Math.round((cumulativeCuttingDistance / cumulativeTotalDistance) * 100),
+          color: 'rgb(34 197 94)', // green-500
+          bgColor: 'bg-green-500',
+        })
+      }
+      
+      if (cumulativeTransitionDistance > 0) {
+        operationTypes.push({
+          type: 'Transition',
+          percent: Math.round((cumulativeTransitionDistance / cumulativeTotalDistance) * 100),
+          color: 'rgb(59 130 246)', // blue-500
+          bgColor: 'bg-blue-500',
+        })
+      }
+      
+      if (cumulativeRetractDistance > 0) {
+        operationTypes.push({
+          type: 'Retract',
+          percent: Math.round((cumulativeRetractDistance / cumulativeTotalDistance) * 100),
+          color: 'rgb(249 115 22)', // orange-500
+          bgColor: 'bg-orange-500',
+        })
+      }
+    }
     
     return {
-      totalJobs: statsData.totalJobs || 0,
-      totalRuntime: statsData.totalTime || 0,
-      totalDistance: statsData.totalDistance || 0,
-      distanceX: 0, // Not tracked separately in backend yet
-      distanceY: 0,
-      distanceZ: 0,
-      successfulJobs: statsData.successfulJobs || 0,
-      failedJobs: statsData.failedJobs || 0,
-      cancelledJobs: statsData.stoppedJobs || 0, // Map stopped to cancelled
+      totalJobs: statsData?.totalJobs || 0,
+      totalRuntime: statsData?.totalTime || 0,
+      totalDistance: statsData?.totalDistance || cumulativeTotalDistance,
+      distanceX: cumulativeDistanceX,
+      distanceY: cumulativeDistanceY,
+      distanceZ: cumulativeDistanceZ,
+      successfulJobs: statsData?.successfulJobs || 0,
+      failedJobs: statsData?.failedJobs || 0,
+      cancelledJobs: statsData?.stoppedJobs || 0, // Map stopped to cancelled
       operationTypes,
     }
-  }, [statsData])
+  }, [statsData, jobHistoryData])
 
   // Transform tool stats to component format
   // Show all tools from library, even if they haven't been used
   const toolStats: ToolStats[] = React.useMemo(() => {
-    // Create a map of tool stats by tool number
+    // Create a map of tool stats by tool number (normalize to number for consistent matching)
     const statsMap = new Map<number, { usageCount: number; totalRuntime: number; totalDistance: number }>()
     if (toolStatsData && Array.isArray(toolStatsData)) {
       toolStatsData.forEach(toolStat => {
-        statsMap.set(toolStat.toolNumber, {
-          usageCount: toolStat.usageCount || 0,
-          totalRuntime: toolStat.totalTime || 0,
-          totalDistance: toolStat.totalDistance || 0,
-        })
+        const toolNum = Number(toolStat.toolNumber)
+        if (!isNaN(toolNum)) {
+          statsMap.set(toolNum, {
+            usageCount: toolStat.usageCount || 0,
+            totalRuntime: toolStat.totalTime || 0,
+            totalDistance: toolStat.totalDistance || 0,
+          })
+        }
       })
     }
     
     // Get all tools from library
     const allTools: ToolStats[] = []
+    const processedToolNumbers = new Set<number>()
     
     if (toolsData?.records) {
       // Add all tools from library
       toolsData.records.forEach(tool => {
-        const stats = statsMap.get(tool.toolNumber) || {
+        const toolNum = Number(tool.toolId) // Use toolId, not toolNumber
+        if (isNaN(toolNum)) return // Skip invalid tool numbers
+        
+        processedToolNumbers.add(toolNum)
+        const stats = statsMap.get(toolNum) || {
           usageCount: 0,
           totalRuntime: 0,
           totalDistance: 0,
         }
         
         allTools.push({
-          toolNumber: tool.toolNumber,
-          name: tool.name || `T${tool.toolNumber}`,
+          toolNumber: toolNum,
+          name: tool.name || `T${toolNum}`,
           diameter: tool.diameter || 0,
           type: tool.type || 'unknown',
+          description: tool.description,
           usageCount: stats.usageCount,
           totalRuntime: stats.totalRuntime,
           totalDistance: stats.totalDistance,
@@ -215,10 +289,13 @@ export default function Stats() {
     // Also include any tools that have stats but aren't in the library
     if (toolStatsData && Array.isArray(toolStatsData)) {
       toolStatsData.forEach(toolStat => {
-        if (!toolsMap.has(toolStat.toolNumber)) {
+        const toolNum = Number(toolStat.toolNumber)
+        if (isNaN(toolNum)) return // Skip invalid tool numbers
+        
+        if (!processedToolNumbers.has(toolNum)) {
           allTools.push({
-            toolNumber: toolStat.toolNumber,
-            name: `T${toolStat.toolNumber}`,
+            toolNumber: toolNum,
+            name: `T${toolNum}`,
             diameter: 0,
             type: 'unknown',
             usageCount: toolStat.usageCount || 0,
@@ -229,8 +306,80 @@ export default function Stats() {
       })
     }
     
-    return allTools.sort((a, b) => a.toolNumber - b.toolNumber)
+    // Final deduplication by toolNumber (prefer tools with library data over stats-only tools)
+    const deduplicatedTools = new Map<number, ToolStats>()
+    allTools.forEach(tool => {
+      const existing = deduplicatedTools.get(tool.toolNumber)
+      // If tool already exists, prefer the one with library data (name other than "T{number}" or has diameter)
+      if (!existing) {
+        deduplicatedTools.set(tool.toolNumber, tool)
+      } else {
+        // Prefer tool with library data (has actual name, diameter, or description)
+        const hasLibraryData = (tool.name && !tool.name.startsWith('T')) || tool.diameter > 0 || tool.description
+        const existingHasLibraryData = (existing.name && !existing.name.startsWith('T')) || existing.diameter > 0 || existing.description
+        
+        if (hasLibraryData && !existingHasLibraryData) {
+          // Replace with library tool, but merge in stats
+          deduplicatedTools.set(tool.toolNumber, {
+            ...tool,
+            usageCount: existing.usageCount || tool.usageCount,
+            totalRuntime: existing.totalRuntime || tool.totalRuntime,
+            totalDistance: existing.totalDistance || tool.totalDistance,
+          })
+        } else if (!hasLibraryData && !existingHasLibraryData) {
+          // Both are stats-only, keep the one with better stats
+          if ((tool.usageCount || 0) > (existing.usageCount || 0)) {
+            deduplicatedTools.set(tool.toolNumber, tool)
+          }
+        }
+      }
+    })
+    
+    return Array.from(deduplicatedTools.values()).sort((a, b) => a.toolNumber - b.toolNumber)
   }, [toolStatsData, toolsMap, toolsData])
+
+  // Helper to calculate operation types from distance stats
+  const calculateOperationTypes = (stats: any): OperationType[] => {
+    if (!stats) return []
+    
+    const total = stats.totalDistance?.total || 0
+    const cutting = stats.cuttingDistance?.total || 0
+    const transition = stats.transitionDistance?.total || 0
+    const retract = stats.retractDistance?.total || 0
+    
+    if (total === 0) return []
+    
+    const types: OperationType[] = []
+    
+    if (cutting > 0) {
+      types.push({
+        type: 'Cutting',
+        percent: Math.round((cutting / total) * 100),
+        color: 'rgb(34 197 94)', // green-500
+        bgColor: 'bg-green-500',
+      })
+    }
+    
+    if (transition > 0) {
+      types.push({
+        type: 'Transition',
+        percent: Math.round((transition / total) * 100),
+        color: 'rgb(59 130 246)', // blue-500
+        bgColor: 'bg-blue-500',
+      })
+    }
+    
+    if (retract > 0) {
+      types.push({
+        type: 'Retract',
+        percent: Math.round((retract / total) * 100),
+        color: 'rgb(249 115 22)', // orange-500
+        bgColor: 'bg-orange-500',
+      })
+    }
+    
+    return types
+  }
 
   // Transform job history to component format
   const jobStats: JobStats[] = React.useMemo(() => {
@@ -244,6 +393,12 @@ export default function Stats() {
         : 'cancelled'
       
       const toolsUsed = job.tools?.map(t => t.toolNumber) || []
+      const toolUsage: JobToolUsage[] = job.tools?.map(t => ({
+        toolNumber: t.toolNumber,
+        time: t.time || 0,
+        distance: typeof t.distance === 'number' ? t.distance : (t.distance?.total || 0),
+      })) || []
+      const operationTypes = calculateOperationTypes(job.stats)
       
       return {
         id: job.id,
@@ -253,14 +408,15 @@ export default function Stats() {
         status: status as 'completed' | 'failed' | 'cancelled',
         runtime: job.stats?.elapsedTime || 0,
         toolsUsed,
+        toolUsage,
         linesProcessed: job.stats?.received || 0,
         totalLines: job.stats?.total || 0,
-        distance: job.stats?.distance || 0,
-        distanceX: job.stats?.distanceX || 0,
-        distanceY: job.stats?.distanceY || 0,
-        distanceZ: job.stats?.distanceZ || 0,
+        distance: job.stats?.totalDistance?.total || 0,
+        distanceX: job.stats?.totalDistance?.x || 0,
+        distanceY: job.stats?.totalDistance?.y || 0,
+        distanceZ: job.stats?.totalDistance?.z || 0,
         gcode: job.gcode,
-        operationTypes: job.stats?.operationTypes || [],
+        operationTypes,
       }
     })
   }, [jobHistoryData])
@@ -277,6 +433,12 @@ export default function Stats() {
       : 'cancelled'
     
     const toolsUsed = selectedJobData.tools?.map(t => t.toolNumber) || []
+    const toolUsage: JobToolUsage[] = selectedJobData.tools?.map(t => ({
+      toolNumber: t.toolNumber,
+      time: t.time || 0,
+      distance: typeof t.distance === 'number' ? t.distance : (t.distance?.total || 0),
+    })) || []
+    const operationTypes = calculateOperationTypes(selectedJobData.stats)
     
     return {
       id: selectedJobData.id,
@@ -286,14 +448,15 @@ export default function Stats() {
       status: status as 'completed' | 'failed' | 'cancelled',
       runtime: selectedJobData.stats?.elapsedTime || 0,
       toolsUsed,
+      toolUsage,
       linesProcessed: selectedJobData.stats?.received || 0,
       totalLines: selectedJobData.stats?.total || 0,
-      distance: selectedJobData.stats?.distance || 0,
-      distanceX: selectedJobData.stats?.distanceX || 0,
-      distanceY: selectedJobData.stats?.distanceY || 0,
-      distanceZ: selectedJobData.stats?.distanceZ || 0,
+      distance: selectedJobData.stats?.totalDistance?.total || 0,
+      distanceX: selectedJobData.stats?.totalDistance?.x || 0,
+      distanceY: selectedJobData.stats?.totalDistance?.y || 0,
+      distanceZ: selectedJobData.stats?.totalDistance?.z || 0,
       gcode: selectedJobData.gcode,
-      operationTypes: selectedJobData.stats?.operationTypes || [],
+      operationTypes,
     }
   }, [selectedJobData, selectedJobId, jobStats])
 
@@ -618,13 +781,18 @@ export default function Stats() {
                         className="p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <div>
+                          <div className="flex-1">
                             <div className="font-medium text-sm">T{tool.toolNumber}</div>
                             <div className="text-xs text-muted-foreground">{tool.name}</div>
+                            {tool.description && (
+                              <div className="text-xs text-muted-foreground mt-1 italic">{tool.description}</div>
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {tool.diameter > 0 ? `⌀${tool.diameter}mm` : tool.type}
-                          </div>
+                          {(tool.diameter > 0 || (tool.type && tool.type !== 'unknown')) && (
+                            <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                              {tool.diameter > 0 ? `⌀${tool.diameter}mm` : tool.type}
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
@@ -765,7 +933,19 @@ export default function Stats() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg border border-border bg-muted/30">
                           <div className="text-sm text-muted-foreground mb-1">Runtime</div>
-                          <div className="text-xl font-bold">{formatTime(selectedJob.runtime)}</div>
+                          <div className="text-xl font-bold mb-3">{formatTime(selectedJob.runtime)}</div>
+                          <div className="pt-3 border-t border-border">
+                            <div className="text-sm text-muted-foreground mb-1">Lines Processed</div>
+                            <div className="text-xl font-bold mb-2">
+                              {selectedJob.linesProcessed.toLocaleString()} / {selectedJob.totalLines.toLocaleString()}
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${(selectedJob.linesProcessed / selectedJob.totalLines) * 100}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                         <div className="p-4 rounded-lg border border-border bg-muted/30">
                           <div className="text-sm text-muted-foreground mb-2">Distance</div>
@@ -785,40 +965,60 @@ export default function Stats() {
                             </div>
                           </div>
                         </div>
-                        <div className="p-4 rounded-lg border border-border bg-muted/30">
-                          <div className="text-sm text-muted-foreground mb-1">Lines Processed</div>
-                          <div className="text-xl font-bold">
-                            {selectedJob.linesProcessed.toLocaleString()} / {selectedJob.totalLines.toLocaleString()}
-                          </div>
-                          <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{ width: `${(selectedJob.linesProcessed / selectedJob.totalLines) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div className="p-4 rounded-lg border border-border bg-muted/30">
-                          <div className="text-sm text-muted-foreground mb-1">Tools Used</div>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {selectedJob.toolsUsed.map((toolNum) => {
-                              const tool = toolStats.find(t => t.toolNumber === toolNum)
-                              return (
-                                <span
-                                  key={`tool-${toolNum}`}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                                >
-                                  T{toolNum} {tool ? `(${tool.name})` : ''}
-                                </span>
-                              )
-                            })}
-                          </div>
-                        </div>
                       </div>
 
                       {/* Operation Types Pie Chart */}
                       <div className="p-4 rounded-lg border border-border bg-muted/30">
                         <div className="text-sm text-muted-foreground mb-3">Operation Types</div>
                         <PieChart operationTypes={selectedJob.operationTypes || []} size={16} />
+                      </div>
+
+                      {/* Tools Used */}
+                      <div className="p-4 rounded-lg border border-border bg-muted/30">
+                        <div className="text-sm text-muted-foreground mb-3">Tools Used</div>
+                        <div className="space-y-2">
+                          {selectedJob.toolUsage.map((toolUsageData) => {
+                            const tool = toolsMap.get(toolUsageData.toolNumber)
+                            return (
+                              <div
+                                key={`tool-${toolUsageData.toolNumber}`}
+                                className="p-3 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-sm">T{toolUsageData.toolNumber}</span>
+                                      {tool && (
+                                        <>
+                                          <span className="text-xs text-muted-foreground">•</span>
+                                          <span className="text-sm text-foreground">{tool.name}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {tool && tool.description && (
+                                      <div className="text-xs text-muted-foreground mb-1 italic">{tool.description}</div>
+                                    )}
+                                    {tool && tool.diameter > 0 && (
+                                      <div className="text-xs text-muted-foreground">
+                                        ⌀{tool.diameter}mm • {tool.type}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <div className="text-muted-foreground mb-0.5">Runtime</div>
+                                    <div className="font-medium">{formatTime(toolUsageData.time)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground mb-0.5">Distance</div>
+                                    <div className="font-medium">{formatDistance(toolUsageData.distance)}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   </OverlayScrollbarsComponent>
