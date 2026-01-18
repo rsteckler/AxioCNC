@@ -8173,8 +8173,7 @@ __metadata:
     xterm: ~3.0.2
     zod: ^4.3.5
   bin:
-    cnc: ./bin/cnc
-    cncjs: ./bin/cncjs
+    axiocnc: ./apps/server/bin/axiocnc
   languageName: unknown
   linkType: soft
 

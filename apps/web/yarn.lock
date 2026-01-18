@@ -12,6 +12,78 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@axiocnc/web@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@axiocnc/web@workspace:."
+  dependencies:
+    "@codemirror/autocomplete": ^6.20.0
+    "@codemirror/basic-setup": ^0.20.0
+    "@codemirror/commands": ^6.10.1
+    "@codemirror/language": ^6.12.1
+    "@codemirror/state": ^6.5.3
+    "@codemirror/view": ^6.39.9
+    "@dnd-kit/core": ^6.3.1
+    "@dnd-kit/sortable": ^10.0.0
+    "@dnd-kit/utilities": ^3.2.2
+    "@eslint/js": ^9.15.0
+    "@lezer/highlight": ^1.2.3
+    "@radix-ui/react-alert-dialog": ^1.1.15
+    "@radix-ui/react-dialog": ^1.1.15
+    "@radix-ui/react-label": ^2.1.8
+    "@radix-ui/react-progress": ^1.1.8
+    "@radix-ui/react-radio-group": ^1.3.8
+    "@radix-ui/react-select": ^2.2.6
+    "@radix-ui/react-separator": ^1.1.8
+    "@radix-ui/react-slider": ^1.3.6
+    "@radix-ui/react-slot": ^1.2.4
+    "@radix-ui/react-switch": ^1.2.6
+    "@radix-ui/react-tooltip": ^1.2.8
+    "@react-three/drei": ^9.88.17
+    "@react-three/fiber": ^8.15.19
+    "@reduxjs/toolkit": ^2.3.0
+    "@types/minimatch": ^5.1.2
+    "@types/node": ^22.10.1
+    "@types/react": ^18.3.12
+    "@types/react-dom": ^18.3.1
+    "@types/react-grid-layout": ^1.3.6
+    "@types/three": ^0.182.0
+    "@uiw/react-codemirror": ^4.25.4
+    "@vitejs/plugin-react": ^4.3.4
+    autoprefixer: ^10.4.20
+    class-variance-authority: ^0.7.1
+    clsx: ^2.1.1
+    colornames: ^1.1.1
+    eslint: ^9.15.0
+    eslint-plugin-react-hooks: ^5.0.0
+    eslint-plugin-react-refresh: ^0.4.14
+    gcode-toolpath: ^3.0.0
+    globals: ^15.12.0
+    hls.js: ^1.6.15
+    i18next: ^24.0.5
+    i18next-browser-languagedetector: ^8.0.2
+    lucide-react: ^0.468.0
+    overlayscrollbars: ^2.13.0
+    overlayscrollbars-react: ^0.5.6
+    postcss: ^8.4.49
+    react: ^18.3.1
+    react-dom: ^18.3.1
+    react-grid-layout: ^2.2.2
+    react-i18next: ^15.1.3
+    react-redux: ^9.1.2
+    react-router-dom: ^7.0.2
+    socket.io-client: ^2.5.0
+    tailwind-merge: ^2.5.5
+    tailwindcss: ^3.4.16
+    tailwindcss-animate: ^1.0.7
+    three: ^0.160.0
+    typescript: ~5.6.2
+    typescript-eslint: ^8.15.0
+    vite: ^6.0.1
+    vite-plugin-node-polyfills: ^0.24.0
+    zod: ^4.3.5
+  languageName: unknown
+  linkType: soft
+
 "@babel/code-frame@npm:^7.27.1":
   version: 7.27.1
   resolution: "@babel/code-frame@npm:7.27.1"
@@ -2715,78 +2787,6 @@ __metadata:
   checksum: 1aa3ffbfe6578276996de660848b6e95669d9a95ad149e3dd0c0cda77db6ee1dbd9d1dd723b65b6d277b882dd0c4b91a654ae9d3cf9e1254b7e93e4908d78fd3
   languageName: node
   linkType: hard
-
-"axiocnc-app@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "axiocnc-app@workspace:."
-  dependencies:
-    "@codemirror/autocomplete": ^6.20.0
-    "@codemirror/basic-setup": ^0.20.0
-    "@codemirror/commands": ^6.10.1
-    "@codemirror/language": ^6.12.1
-    "@codemirror/state": ^6.5.3
-    "@codemirror/view": ^6.39.9
-    "@dnd-kit/core": ^6.3.1
-    "@dnd-kit/sortable": ^10.0.0
-    "@dnd-kit/utilities": ^3.2.2
-    "@eslint/js": ^9.15.0
-    "@lezer/highlight": ^1.2.3
-    "@radix-ui/react-alert-dialog": ^1.1.15
-    "@radix-ui/react-dialog": ^1.1.15
-    "@radix-ui/react-label": ^2.1.8
-    "@radix-ui/react-progress": ^1.1.8
-    "@radix-ui/react-radio-group": ^1.3.8
-    "@radix-ui/react-select": ^2.2.6
-    "@radix-ui/react-separator": ^1.1.8
-    "@radix-ui/react-slider": ^1.3.6
-    "@radix-ui/react-slot": ^1.2.4
-    "@radix-ui/react-switch": ^1.2.6
-    "@radix-ui/react-tooltip": ^1.2.8
-    "@react-three/drei": ^9.88.17
-    "@react-three/fiber": ^8.15.19
-    "@reduxjs/toolkit": ^2.3.0
-    "@types/minimatch": ^5.1.2
-    "@types/node": ^22.10.1
-    "@types/react": ^18.3.12
-    "@types/react-dom": ^18.3.1
-    "@types/react-grid-layout": ^1.3.6
-    "@types/three": ^0.182.0
-    "@uiw/react-codemirror": ^4.25.4
-    "@vitejs/plugin-react": ^4.3.4
-    autoprefixer: ^10.4.20
-    class-variance-authority: ^0.7.1
-    clsx: ^2.1.1
-    colornames: ^1.1.1
-    eslint: ^9.15.0
-    eslint-plugin-react-hooks: ^5.0.0
-    eslint-plugin-react-refresh: ^0.4.14
-    gcode-toolpath: ^3.0.0
-    globals: ^15.12.0
-    hls.js: ^1.6.15
-    i18next: ^24.0.5
-    i18next-browser-languagedetector: ^8.0.2
-    lucide-react: ^0.468.0
-    overlayscrollbars: ^2.13.0
-    overlayscrollbars-react: ^0.5.6
-    postcss: ^8.4.49
-    react: ^18.3.1
-    react-dom: ^18.3.1
-    react-grid-layout: ^2.2.2
-    react-i18next: ^15.1.3
-    react-redux: ^9.1.2
-    react-router-dom: ^7.0.2
-    socket.io-client: ^2.5.0
-    tailwind-merge: ^2.5.5
-    tailwindcss: ^3.4.16
-    tailwindcss-animate: ^1.0.7
-    three: ^0.160.0
-    typescript: ~5.6.2
-    typescript-eslint: ^8.15.0
-    vite: ^6.0.1
-    vite-plugin-node-polyfills: ^0.24.0
-    zod: ^4.3.5
-  languageName: unknown
-  linkType: soft
 
 "backo2@npm:1.0.2":
   version: 1.0.2

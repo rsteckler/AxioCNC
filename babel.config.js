@@ -23,9 +23,8 @@ module.exports = (api) => {
       {
         test: (filename) => {
           if (!filename) return false;
-          return filename.includes('src/server') ||
-                 filename.includes('src/server-cli.js') ||
-                 filename.includes('src/shared') ||
+          return filename.includes('apps/server/') ||
+                 filename.includes('packages/shared/') ||
                  filename.includes('/server/') ||
                  filename.includes('/shared/');
         },
@@ -45,7 +44,8 @@ module.exports = (api) => {
       test: (filename) => {
         if (!filename) return false;
         // Only apply to files that are NOT server code
-        return !filename.includes('src/server') &&
+        return !filename.includes('apps/server/') &&
+               !filename.includes('packages/shared/') &&
                !filename.includes('output/axiocnc/server') &&
                !filename.includes('dist/axiocnc/server');
       },

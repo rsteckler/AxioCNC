@@ -9,9 +9,9 @@
     "build": "echo 'Desktop build handled by electron-builder'"
   },
   "dependencies": {
+    "chalk": "~4.1.1",
     "electron-store": "~8.1.0",
     "is-electron": "~2.2.1",
-    "chalk": "~4.1.1",
     "mkdirp": "~0.5.1"
   }
 }

@@ -5,9 +5,7 @@
   "homepage": "https://github.com/rsteckler/axiocnc",
   "author": "Cheton Wu <cheton@gmail.com>",
   "main": "./dist/axiocnc/server-cli.js",
-  "bin": {
-    "axiocnc": "./apps/server/bin/axiocnc"
-  },
+  "bin": "./apps/server/bin/axiocnc",
   "files": [
     "apps/server/bin",
     "dist",
