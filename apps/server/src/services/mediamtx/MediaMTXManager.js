@@ -35,7 +35,7 @@ class MediaMTXManager extends events.EventEmitter {
   }
 
   /**
-   * Find project root by looking for package.json and vendor/ directory
+   * Find project root by looking for package.json and apps/ directory
    * Works from both source and compiled output directories
    * Skips over build output directories (output/, dist/)
    */
@@ -43,15 +43,14 @@ class MediaMTXManager extends events.EventEmitter {
     let current = __dirname;
 
     // Start from __dirname and go up until we find the actual project root
-    // Look for package.json AND vendor/ or src/ directory to avoid matching build output
+    // Look for package.json AND apps/ directory to avoid matching build output
     for (let i = 0; i < 15; i++) {
       const packageJson = path.join(current, 'package.json');
-      const vendorDir = path.join(current, 'vendor');
-      const srcDir = path.join(current, 'src');
+      const appsDir = path.join(current, 'apps');
 
       // Check if this looks like the project root:
       // - Has package.json
-      // - Has vendor/ or src/ directory (not build output)
+      // - Has apps/ directory (monorepo structure indicator)
       // - Not inside output/ or dist/ directory
       if (fs.existsSync(packageJson)) {
         // Skip if we're in a build output directory
@@ -67,14 +66,14 @@ class MediaMTXManager extends events.EventEmitter {
           continue;
         }
 
-        // Check for vendor/ or src/ directory (project structure indicators)
-        if (fs.existsSync(vendorDir) || fs.existsSync(srcDir)) {
+        // Check for apps/ directory (monorepo structure indicator)
+        if (fs.existsSync(appsDir)) {
           return current;
         }
 
-        // If we have package.json and we're not in output/dist, and we have themes/
+        // If we have package.json and we're not in output/dist, and we have apps/server/vendor/
         // that's also a good indicator
-        if (fs.existsSync(path.join(current, 'themes'))) {
+        if (fs.existsSync(path.join(current, 'apps', 'server', 'vendor'))) {
           return current;
         }
       }
@@ -90,10 +89,9 @@ class MediaMTXManager extends events.EventEmitter {
     let fallback = process.cwd();
     for (let i = 0; i < 5; i++) {
       const packageJson = path.join(fallback, 'package.json');
-      const vendorDir = path.join(fallback, 'vendor');
-      const srcDir = path.join(fallback, 'src');
+      const appsDir = path.join(fallback, 'apps');
 
-      if (fs.existsSync(packageJson) && (fs.existsSync(vendorDir) || fs.existsSync(srcDir))) {
+      if (fs.existsSync(packageJson) && fs.existsSync(appsDir)) {
         return fallback;
       }
 
@@ -137,7 +135,7 @@ class MediaMTXManager extends events.EventEmitter {
     const arch = process.arch;
 
     // Vendor binary path (relative to project root)
-    // Directory structure: vendor/mediamtx/linux-amd64/mediamtx
+    // Directory structure: apps/server/vendor/mediamtx/linux-amd64/mediamtx
     const projectRoot = this.findProjectRoot();
 
     // Map platform/arch to directory name
@@ -161,6 +159,8 @@ class MediaMTXManager extends events.EventEmitter {
 
     const vendorBinaryPath = path.resolve(
       projectRoot,
+      'apps',
+      'server',
       'vendor',
       'mediamtx',
       platformArchDir,
