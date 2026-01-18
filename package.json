@@ -72,7 +72,7 @@
     "asarUnpack": [],
     "productName": "AxioCNC",
     "directories": {
-      "buildResources": "electron-build",
+      "buildResources": "apps/desktop/build-resources",
       "output": "output",
       "app": "dist/axiocnc"
     },
@@ -82,11 +82,11 @@
       "target": [
         "dmg"
       ],
-      "icon": "electron-build/icon.icns"
+      "icon": "apps/desktop/build-resources/icon.icns"
     },
     "dmg": {
-      "background": "electron-build/background.png",
-      "icon": "electron-build/icon.icns",
+      "background": "apps/desktop/build-resources/background.png",
+      "icon": "apps/desktop/build-resources/icon.icns",
       "iconSize": 80,
       "iconTextSize": 12,
       "contents": [
@@ -107,7 +107,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "electron-build/icon.ico"
+      "icon": "apps/desktop/build-resources/icon.ico"
     },
     "linux": {
       "category": "Utility",
