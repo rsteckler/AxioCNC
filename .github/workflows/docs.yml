@@ -59,8 +59,18 @@ jobs:
           mkdir -p _site/docs
           # Copy static website files to root
           cp -r website/static/* _site/ 2>/dev/null || true
-          # Copy Docusaurus build to docs subdirectory
-          cp -r website/docs/build/* _site/docs/
+          # Copy Docusaurus build output
+          # With baseUrl='/docs/', Docusaurus creates build/docs/ subdirectory with all content
+          # Copy the docs subdirectory contents to _site/docs/
+          if [ -d "website/docs/build/docs" ]; then
+            cp -r website/docs/build/docs/* _site/docs/
+          fi
+          # Copy assets directory (CSS, JS, images) - these are at build root
+          if [ -d "website/docs/build/assets" ]; then
+            cp -r website/docs/build/assets _site/docs/
+          fi
+          # Copy any root-level files (favicon, etc.)
+          find website/docs/build -maxdepth 1 -type f ! -name '*.map' -exec cp {} _site/docs/ \; 2>/dev/null || true
           # Ensure .nojekyll exists for GitHub Pages
           touch _site/.nojekyll _site/docs/.nojekyll
 
