@@ -1,3 +1,4 @@
+import events from 'events';
 import logger from '../../lib/logger';
 import jobHistory from './index';
 import store from '../../store';
@@ -27,10 +28,15 @@ class JobHistoryHook {
      */
     hookExistingControllers() {
         const controllers = store.get('controllers', {});
-        Object.keys(controllers).forEach(port => {
+        const controllerKeys = Object.keys(controllers);
+        log.debug(`Found ${controllerKeys.length} controller(s) in store: ${controllerKeys.join(', ')}`);
+        
+        controllerKeys.forEach(port => {
             const controller = controllers[port];
-            if (controller && typeof controller.on === 'function') {
+            if (controller && typeof controller.emit === 'function') {
                 this.attachListener(controller, port);
+            } else {
+                log.warn(`Skipping controller on port "${port}": ${controller ? 'missing emit() method' : 'null/undefined'}`);
             }
         });
     }
@@ -45,7 +51,7 @@ class JobHistoryHook {
             const controllers = store.get('controllers', {});
             Object.keys(controllers).forEach(port => {
                 const controller = controllers[port];
-                if (controller && typeof controller.on === 'function' && !controller._jobHistoryHookAttached) {
+                if (controller && typeof controller.emit === 'function' && !controller._jobHistoryHookAttached) {
                     this.attachListener(controller, port);
                 }
             });
@@ -54,13 +60,13 @@ class JobHistoryHook {
 
     /**
      * Attach job:complete listener to a controller
+     * Uses the same pattern as setupControllerStatusListeners - wraps emit() to intercept events
      * @param {object} controller - Controller instance
      * @param {string} port - Serial port
      */
     attachListener(controller, port) {
-        // Validate controller and ensure it has an 'on' method (EventEmitter interface)
-        if (!controller || typeof controller.on !== 'function') {
-            log.warn(`Cannot attach job history hook: controller on port "${port}" does not have an 'on' method`);
+        if (!controller) {
+            log.warn(`Cannot attach job history hook: controller on port "${port}" is null or undefined`);
             return;
         }
 
@@ -68,12 +74,28 @@ class JobHistoryHook {
             return; // Already attached
         }
 
-        controller.on('job:complete', (completionInfo) => {
-            this.handleJobComplete(controller, port, completionInfo);
-        });
+        if (typeof controller.emit !== 'function') {
+            log.error(`Cannot attach job history hook: controller on port "${port}" does not have an 'emit' method`);
+            return;
+        }
+
+        // Wrap controller.emit() to intercept 'job:complete' events (same pattern as setupControllerStatusListeners)
+        // Note: This may wrap an already-wrapped emit() from setupControllerStatusListeners, which is fine
+        const originalEmit = controller.emit.bind(controller);
+
+        controller.emit = (eventName, ...args) => {
+            // Call original emit first (this might already be wrapped by status manager, which is fine)
+            originalEmit(eventName, ...args);
+
+            // Intercept job:complete events
+            if (eventName === 'job:complete') {
+                const completionInfo = args[0] || {};
+                this.handleJobComplete(controller, port, completionInfo);
+            }
+        };
 
         controller._jobHistoryHookAttached = true;
-        log.debug(`Attached job history hook to controller on port "${port}"`);
+        log.debug(`Attached job history hook to controller on port "${port}" (using emit wrapper)`);
     }
 
     /**
