@@ -15,7 +15,7 @@ LOG_FILE="${GRBL_SIM_DIR}/logs/grbl-console.log"
 # Check if built
 if [ ! -f "$EXECUTABLE" ]; then
     echo "❌ Error: grbl_sim.exe not found at $EXECUTABLE"
-    echo "   Run 'scripts/grblsim/grblsim-build.sh' first"
+    echo "   Run 'developers/scripts/grblsim/grblsim-build.sh' first"
     exit 1
 fi
 

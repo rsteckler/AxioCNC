@@ -305,11 +305,11 @@ Build status and test coverage information will be added here as CI/CD is config
 
 We welcome contributions! Before you get started:
 
-1. **Read our [Contributing Guide](devdocs/contributing.md)** - Learn about our workflow, code style, and protected code areas
-2. **See [Development Setup](devdocs/development.md)** - How to set up a local development environment
-3. **Check [Protected Code](devdocs/protected-code.md)** - Some areas require explicit permission before modification
-4. **Review [Development Preferences](devdocs/dev_prefs.md)** - UI patterns and architectural decisions
-5. **See [Testing Guide](devdocs/testing.md)** - How we test and maintain code quality
+1. **Read our [Contributing Guide](developers/docs/contributing.md)** - Learn about our workflow, code style, and protected code areas
+2. **See [Development Setup](developers/docs/development.md)** - How to set up a local development environment
+3. **Check [Protected Code](developers/docs/protected-code.md)** - Some areas require explicit permission before modification
+4. **Review [Development Preferences](developers/docs/dev_prefs.md)** - UI patterns and architectural decisions
+5. **See [Testing Guide](developers/docs/testing.md)** - How we test and maintain code quality
 
 **Quick Development Setup:**
 
@@ -329,7 +329,7 @@ yarn dev:start-server
 cd src/app && yarn dev
 ```
 
-For more details, see [Development Guide](devdocs/development.md), [Contributing Guide](devdocs/contributing.md), and the [Developer Documentation](../aidocs/overview.md).
+For more details, see [Development Guide](developers/docs/development.md), [Contributing Guide](developers/docs/contributing.md), and the [Developer Documentation](ai/docs/overview.md).
 
 ---
 

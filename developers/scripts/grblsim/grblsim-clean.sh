@@ -53,5 +53,5 @@ else
     echo ""
     echo "ℹ️  To remove the entire cloned directory, use:"
     echo "   yarn grblsim:clean:all"
-    echo "   (or: scripts/grblsim/grblsim-clean.sh --all)"
+    echo "   (or: developers/scripts/grblsim/grblsim-clean.sh --all)"
 fi

@@ -10,7 +10,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 # Sync package dependencies
-bash scripts/package-sync.sh
+bash developers/scripts/package-sync.sh
 
 mkdir -p dist
 rm -rf dist/*

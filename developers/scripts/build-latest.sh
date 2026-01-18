@@ -4,7 +4,7 @@ PACKAGE_VERSION=${npm_package_version:-0.0.0}
 COMMIT_ID_SHORT=`git rev-parse --short HEAD`
 VERSION=${PACKAGE_VERSION}-${COMMIT_ID_SHORT:-latest}
 
-bash scripts/package-sync.sh
+bash developers/scripts/package-sync.sh
 
 mkdir -p dist
 rm -rf dist/*

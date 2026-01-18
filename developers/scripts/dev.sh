@@ -29,7 +29,7 @@ fi
 
 # Build dev environment first
 echo "🔨 Building development environment..."
-bash scripts/build-dev.sh
+bash developers/scripts/build-dev.sh
 
 # Start services concurrently
 echo "🚀 Starting development services..."
@@ -40,7 +40,7 @@ if [ "$GRBL_SIM_AVAILABLE" = true ]; then
     concurrently \
         --names "grblsim,dev:server,dev:app" \
         --kill-others-on-fail \
-        "bash scripts/grblsim/grblsim-run.sh" \
+        "bash developers/scripts/grblsim/grblsim-run.sh" \
         "yarn run dev:start-server" \
         "yarn run dev:start-app"
 else

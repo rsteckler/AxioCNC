@@ -20,8 +20,8 @@ yarn grblsim:clone
 ```
 
 This creates:
-- `examples/grbl-sim-build/grbl/` - grbl source code
-- `examples/grbl-sim-build/grbl/grbl-sim/` - grbl-sim simulator code
+- `developers/examples/grbl-sim-build/grbl/` - grbl source code
+- `developers/examples/grbl-sim-build/grbl/grbl-sim/` - grbl-sim simulator code
 
 ### 2. Apply build fixes
 
@@ -63,7 +63,7 @@ yarn grblsim:run
 This will:
 - Create a virtual serial port at `/dev/ttyFAKE`
 - Start the grbl-sim executable
-- Begin logging to `examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
+- Begin logging to `developers/examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
 - Tail the log file (press Ctrl+C to stop)
 
 The simulator will be accessible via `/dev/ttyFAKE` as a serial device.
@@ -171,13 +171,13 @@ sudo chmod a+rw /dev/ttyFAKE
 ### Homing doesn't work
 
 - Verify `$22=1` is set (check settings with `$$`)
-- Check the log file for errors: `tail -f examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
+- Check the log file for errors: `tail -f developers/examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
 
 ## Files and Directories
 
-- **Build directory**: `examples/grbl-sim-build/`
-- **Executable**: `examples/grbl-sim-build/grbl/grbl-sim/grbl_sim.exe`
-- **Log file**: `examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
+- **Build directory**: `developers/examples/grbl-sim-build/`
+- **Executable**: `developers/examples/grbl-sim-build/grbl/grbl-sim/grbl_sim.exe`
+- **Log file**: `developers/examples/grbl-sim-build/grbl/grbl-sim/logs/grbl-console.log`
 - **Virtual serial port**: `/dev/ttyFAKE`
 - **Scripts**: `scripts/grblsim/`
 

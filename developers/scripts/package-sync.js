@@ -8,8 +8,8 @@ const _uniq = require('lodash/uniq');
 const findImports = require('find-imports');
 
 // Copy necessary properties from 'package.json' to 'apps/server/package.json'
-const pkg = require('../package.json');
-const pkgServer = require('../apps/server/package.json');
+const pkg = require('../../package.json');
+const pkgServer = require('../../apps/server/package.json');
 
 const files = [
   'apps/server/src/**/*.{js,jsx}',

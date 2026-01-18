@@ -246,7 +246,7 @@ Each adapter handles jogging differently:
 
 **4.3 Documentation**
 
-- Document unified API in `devdocs/api.md`
+- Document unified API in `developers/docs/api.md`
 - Add adapter implementation guide
 - Migration guide for frontend
 

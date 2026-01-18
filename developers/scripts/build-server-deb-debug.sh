@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build server-only .deb package for Raspberry Pi (headless deployment)
+# Build server-only .deb package for Raspberry Pi (DEBUG version with source maps)
 
 set -e
 
@@ -8,7 +8,7 @@ PACKAGE_NAME="axiocnc-server"
 INSTALL_DIR="/opt/axiocnc"
 BUILD_DIR="output/server-deb-build"
 
-echo "Building server-only .deb package for ${ARCH}..."
+echo "Building DEBUG server-only .deb package for ${ARCH}..."
 
 # Bump version before building (must bump both root and src package.json)
 echo "Bumping version..."
@@ -41,26 +41,27 @@ VERSION="${NEW_VERSION}"
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
-# Build production first
-echo "Building production application..."
-bash scripts/build-prod.sh
+# Build development version (includes source maps)
+echo "Building DEBUG application (with source maps)..."
+bash developers/scripts/build-dev.sh
 
 # Create package structure
-PACKAGE_ROOT="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
+PACKAGE_ROOT="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}-debug_${ARCH}"
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}"
 mkdir -p "${PACKAGE_ROOT}/usr/bin"
 mkdir -p "${PACKAGE_ROOT}/etc/systemd/system"
 mkdir -p "${PACKAGE_ROOT}/DEBIAN"
 
 # Production dependency pruning (at build root, before staging)
-# Yarn 3 deprecates --production flag but still works; we handle the exit code
+# For debug builds, we still use production dependencies to keep package size reasonable
+# (source maps are in the code, but we don't need dev tooling like TypeScript)
 echo "Installing production dependencies..."
-PROD_INSTALL_DIR="${BUILD_DIR}/.prod-install"
+PROD_INSTALL_DIR="${BUILD_DIR}/.prod-install-debug"
 rm -rf "${PROD_INSTALL_DIR}"
 mkdir -p "${PROD_INSTALL_DIR}"
 
 # Copy package.json to temp location for production install
-cp dist/axiocnc/package.json "${PROD_INSTALL_DIR}/"
+cp output/axiocnc/package.json "${PROD_INSTALL_DIR}/"
 
 # Make temp directory a standalone Yarn project (not part of workspace)
 # Create minimal .yarnrc.yml for standalone package
@@ -95,19 +96,20 @@ yarn install || {
 yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
 cd - > /dev/null
 
-# Copy built application
+# Copy built application (from output/ instead of dist/)
 echo "Copying application files..."
-cp -r dist/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
+cp -r output/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
 # Copy pruned production node_modules from temp location
 echo "Copying production node_modules..."
 cp -r "${PROD_INSTALL_DIR}/node_modules" "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
-# Create launcher script
+# Create launcher script (with NODE_ENV=development)
 echo "Creating launcher script..."
 cat > "${PACKAGE_ROOT}/usr/bin/axiocnc" << 'EOF'
 #!/usr/bin/env node
-// AxioCNC Server Launcher
+// AxioCNC Server Launcher (DEBUG)
+process.env.NODE_ENV = 'development';
 process.chdir('/opt/axiocnc');
 // Ensure --host 0.0.0.0 and --allow-remote-access are set
 const args = process.argv.slice(2);
@@ -127,16 +129,17 @@ launchServer().catch(err => {
 EOF
 chmod +x "${PACKAGE_ROOT}/usr/bin/axiocnc"
 
-# Create systemd service file
+# Create systemd service file (with NODE_ENV=development)
 echo "Creating systemd service..."
 cat > "${PACKAGE_ROOT}/etc/systemd/system/axiocnc.service" << EOF
 [Unit]
-Description=AxioCNC CNC Controller Server
+Description=AxioCNC CNC Controller Server (DEBUG)
 After=network.target
 
 [Service]
 Type=simple
 User=root
+Environment=NODE_ENV=development
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/node ${INSTALL_DIR}/server-cli.js --port 8000 --host 0.0.0.0 --allow-remote-access
 Restart=always
@@ -152,13 +155,13 @@ EOF
 echo "Creating Debian control file..."
 cat > "${PACKAGE_ROOT}/DEBIAN/control" << EOF
 Package: ${PACKAGE_NAME}
-Version: ${VERSION}
+Version: ${VERSION}-debug
 Architecture: ${ARCH}
 Maintainer: AxioCNC Team
-Description: AxioCNC - Web-based CNC controller interface (Server)
+Description: AxioCNC - Web-based CNC controller interface (Server DEBUG)
  AxioCNC is a web-based interface for CNC controllers running Grbl,
  Marlin, Smoothieware, or TinyG. This package provides the server
- component for headless deployment on Raspberry Pi.
+ component for headless deployment on Raspberry Pi (DEBUG version with source maps).
 Depends: nodejs (>= 18), udev
 Section: utils
 Priority: optional
@@ -184,12 +187,8 @@ if [ -n "$USER" ] && [ "$USER" != "root" ]; then
     usermod -a -G dialout "$USER" || true
 fi
 
-# Enable systemd service (optional - user can enable manually)
-# systemctl daemon-reload
-# systemctl enable axiocnc || true
-
 echo ""
-echo "AxioCNC server installed successfully!"
+echo "AxioCNC server (DEBUG) installed successfully!"
 echo ""
 echo "To start the server:"
 echo "  axiocnc --port 8000 --host 0.0.0.0"
@@ -199,6 +198,7 @@ echo "  sudo systemctl enable axiocnc"
 echo "  sudo systemctl start axiocnc"
 echo ""
 echo "Note: You may need to log out and back in for serial port access."
+echo "Note: This is a DEBUG build with source maps enabled."
 EOF
 chmod +x "${PACKAGE_ROOT}/DEBIAN/postinst"
 
@@ -213,12 +213,11 @@ chmod +x "${PACKAGE_ROOT}/DEBIAN/prerm"
 
 # Build .deb package
 echo "Building .deb package..."
-dpkg-deb --build "${PACKAGE_ROOT}" "output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+dpkg-deb --build "${PACKAGE_ROOT}" "output/${PACKAGE_NAME}_${VERSION}-debug_${ARCH}.deb"
 
 echo ""
-echo "✅ Server package built: output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+echo "✅ DEBUG server package built: output/${PACKAGE_NAME}_${VERSION}-debug_${ARCH}.deb"
 echo ""
 echo "Install with:"
-echo "  sudo dpkg -i output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+echo "  sudo dpkg -i output/${PACKAGE_NAME}_${VERSION}-debug_${ARCH}.deb"
 echo "  sudo apt-get install -f  # if dependencies missing"
-

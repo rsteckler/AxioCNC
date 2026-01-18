@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Quick Docker test script for AxioCNC
-# Usage: bash scripts/test-docker.sh
+# Usage: bash developers/scripts/test-docker.sh
 
 set -e
 
