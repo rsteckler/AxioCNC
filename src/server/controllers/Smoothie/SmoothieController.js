@@ -355,10 +355,11 @@ class SmoothieController {
       });
       this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
-        this.sender.rewind();
         
         // Emit job completion event (for frontend/Socket.IO)
+        // IMPORTANT: Get sender state BEFORE rewinding, otherwise sent/received will be reset to 0
         const senderState = this.sender.toJSON();
+        this.sender.rewind();
         const completionInfo = {
           reason: reason || 'unknown',
           timestamp: new Date().getTime(),
