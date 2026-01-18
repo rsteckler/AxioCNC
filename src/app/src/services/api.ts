@@ -373,7 +373,7 @@ export interface JobHistoryJob {
   id: string
   timestamp: number
   status: 'completed' | 'stopped' | 'error' | 'reset' | 'panic_stop' | 'power_loss' | 'unknown'
-  wasSuccessful?: boolean
+  // Note: wasSuccessful is not stored - status='completed' means wasSuccessful=true
   reason?: string
   port?: string
   controllerType?: string

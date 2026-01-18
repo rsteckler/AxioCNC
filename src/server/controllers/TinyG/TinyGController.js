@@ -22,6 +22,7 @@ import translateExpression from '../../lib/translate-expression';
 import config from '../../services/configstore';
 import monitor from '../../services/monitor';
 import taskRunner from '../../services/taskrunner';
+import jobHistory from '../../services/jobhistory';
 import store from '../../store';
 import {
   GLOBAL_OBJECTS as globalObjects,
@@ -390,7 +391,7 @@ class TinyGController {
         this.senderStatus = SENDER_STATUS_NONE;
         this.sender.rewind();
         
-        // Emit job completion event
+        // Emit job completion event (for frontend/Socket.IO)
         const senderState = this.sender.toJSON();
         const completionInfo = {
           reason: reason || 'unknown',
@@ -402,11 +403,19 @@ class TinyGController {
             finishTime: senderState.finishTime || 0,
             name: senderState.name || '',
           },
-          wasSuccessful: reason === 'completed' && 
-                         (senderState.received || 0) >= (senderState.total || 0) && 
-                         (senderState.total || 0) > 0
+          // If workflow says 'completed', job completed successfully
+          // Note: received/total check removed - workflow completion is the source of truth
+          wasSuccessful: reason === 'completed'
         };
         
+        // Store job history directly
+        try {
+          jobHistory.addJobFromController(this, this.options.port, completionInfo);
+        } catch (err) {
+          log.error(`Error storing job history: ${err.message}`, err);
+        }
+        
+        // Emit event for frontend/Socket.IO listeners
         this.emit('job:complete', completionInfo);
       });
       this.workflow.on('pause', (...args) => {

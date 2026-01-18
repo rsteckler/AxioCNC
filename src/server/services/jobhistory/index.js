@@ -169,6 +169,122 @@ class JobHistoryService extends events.EventEmitter {
     }
 
     /**
+     * Add a job from controller completion info
+     * This is a convenience method that controllers can call directly
+     * @param {object} controller - Controller instance
+     * @param {string} port - Serial port
+     * @param {object} completionInfo - Completion info from controller
+     * @returns {string} Job ID
+     */
+    addJobFromController(controller, port, completionInfo) {
+        try {
+            // Get sender state for additional job data
+            const senderState = controller.sender?.toJSON() || completionInfo.senderState || {};
+
+            // Extract tool usage from sender state
+            const tools = this.extractToolUsage(senderState, controller);
+
+            // Determine job status from completion reason
+            let status = 'unknown';
+            if (completionInfo.reason === 'completed') {
+                status = completionInfo.wasSuccessful ? 'completed' : 'error';
+            } else if (completionInfo.reason === 'stopped') {
+                status = 'stopped';
+            } else if (completionInfo.reason === 'error') {
+                status = 'error';
+            } else if (completionInfo.reason === 'reset') {
+                status = 'reset';
+            } else if (completionInfo.reason === 'panic_stop' || completionInfo.reason === 'panic') {
+                status = 'panic_stop';
+            } else if (completionInfo.reason === 'power_loss' || completionInfo.reason === 'power') {
+                status = 'power_loss';
+            } else {
+                status = completionInfo.reason || 'unknown';
+            }
+
+            // Build job data with flexible schema
+            // Note: wasSuccessful is not stored - status already encodes this (status='completed' means wasSuccessful=true)
+            const jobData = {
+                timestamp: completionInfo.timestamp || Date.now(),
+                status: status,
+                reason: completionInfo.reason || 'unknown',
+                port: port,
+                controllerType: controller.type || 'unknown',
+                
+                // File information
+                fileName: senderState.name || 'unknown',
+                fileSize: senderState.size || 0,
+                
+                // Job statistics
+                stats: {
+                    total: senderState.total || 0,
+                    sent: senderState.sent || 0,
+                    received: senderState.received || 0,
+                    startTime: senderState.startTime || 0,
+                    finishTime: senderState.finishTime || completionInfo.timestamp || Date.now(),
+                    elapsedTime: senderState.elapsedTime || 0,
+                },
+                
+                // Tool usage
+                tools: tools,
+                
+                // Additional context from sender
+                context: senderState.context || {},
+                
+                // M6 tool change information
+                m6Indices: senderState.m6Indices || [],
+            };
+
+            // Store the job
+            const jobId = this.addJob(jobData);
+            log.info(`Stored job history: id=${jobId}, port="${port}", status=${status}, file="${jobData.fileName}"`);
+
+            return jobId;
+        } catch (err) {
+            log.error(`Error storing job history: ${err.message}`, err);
+            throw err;
+        }
+    }
+
+    /**
+     * Extract tool usage information from sender state
+     * @param {object} senderState - Sender state JSON
+     * @param {object} controller - Controller instance
+     * @returns {Array} Array of tool usage objects
+     */
+    extractToolUsage(senderState, controller) {
+        const tools = [];
+        const toolUsageMap = new Map();
+
+        // Get M6 indices (tool change locations)
+        const m6Indices = senderState.m6Indices || [];
+
+        // Try to get tool information from parser state if available
+        // This would require tracking tool changes during job execution
+        // For now, we'll extract what we can from the sender state
+
+        // If we have context with tool information, use it
+        if (senderState.context && senderState.context.tool) {
+            const toolNumber = parseInt(senderState.context.tool, 10);
+            if (!isNaN(toolNumber)) {
+                toolUsageMap.set(toolNumber, {
+                    toolNumber: toolNumber,
+                    time: senderState.elapsedTime || 0,
+                    // Distance would need to be calculated from G-code
+                    distance: 0,
+                });
+            }
+        }
+
+        // Convert map to array
+        toolUsageMap.forEach((usage, toolNumber) => {
+            tools.push(usage);
+        });
+
+        return tools;
+    }
+
+    /**
      * Update accumulated statistics from a job
      * @param {object} job - Job record
      */
@@ -178,7 +294,9 @@ class JobHistoryService extends events.EventEmitter {
         stats.totalJobs += 1;
 
         // Count by status
-        if (job.status === 'completed' && job.wasSuccessful) {
+        // Note: status is set to 'completed' only when wasSuccessful is true
+        // So we only need to check status, not both status and wasSuccessful
+        if (job.status === 'completed') {
             stats.successfulJobs += 1;
         } else if (job.status === 'error') {
             stats.failedJobs += 1;

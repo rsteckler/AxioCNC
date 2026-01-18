@@ -237,7 +237,7 @@ export default function Stats() {
     if (!jobHistoryData) return []
     
     return jobHistoryData.map(job => {
-      const status = job.status === 'completed' && job.wasSuccessful
+      const status = job.status === 'completed'
         ? 'completed'
         : job.status === 'error'
         ? 'failed'
@@ -270,7 +270,7 @@ export default function Stats() {
       return selectedJobId ? jobStats.find(j => j.id === selectedJobId) : null
     }
     
-    const status = selectedJobData.status === 'completed' && selectedJobData.wasSuccessful
+    const status = selectedJobData.status === 'completed'
       ? 'completed'
       : selectedJobData.status === 'error'
       ? 'failed'
