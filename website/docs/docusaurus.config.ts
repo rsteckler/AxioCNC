@@ -41,12 +41,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Edit this page links
           editUrl:
             'https://github.com/rsteckler/AxioCNC/tree/main/website/docs/',
-          // Show last update time
           showLastUpdateTime: true,
-          // Set route base path to root of baseUrl so docs are at /docs/ not /docs/docs/
           routeBasePath: '/',
         },
         blog: false, // Disable blog for now
@@ -92,11 +89,11 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/',
+              to: '/intro',
             },
             {
               label: 'Installation',
-              to: '/installation',
+              to: '/installation/rpi',
             },
           ],
         },
