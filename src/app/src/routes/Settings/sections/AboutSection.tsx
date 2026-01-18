@@ -1,15 +1,29 @@
 import { useRef, useCallback } from 'react'
 import { SettingsSection } from '../SettingsSection'
+import { SettingsField } from '../SettingsField'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { ExternalLink, Github, Heart } from 'lucide-react'
 
 interface AboutSectionProps {
   version: string
   latestVersion?: string
+  checkForUpdates: boolean
+  allowAnalytics: boolean
+  onCheckForUpdatesChange: (value: boolean) => void
+  onAnalyticsChange: (value: boolean) => void
   onEnableAdvancedSettings?: () => void
 }
 
-export function AboutSection({ version, latestVersion, onEnableAdvancedSettings }: AboutSectionProps) {
+export function AboutSection({ 
+  version, 
+  latestVersion, 
+  checkForUpdates,
+  allowAnalytics,
+  onCheckForUpdatesChange,
+  onAnalyticsChange,
+  onEnableAdvancedSettings 
+}: AboutSectionProps) {
   const isUpdateAvailable = latestVersion && version !== latestVersion
   const clickTimesRef = useRef<number[]>([])
 
@@ -57,6 +71,32 @@ export function AboutSection({ version, latestVersion, onEnableAdvancedSettings 
               Update available: {latestVersion}
             </Badge>
           )}
+        </div>
+
+        {/* Update and Privacy Settings */}
+        <div className="space-y-4 pt-2">
+          <SettingsField
+            label="Automatic Updates"
+            description="Check for new versions of AxioCNC on startup"
+            horizontal
+          >
+            <Switch
+              checked={checkForUpdates}
+              onCheckedChange={onCheckForUpdatesChange}
+            />
+          </SettingsField>
+
+          <SettingsField
+            label="Anonymous Usage Data"
+            description="Help improve AxioCNC by sending anonymous usage statistics"
+            tooltip="When enabled, anonymous usage data is collected to help improve the application. No personal information or G-code files are ever transmitted."
+            horizontal
+          >
+            <Switch
+              checked={allowAnalytics}
+              onCheckedChange={onAnalyticsChange}
+            />
+          </SettingsField>
         </div>
 
         {/* Links */}

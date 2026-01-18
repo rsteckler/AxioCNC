@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
-import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -76,13 +75,9 @@ export interface GoogleDriveStatus {
 
 interface GeneralSectionProps {
   language: string
-  checkForUpdates: boolean
-  allowAnalytics: boolean
   watchFolders: WatchFolder[]
   googleDriveStatus: GoogleDriveStatus
   onLanguageChange: (value: string) => void
-  onCheckForUpdatesChange: (value: boolean) => void
-  onAnalyticsChange: (value: boolean) => void
   onImportSettings: (data: unknown) => void
   onExportSettings: () => void
   onRestoreDefaults: () => void
@@ -94,13 +89,9 @@ interface GeneralSectionProps {
 
 export function GeneralSection({ 
   language, 
-  checkForUpdates,
-  allowAnalytics,
   watchFolders,
   googleDriveStatus,
   onLanguageChange,
-  onCheckForUpdatesChange,
-  onAnalyticsChange,
   onImportSettings,
   onExportSettings,
   onRestoreDefaults,
@@ -116,10 +107,6 @@ export function GeneralSection({
   const [newFolderName, setNewFolderName] = useState('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
-
-  const handleAnalyticsChange = useCallback((checked: boolean) => {
-    onAnalyticsChange(checked)
-  }, [onAnalyticsChange])
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -180,29 +167,6 @@ export function GeneralSection({
             ))}
           </SelectContent>
         </Select>
-      </SettingsField>
-
-      <SettingsField
-        label="Automatic Updates"
-        description="Check for new versions of AxioCNC on startup"
-        horizontal
-      >
-        <Switch
-          checked={checkForUpdates}
-          onCheckedChange={onCheckForUpdatesChange}
-        />
-      </SettingsField>
-
-      <SettingsField
-        label="Anonymous Usage Data"
-        description="Help improve AxioCNC by sending anonymous usage statistics"
-        tooltip="When enabled, anonymous usage data is collected to help improve the application. No personal information or G-code files are ever transmitted."
-        horizontal
-      >
-        <Switch
-          checked={allowAnalytics}
-          onCheckedChange={handleAnalyticsChange}
-        />
       </SettingsField>
 
       {/* Watch Folders */}

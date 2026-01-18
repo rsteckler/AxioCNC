@@ -1362,13 +1362,9 @@ export default function Settings() {
           <main className="flex-1 min-w-0 max-w-3xl">
             <GeneralSection
               language={language}
-              checkForUpdates={checkForUpdates}
-              allowAnalytics={allowAnalytics}
               watchFolders={watchFolders}
               googleDriveStatus={googleDriveStatus}
               onLanguageChange={handleLanguageChange}
-              onCheckForUpdatesChange={handleCheckForUpdatesChange}
-              onAnalyticsChange={handleAnalyticsChange}
               onImportSettings={handleImportSettings}
               onExportSettings={handleExportSettings}
               onRestoreDefaults={handleRestoreDefaults}
@@ -1455,6 +1451,10 @@ export default function Settings() {
             <AboutSection
               version={currentVersionData?.version ?? 'Unknown'}
               latestVersion={latestVersionData?.latest}
+              checkForUpdates={checkForUpdates}
+              allowAnalytics={allowAnalytics}
+              onCheckForUpdatesChange={handleCheckForUpdatesChange}
+              onAnalyticsChange={handleAnalyticsChange}
               onEnableAdvancedSettings={() => handleAdvancedConfigChange({ showAdvancedSettings: true })}
             />
           </main>
