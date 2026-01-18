@@ -410,7 +410,7 @@ class GrblController {
         this.actionTime.senderFinishTime = 0;
         // Initialize tool tracking when job starts
         const currentTool = this.runner.getTool();
-        if (currentTool !== null && currentTool !== undefined) {
+        if (Sender.isValidTool(currentTool)) {
           this.sender.trackToolChange(currentTool);
         }
       });
@@ -425,7 +425,7 @@ class GrblController {
         this.sender.rewind();
         // Initialize tool tracking when workflow starts
         const currentTool = this.runner.getTool();
-        if (currentTool !== null && currentTool !== undefined) {
+        if (Sender.isValidTool(currentTool)) {
           this.sender.trackToolChange(currentTool);
         }
       });
@@ -653,10 +653,12 @@ class GrblController {
         }
 
         // Track tool changes during runtime
+        // Note: We rely on M6 detection in processLineForDistance as the source of truth for tool changes
+        // The runner.getTool() is only used to sync if it differs from our tracking and is valid
         if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
           const currentTool = this.runner.getTool();
           const statsTool = this.sender.state.stats.currentTool;
-          if (currentTool !== null && currentTool !== undefined && currentTool !== statsTool) {
+          if (Sender.isValidTool(currentTool) && currentTool !== statsTool) {
             this.sender.trackToolChange(currentTool);
           }
         }

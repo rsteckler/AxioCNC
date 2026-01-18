@@ -153,7 +153,7 @@ class Sender extends events.EventEmitter {
         retractDistance: { x: 0, y: 0, z: 0, total: 0 },
         // Per-tool statistics
         toolStats: {}, // Map<toolNumber, { distance: {...}, time: 0 }>
-        currentTool: 0, // Active tool number (runtime)
+        currentTool: null, // Active tool number (runtime), null = no tool loaded
         toolStartTime: 0, // When current tool started (runtime)
         // Position and modal state tracking for incremental distance calculation
         position: { x: 0, y: 0, z: 0 }, // Current position based on G-code
@@ -279,6 +279,7 @@ class Sender extends events.EventEmitter {
         elapsedTime: this.state.elapsedTime,
         remainingTime: this.state.remainingTime,
         m6Indices: this.state.m6Indices.map(entry => entry.index), // Extract just the line numbers (indices)
+        m6ToolNumbers: this.state.m6Indices.map(entry => entry.toolNumber).filter(tn => tn >= 0), // Extract tool numbers for tools in the job
         nextM6Index: this.state.nextM6Index,
         nextM6ToolNumber: this.state.nextM6ToolNumber,
         remainingTimeToNextM6: this.state.remainingTimeToNextM6,
@@ -377,14 +378,7 @@ class Sender extends events.EventEmitter {
         units: 'G21',
         plane: 'G17',
       };
-      this.state.stats.currentTool = 0;
-      if (!this.state.stats.toolStats[0]) {
-        this.state.stats.toolStats[0] = {
-          toolNumber: 0,
-          distance: { x: 0, y: 0, z: 0, total: 0 },
-          time: 0,
-        };
-      }
+      this.state.stats.currentTool = null; // No tool loaded initially
 
       this.emit('load', name, gcode, context);
       this.emit('change');
@@ -554,7 +548,7 @@ class Sender extends events.EventEmitter {
         transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
         retractDistance: { x: 0, y: 0, z: 0, total: 0 },
         toolStats: {},
-        currentTool: 0,
+        currentTool: null, // null = no tool loaded, will be set on first M6
         toolStartTime: 0,
         position: { x: 0, y: 0, z: 0 },
         modalState: {
@@ -571,6 +565,14 @@ class Sender extends events.EventEmitter {
     static EPSILON = 0.0001; // Minimum radius/magnitude to avoid numerical errors
     static INTEGRATION_STEP_RADIANS = Math.PI / 20; // ~9 degrees per sample
     static MIN_INTEGRATION_SAMPLES = 20;
+    
+    // Tool tracking constants
+    static NO_TOOL = 0; // Tool 0 means "no tool loaded"
+    
+    // Helper: Check if a tool number is valid (not null, undefined, or 0)
+    static isValidTool(toolNumber) {
+      return toolNumber !== null && toolNumber !== undefined && toolNumber !== Sender.NO_TOOL;
+    }
 
     // Calculate distance between two points (straight line / chord distance)
     calculateDistance(p1, p2) {
@@ -814,7 +816,7 @@ class Sender extends events.EventEmitter {
         let previousPosition = null; // Will be copied only if needed
         let positionChanged = false;
         let toolChangeDetected = false;
-        let newToolNumber = this.state.stats.currentTool;
+        let newToolNumber = undefined; // Only set if T command is found on this line
 
         // Process all words to update modal state and extract coordinates
         for (const word of words) {
@@ -880,14 +882,18 @@ class Sender extends events.EventEmitter {
           // Note: X, Y, Z coordinates are processed in the motion command section below
         }
 
-        // Handle tool change
-        if (toolChangeDetected || (newToolNumber !== this.state.stats.currentTool && newToolNumber !== undefined)) {
+        // Handle tool change - only when M6 is detected (actual tool change)
+        // T command alone just selects a tool but doesn't change it until M6
+        if (toolChangeDetected && newToolNumber !== undefined) {
+          // M6 detected with a tool number - this is the actual tool change
           if (newToolNumber !== this.state.stats.currentTool) {
             // Track tool change for time tracking
             if (this.state.startTime > 0) {
               this.trackToolChange(newToolNumber);
             } else {
+              // Job not started yet - just set the tool number (will be tracked when job starts)
               this.state.stats.currentTool = newToolNumber;
+              this.ensureToolStats(newToolNumber);
             }
           }
         }
@@ -997,16 +1003,12 @@ class Sender extends events.EventEmitter {
               this.addDistance(this.state.stats.retractDistance, distance);
             }
 
-            // Add to current tool stats
+            // Add to current tool stats (only if a tool is loaded)
             const currentTool = this.state.stats.currentTool;
-            if (!this.state.stats.toolStats[currentTool]) {
-              this.state.stats.toolStats[currentTool] = {
-                toolNumber: currentTool,
-                distance: { x: 0, y: 0, z: 0, total: 0 },
-                time: 0,
-              };
+            if (currentTool !== null && currentTool !== undefined) {
+              this.ensureToolStats(currentTool);
+              this.addDistance(this.state.stats.toolStats[currentTool].distance, distance);
             }
-            this.addDistance(this.state.stats.toolStats[currentTool].distance, distance);
           }
         }
       } catch (err) {
@@ -1015,30 +1017,8 @@ class Sender extends events.EventEmitter {
       }
     }
 
-    // Track tool change during runtime
-    trackToolChange(toolNumber) {
-      const now = Date.now();
-      const currentTool = this.state.stats.currentTool;
-      const toolStartTime = this.state.stats.toolStartTime;
-
-      // Update previous tool's time if it was running
-      if (currentTool !== null && toolStartTime > 0) {
-        const elapsedTime = now - toolStartTime;
-        if (!this.state.stats.toolStats[currentTool]) {
-          this.state.stats.toolStats[currentTool] = {
-            toolNumber: currentTool,
-            distance: { x: 0, y: 0, z: 0, total: 0 },
-            time: 0,
-          };
-        }
-        this.state.stats.toolStats[currentTool].time += elapsedTime;
-      }
-
-      // Start new tool
-      this.state.stats.currentTool = toolNumber;
-      this.state.stats.toolStartTime = now;
-
-      // Initialize tool stats if needed
+    // Helper: Ensure tool stats exist for a given tool number
+    ensureToolStats(toolNumber) {
       if (!this.state.stats.toolStats[toolNumber]) {
         this.state.stats.toolStats[toolNumber] = {
           toolNumber: toolNumber,
@@ -1046,6 +1026,31 @@ class Sender extends events.EventEmitter {
           time: 0,
         };
       }
+    }
+
+    // Track tool change during runtime
+    trackToolChange(toolNumber) {
+      // Validate tool number
+      if (!Sender.isValidTool(toolNumber)) {
+        // Invalid tool number - log warning but don't throw to avoid breaking job
+        return;
+      }
+
+      const now = Date.now();
+      const currentTool = this.state.stats.currentTool;
+      const toolStartTime = this.state.stats.toolStartTime;
+
+      // Update previous tool's time if it was running
+      if (currentTool !== null && toolStartTime > 0) {
+        const elapsedTime = now - toolStartTime;
+        this.ensureToolStats(currentTool);
+        this.state.stats.toolStats[currentTool].time += elapsedTime;
+      }
+
+      // Start new tool
+      this.state.stats.currentTool = toolNumber;
+      this.state.stats.toolStartTime = now;
+      this.ensureToolStats(toolNumber);
 
       this.emit('change');
     }
@@ -1056,14 +1061,7 @@ class Sender extends events.EventEmitter {
       const toolStartTime = this.state.stats.toolStartTime;
 
       if (currentTool !== null && toolStartTime > 0) {
-        if (!this.state.stats.toolStats[currentTool]) {
-          this.state.stats.toolStats[currentTool] = {
-            toolNumber: currentTool,
-            distance: { x: 0, y: 0, z: 0, total: 0 },
-            time: 0,
-          };
-        }
-
+        this.ensureToolStats(currentTool);
         // Time is calculated on-demand in toJSON() when stats are serialized
         // This method ensures the tool stats object exists for the current tool
         this.emit('change');
