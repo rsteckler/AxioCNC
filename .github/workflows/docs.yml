@@ -2,15 +2,12 @@
 name: Build and Deploy Docs
 
 on:
-  # Runs on pushes to website/docs directory or workflow file changes
   push:
     branches: ["main"]
     paths:
       - 'website/docs/**'
       - '.github/workflows/docs.yml'
       - 'website/static/**'
-  
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -57,24 +54,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare combined artifact
+      - name: Prepare deployment artifact
         run: |
-          # Create a temporary directory for combined site
           mkdir -p _site
-          # Copy static website files to root (preserves existing website)
-          if [ -d "website/static" ]; then
-            cp -r website/static/* _site/ || true
-          fi
+          # Copy static website files to root
+          cp -r website/static/* _site/ 2>/dev/null || true
           # Copy Docusaurus build to docs subdirectory
-          if [ -d "website/docs/build" ]; then
-            mkdir -p _site/docs
-            cp -r website/docs/build/* _site/docs/
-          fi
-          # Ensure .nojekyll exists for GitHub Pages (needed for both root and docs)
-          touch _site/.nojekyll
-          if [ -d "_site/docs" ]; then
-            touch _site/docs/.nojekyll
-          fi
+          cp -r website/docs/build/* _site/docs/
+          # Ensure .nojekyll exists for GitHub Pages
+          touch _site/.nojekyll _site/docs/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

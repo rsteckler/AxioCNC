@@ -46,6 +46,8 @@ const config: Config = {
             'https://github.com/rsteckler/AxioCNC/tree/main/website/docs/',
           // Show last update time
           showLastUpdateTime: true,
+          // Set route base path to root of baseUrl so docs are at /docs/ not /docs/docs/
+          routeBasePath: '/',
         },
         blog: false, // Disable blog for now
         theme: {
@@ -90,11 +92,11 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/',
+              to: '/',
             },
             {
               label: 'Installation',
-              to: '/docs/installation',
+              to: '/installation',
             },
           ],
         },
