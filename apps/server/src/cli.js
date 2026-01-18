@@ -95,10 +95,8 @@ if (normalizedArgv.length > 1) {
 const options = program.opts();
 
 module.exports = () => new Promise((resolve, reject) => {
-  // Working directory is already the server src directory
-  // No chdir needed since server code is in the same folder
-
-  require('./index').createServer({
+  // Server code is compiled to ./server/ subdirectory relative to server-cli.js
+  require('./server/index').createServer({
     port: options.port,
     host: options.host,
     backlog: options.backlog,
