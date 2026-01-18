@@ -29,7 +29,7 @@ class JobHistoryHook {
         const controllers = store.get('controllers', {});
         Object.keys(controllers).forEach(port => {
             const controller = controllers[port];
-            if (controller) {
+            if (controller && typeof controller.on === 'function') {
                 this.attachListener(controller, port);
             }
         });
@@ -45,7 +45,7 @@ class JobHistoryHook {
             const controllers = store.get('controllers', {});
             Object.keys(controllers).forEach(port => {
                 const controller = controllers[port];
-                if (controller && !controller._jobHistoryHookAttached) {
+                if (controller && typeof controller.on === 'function' && !controller._jobHistoryHookAttached) {
                     this.attachListener(controller, port);
                 }
             });
@@ -58,6 +58,12 @@ class JobHistoryHook {
      * @param {string} port - Serial port
      */
     attachListener(controller, port) {
+        // Validate controller and ensure it has an 'on' method (EventEmitter interface)
+        if (!controller || typeof controller.on !== 'function') {
+            log.warn(`Cannot attach job history hook: controller on port "${port}" does not have an 'on' method`);
+            return;
+        }
+
         if (controller._jobHistoryHookAttached) {
             return; // Already attached
         }
