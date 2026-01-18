@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules (will be installed during build)
+node_modules
+**/node_modules
+
+# Build outputs (will be built in Docker)
+dist
+output
+*.log
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Test files
+test
+coverage
+.nyc_output
+
+# Documentation
+docs
+devdocs
+aidocs
+aipersonas
+website
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+tmp
+temp
+
+# Legacy files
+app-legacy
+
+# Electron build outputs
+electron-build
+# scripts - needed for build-prod.sh during Docker build
+
+# Package manager files (keep yarn.lock, ignore others)
+package-lock.json
+pnpm-lock.yaml
+
+# IDE
+.cursor
+*.code-workspace

@@ -1,54 +1,78 @@
-# BUILD STAGE
-FROM debian:bullseye as build-stage
+# syntax=docker/dockerfile:1.4
 
-ENV BUILD_DIR /tmp/build
-ENV NVM_DIR /root/.nvm
-ENV NODE_VERSION v18.20.4
-ENV NODE_ENV production
-ENV NODE_PATH $NVM_DIR/$NODE_VERSION/lib/node_modules
-ENV PATH $NVM_DIR/versions/node/$NODE_VERSION/bin:$PATH
+# Build stage
+FROM node:18-slim as builder
 
-RUN apt-get update -y && apt-get install -y -q --no-install-recommends \
-  apt-utils \
-  build-essential \
+WORKDIR /build
+
+# Copy package files first for better layer caching
+COPY package.json yarn.lock ./
+COPY .yarnrc.yml .yarnrc.yml
+COPY .yarn/releases .yarn/releases
+COPY src/app/package.json ./src/app/
+
+# Install system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies (including dev dependencies for build)
+# Use BuildKit cache mount for yarn cache to speed up rebuilds
+RUN --mount=type=cache,target=/root/.yarn \
+    --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    yarn install --frozen-lockfile
+
+# Copy source files
+COPY . .
+
+# Build the application
+RUN find scripts -name "*.sh" -type f -exec chmod +x {} \; && bash scripts/build-prod.sh
+
+# Runtime stage
+FROM node:18-slim
+
+# Install system dependencies (udev for serialport)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  udev \
   ca-certificates \
-  python3 \
-  python3-pip \
-  curl \
-  git \
-  udev
+  && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/nvm-sh/nvm.git "$NVM_DIR" \
-  && cd "$NVM_DIR" \
-  && git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)` \
-  && . "$NVM_DIR/nvm.sh" \
-  && nvm install "$NODE_VERSION" \
-  && nvm alias default "$NODE_VERSION" \
-  && nvm use --delete-prefix default
+# Set working directory
+WORKDIR /opt/axiocnc
 
-COPY ./dist/cncjs $BUILD_DIR/cncjs
-COPY ./entrypoint $BUILD_DIR/cncjs/
+# Copy built application from build stage
+COPY --from=builder /build/dist/axiocnc ./
 
-WORKDIR $BUILD_DIR/cncjs
-RUN npm install -g yarn && yarn --production
+# Copy Yarn 3 binary for consistent behavior
+COPY --from=builder /build/.yarnrc.yml ./.yarnrc.yml
+COPY --from=builder /build/.yarn/releases ./.yarn/releases
 
-# FINAL STAGE
-FROM debian:bullseye
+# Install production dependencies only
+# dist/axiocnc is a standalone package (not a workspace), so we install without lockfile
+# Since package.json only has dependencies (no devDependencies), all deps are production
+RUN yarn install
 
-ENV NVM_DIR /root/.nvm
-ENV NODE_VERSION v18.20.4
-ENV NODE_ENV production
-ENV NODE_PATH $NVM_DIR/$NODE_VERSION/lib/node_modules
-ENV PATH $NVM_DIR/versions/node/$NODE_VERSION/bin:$PATH
+# Create non-root user for better security (optional, commented out for now)
+# RUN useradd -m -u 1000 axiocnc && chown -R axiocnc:axiocnc /opt/axiocnc
+# USER axiocnc
 
-RUN apt-get update -y && apt-get install -y -q --no-install-recommends \
-  apt-utils \
-  ca-certificates \
-  udev
-
-WORKDIR /opt/cncjs
+# Expose port
 EXPOSE 8000
-ENTRYPOINT ["/opt/cncjs/entrypoint"]
 
-COPY --from=build-stage /root/.nvm $NVM_DIR
-COPY --from=build-stage /tmp/build/cncjs /opt/cncjs
+# Health check - /api returns 401 when healthy (not authenticated)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8000/api', (r) => process.exit(r.statusCode === 401 ? 0 : 1))"
+
+# Labels for GHCR (Open Container Initiative)
+LABEL org.opencontainers.image.title="AxioCNC"
+LABEL org.opencontainers.image.description="A web-based interface for CNC milling controller running Grbl, Marlin, Smoothieware, or TinyG"
+LABEL org.opencontainers.image.vendor="AxioCNC"
+LABEL org.opencontainers.image.version="1.10.112"
+
+# Entrypoint
+ENTRYPOINT ["node", "server-cli.js"]
+
+# Default command arguments
+CMD ["--port", "8000", "--host", "0.0.0.0", "--allow-remote-access"]

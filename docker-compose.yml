@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  axiocnc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/rsteckler/axiocnc:latest
+    container_name: axiocnc
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist user data directory (~/.axiocnc)
+      # Contains: settings, MediaMTX config/logs, job history, themes, etc.
+      - ~/.axiocnc:/root/.axiocnc
+    devices:
+      # Pass through serial devices for CNC controller communication
+      # Add more devices as needed: /dev/ttyUSB0, /dev/ttyACM0, etc.
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/api', (r) => process.exit(r.statusCode === 401 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
