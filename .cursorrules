@@ -79,7 +79,7 @@ Read `ai/docs/dev_prefs.md` for detailed UI patterns and component guidelines.
 
 ## API Reference
 
-Backend REST API documented in `docs/API.md`. Key points:
+Backend REST API documented in `website/docs/API.md`. Key points:
 - All endpoints require JWT auth (except `/api/signin`)
 - System settings via `/api/settings` (Zod-validated)
 - Extension data via `/api/extensions` (schemaless, for widgets/plugins)
@@ -113,6 +113,9 @@ ai/
 ├── docs/                   # Project documentation
 ├── personas/               # AI agent personas
 └── plans/                  # Project plans
+website/
+├── static/                 # Static website files (deployed to GitHub Pages)
+└── docs/                   # User documentation (will generate to static/docs)
 ```
 
 ---
@@ -125,7 +128,7 @@ ai/
 | `ai/docs/dev_prefs.md` | UI patterns, code style, component guidelines |
 | `ai/docs/protected-code.md` | Protected code boundaries and rationale |
 | `ai/plans/` | Project plans and roadmaps |
-| `docs/API.md` | Complete REST API reference |
+| `website/docs/API.md` | Complete REST API reference |
 
 
 ---
