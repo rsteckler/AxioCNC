@@ -56,7 +56,7 @@ jobs:
 
       - name: Prepare deployment artifact
         run: |
-          mkdir -p _site
+          mkdir -p _site/docs
           # Copy static website files to root
           cp -r website/static/* _site/ 2>/dev/null || true
           # Copy Docusaurus build to docs subdirectory
