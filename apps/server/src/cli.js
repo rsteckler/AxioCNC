@@ -6,7 +6,8 @@ require('regenerator-runtime/runtime'); // needed to use transpiled generator fu
 const path = require('path');
 const isElectron = require('is-electron');
 const program = require('commander');
-const pkg = require('../package.json');
+// In dev/prod builds, package.json is copied alongside the compiled server-cli.js
+const pkg = require('./package.json');
 
 // Defaults to 'production'
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
