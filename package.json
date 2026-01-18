@@ -23,6 +23,9 @@
     "node": ">=18"
   },
   "preferGlobal": true,
+  "workspaces": [
+    "src/app"
+  ],
   "scripts": {
     "clean": "del dist output",
     "github-release": "github-release",
@@ -49,7 +52,7 @@
     "dev:grblsim:clean:all": "bash scripts/grblsim/grblsim-clean.sh --all",
     "dev": "bash scripts/dev.sh",
     "win-dev": "powershell -ExecutionPolicy Bypass -File scripts/build-dev.ps1 && concurrently --names \"dev:start-app,dev:start-server\" \"yarn run dev:start-app\" \"yarn run dev:start-server\"",
-    "dev:start-app": "cd src/app && yarn dev",
+    "dev:start-app": "yarn workspace axiocnc-app dev",
     "dev:start-server": "nodemon --config nodemon.server.json",
     "test:test": "tap test/*.js --allow-incomplete-coverage --timeout=0 --node-arg=--require --node-arg=@babel/register",
     "test:coverage": "tap test/*.js --coverage --coverage-report=text-lcov --nyc-arg=--require --nyc-arg=@babel/register",
