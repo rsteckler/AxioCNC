@@ -13,7 +13,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -64,7 +64,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -130,7 +130,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -173,7 +173,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -203,7 +203,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -239,7 +239,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -312,7 +312,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -359,7 +359,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -402,7 +402,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },
@@ -444,7 +444,7 @@ test('api.controllers', (t) => {
       },
     };
 
-    const apiControllers = proxyquire('../../src/server/api/api.controllers.js', {
+    const apiControllers = proxyquire('../../src/api/api.controllers.js', {
       '../store': {
         default: mockStore,
       },

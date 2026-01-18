@@ -1,7 +1,7 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
 import { createMockRequest, createMockResponse, createMockConfigStore } from './helpers';
-import { ERR_NOT_FOUND } from '../../src/server/constants/index';
+import { ERR_NOT_FOUND } from '../../src/constants/index';
 
 test('api.extensions', (t) => {
   t.test('GET /api/extensions - returns all extensions when no key', (subt) => {
@@ -15,7 +15,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -34,7 +34,7 @@ test('api.extensions', (t) => {
   t.test('GET /api/extensions - returns empty object when no extensions stored', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -61,7 +61,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -89,7 +89,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -110,7 +110,7 @@ test('api.extensions', (t) => {
   t.test('POST /api/extensions - sets root-level extension data', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -148,7 +148,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -191,7 +191,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -232,7 +232,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -273,7 +273,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -307,7 +307,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -335,7 +335,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -359,7 +359,7 @@ test('api.extensions', (t) => {
   t.test('POST /api/extensions - handles empty body', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -380,7 +380,7 @@ test('api.extensions', (t) => {
   t.test('POST /api/extensions - handles complex nested structures', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -434,7 +434,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -472,7 +472,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -507,7 +507,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -544,7 +544,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -584,7 +584,7 @@ test('api.extensions', (t) => {
       extensions: existingExtensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -621,7 +621,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -642,7 +642,7 @@ test('api.extensions', (t) => {
   t.test('POST /api/extensions - handles missing query object', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -673,7 +673,7 @@ test('api.extensions', (t) => {
       extensions: extensions,
     });
 
-    const apiExtensions = proxyquire('../../src/server/api/api.extensions.js', {
+    const apiExtensions = proxyquire('../../src/api/api.extensions.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },

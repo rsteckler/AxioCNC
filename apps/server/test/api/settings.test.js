@@ -1,14 +1,14 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
 import { createMockRequest, createMockResponse, createMockConfigStore } from './helpers';
-import { getDefaultSettings } from '../../src/shared/schemas/settings';
-import { ERR_BAD_REQUEST } from '../../src/server/constants/index';
+import { getDefaultSettings } from '../../../../packages/shared/src/schemas/settings';
+import { ERR_BAD_REQUEST } from '../../src/constants/index';
 
 test('api.settings', (t) => {
   t.test('GET /api/settings - returns defaults when no stored settings', (subt) => {
     const mockConfigStore = createMockConfigStore({});
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -34,7 +34,7 @@ test('api.settings', (t) => {
       settings: storedSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -70,7 +70,7 @@ test('api.settings', (t) => {
       settings: storedSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -105,7 +105,7 @@ test('api.settings', (t) => {
       warnMessages.push(msg);
     };
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -134,7 +134,7 @@ test('api.settings', (t) => {
       settings: existingSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -171,7 +171,7 @@ test('api.settings', (t) => {
       settings: existingSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -201,7 +201,7 @@ test('api.settings', (t) => {
       settings: {},
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -232,7 +232,7 @@ test('api.settings', (t) => {
       settings: {},
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -272,7 +272,7 @@ test('api.settings', (t) => {
       settings: existingSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -301,7 +301,7 @@ test('api.settings', (t) => {
       settings: existingSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -332,7 +332,7 @@ test('api.settings', (t) => {
       settings: existingSettings,
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -357,7 +357,7 @@ test('api.settings', (t) => {
       settings: { lang: 'en' },
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -383,7 +383,7 @@ test('api.settings', (t) => {
       settings: { lang: 'en' },
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -407,7 +407,7 @@ test('api.settings', (t) => {
       settings: {},
     });
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },
@@ -457,7 +457,7 @@ test('api.settings', (t) => {
       return originalGet.call(mockConfigStore, key, defaultValue);
     };
 
-    const apiSettings = proxyquire('../../src/server/api/api.settings.js', {
+    const apiSettings = proxyquire('../../src/api/api.settings.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },

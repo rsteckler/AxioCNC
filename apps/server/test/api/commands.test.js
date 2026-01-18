@@ -5,7 +5,7 @@ import {
   ERR_BAD_REQUEST,
   ERR_NOT_FOUND,
   ERR_INTERNAL_SERVER_ERROR
-} from '../../src/server/constants/index';
+} from '../../src/constants/index';
 
 test('api.commands', (t) => {
   // Mock dependencies
@@ -26,7 +26,7 @@ test('api.commands', (t) => {
       v4: () => 'mock-uuid-' + Math.random().toString(36).substr(2, 9)
     };
 
-    apiCommands = proxyquire('../../src/server/api/api.commands.js', {
+    apiCommands = proxyquire('../../src/api/api.commands.js', {
       '../services/configstore': {
         default: mockConfigStore,
       },

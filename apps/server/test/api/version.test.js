@@ -1,12 +1,12 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
 import { createMockRequest, createMockResponse } from './helpers';
-import { ERR_INTERNAL_SERVER_ERROR } from '../../src/server/constants/index';
+import { ERR_INTERNAL_SERVER_ERROR } from '../../src/constants/index';
 import pkg from '../../package.json';
 
 test('api.version', (t) => {
   t.test('getCurrentVersion - returns current package version', (subt) => {
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {});
+    const apiVersion = proxyquire('../../src/api/api.version.js', {});
 
     const req = createMockRequest();
     const res = createMockResponse();
@@ -77,7 +77,7 @@ test('api.version', (t) => {
       },
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': mockRegistryUrlFn,
       'registry-auth-token': mockRegistryAuthToken,
       url: {
@@ -149,7 +149,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': mockRegistryUrlFn,
       'registry-auth-token': mockRegistryAuthToken,
       url: {
@@ -193,7 +193,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': mockRegistryUrlFn,
       'registry-auth-token': mockRegistryAuthToken,
       url: {
@@ -243,7 +243,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': mockRegistryUrlFn,
       'registry-auth-token': mockRegistryAuthToken,
       url: {
@@ -292,7 +292,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {
@@ -337,7 +337,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {
@@ -373,7 +373,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {
@@ -411,7 +411,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {
@@ -465,7 +465,7 @@ test('api.version', (t) => {
       },
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {
@@ -520,7 +520,7 @@ test('api.version', (t) => {
       }),
     };
 
-    const apiVersion = proxyquire('../../src/server/api/api.version.js', {
+    const apiVersion = proxyquire('../../src/api/api.version.js', {
       'registry-url': () => 'https://registry.npmjs.org',
       'registry-auth-token': () => null,
       url: {

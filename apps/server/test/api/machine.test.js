@@ -1,7 +1,7 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
 import { createMockRequest, createMockResponse } from './helpers';
-import { ERR_NOT_FOUND } from '../../src/server/constants/index';
+import { ERR_NOT_FOUND } from '../../src/constants/index';
 
 test('api.machine', (t) => {
   t.test('getStatus - returns status for specific port from query', (subt) => {
@@ -29,7 +29,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -71,7 +71,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -98,7 +98,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -169,7 +169,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -202,7 +202,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -232,7 +232,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -272,7 +272,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -322,7 +322,7 @@ test('api.machine', (t) => {
         },
       };
 
-      const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+      const apiMachine = proxyquire('../../src/api/api.machine.js', {
         '../services/machinestatus/MachineStatusManager': {
           default: mockMachineStatusManager,
         },
@@ -349,7 +349,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -380,7 +380,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -420,7 +420,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
@@ -470,7 +470,7 @@ test('api.machine', (t) => {
       },
     };
 
-    const apiMachine = proxyquire('../../src/server/api/api.machine.js', {
+    const apiMachine = proxyquire('../../src/api/api.machine.js', {
       '../services/machinestatus/MachineStatusManager': {
         default: mockMachineStatusManager,
       },
