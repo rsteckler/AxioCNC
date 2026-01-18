@@ -45,6 +45,7 @@
     "deploy:rpi-armv7l": "bash developers/scripts/deploy-rpi.sh armv7l",
     "build:desktop:windows-x64": "bash -c 'developers/scripts/electron-builder.sh --windows --x64'",
     "start-electron": "electron ./dist/axiocnc/main",
+    "dev:grblsim:setup": "yarn dev:grblsim:clone && yarn dev:grblsim:fixup && yarn dev:grblsim:build",
     "dev:grblsim:clone": "bash developers/scripts/grblsim/grblsim-clone.sh",
     "dev:grblsim:fixup": "bash developers/scripts/grblsim/grblsim-fixup.sh",
     "dev:grblsim:build": "bash developers/scripts/grblsim/grblsim-build.sh",
