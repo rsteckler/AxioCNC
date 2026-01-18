@@ -2,16 +2,13 @@
 name: Build and Deploy Docs
 
 on:
-  # Runs on pushes to website/docs directory
+  # Runs on pushes to website/docs directory or workflow file changes
   push:
     branches: ["main"]
     paths:
       - 'website/docs/**'
       - '.github/workflows/docs.yml'
-  
-  # Runs on pushes targeting the default branch (for full site rebuilds)
-  push:
-    branches: ["main"]
+      - 'website/static/**'
   
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
