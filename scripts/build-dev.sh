@@ -2,7 +2,7 @@
 
 set -e
 
-yarn run package-sync
+bash scripts/package-sync.sh
 
 mkdir -p output
 rm -rf output/*

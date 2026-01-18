@@ -15,9 +15,9 @@ BUILD_LOG=$(mktemp)
 trap "rm -f $BUILD_LOG" EXIT
 
 if [ "$ARCH" = "armv7l" ]; then
-    yarn build:server-deb-debug-armv7l 2>&1 | tee "$BUILD_LOG"
+    yarn build:server:armv7l-debug 2>&1 | tee "$BUILD_LOG"
 else
-    yarn build:server-deb-debug-arm64 2>&1 | tee "$BUILD_LOG"
+    yarn build:server:arm64-debug 2>&1 | tee "$BUILD_LOG"
 fi
 
 # Extract version and filename from build output

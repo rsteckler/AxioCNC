@@ -1,6 +1,6 @@
 #!/bin/bash
 
-yarn run package-sync
+bash scripts/package-sync.sh
 
 mkdir -p dist
 rm -rf dist/*
@@ -25,6 +25,12 @@ i18next-scanner --config i18next-scanner.server.config.js "src/server/**/*.{html
 
 # Build new frontend with Vite
 cd src/app && yarn build && cd ../..
+
+# Ensure we're in project root for the copy command
+# Get project root (parent of scripts directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${PROJECT_ROOT}"
 
 mkdir -p dist/axiocnc/app
 mkdir -p dist/axiocnc/server

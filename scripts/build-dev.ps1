@@ -1,5 +1,5 @@
 # Sync package dependencies
-yarn run package-sync
+node scripts/package-sync.js
 
 # Prepare output directory
 if (Test-Path -Path "output") {

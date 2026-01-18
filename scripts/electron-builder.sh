@@ -4,7 +4,7 @@ __dirname="$(CDPATH= cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 electron_version=$(electron --version)
 
 display_usage() {
-    yarn electron-builder --help
+    electron-builder --help
 }
 
 if [ $# -le 1 ]; then
@@ -25,9 +25,9 @@ yarn install --production
 popd
 
 echo "Rebuild native modules using electron ${electron_version}"
-yarn electron-rebuild \
+electron-rebuild \
     --version=${electron_version:1} \
     --module-dir=dist/axiocnc \
     --which-module=serialport
 
-cross-env USE_HARD_LINKS=false yarn electron-builder "$@"
+cross-env USE_HARD_LINKS=false electron-builder "$@"

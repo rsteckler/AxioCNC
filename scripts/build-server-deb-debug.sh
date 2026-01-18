@@ -3,7 +3,7 @@
 
 set -e
 
-ARCH=${1:-arm64}  # arm64 or armv7l
+ARCH=${1:-arm64}  # arm64, armv7l, or x64
 PACKAGE_NAME="axiocnc-server"
 INSTALL_DIR="/opt/axiocnc"
 BUILD_DIR="output/server-deb-build"
@@ -43,7 +43,7 @@ mkdir -p "${BUILD_DIR}"
 
 # Build development version (includes source maps)
 echo "Building DEBUG application (with source maps)..."
-yarn build-dev
+bash scripts/build-dev.sh
 
 # Create package structure
 PACKAGE_ROOT="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}-debug_${ARCH}"
@@ -52,19 +52,57 @@ mkdir -p "${PACKAGE_ROOT}/usr/bin"
 mkdir -p "${PACKAGE_ROOT}/etc/systemd/system"
 mkdir -p "${PACKAGE_ROOT}/DEBIAN"
 
+# Production dependency pruning (at build root, before staging)
+# For debug builds, we still use production dependencies to keep package size reasonable
+# (source maps are in the code, but we don't need dev tooling like TypeScript)
+echo "Installing production dependencies..."
+PROD_INSTALL_DIR="${BUILD_DIR}/.prod-install-debug"
+rm -rf "${PROD_INSTALL_DIR}"
+mkdir -p "${PROD_INSTALL_DIR}"
+
+# Copy package.json to temp location for production install
+cp output/axiocnc/package.json "${PROD_INSTALL_DIR}/"
+
+# Make temp directory a standalone Yarn project (not part of workspace)
+# Create minimal .yarnrc.yml for standalone package
+cat > "${PROD_INSTALL_DIR}/.yarnrc.yml" << 'EOF'
+nodeLinker: node-modules
+EOF
+
+# Install production dependencies in temp location
+# Yarn 3 doesn't support --production flag, so we remove devDependencies from package.json first
+cd "${PROD_INSTALL_DIR}"
+
+# Remove devDependencies from package.json temporarily for production install
+node -e "
+  const fs = require('fs');
+  const pkg = require('./package.json');
+  delete pkg.devDependencies;
+  fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
+
+# Create empty yarn.lock to make this a standalone project
+touch yarn.lock
+
+# Install dependencies (will only install production deps since devDependencies were removed)
+yarn install || {
+  # Check if node_modules was created
+  if [ ! -d "node_modules" ]; then
+    echo "Error: Production dependencies were not installed"
+    exit 1
+  fi
+}
+# Ensure zod is installed (required by shared/schemas)
+yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
+cd - > /dev/null
+
 # Copy built application (from output/ instead of dist/)
 echo "Copying application files..."
 cp -r output/axiocnc/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
-# Install ALL dependencies (including dev dependencies for debugging)
-echo "Installing dependencies (including dev dependencies)..."
-cd "${PACKAGE_ROOT}${INSTALL_DIR}"
-# Create empty yarn.lock to indicate this is a separate project
-touch yarn.lock
-yarn install
-# Ensure zod is installed (required by shared/schemas)
-yarn add zod@^4.3.5 || echo "Warning: Could not install zod"
-cd - > /dev/null
+# Copy pruned production node_modules from temp location
+echo "Copying production node_modules..."
+cp -r "${PROD_INSTALL_DIR}/node_modules" "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
 # Create launcher script (with NODE_ENV=development)
 echo "Creating launcher script..."
