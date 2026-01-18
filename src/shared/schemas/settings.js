@@ -186,6 +186,7 @@ export const JoystickSettingsSchema = z.object({
   invertZ: z.boolean().default(false),
   analogJogSpeedXY: z.number().default(3000),
   analogJogSpeedZ: z.number().default(1000),
+  locked: z.boolean().default(false),
 });
 
 // =============================================================================

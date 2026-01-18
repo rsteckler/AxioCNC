@@ -4,40 +4,30 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { useGetSettingsQuery } from '@/services/api'
+import { useGetSettingsQuery, useSetSettingsMutation } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
 import { JoystickTestDialog } from '@/routes/Settings/sections/JoystickTestDialog'
-import { getJoystickService } from '@/services/joystick/service'
 import type { PanelProps } from '../types'
 import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
-
-const JOYSTICK_LOCK_KEY = 'axiocnc-joystick-locked'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function JoystickPanel(_props: PanelProps) {
   const navigate = useNavigate()
   const { data: settings } = useGetSettingsQuery()
+  const [setSettingsMutation] = useSetSettingsMutation()
   const [testDialogOpen, setTestDialogOpen] = useState(false)
   const [isGamepadConnected, setIsGamepadConnected] = useState(false)
-  
-  // Load lock state from localStorage
-  const [isLocked, setIsLocked] = useState(() => {
-    const stored = localStorage.getItem(JOYSTICK_LOCK_KEY)
-    return stored === 'true'
-  })
 
   const joystickConfig: JoystickConfig | null = settings?.joystick ?? null
+  const isLocked = joystickConfig?.locked ?? false
 
-  // Update joystick service lock state when it changes
-  useEffect(() => {
-    const service = getJoystickService()
-    service.setLocked(isLocked)
-    localStorage.setItem(JOYSTICK_LOCK_KEY, String(isLocked))
-  }, [isLocked])
-
-  const handleLockToggle = useCallback((locked: boolean) => {
-    setIsLocked(locked)
-  }, [])
+  const handleLockToggle = useCallback(async (locked: boolean) => {
+    await setSettingsMutation({
+      joystick: {
+        locked,
+      },
+    })
+  }, [setSettingsMutation])
 
   // Check if selected gamepad is currently connected
   const checkGamepadConnection = useCallback(() => {

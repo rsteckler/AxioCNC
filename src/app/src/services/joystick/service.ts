@@ -46,15 +46,6 @@ export class JoystickService {
   // Server gamepad listener state
   private serverListenerActive = false
   private serverGamepadHandler: ((state: ServerGamepadState) => void) | null = null
-  
-  // Lock state - when locked, joystick input is ignored
-  private isLocked = false
-
-  constructor() {
-    // Initialize lock state from localStorage
-    const stored = localStorage.getItem('axiocnc-joystick-locked')
-    this.isLocked = stored === 'true'
-  }
 
   /**
    * Initialize the service with configuration
@@ -235,8 +226,8 @@ export class JoystickService {
         ).join(', '))
       }
       
-      // Route to callback (only if not locked)
-      if (actions.length > 0 && !this.isLocked) {
+      // Route to callback
+      if (actions.length > 0) {
         this.actionCallback(actions)
       }
     }
@@ -316,8 +307,8 @@ export class JoystickService {
         // Map to actions
         const actions = this.mapper.mapServerGamepad(state)
         
-        // Route to callback (only if not locked)
-        if (actions.length > 0 && !this.isLocked) {
+        // Route to callback
+        if (actions.length > 0) {
           this.actionCallback(actions)
         }
       }
@@ -351,24 +342,10 @@ export class JoystickService {
     // Map to actions
     const action = this.mapper.mapBrowserJogControl(input)
     
-    // Route to callback (only if not locked)
-    if (action && !this.isLocked) {
+    // Route to callback
+    if (action) {
       this.actionCallback([action])
     }
-  }
-
-  /**
-   * Set lock state - when locked, joystick input is ignored
-   */
-  setLocked(locked: boolean): void {
-    this.isLocked = locked
-  }
-
-  /**
-   * Get lock state
-   */
-  getLocked(): boolean {
-    return this.isLocked
   }
 
   /**
@@ -381,7 +358,6 @@ export class JoystickService {
     this.actionCallback = null
     this.selectedGamepadId = null
     this.lastBrowserGamepadIndex = null
-    this.isLocked = false
   }
 }
 

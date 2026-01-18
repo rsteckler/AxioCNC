@@ -78,8 +78,9 @@ class JoystickService extends events.EventEmitter {
         const actions = this.mapper.mapGamepad(state.axes, state.buttons);
 
         // Route to handlers (emit event for translation layer)
-        // Skip if any client is in test mode (prevents commands during testing)
-        if (actions.length > 0 && this.testModeSockets.size === 0) {
+        // Skip if locked or any client is in test mode (prevents commands during testing/locking)
+        const isLocked = this.config?.locked ?? false;
+        if (actions.length > 0 && !isLocked && this.testModeSockets.size === 0) {
           // Log actions that will be dispatched
           const actionStrings = actions.map(action => {
             if (action.type === 'analog') {
@@ -91,8 +92,12 @@ class JoystickService extends events.EventEmitter {
           });
           log.debug(`[server-gamepad] mapped to ${actions.length} action(s): ${actionStrings.join(', ')}`);
           this.emit('actions', actions, 'server-gamepad');
-        } else if (actions.length > 0 && this.testModeSockets.size > 0) {
-          log.debug(`[server-gamepad] ignoring ${actions.length} action(s) - test mode active`);
+        } else if (actions.length > 0) {
+          if (isLocked) {
+            log.debug(`[server-gamepad] ignoring ${actions.length} action(s) - joystick locked`);
+          } else if (this.testModeSockets.size > 0) {
+            log.debug(`[server-gamepad] ignoring ${actions.length} action(s) - test mode active`);
+          }
         }
       };
 
@@ -146,12 +151,17 @@ class JoystickService extends events.EventEmitter {
     const actions = this.mapper.mapGamepad(axes || [], buttons || []);
 
     // Route to handlers
-    // Skip if this client is in test mode (prevents commands during testing)
-    if (actions.length > 0 && !this.testModeSockets.has(socketId)) {
+    // Skip if locked or this client is in test mode (prevents commands during testing/locking)
+    const isLocked = this.config?.locked ?? false;
+    if (actions.length > 0 && !isLocked && !this.testModeSockets.has(socketId)) {
       log.debug(`[client-gamepad:${socketId}] mapped to ${actions.length} action(s)`);
       this.emit('actions', actions, `client-gamepad-${socketId}`);
     } else if (actions.length > 0) {
-      log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - test mode active`);
+      if (isLocked) {
+        log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - joystick locked`);
+      } else {
+        log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - test mode active`);
+      }
     }
   }
 
@@ -190,6 +200,7 @@ class JoystickService extends events.EventEmitter {
 
     // Route to handlers
     // Skip if this client is in test mode (prevents commands during testing)
+    // Note: Browser jog controls are NOT blocked by lock - only physical gamepads are locked
     if (action && !this.testModeSockets.has(socketId)) {
       log.debug(`[client-jog:${socketId}] mapped to action: analog(x=${action.x.toFixed(3)}, y=${action.y.toFixed(3)}, z=${action.z.toFixed(3)})`);
       this.emit('actions', [action], `client-jog-${socketId}`);
