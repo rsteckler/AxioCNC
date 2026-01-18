@@ -6,11 +6,10 @@
   "author": "Cheton Wu <cheton@gmail.com>",
   "main": "./dist/axiocnc/server-cli.js",
   "bin": {
-    "cnc": "./bin/cnc",
-    "cncjs": "./bin/cncjs"
+    "axiocnc": "./apps/server/bin/axiocnc"
   },
   "files": [
-    "bin",
+    "apps/server/bin",
     "dist",
     "static"
   ],

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 const launchServer = (process.env.NODE_ENV === 'development')
-  ? require('../output/axiocnc/server-cli')
-  : require('../dist/axiocnc/server-cli');
+  ? require('../../../output/axiocnc/server-cli')
+  : require('../../../dist/axiocnc/server-cli');
 
 launchServer().catch(err => {
   console.error('Error:', err);
