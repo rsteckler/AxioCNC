@@ -30,5 +30,5 @@ Welcome to the AxioCNC Developer Documentation. This guide will help you contrib
 
 ## Related Documentation
 
-- **[User Documentation](/docs/)** - Installation guides and user-facing documentation
+- **[User Documentation](https://axiocnc.com/docs/)** - Installation guides and user-facing documentation
 - **[Main Website](https://axiocnc.com)** - AxioCNC homepage

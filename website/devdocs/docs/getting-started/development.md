@@ -139,7 +139,7 @@ yarn build:macos-arm64
 
 Outputs are created in `output/` directory.
 
-For more details, see [Deployment Guide](deployment.md).
+For more details, see [Deployment Guide](../deployment/deployment-guide).
 
 ## Project Structure
 
@@ -169,7 +169,7 @@ AxioCNC/
 2. **Start frontend** (`cd src/app && npm run dev`)
 3. **Make changes** - Both servers auto-reload on file changes
 4. **Test** - Open `http://localhost:5173` in browser
-5. **See [Contributing Guide](contributing.md)** for git workflow and PR process
+5. **See [Contributing Guide](../contributing/CONTRIBUTING)** for git workflow and PR process
 
 ## Code Style
 
@@ -179,8 +179,7 @@ AxioCNC/
 - **Formatting**: Follow existing patterns in codebase
 
 For detailed coding guidelines, see:
-- [Development Preferences](../aidocs/dev_prefs.md) - UI patterns and architectural decisions
-- [Protected Code](protected-code.md) - Safety-critical code boundaries
+- [Protected Code](../guidelines/protected-code) - Safety-critical code boundaries
 
 ## Troubleshooting
 
@@ -218,8 +217,8 @@ Check that:
 
 ## Additional Resources
 
-- [Contributing Guide](contributing.md) - Git workflow and PR process
-- [Testing Guide](testing.md) - How to write and run tests
-- [API Documentation](api.md) - REST API reference
-- [Protected Code](protected-code.md) - Safety-critical code guidelines
-- [Deployment Guide](deployment.md) - Building and deploying installers
+- [Contributing Guide](../contributing/CONTRIBUTING) - Git workflow and PR process
+- [Testing Guide](../reference/testing) - How to write and run tests
+- [API Documentation](../reference/api) - REST API reference
+- [Protected Code](../guidelines/protected-code) - Safety-critical code guidelines
+- [Deployment Guide](../deployment/deployment-guide) - Building and deploying installers

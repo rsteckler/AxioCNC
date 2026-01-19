@@ -16,10 +16,10 @@ title: Contributing
 
 ## Related Documentation
 
-- **[Development Setup](development.md)** - Complete guide for setting up a local development environment
-- **[Testing Guide](testing.md)** - How to write and run tests
-- **[Protected Code](protected-code.md)** - Safety-critical code guidelines
-- **[API Documentation](api.md)** - REST API reference
+- **[Development Setup](../getting-started/development)** - Complete guide for setting up a local development environment
+- **[Testing Guide](../reference/testing)** - How to write and run tests
+- **[Protected Code](../guidelines/protected-code)** - Safety-critical code guidelines
+- **[API Documentation](../reference/api)** - REST API reference
 
 ## Troubleshooting
 
@@ -120,7 +120,7 @@ git push origin master
 
 ## Running Local Development Server
 
-See [Development Setup Guide](development.md) for detailed instructions on setting up and running the development environment.
+See [Development Setup Guide](../getting-started/development) for detailed instructions on setting up and running the development environment.
 
 Quick start:
 ```bash
@@ -139,7 +139,7 @@ See [Development Setup Guide](development.md#building-for-production) for build 
 
 ## Build Desktop Apps
 
-See [Development Setup Guide](development.md#building-desktop-apps-electron) and [Deployment Guide](deployment.md) for detailed build and deployment instructions.
+See [Development Setup Guide](../getting-started/development#building-desktop-apps-electron) and [Deployment Guide](../deployment/deployment-guide) for detailed build and deployment instructions.
 
 ## Localization
 

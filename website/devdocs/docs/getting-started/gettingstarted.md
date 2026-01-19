@@ -62,6 +62,5 @@ Quick setup guide for local development.
 
 ## Next Steps
 
-- Read [`development.md`](./development.md) for development workflow details
-- Check [`aidocs/overview.md`](../aidocs/overview.md) for project architecture
-- Review [`aidocs/dev_prefs.md`](../aidocs/dev_prefs.md) for coding conventions
+- Read [Development Setup](./development) for development workflow details
+- See [Protected Code](../guidelines/protected-code) for safety-critical code guidelines
