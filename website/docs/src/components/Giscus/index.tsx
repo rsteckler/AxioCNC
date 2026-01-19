@@ -29,17 +29,17 @@ import {useLocation} from '@docusaurus/router';
 
 // Giscus configuration for AxioCNC documentation discussions
 // Discussions are stored in a separate repo: https://github.com/rsteckler/AxioCNC-Docs
-const GISCUS_REPO = process.env.GISCUS_REPO || 'rsteckler/AxioCNC-Docs';
-const GISCUS_REPO_ID = process.env.GISCUS_REPO_ID || 'R_kgDOQ8ay2g';
-const GISCUS_CATEGORY = process.env.GISCUS_CATEGORY || 'Announcements';
-const GISCUS_CATEGORY_ID = process.env.GISCUS_CATEGORY_ID || 'DIC_kwDOQ8ay2s4C1Hwk';
+// These values can be overridden via environment variables at build time
+// Docusaurus will replace process.env.* at build time, but we use defaults to avoid runtime errors
+const GISCUS_REPO = 'rsteckler/AxioCNC-Docs';
+const GISCUS_REPO_ID = 'R_kgDOQ8ay2g';
+const GISCUS_CATEGORY = 'Announcements';
+const GISCUS_CATEGORY_ID = 'DIC_kwDOQ8ay2s4C1Hwk';
 
 export default function GiscusComponent(): JSX.Element | null {
   const {colorMode} = useColorMode();
   const location = useLocation();
   const giscusRef = useRef<HTMLDivElement>(null);
-
-  // Giscus is now configured with default values, so it should always render
 
   const giscusTheme = colorMode === 'dark' ? 'dark' : 'light';
 
@@ -76,6 +76,10 @@ export default function GiscusComponent(): JSX.Element | null {
         lang="en"
         loading="lazy"
       />
+      {/* Note: If comments don't appear, ensure:
+          1. Giscus app is installed on rsteckler/AxioCNC-Docs (https://github.com/apps/giscus)
+          2. Discussions are enabled on that repository
+          3. Repository ID and Category ID are correct */}
     </div>
   );
 }
