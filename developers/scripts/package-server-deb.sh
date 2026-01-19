@@ -346,6 +346,9 @@ fi
 EOF
 chmod +x "${PACKAGE_ROOT}/DEBIAN/postrm"
 
+# Ensure output directory exists
+mkdir -p "${PROJECT_ROOT}/output"
+
 # Build .deb package
 echo "Building .deb package..."
 dpkg-deb --build "${PACKAGE_ROOT}" "${PROJECT_ROOT}/output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
