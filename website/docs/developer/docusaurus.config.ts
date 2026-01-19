@@ -98,7 +98,7 @@ const config: Config = {
             },
             {
               label: 'Getting Started',
-              to: '/getting-started/development',
+              to: '/getting-started/',
             },
           ],
         },
