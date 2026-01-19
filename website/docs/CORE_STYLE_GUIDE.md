@@ -19,6 +19,26 @@ These rules apply to **all documentation** (user and developer).
 - “This revolutionary system allows you to…”
 - “Simply / obviously / easy”
 
+
+---
+### Authoring Template (MDX)
+
+All new pages must start from the canonical MDX template:
+
+**Template path**
+docs/template.mdx
+
+**How to use**
+1. Copy the template to the target location  
+2. Replace title, summary, and steps  
+3. Keep structural sections unless there is a strong reason to omit them
+
+The template provides:
+- Lead paragraph and summary block  
+- Admonition styles (tip/warning/danger)  
+- Accordion component  
+- Mermaid diagram slot  
+- Feedback/comments widget
 ---
 
 ## 2) Accessibility
@@ -75,17 +95,12 @@ Describe what to click or observe
 Avoid screenshots without explanation
 
 7) Page Quality Checklist
- Clear title
-
- Outcome stated early
-
- Steps or structure visible
-
- At least one admonition
-
- Terms defined
-
- Links to next steps
+- [ ] Created from template.mdx  
+- [ ] Clear title and lead paragraph  
+- [ ] Summary block completed  
+- [ ] At least one admonition  
+- [ ] Terms defined on first use  
+- [ ] Next steps links added
 
 8) Anti-Patterns
 Walls of text
