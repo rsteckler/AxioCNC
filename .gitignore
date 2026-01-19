@@ -10,6 +10,10 @@ yarn-error.log
 /output
 /releases
 apps/web/dist/
+apps/server/dist/
+apps/server/output/
+apps/server/apps/
+packages/shared/dist/
 
 # https://next.yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
 .pnp.*
