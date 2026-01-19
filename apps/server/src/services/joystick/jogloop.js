@@ -86,7 +86,7 @@ class JogLoop extends events.EventEmitter {
 
   /**
    * Update configuration
-   * 
+   *
    * Note: The jog loop always accepts input from browser jog controls,
    * regardless of joystick.enabled setting. The enabled flag only controls
    * whether gamepad hardware input is processed.
@@ -181,9 +181,15 @@ class JogLoop extends events.EventEmitter {
 
     // Collect max rates for axes being moved
     const maxRates = [];
-    if (Math.abs(dx) > 0.001 && maxRateX !== null) maxRates.push(maxRateX);
-    if (Math.abs(dy) > 0.001 && maxRateY !== null) maxRates.push(maxRateY);
-    if (Math.abs(dz) > 0.001 && maxRateZ !== null) maxRates.push(maxRateZ);
+    if (Math.abs(dx) > 0.001 && maxRateX !== null) {
+      maxRates.push(maxRateX);
+    }
+    if (Math.abs(dy) > 0.001 && maxRateY !== null) {
+      maxRates.push(maxRateY);
+    }
+    if (Math.abs(dz) > 0.001 && maxRateZ !== null) {
+      maxRates.push(maxRateZ);
+    }
 
     // Return minimum max rate of moved axes (safety)
     return maxRates.length > 0 ? Math.min(...maxRates) : null;
@@ -326,7 +332,7 @@ class JogLoop extends events.EventEmitter {
   /**
    * Handle analog input update
    * Called by joystick service when analog input changes
-   * 
+   *
    * Note: Always accepts input - works independently of joystick.enabled setting.
    * Browser jog controls and gamepad hardware are separate input sources.
    */
@@ -457,7 +463,7 @@ class JogLoop extends events.EventEmitter {
           }
         }, 5); // Very short delay to let timing logic in runJogLoop work properly
       }
-    } 
+    }
     // Note: If state is CANCELLING, we intentionally don't send commands
     // even if 'ok' responses from pre-cancel commands are still arriving
   }
@@ -686,7 +692,7 @@ class JogLoop extends events.EventEmitter {
     }
 
     const pendingInput = this.currentInput;
-    
+
     this.state = STATE_IDLE;
     this.commandsInQueue = 0;
     this.waitingForSync = false;
@@ -706,11 +712,10 @@ class JogLoop extends events.EventEmitter {
    *
    * For button jogs, we send a single jog command while the button is held,
    * and cancel when released.
-   * 
+   *
    * Note: Always accepts input - works independently of joystick.enabled setting.
    */
   handleButtonJog(action, pressed) {
-
     // Parse action to get axis and direction
     const match = action.match(/^jog_([xyz])_(pos|neg)$/);
     if (!match) {

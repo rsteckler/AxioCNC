@@ -1,5 +1,5 @@
 import { test } from 'tap';
-import { replaceM6 } from '../src/server/controllers/utils/gcode';
+import { replaceM6 } from '../src/controllers/utils/gcode';
 
 test('replaceM6Commands', (t) => {
   t.test('replaces M6 commands with parentheses', t => {

@@ -66,7 +66,6 @@ const createServer = (options, callback) => {
   const jobHistoryFile = path.resolve(axiocncDir, 'jobhistory.json');
   log.info(`Loading job history from ${chalk.yellow(JSON.stringify(jobHistoryFile))}`);
   jobHistory.load(jobHistoryFile);
-  
 
   { // secret
     if (!config.get('secret')) {

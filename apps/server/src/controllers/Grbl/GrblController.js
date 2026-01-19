@@ -358,15 +358,15 @@ class GrblController {
             if (toolSpinup.enabled && toolSpinup.delaySeconds > 0) {
               const delaySeconds = toolSpinup.delaySeconds;
               const dwellCommand = `G4 P${delaySeconds}`;
-              
+
               log.debug(`M3 detected with tool spinup delay: line=${sent + 1}, delay=${delaySeconds}s`);
-              
+
               // Insert G4 Px command after the current M3 line
               // The current line is at index 'sent', so we insert at 'sent + 1'
               const insertIndex = sent + 1;
               this.sender.state.lines.splice(insertIndex, 0, dwellCommand);
               this.sender.state.total = this.sender.state.lines.length;
-              
+
               log.debug(`Inserted ${dwellCommand} after M3 at line ${insertIndex + 1}`);
             }
           }
@@ -431,7 +431,7 @@ class GrblController {
       });
       this.workflow.on('stop', (reason, previousState, ...args) => {
         this.emit('workflow:state', this.workflow.state);
-        
+
         // Emit job completion event (for frontend/Socket.IO)
         // IMPORTANT: Get sender state BEFORE rewinding, otherwise sent/received will be reset to 0
         const senderState = this.sender.toJSON();
@@ -450,14 +450,14 @@ class GrblController {
           // Note: received/total check removed - workflow completion is the source of truth
           wasSuccessful: reason === 'completed'
         };
-        
+
         // Store job history directly
         try {
           jobHistory.addJobFromController(this, this.options.port, completionInfo);
         } catch (err) {
           log.error(`Error storing job history: ${err.message}`, err);
         }
-        
+
         // Emit event for frontend/Socket.IO listeners
         this.emit('job:complete', completionInfo);
       });

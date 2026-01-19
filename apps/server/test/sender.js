@@ -5,7 +5,7 @@ import ProgressBar from 'progress';
 import Sender, {
   SP_TYPE_SEND_RESPONSE,
   SP_TYPE_CHAR_COUNTING
-} from '../src/server/lib/Sender';
+} from '../src/lib/Sender';
 
 test('null streaming protocol', (t) => {
   const sender = new Sender(null);
@@ -44,9 +44,13 @@ test('send-response streaming protocol', (t) => {
     finishTime: sender.state.finishTime,
     elapsedTime: sender.state.elapsedTime,
     remainingTime: sender.state.remainingTime,
+    m6Indices: sender.state.m6Indices.map(entry => entry.index),
+    m6ToolNumbers: sender.state.m6Indices.map(entry => entry.toolNumber).filter(tn => tn >= 0),
     nextM6Index: -1,
     nextM6ToolNumber: -1,
-    remainingTimeToNextM6: 0
+    remainingTimeToNextM6: 0,
+    jobId: sender.state.jobId,
+    stats: sender.state.stats
   });
 
   sender.on('data', () => {
@@ -69,9 +73,13 @@ test('send-response streaming protocol', (t) => {
       finishTime: sender.state.finishTime,
       elapsedTime: sender.state.elapsedTime,
       remainingTime: sender.state.remainingTime,
+      m6Indices: sender.state.m6Indices.map(entry => entry.index),
+      m6ToolNumbers: sender.state.m6Indices.map(entry => entry.toolNumber).filter(tn => tn >= 0),
       nextM6Index: sender.state.nextM6Index,
       nextM6ToolNumber: sender.state.nextM6ToolNumber,
-      remainingTimeToNextM6: sender.state.remainingTimeToNextM6
+      remainingTimeToNextM6: sender.state.remainingTimeToNextM6,
+      jobId: sender.state.jobId,
+      stats: sender.state.stats
     });
 
     sender.unload();
@@ -94,9 +102,29 @@ test('send-response streaming protocol', (t) => {
       m6Indices: [],
       nextM6Index: -1,
       nextM6ToolNumber: -1,
-      remainingTimeToNextM6: 0
+      remainingTimeToNextM6: 0,
+      jobId: null,
+      stats: {
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        toolStats: {},
+        currentTool: null,
+        toolStartTime: 0,
+        position: { x: 0, y: 0, z: 0 },
+        modalState: {
+          motion: 'G0',
+          spindle: 'M5',
+          distance: 'G90',
+          units: 'G21',
+          plane: 'G17'
+        }
+      }
     });
-    t.same(sender.toJSON(), {
+    const json = sender.toJSON();
+    t.ok(json.stats, 'stats should exist');
+    t.same(json, {
       sp: SP_TYPE_SEND_RESPONSE,
       hold: false,
       holdReason: null,
@@ -110,9 +138,29 @@ test('send-response streaming protocol', (t) => {
       finishTime: 0,
       elapsedTime: 0,
       remainingTime: 0,
+      m6Indices: [],
+      m6ToolNumbers: [],
       nextM6Index: -1,
       nextM6ToolNumber: -1,
-      remainingTimeToNextM6: 0
+      remainingTimeToNextM6: 0,
+      jobId: null,
+      stats: {
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        toolStats: {},
+        currentTool: null,
+        toolStartTime: 0,
+        position: { x: 0, y: 0, z: 0 },
+        modalState: {
+          motion: 'G0',
+          spindle: 'M5',
+          distance: 'G90',
+          units: 'G21',
+          plane: 'G17'
+        }
+      }
     });
 
     t.end();
@@ -185,9 +233,13 @@ test('character-counting streaming protocol', (t) => {
     finishTime: sender.state.finishTime,
     elapsedTime: sender.state.elapsedTime,
     remainingTime: sender.state.remainingTime,
+    m6Indices: sender.state.m6Indices.map(entry => entry.index),
+    m6ToolNumbers: sender.state.m6Indices.map(entry => entry.toolNumber).filter(tn => tn >= 0),
     nextM6Index: -1,
     nextM6ToolNumber: -1,
-    remainingTimeToNextM6: 0
+    remainingTimeToNextM6: 0,
+    jobId: sender.state.jobId,
+    stats: sender.state.stats
   });
 
   sender.on('data', () => {
@@ -210,9 +262,13 @@ test('character-counting streaming protocol', (t) => {
       finishTime: sender.state.finishTime,
       elapsedTime: sender.state.elapsedTime,
       remainingTime: sender.state.remainingTime,
+      m6Indices: sender.state.m6Indices.map(entry => entry.index),
+      m6ToolNumbers: sender.state.m6Indices.map(entry => entry.toolNumber).filter(tn => tn >= 0),
       nextM6Index: sender.state.nextM6Index,
       nextM6ToolNumber: sender.state.nextM6ToolNumber,
-      remainingTimeToNextM6: sender.state.remainingTimeToNextM6
+      remainingTimeToNextM6: sender.state.remainingTimeToNextM6,
+      jobId: sender.state.jobId,
+      stats: sender.state.stats
     });
 
     sender.unload();
@@ -235,9 +291,29 @@ test('character-counting streaming protocol', (t) => {
       m6Indices: [],
       nextM6Index: -1,
       nextM6ToolNumber: -1,
-      remainingTimeToNextM6: 0
+      remainingTimeToNextM6: 0,
+      jobId: null,
+      stats: {
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        toolStats: {},
+        currentTool: null,
+        toolStartTime: 0,
+        position: { x: 0, y: 0, z: 0 },
+        modalState: {
+          motion: 'G0',
+          spindle: 'M5',
+          distance: 'G90',
+          units: 'G21',
+          plane: 'G17'
+        }
+      }
     });
-    t.same(sender.toJSON(), {
+    const json = sender.toJSON();
+    t.ok(json.stats, 'stats should exist');
+    t.same(json, {
       sp: SP_TYPE_CHAR_COUNTING,
       hold: false,
       holdReason: null,
@@ -251,9 +327,29 @@ test('character-counting streaming protocol', (t) => {
       finishTime: 0,
       elapsedTime: 0,
       remainingTime: 0,
+      m6Indices: [],
+      m6ToolNumbers: [],
       nextM6Index: -1,
       nextM6ToolNumber: -1,
-      remainingTimeToNextM6: 0
+      remainingTimeToNextM6: 0,
+      jobId: null,
+      stats: {
+        totalDistance: { x: 0, y: 0, z: 0, total: 0 },
+        cuttingDistance: { x: 0, y: 0, z: 0, total: 0 },
+        transitionDistance: { x: 0, y: 0, z: 0, total: 0 },
+        retractDistance: { x: 0, y: 0, z: 0, total: 0 },
+        toolStats: {},
+        currentTool: null,
+        toolStartTime: 0,
+        position: { x: 0, y: 0, z: 0 },
+        modalState: {
+          motion: 'G0',
+          spindle: 'M5',
+          distance: 'G90',
+          units: 'G21',
+          plane: 'G17'
+        }
+      }
     });
 
     t.end();

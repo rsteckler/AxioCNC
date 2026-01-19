@@ -2,14 +2,14 @@ import events from 'events';
 import fs from 'fs';
 import path from 'path';
 import _ from 'lodash';
-import logger from '../../lib/logger';
 import uuid from 'uuid';
+import logger from '../../lib/logger';
 
 const log = logger('service:jobhistory');
 
 /**
  * JobHistoryService - Stores completed job history and statistics
- * 
+ *
  * Data structure:
  * - jobs: Array of completed jobs (flexible schema)
  * - stats: Accumulated statistics across all jobs
@@ -17,19 +17,19 @@ const log = logger('service:jobhistory');
  */
 class JobHistoryService extends events.EventEmitter {
     file = '';
-    
+
     data = {
-        jobs: [],           // Array of job records
-        stats: {            // Accumulated stats
+        jobs: [], // Array of job records
+        stats: { // Accumulated stats
             totalJobs: 0,
             successfulJobs: 0,
             failedJobs: 0,
             stoppedJobs: 0,
-            totalTime: 0,   // milliseconds
+            totalTime: 0, // milliseconds
             totalLines: 0,
             totalDistance: 0, // mm (if tracked)
         },
-        toolStats: {}      // Map<toolNumber, ToolStats>
+        toolStats: {} // Map<toolNumber, ToolStats>
     };
 
     watcher = null;
@@ -210,11 +210,11 @@ class JobHistoryService extends events.EventEmitter {
                 reason: completionInfo.reason || 'unknown',
                 port: port,
                 controllerType: controller.type || 'unknown',
-                
+
                 // File information
                 fileName: senderState.name || 'unknown',
                 fileSize: senderState.size || 0,
-                
+
                 // Job statistics
                 stats: {
                     total: senderState.total || 0,
@@ -229,13 +229,13 @@ class JobHistoryService extends events.EventEmitter {
                     transitionDistance: senderState.stats?.transitionDistance || { x: 0, y: 0, z: 0, total: 0 },
                     retractDistance: senderState.stats?.retractDistance || { x: 0, y: 0, z: 0, total: 0 },
                 },
-                
+
                 // Tool usage
                 tools: tools,
-                
+
                 // Additional context from sender
                 context: senderState.context || {},
-                
+
                 // M6 tool change information
                 m6Indices: senderState.m6Indices || [],
             };
@@ -271,7 +271,7 @@ class JobHistoryService extends events.EventEmitter {
                 let toolTime = toolStat.time || 0;
                 const currentTool = senderState.stats?.currentTool;
                 const toolStartTime = senderState.stats?.toolStartTime;
-                
+
                 if (currentTool === toolStat.toolNumber && toolStartTime > 0 && senderState.startTime > 0) {
                     // Add elapsed time for currently running tool
                     const now = Date.now();
@@ -349,9 +349,9 @@ class JobHistoryService extends events.EventEmitter {
                 this.data.toolStats[toolNumber] = {
                     toolNumber: toolNumber,
                     totalJobs: 0,
-                    totalTime: 0,      // milliseconds
-                    totalDistance: 0,  // mm
-                    usageCount: 0,     // Number of times tool was used
+                    totalTime: 0, // milliseconds
+                    totalDistance: 0, // mm
+                    usageCount: 0, // Number of times tool was used
                 };
             }
 
@@ -449,7 +449,6 @@ class JobHistoryService extends events.EventEmitter {
             return false;
         }
 
-        const job = this.data.jobs[index];
         this.data.jobs.splice(index, 1);
 
         // Recalculate stats (remove this job's contribution)

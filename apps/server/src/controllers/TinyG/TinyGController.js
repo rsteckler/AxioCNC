@@ -399,7 +399,7 @@ class TinyGController {
         this.emit('workflow:state', this.workflow.state);
         this.blocked = false;
         this.senderStatus = SENDER_STATUS_NONE;
-        
+
         // Emit job completion event (for frontend/Socket.IO)
         // IMPORTANT: Get sender state BEFORE rewinding, otherwise sent/received will be reset to 0
         const senderState = this.sender.toJSON();
@@ -418,14 +418,14 @@ class TinyGController {
           // Note: received/total check removed - workflow completion is the source of truth
           wasSuccessful: reason === 'completed'
         };
-        
+
         // Store job history directly
         try {
           jobHistory.addJobFromController(this, this.options.port, completionInfo);
         } catch (err) {
           log.error(`Error storing job history: ${err.message}`, err);
         }
-        
+
         // Emit event for frontend/Socket.IO listeners
         this.emit('job:complete', completionInfo);
       });

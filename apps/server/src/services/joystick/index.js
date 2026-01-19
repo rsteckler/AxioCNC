@@ -168,7 +168,7 @@ class JoystickService extends events.EventEmitter {
   /**
    * Handle client jog control input
    * Called from Socket.IO event handler
-   * 
+   *
    * Note: Jog controls work independently of joystick/gamepad hardware support.
    * They use joystick settings (sensitivity, inversion) if available, but should
    * function even when joystick is disabled.

@@ -12,13 +12,70 @@ import {
 import Store from 'electron-store';
 import chalk from 'chalk';
 import mkdirp from 'mkdirp';
-import {
+
+// Helper to get package.json with correct path
+// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
+function getPackageJson() {
+  const isBuilt = typeof __filename !== 'undefined' &&
+    !__filename.includes('apps/desktop/src');
+
+  if (isBuilt) {
+    // Built output - package.json is at ./package.json relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('./package.json');
+  } else {
+    // Source - package.json is at ../package.json relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('../package.json');
+  }
+}
+
+const pkg = getPackageJson();
+
+// Helper to get menu template functions with correct path
+// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
+function getMenuTemplates() {
+  const isBuilt = typeof __filename !== 'undefined' &&
+    !__filename.includes('apps/desktop/src');
+
+  if (isBuilt) {
+    // Built output - menu-template is at ./electron-app/menu-template relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('./electron-app/menu-template');
+  } else {
+    // Source - menu-template is at ./menu-template relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('./menu-template');
+  }
+}
+
+const {
   createApplicationMenuTemplate,
   inputMenuTemplate,
   selectionMenuTemplate,
-} from './menu-template';
-import launchServer from '../../server/src/cli';
-import pkg from '../package.json';
+} = getMenuTemplates();
+
+// Helper to get launchServer function with correct path
+// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
+function getLaunchServer() {
+  // After Babel transpilation to CommonJS, __filename will be available
+  // In source: __filename contains 'apps/desktop/src/main.js'
+  // In built: __filename contains 'output/axiocnc/main.js' or 'dist/axiocnc/main.js'
+  const isBuilt = typeof __filename !== 'undefined' &&
+    !__filename.includes('apps/desktop/src');
+
+  if (isBuilt) {
+    // Built output - server is at ./server/cli relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('./server/cli');
+  } else {
+    // Source - server is at ../../server/src/cli relative to main.js
+    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+    return require('../../server/src/cli');
+  }
+}
+
+const launchServer = getLaunchServer();
 
 let mainWindow = null;
 let powerId = 0;

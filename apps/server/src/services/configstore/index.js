@@ -37,7 +37,7 @@ class ConfigStore extends events.EventEmitter {
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        
+
         if (!fs.existsSync(this.file)) {
           const content = JSON.stringify({});
           fs.writeFileSync(this.file, content, 'utf8');

@@ -7,6 +7,7 @@ const path = require('path');
 const isElectron = require('is-electron');
 const program = require('commander');
 // In dev/prod builds, package.json is copied alongside the compiled server-cli.js
+// eslint-disable-next-line import/no-unresolved
 const pkg = require('./package.json');
 
 // Defaults to 'production'
@@ -95,8 +96,14 @@ if (normalizedArgv.length > 1) {
 const options = program.opts();
 
 module.exports = () => new Promise((resolve, reject) => {
-  // Server code is compiled to ./server/ subdirectory relative to server-cli.js
-  require('./server/index').createServer({
+  // Server code location depends on build structure:
+  // - In production: server-cli.js is at root, server code is at ./server/
+  // - In dev build: cli.js is in server/, server code is at ./
+  // Detect location by checking if we're in a server/ subdirectory
+  const isInServerDir = __filename.includes('/server/cli.js') || __filename.includes('\\server\\cli.js');
+  const serverIndexPath = isInServerDir ? './index' : './server/index';
+  // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
+  require(serverIndexPath).createServer({
     port: options.port,
     host: options.host,
     backlog: options.backlog,

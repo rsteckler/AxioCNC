@@ -143,10 +143,10 @@ class JoystickMapper {
   /**
    * Unified analog input processing
    * Applies settings (deadzone, sensitivity, inversion) to normalized (x, y, z) values
-   * 
+   *
    * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
    * The jog loop needs to receive neutral input to know when to cancel jogging.
-   * 
+   *
    * @param {number} x - X axis value (-1 to 1)
    * @param {number} y - Y axis value (-1 to 1)
    * @param {number} z - Z axis value (-1 to 1)
@@ -191,7 +191,7 @@ class JoystickMapper {
    * Deadzone is already applied by the client, so we skip it here.
    * Inversion is also already handled on the client (frontend inverts Y for browser controls),
    * so we skip joystick settings inversion here as well.
-   * 
+   *
    * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
    * The jog loop needs to receive neutral input to know when to cancel jogging.
    */
@@ -210,7 +210,7 @@ class JoystickMapper {
    * Map analog axes from gamepad state
    * Extracts (x, y, z) from raw gamepad axes based on analogMappings,
    * then uses unified processing to apply settings.
-   * 
+   *
    * IMPORTANT: Always returns an action, even for neutral input (0, 0, 0).
    * The jog loop needs to receive neutral input to know when to cancel jogging.
    */
