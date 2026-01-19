@@ -1,0 +1,91 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ * 
+ * Styled to match the AxioCNC website with orange primary color
+ * and zinc-based dark mode.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  /* Primary color: hsl(24 95% 53%) = #F97316 (orange-500) */
+  --ifm-color-primary: #f97316;
+  --ifm-color-primary-dark: #ea580c;
+  --ifm-color-primary-darker: #dc2626;
+  --ifm-color-primary-darkest: #c2410c;
+  --ifm-color-primary-light: #fb923c;
+  --ifm-color-primary-lighter: #fdba74;
+  --ifm-color-primary-lightest: #fed7aa;
+  
+  /* Background and text colors matching website (zinc palette) */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-font-color-base: #18181b; /* zinc-900 */
+  --ifm-navbar-background-color: rgba(255, 255, 255, 0.8);
+  
+  /* Code and syntax highlighting */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  
+  /* Border colors */
+  --ifm-color-content-secondary: #71717a; /* zinc-500 */
+  --ifm-hr-border-color: #e4e4e7; /* zinc-200 */
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  /* Primary color: hsl(24 95% 63%) = #FB923C (orange-400) - lighter for dark mode */
+  --ifm-color-primary: #fb923c;
+  --ifm-color-primary-dark: #f97316;
+  --ifm-color-primary-darker: #ea580c;
+  --ifm-color-primary-darkest: #dc2626;
+  --ifm-color-primary-light: #fdba74;
+  --ifm-color-primary-lighter: #fed7aa;
+  --ifm-color-primary-lightest: #ffedd5;
+  
+  /* Background and text colors matching website (zinc palette) */
+  --ifm-background-color: #18181b; /* zinc-900 */
+  --ifm-background-surface-color: #18181b;
+  --ifm-font-color-base: #f4f4f5; /* zinc-100 */
+  --ifm-navbar-background-color: rgba(24, 24, 27, 0.8); /* zinc-900 with opacity */
+  
+  /* Border colors */
+  --ifm-color-content-secondary: #a1a1aa; /* zinc-400 */
+  --ifm-hr-border-color: #3f3f46; /* zinc-800 */
+  
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Additional styling to match website aesthetic */
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Smooth transitions for theme switching */
+html {
+  scroll-behavior: smooth;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Navbar styling to match website */
+.navbar {
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ifm-hr-border-color);
+}
+
+/* Link hover colors matching website */
+a:hover {
+  color: var(--ifm-color-primary);
+  transition: color 0.2s ease;
+}
+
+/* Code block styling */
+code {
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+}
+
+pre code {
+  border-radius: 0.5rem;
+}

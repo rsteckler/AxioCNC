@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - 'website/**'
+      - 'developers/docs/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
 
@@ -37,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build Docusaurus
+      - name: Build User Docs Docusaurus
         working-directory: website/docs
         env:
           GISCUS_REPO: ${{ secrets.GISCUS_REPO || 'rsteckler/AxioCNC-Docs' }}
@@ -46,14 +47,22 @@ jobs:
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
+      - name: Build Dev Docs Docusaurus
+        working-directory: website/devdocs
+        run: yarn build
+
       - name: Prepare deployment
         run: |
-          mkdir -p _site/docs
+          mkdir -p _site/docs _site/devdocs
           # Copy static website files to root
           cp -r website/static/* _site/ 2>/dev/null || true
-          # Copy Docusaurus build output (with baseUrl='/docs/', files are in build/ directly)
+          # Copy User Docs Docusaurus build output (with baseUrl='/docs/', files are in build/ directly)
           if [ -d "website/docs/build" ]; then
             cp -r website/docs/build/* _site/docs/
+          fi
+          # Copy Dev Docs Docusaurus build output (with baseUrl='/devdocs/', files are in build/ directly)
+          if [ -d "website/devdocs/build" ]; then
+            cp -r website/devdocs/build/* _site/devdocs/
           fi
           # Create index.html redirect for /docs/ to /docs/intro/
           # Docusaurus with routeBasePath='/' doesn't create /docs/index.html
@@ -70,8 +79,22 @@ jobs:
           </body>
           </html>
           EOF
+          # Create index.html redirect for /devdocs/ to /devdocs/intro/
+          cat > _site/devdocs/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0;url=/devdocs/intro/">
+            <link rel="canonical" href="/devdocs/intro/">
+          </head>
+          <body>
+            <script>window.location.href='/devdocs/intro/';</script>
+          </body>
+          </html>
+          EOF
           # Ensure .nojekyll for GitHub Pages
-          touch _site/.nojekyll _site/docs/.nojekyll
+          touch _site/.nojekyll _site/docs/.nojekyll _site/devdocs/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -5,8 +5,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'AxioCNC Documentation',
-  tagline: 'Stability-focused G-code sender built around real CNC workflows',
+  title: 'AxioCNC Developer Documentation',
+  tagline: 'Developer guide for contributing to AxioCNC',
   favicon: 'img/favicon.png',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -17,8 +17,8 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://axiocnc.com',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, docs will be served at /docs
-  baseUrl: '/docs/',
+  // For GitHub pages deployment, devdocs will be served at /devdocs
+  baseUrl: '/devdocs/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -42,7 +42,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/rsteckler/AxioCNC/tree/main/website/docs/',
+            'https://github.com/rsteckler/AxioCNC/tree/main/website/devdocs/',
           showLastUpdateTime: true,
           routeBasePath: '/',
         },
@@ -61,7 +61,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'AxioCNC', // Title hidden if logo contains text
+      title: 'AxioCNC Dev', // Title hidden if logo contains text
       logo: {
         alt: 'AxioCNC Logo',
         src: 'img/logo.png',
@@ -70,13 +70,13 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'docsSidebar',
+          sidebarId: 'devdocsSidebar',
           position: 'left',
-          label: 'Documentation',
+          label: 'Developer Docs',
         },
         {
-          href: '/devdocs/',
-          label: 'Developer Docs',
+          href: '/docs/',
+          label: 'User Docs',
           position: 'right',
         },
         {
@@ -93,12 +93,12 @@ const config: Config = {
           title: 'Documentation',
           items: [
             {
-              label: 'Getting Started',
-              to: '/intro',
+              label: 'User Documentation',
+              href: '/docs/',
             },
             {
-              label: 'Installation',
-              to: '/installation/rpi',
+              label: 'Getting Started',
+              to: '/getting-started/development',
             },
           ],
         },
@@ -118,10 +118,6 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {
-              label: 'Developer Docs',
-              href: '/devdocs/',
-            },
             {
               label: 'Website',
               href: 'https://axiocnc.com',
