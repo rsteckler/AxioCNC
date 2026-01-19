@@ -1,0 +1,111 @@
+---
+title: "Title Goes Here"
+description: "One-sentence description of what the reader will accomplish."
+sidebar_label: "Short Title"
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import Admonition from '@theme/Admonition';
+import Accordion from '@site/src/components/Accordion';   // optional custom component
+import Feedback from '@site/src/components/Feedback';     // comments/feedback widget
+
+{/* ================= LEAD ================= */}
+
+## What you’ll learn
+
+- Outcome one  
+- Outcome two  
+- Outcome three
+
+## When to read this
+
+- You want to …  
+- You are seeing …  
+
+---
+
+{/* ================= QUICK SUMMARY ================= */}
+
+> **Quick summary**
+> - Do X  
+> - Then Y  
+> - Result Z
+
+---
+
+{/* ================= PREREQUISITES ================= */}
+
+## Prerequisites
+
+- AxioCNC version: `>= 1.x`
+- Hardware: …
+- Permissions: …
+
+---
+
+{/* ================= STEPS ================= */}
+
+## Steps
+
+1. **Do the first thing**
+
+   ```bash
+   example command
+Do the next thing
+
+<Admonition type="tip" title="Tip"> Short productivity hint. </Admonition>
+Verify the result
+
+{/* ================= EXPLANATION ================= */}
+
+How this works
+Brief conceptual explanation—3–6 sentences max.
+
+mermaid
+Copy code
+graph LR
+  A[User Action] --> B[Server]
+  B --> C[Controller]
+{/* ================= GOTCHAS ================= */}
+
+Common gotchas
+<Admonition type="warning" title="Already triggered probe"> If the probe input is active before the move, the machine will retract immediately. </Admonition> <Admonition type="danger" title="Crash risk"> Never probe with the spindle running. </Admonition>
+{/* ================= ACCORDION EXAMPLE ================= */}
+
+Advanced options
+<Accordion title="Changing feed rate"> Explanation of feed rate behavior… </Accordion> <Accordion title="Metric vs inch"> Use consistent units… </Accordion>
+{/* ================= REFERENCE ================= */}
+
+Reference
+Parameter	Description	Default
+X	…	…
+Y	…	…
+
+{/* ================= NEXT ================= */}
+
+Next steps
+Related task A
+
+Concept B
+
+{/* ================= FEEDBACK ================= */}
+
+<Feedback /> ```
+How to Use
+Create new page
+
+bash
+Copy code
+cp docs/_templates/page-template.mdx docs/simulator/probing.mdx
+Replace:
+
+Title
+
+“What you’ll learn”
+
+Steps
+
+Gotchas
+
+Keep the structure intact.
