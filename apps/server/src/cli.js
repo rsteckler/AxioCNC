@@ -95,7 +95,7 @@ if (normalizedArgv.length > 1) {
 
 const options = program.opts();
 
-module.exports = () => new Promise((resolve, reject) => {
+const launchServer = () => new Promise((resolve, reject) => {
   // Server code location depends on build structure:
   // - In production: server-cli.js is at root, server code is at ./server/
   // - In dev build: cli.js is in server/, server code is at ./
@@ -123,3 +123,13 @@ module.exports = () => new Promise((resolve, reject) => {
     resolve(data);
   });
 });
+
+module.exports = launchServer;
+
+// If this file is run directly (not required as a module), execute the server
+if (require.main === module) {
+  launchServer().catch((err) => {
+    console.error('Error starting server:', err);
+    process.exit(1);
+  });
+}
