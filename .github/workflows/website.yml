@@ -63,6 +63,14 @@ jobs:
           echo "=== Checking for docs subdirectory ==="
           ls -la website/docs/build/docs/ 2>/dev/null || echo "No docs/ subdirectory found"
 
+      - name: Check static files
+        run: |
+          echo "=== Static files in website/static ==="
+          ls -la website/static/ || echo "No static directory"
+          echo ""
+          echo "=== Looking for index.html in static ==="
+          find website/static -name "index.html" -type f || echo "No index.html in static"
+
       - name: Prepare deployment
         run: |
           mkdir -p _site/docs
