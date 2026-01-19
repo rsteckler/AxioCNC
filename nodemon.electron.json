@@ -1,0 +1,13 @@
+{
+  "watch": [
+    "apps/desktop/src",
+    "apps/server/src", 
+    "packages/shared/src"
+  ],
+  "ext": "js,json",
+  "ignore": ["node_modules", "output", "dist"],
+  "exec": "bash developers/scripts/build-electron-dev.sh && npx cross-env NODE_ENV=development npx electron ./output/axiocnc/main",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
