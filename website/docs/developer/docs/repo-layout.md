@@ -70,7 +70,7 @@ repo/
 - `src/api/api.settings.js` - REST API endpoints
 
 :::warning
-The server contains safety-critical G-code sender components. Bugs can cause machine crashes, tool breakage, or injury. See [protected-code.md](../../guidelines/protected-code.md) for modification guidelines.
+The server contains safety-critical G-code sender components. Bugs can cause machine crashes, tool breakage, or injury. See `.cursorrules` in the repository root for protected code guidelines.
 :::
 
 ### apps/desktop/
