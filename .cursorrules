@@ -3,7 +3,11 @@
 ## Project Context
 CNCjs frontend modernization — replacing legacy React/Webpack with modern React 18 + Vite + TypeScript + Tailwind + shadcn/ui. Backend is Express + Socket.IO (mostly unchanged).
 
-Read `ai/docs/overview.md` for full project context and progress.
+---
+
+## Model identification 
+
+Always report which model and which version you are at the end of each response
 
 ---
 
@@ -24,31 +28,7 @@ These are safety-critical G-code sender components. Bugs can cause machine crash
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Vite |
-| Styling | Tailwind CSS, shadcn/ui, Radix UI |
-| State | Redux Toolkit, RTK Query |
-| Real-time | Socket.IO v2 client |
-| Backend | Express, Socket.IO (do not modify unless asked) |
-
----
-
 ## Build & Development
-
-```bash
-# Backend
-yarn dev:start-server              # Port 8000
-
-# Frontend  
-cd apps/web && yarn dev     # Port 5173 (proxies to backend)
-cd apps/web && yarn build   # Production build
-
-# Both (dev mode)
-yarn dev
-```
 
 **Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd apps/web && yarn dev`, `yarn dev:start-server`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
 
@@ -66,26 +46,6 @@ yarn dev
 - Handlers: `handle{Action}` (e.g., `handleLanguageChange`)
 - Props callbacks: `on{Action}` (e.g., `onLanguageChange`)
 - Boolean state: `is{State}` or descriptive (e.g., `isSaving`, `allowAnalytics`)
-
-### UI Patterns
-- Auto-save with debounce (500ms) — no save buttons
-- Left accent borders for section headers
-- Tooltips for technical explanations, descriptions for user-friendly text
-- Axis colors: X=red, Y=green, Z=blue
-
-Read `ai/docs/dev_prefs.md` for detailed UI patterns and component guidelines.
-
----
-
-## API Reference
-
-Backend REST API documented in `website/docs/API.md`. Key points:
-- All endpoints require JWT auth (except `/api/signin`)
-- System settings via `/api/settings` (Zod-validated)
-- Extension data via `/api/extensions` (schemaless, for widgets/plugins)
-- Token stored in localStorage as `cncjs-token`
-
----
 
 ---
 
@@ -130,31 +90,25 @@ website/
 | `ai/plans/` | Project plans and roadmaps |
 | `website/docs/API.md` | Complete REST API reference |
 
-
 ---
 
 ## Planning & Architecture
 
-**Save project plans in `ai/plans/` directory**, not in the default `.cursor/plans/` location. This ensures plans are:
-- Version controlled with the project
-- Accessible to the team
-- Organized with other project documentation
+**Save project plans in `ai/plans/` directory**, not in the default `.cursor/plans/` location. This ensures plans are accessible to the team
 
 When creating project-specific plans, save them directly to `ai/plans/` (e.g., `ai/plans/controller-abstraction-layer-plan.md`) rather than using the tool's default home directory location.
 
+---
 
-# Checking in
-WHEN ASKED ONLY!
-Your goal is to check in all files that we've modified in this conversation.  Note that other agents may have also touched files, as well as the ones you've worked in.  Your goal is to check in ONLY the files that you changed.
+## Source control
+ONLY CHECK IN WHEN ASKED!
+When you are asked to check in code, your goal is to check in all files that we've modified in this conversation.  Note that other agents may have also touched files, as well as the ones you've worked in.  Your goal is to check in ONLY the files that you changed.
 To check in:
 1. Look at the uncommitted files to refresh yourself on the changes
 2. Look at the diffs to refresh on the intent of the changes
 3. Create meaningful, concise commit comments.  If you don't have enough context on a change, try to make your best guess as to the intent.
 4. commit the files
 5. push the changes to the remote
-
-Here are some guidelines for commits
-## Git Commits & Check-ins
 
 ### Commit Message Format
 
@@ -205,7 +159,6 @@ chore(deps): add zod to frontend and backend packages
 - Multiple features in one commit
 
 ### Check-in Workflow
-
 
 1. **Stage & Review**
    - Run `git status` to see all changes
