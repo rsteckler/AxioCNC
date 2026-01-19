@@ -181,16 +181,20 @@ cat > "${PACKAGE_ROOT}/usr/bin/axiocnc" << 'EOF'
 AXIOCNC_DIR="/opt/axiocnc"
 NODE_BIN="${AXIOCNC_DIR}/nodejs/bin/node"
 CLI_FILE="${AXIOCNC_DIR}/cli.js"
-LOG_FILE="${AXIOCNC_DIR}/axiocnc.log"
+LOG_DIR="/var/log/axiocnc"
+LOG_FILE="${LOG_DIR}/axiocnc.log"
+
+# Ensure log directory exists
+mkdir -p "${LOG_DIR}" || true
 
 # Function to log messages
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "${LOG_FILE}"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "${LOG_FILE}" 2>/dev/null || true
 }
 
 # Function to log errors
 log_error() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $*" | tee -a "${LOG_FILE}" >&2
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $*" | tee -a "${LOG_FILE}" >&2 2>/dev/null || echo "ERROR: $*" >&2
 }
 
 # Change to installation directory
@@ -298,6 +302,11 @@ if [ -n "$USER" ] && [ "$USER" != "root" ]; then
     usermod -a -G dialout "$USER" || true
 fi
 
+# Create log directory
+mkdir -p /var/log/axiocnc || true
+chown root:root /var/log/axiocnc 2>/dev/null || true
+chmod 755 /var/log/axiocnc 2>/dev/null || true
+
 # Enable systemd service (optional - user can enable manually)
 # systemctl daemon-reload
 # systemctl enable axiocnc || true
@@ -325,6 +334,17 @@ systemctl stop axiocnc || true
 systemctl disable axiocnc || true
 EOF
 chmod +x "${PACKAGE_ROOT}/DEBIAN/prerm"
+
+# Create post-remove script to clean up log directory if empty
+cat > "${PACKAGE_ROOT}/DEBIAN/postrm" << 'EOF'
+#!/bin/bash
+# Clean up log directory if empty (but keep log files for user inspection)
+# Only remove if completely empty
+if [ -d "/var/log/axiocnc" ] && [ -z "$(ls -A /var/log/axiocnc 2>/dev/null)" ]; then
+    rmdir /var/log/axiocnc 2>/dev/null || true
+fi
+EOF
+chmod +x "${PACKAGE_ROOT}/DEBIAN/postrm"
 
 # Build .deb package
 echo "Building .deb package..."
