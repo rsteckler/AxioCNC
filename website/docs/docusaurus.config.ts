@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'AxioCNC Documentation',
   tagline: 'Stability-focused G-code sender built around real CNC workflows',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.png',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -61,10 +61,10 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'AxioCNC',
+      title: 'AxioCNC', // Title hidden if logo contains text
       logo: {
         alt: 'AxioCNC Logo',
-        src: 'img/logo.svg',
+        src: 'img/logo.png',
         href: 'https://axiocnc.com',
       },
       items: [
