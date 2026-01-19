@@ -2,46 +2,149 @@
 
 ## What you'll learn
 
-This section will describe the learning outcomes for new contributors, including cloning the repository, setting up the development environment, running the application, and basic debugging workflows.
+- Clone the AxioCNC repository and install dependencies
+- Start the development servers for frontend and backend
+- Configure serial port access for CNC development
+- Set up debugging tools and verify your environment
+- Resolve common setup issues
 
 ## When to read this
 
-This section will explain that this page is the first stop for new contributors who want to go from zero to making their first meaningful contribution to AxioCNC.
+Read this when you want to contribute code changes to AxioCNC. This guide gets you from zero to running the application with debugging capabilities in one sitting.
 
 ## Prerequisites
 
-This section will describe the required software dependencies including Node.js, yarn package manager, udev rules for serial device access, and any hardware requirements for CNC development.
+- **[Node.js 18 or higher](https://nodejs.org/en/download/)** - Required for both frontend and backend development
+- **Yarn package manager** - Install with `npm install -g yarn`
+- **Git** - For version control
 
-[DETAILED CONTENT TO BE ADDED - Node versions, yarn setup, system dependencies]
+## Steps
 
-## Steps Overview
+1. **Clone the repository**
 
-This section will provide a high-level overview of the setup process including repository cloning, dependency installation, configuration, and initial testing.
+   ```bash
+   git clone https://github.com/rsteckler/AxioCNC.git
+   cd AxioCNC
+   ```
 
-[DETAILED CONTENT TO BE ADDED - Step-by-step commands for clone, install, configure]
+2. **Install dependencies**
+
+   ```bash
+   yarn install
+   ```
+
+   This installs packages for the monorepo workspaces: `apps/web`, `apps/server`, `apps/desktop`, and `packages/shared`.
+
+3. **Start the backend server**
+
+   ```bash
+   yarn dev:start-server
+   ```
+
+   The server starts on `http://localhost:8000` and provides REST APIs and Socket.IO connections.
+
+4. **Start the frontend development server**
+
+   Open a new terminal and run:
+
+   ```bash
+   yarn dev:start-app
+   ```
+
+   The frontend starts on `http://localhost:5173` with hot reload enabled.
+
+5. **Verify the setup**
+
+   Open `http://localhost:5173` in your browser. You should see the AxioCNC interface load.
 
 ## Debugging Setup
 
-This section will describe how to configure development tools like VS Code for debugging the frontend (apps/web), backend (apps/server), and Electron app (apps/desktop).
+### View Application Logs
 
-[DETAILED CONTENT TO BE ADDED - VS Code launch configurations, logging setup, breakpoint placement]
+Backend logs appear in the terminal running `yarn dev:start-server`. Look for:
+
+- Serial connection status messages
+- API request/response logs
+- Error stack traces
+
+Frontend logs appear in the browser developer console (F12).
+
+### Debugging without connecting to a physical CNC machine
+
+Set up and run the GRBL simulator for development testing:
+
+```bash
+yarn dev:grblsim:setup
+yarn dev:grblsim:run
+```
+
+The setup command clones and builds the simulator, and enables fakeTTY mode in your configuration. The run command starts the simulator, which runs in the background and provides a virtual serial port for testing.
 
 ## Common First Errors
 
-This section will document typical onboarding issues like serial port permissions, build failures, and environment configuration problems with their solutions.
+### Serial Port Permission Denied
 
-[DETAILED CONTENT TO BE ADDED - Error patterns and fixes]
+**Error:** `Error: EACCES: permission denied, open '/dev/ttyUSB0'`
 
-<!-- Mermaid diagram placeholder for development setup flow -->
+**Solution:** Add your user to the dialout group, then logout and log back in:
 
-```mermaid
-graph TD
-    A[Clone Repository] --> B[Install Dependencies]
-    B --> C[Configure Environment]
-    C --> D[Run Development Servers]
-    D --> E[Verify Setup]
+```bash
+sudo usermod -a -G dialout $USER
+```
+
+After running this command, log out of your session and log back in for the changes to take effect.
+
+### Port Already in Use
+
+**Error:** `Error: listen EADDRINUSE: address already in use :::8000`
+
+**Solution:** Kill the process using port 8000:
+
+```bash
+# Find process using port 8000
+lsof -ti:8000 | xargs kill -9
+
+# Or on Windows
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+```
+
+### Build Fails on First Run
+
+**Error:** Various webpack or TypeScript compilation errors
+
+**Solution:** Clear node_modules and reinstall:
+
+```bash
+rm -rf node_modules apps/*/node_modules
+yarn install
+```
+
+### FakeTTY Not Appearing in Port List
+
+**Problem:** After running the GRBL simulator setup, fakeTTY doesn't appear in the machine settings port dropdown.
+
+**Solution:** Manually add fakeTTY to your configuration file:
+
+```bash
+yarn dev:grblsim:enable
+```
+
+This adds fakeTTY to `~/.axiocnc/config.json`. Restart the server after running this command.
+
+### GRBL Simulator Won't Start
+
+**Error:** Simulator exits immediately or shows build errors
+
+**Solution:** Clean and rebuild the simulator:
+
+```bash
+yarn dev:grblsim:clean
+yarn dev:grblsim:setup
 ```
 
 ## Next steps
 
-Continue to [repo-layout.md](repo-layout.md) to understand the project structure and where different types of code belong.
+Continue to [repo-layout.md](repo-layout.md) to understand where different types of code belong in the monorepo.
+
+Read [build-and-bundle-contract.md](build-and-bundle-contract.md) to learn how changes get packaged for distribution.
