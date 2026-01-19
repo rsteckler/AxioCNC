@@ -112,7 +112,8 @@ export type SocketEvents = {
 class SocketService {
   private socket: SocketIOClient.Socket | null = null
   private token: string | null = null
-  
+  private onTokenInvalid?: () => void
+
   // Store all registered listeners so we can re-apply them after reconnection
   // Map<eventName, Set<callback>>
   private listenerRegistry = new Map<string, Set<(...args: unknown[]) => void>>()
@@ -159,7 +160,8 @@ class SocketService {
       this.socket?.emit('socket:ready')
     })
 
-    this.socket.on('reconnect', (attemptNumber: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.socket.on('reconnect', (attemptNumber: any) => {
       console.log('[SocketService] Socket reconnected after', attemptNumber, 'attempts')
       // Re-apply all registered listeners after reconnection
       this.reapplyListeners()
@@ -171,6 +173,24 @@ class SocketService {
 
     this.socket.on('error', (error: unknown) => {
       console.error('[SocketService] Socket error:', error)
+
+      // Check if this is a JWT token validation error
+      if (typeof error === 'object' && error !== null) {
+        const err = error as any
+        if (err.code === 'invalid_token' || err.type === 'UnauthorizedError' ||
+            (err.message && err.message.includes('invalid signature'))) {
+          console.warn('[SocketService] Token validation failed, triggering re-authentication')
+          // Clear the invalid token
+          localStorage.removeItem('axiocnc-token')
+          this.token = null
+          // Disconnect the socket
+          this.disconnect()
+          // Notify the auth system to get a new token
+          if (this.onTokenInvalid) {
+            this.onTokenInvalid()
+          }
+        }
+      }
     })
 
     return this.socket
@@ -211,6 +231,14 @@ class SocketService {
 
   isConnected() {
     return this.socket?.connected ?? false
+  }
+
+  /**
+   * Set callback to invoke when the current token is invalid
+   * This allows the auth system to refresh the token
+   */
+  setTokenInvalidCallback(callback: () => void) {
+    this.onTokenInvalid = callback
   }
 
   // Send a command to the controller
@@ -377,7 +405,7 @@ class SocketService {
     // Don't store one-time listeners - they're meant to fire once
     // Socket.IO will handle cleanup automatically
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.socket.once(event, callback as (...args: any[]) => void)
+    this.socket.once(event, callback as any)
   }
 }
 
