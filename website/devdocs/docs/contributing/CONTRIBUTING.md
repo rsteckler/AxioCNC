@@ -172,7 +172,7 @@ You can continue to make more changes and create new commits. When you’re read
 1. Head on over to the repository on GitHub.com where your project lives. For your example, it would be at `https://www.github.com/<your_username>/cncjs`.
   ![image](https://user-images.githubusercontent.com/447801/30475866-ce417044-9a3a-11e7-814f-c991a92a3be3.png)
 
-2. To the right of the branch menu, click <b>New pull request</b>.<br>
+2. To the right of the branch menu, click <b>New pull request</b>.<br />
   ![image](https://user-images.githubusercontent.com/447801/30476056-66f33548-9a3b-11e7-9d9a-e2d010cbc379.png)
 
 3. Click <b>Create pull request</b>.
