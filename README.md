@@ -8,7 +8,7 @@
 
 > Stability-focused G-code sender built around real CNC workflows. Control your machine from any device on your network.
 
-**[🌐 Visit the AxioCNC Website](https://axiocnc.com)** • [📖 Documentation](https://axiocnc.com/docs) • [💬 Discussions](https://github.com/rsteckler/AxioCNC/discussions) • [🐛 Report Issue](https://github.com/rsteckler/AxioCNC/issues/new)
+**[Visit the AxioCNC Website](https://axiocnc.com)** • [Documentation](https://axiocnc.com/docs) • [Discussions](https://github.com/rsteckler/AxioCNC/discussions) • [Report Issue](https://github.com/rsteckler/AxioCNC/issues/new)
 
 ---
 
