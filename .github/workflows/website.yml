@@ -37,10 +37,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Install User Docs Dependencies
-        working-directory: website/docs/user
-        run: yarn install --immutable
-
       - name: Build User Docs Docusaurus
         working-directory: website/docs/user
         env:
@@ -50,12 +46,13 @@ jobs:
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
-      - name: Install Dev Docs Dependencies
-        working-directory: website/docs/developer
-        run: yarn install --immutable
-
       - name: Build Dev Docs Docusaurus
         working-directory: website/docs/developer
+        env:
+          GISCUS_REPO: ${{ secrets.GISCUS_REPO || 'rsteckler/AxioCNC-Docs' }}
+          GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
+          GISCUS_CATEGORY: ${{ secrets.GISCUS_CATEGORY || 'Announcements' }}
+          GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
       - name: Prepare deployment
@@ -71,35 +68,6 @@ jobs:
           if [ -d "website/docs/developer/build" ]; then
             cp -r website/docs/developer/build/* _site/devdocs/
           fi
-          # Create index.html redirect for /docs/ to /docs/intro/
-          # Docusaurus with routeBasePath='/' doesn't create /docs/index.html
-          cat > _site/docs/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0;url=/docs/intro/">
-            <link rel="canonical" href="/docs/intro/">
-          </head>
-          <body>
-            <script>window.location.href='/docs/intro/';</script>
-          </body>
-          </html>
-          EOF
-          # Create index.html redirect for /devdocs/ to /devdocs/intro/
-          cat > _site/devdocs/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0;url=/devdocs/intro/">
-            <link rel="canonical" href="/devdocs/intro/">
-          </head>
-          <body>
-            <script>window.location.href='/devdocs/intro/';</script>
-          </body>
-          </html>
-          EOF
           # Ensure .nojekyll for GitHub Pages
           touch _site/.nojekyll _site/docs/.nojekyll _site/devdocs/.nojekyll
 
