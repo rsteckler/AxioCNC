@@ -169,7 +169,7 @@ AxioCNC/
 2. **Start frontend** (`cd src/app && npm run dev`)
 3. **Make changes** - Both servers auto-reload on file changes
 4. **Test** - Open `http://localhost:5173` in browser
-5. **See [Contributing Guide](../contributing/CONTRIBUTING)** for git workflow and PR process
+5. **See [Contributing Guide](/contributing/)** for git workflow and PR process
 
 ## Code Style
 
@@ -217,7 +217,7 @@ Check that:
 
 ## Additional Resources
 
-- [Contributing Guide](../contributing/CONTRIBUTING) - Git workflow and PR process
+- [Contributing Guide](/contributing/) - Git workflow and PR process
 - [Testing Guide](../reference/testing) - How to write and run tests
 - [API Documentation](../reference/api) - REST API reference
 - [Protected Code](../guidelines/protected-code) - Safety-critical code guidelines

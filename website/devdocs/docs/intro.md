@@ -13,7 +13,7 @@ Welcome to the AxioCNC Developer Documentation. This guide will help you contrib
 - **[Getting Started Guide](getting-started/gettingstarted)** - Overview of the development process
 
 ### Contributing
-- **[Contributing Guide](contributing/CONTRIBUTING)** - Git workflow and how to contribute code
+- **[Contributing Guide](/contributing/)** - Git workflow and how to contribute code
 
 ### Reference Documentation
 - **[API Documentation](reference/api)** - Complete REST API reference
@@ -22,7 +22,7 @@ Welcome to the AxioCNC Developer Documentation. This guide will help you contrib
 ### Deployment
 - **[Deployment Guide](deployment/deployment-guide)** - Quick deployment reference
 - **[Deployment Strategy](deployment/deployment-strategy)** - Detailed deployment options
-- **[Deployment (Detailed)](deployment/DEPLOYMENT)** - Complete build and deployment instructions
+- **[Deployment (Detailed)](/deployment/)** - Complete build and deployment instructions
 - **[Server Package Guide](deployment/server-package-guide)** - Server-only package for Raspberry Pi
 
 ### Guidelines
