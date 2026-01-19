@@ -6,7 +6,6 @@ on:
     branches: ["main"]
     paths:
       - 'website/**'
-      - 'developers/docs/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
 
@@ -38,8 +37,12 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Install User Docs Dependencies
+        working-directory: website/docs/user
+        run: yarn install --immutable
+
       - name: Build User Docs Docusaurus
-        working-directory: website/docs
+        working-directory: website/docs/user
         env:
           GISCUS_REPO: ${{ secrets.GISCUS_REPO || 'rsteckler/AxioCNC-Docs' }}
           GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
@@ -47,8 +50,12 @@ jobs:
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
+      - name: Install Dev Docs Dependencies
+        working-directory: website/docs/developer
+        run: yarn install --immutable
+
       - name: Build Dev Docs Docusaurus
-        working-directory: website/devdocs
+        working-directory: website/docs/developer
         run: yarn build
 
       - name: Prepare deployment
@@ -57,12 +64,12 @@ jobs:
           # Copy static website files to root
           cp -r website/static/* _site/ 2>/dev/null || true
           # Copy User Docs Docusaurus build output (with baseUrl='/docs/', files are in build/ directly)
-          if [ -d "website/docs/build" ]; then
-            cp -r website/docs/build/* _site/docs/
+          if [ -d "website/docs/user/build" ]; then
+            cp -r website/docs/user/build/* _site/docs/
           fi
           # Copy Dev Docs Docusaurus build output (with baseUrl='/devdocs/', files are in build/ directly)
-          if [ -d "website/devdocs/build" ]; then
-            cp -r website/devdocs/build/* _site/devdocs/
+          if [ -d "website/docs/developer/build" ]; then
+            cp -r website/docs/developer/build/* _site/devdocs/
           fi
           # Create index.html redirect for /docs/ to /docs/intro/
           # Docusaurus with routeBasePath='/' doesn't create /docs/index.html
