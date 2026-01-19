@@ -1,4 +1,5 @@
 ---
+id: contributing/CONTRIBUTING
 sidebar_position: 1
 title: Contributing
 ---
