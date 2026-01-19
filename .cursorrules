@@ -1,11 +1,31 @@
 # NextCNC Cursor Rules
 
+## ⚠️ CRITICAL: Source Control Rules (READ FIRST)
+
+### 🚫 NEVER COMMIT WITHOUT EXPLICIT PERMISSION
+**YOU MUST NEVER commit, push, or modify git history unless explicitly instructed to do so by the user.**
+
+- **❌ DO NOT** run `git commit`, `git push`, or any git commands that modify repository state
+- **❌ DO NOT** check in code proactively or "helpfully"
+- **❌ DO NOT** commit fixes, updates, or changes without being asked
+- **✅ ONLY** commit when the user explicitly says "check in", "commit", or similar
+
+**Consequences of violating this rule:**
+- Repository corruption
+- Lost work
+- Team conflicts
+- Breaking CI/CD pipelines
+
+**If you need to commit:** Wait for explicit user instruction. Do not suggest or offer to commit.
+
+---
+
 ## Project Context
 CNCjs frontend modernization — replacing legacy React/Webpack with modern React 18 + Vite + TypeScript + Tailwind + shadcn/ui. Backend is Express + Socket.IO (mostly unchanged).
 
 ---
 
-## Model identification 
+## Model identification
 
 Always report which model and which version you are at the end of each response
 
@@ -100,10 +120,8 @@ When creating project-specific plans, save them directly to `ai/plans/` (e.g., `
 
 ---
 
-## Source control
-ONLY CHECK IN WHEN ASKED!
-When you are asked to check in code, your goal is to check in all files that we've modified in this conversation.  Note that other agents may have also touched files, as well as the ones you've worked in.  Your goal is to check in ONLY the files that you changed.
-To check in:
+## Source control (When Permitted)
+When you ARE explicitly asked to check in code, follow this process:
 1. Look at the uncommitted files to refresh yourself on the changes
 2. Look at the diffs to refresh on the intent of the changes
 3. Create meaningful, concise commit comments.  If you don't have enough context on a change, try to make your best guess as to the intent.
