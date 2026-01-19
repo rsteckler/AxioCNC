@@ -1,7 +1,7 @@
 # AxioCNC
 
 <div align="center">
-  <img src="website/media/fulllogo.png" alt="AxioCNC Logo" width="400"/>
+  <img src="website/static/media/fulllogo.png" alt="AxioCNC Logo" width="400"/>
   
   <sub>A fork of <a href="https://github.com/cncjs/cncjs">cncjs</a></sub>
 </div>
@@ -39,8 +39,8 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 *Task-based workflows for setting up a job and monitoring a running job*
 
 <div align="center">
-  <img src="website/media/screen-setup.png" alt="Setup Screen" width="45%"/>
-  <img src="website/media/screen-monitor.png" alt="Monitor Screen" width="45%"/>
+  <img src="website/static/media/screen-setup.png" alt="Setup Screen" width="45%"/>
+  <img src="website/static/media/screen-monitor.png" alt="Monitor Screen" width="45%"/>
 </div>
 
 ### Intuitive Settings
@@ -48,9 +48,9 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 *Easily setup your machine, probes, and tool library*
 
 <div align="center">
-  <img src="website/media/screen-machines.png" alt="Machine Configuration" width="30%"/>
-  <img src="website/media/screen-probes.png" alt="Probing Strategies" width="30%"/>
-  <img src="website/media/screen-tools.png" alt="Tool Library" width="30%"/>
+  <img src="website/static/media/screen-machines.png" alt="Machine Configuration" width="30%"/>
+  <img src="website/static/media/screen-probes.png" alt="Probing Strategies" width="30%"/>
+  <img src="website/static/media/screen-tools.png" alt="Tool Library" width="30%"/>
 </div>
 
 ### Features to Make Life Easy
@@ -58,9 +58,9 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 *Setup a web camera, use USB gamepad or web-based analog joystick controls for easy jogging, and apply one of the built in custom themes or design your own*
 
 <div align="center">
-  <img src="website/media/screen-camera.png" alt="Camera Feed" width="30%"/>
-  <img src="website/media/screen-joystick.png" alt="Joystick Settings" width="30%"/>
-  <img src="website/media/screen-themes.png" alt="Theme Settings" width="30%"/>
+  <img src="website/static/media/screen-camera.png" alt="Camera Feed" width="30%"/>
+  <img src="website/static/media/screen-joystick.png" alt="Joystick Settings" width="30%"/>
+  <img src="website/static/media/screen-themes.png" alt="Theme Settings" width="30%"/>
 </div>
 
 ### Lifetime Stats and Job History
@@ -68,7 +68,7 @@ AxioCNC is a web-based interface for CNC controllers that prioritizes **stabilit
 *Track your machine usage, job statistics, and maintain a complete history of all completed work*
 
 <div align="center">
-  <img src="website/media/screen-stats.png" alt="Statistics Dashboard" width="45%"/>
+  <img src="website/static/media/screen-stats.png" alt="Statistics Dashboard" width="45%"/>
 </div>
 
 ---
