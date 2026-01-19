@@ -1,29 +1,25 @@
-# Workflow for building and deploying Docusaurus documentation to GitHub Pages
-name: Build and Deploy Docs
+# Workflow for building and deploying website (static + Docusaurus docs) to GitHub Pages
+name: Deploy Website
 
 on:
   push:
     branches: ["main"]
     paths:
-      - 'website/docs/**'
-      - '.github/workflows/docs.yml'
-      - 'website/static/**'
+      - 'website/**'
+      - '.github/workflows/website.yml'
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -44,35 +40,32 @@ jobs:
       - name: Build Docusaurus
         working-directory: website/docs
         env:
-          # Giscus configuration (optional - can be set in GitHub Secrets)
           GISCUS_REPO: ${{ secrets.GISCUS_REPO || 'rsteckler/AxioCNC-Docs' }}
           GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
           GISCUS_CATEGORY: ${{ secrets.GISCUS_CATEGORY || 'Announcements' }}
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Prepare deployment artifact
+      - name: Prepare deployment
         run: |
           mkdir -p _site/docs
           # Copy static website files to root
           cp -r website/static/* _site/ 2>/dev/null || true
-          # Copy Docusaurus build output
-          # With baseUrl='/docs/', Docusaurus creates build/docs/ subdirectory with all content
-          # Copy the docs subdirectory contents to _site/docs/
+          # Copy Docusaurus build output (with baseUrl='/docs/', content is in build/docs/)
           if [ -d "website/docs/build/docs" ]; then
             cp -r website/docs/build/docs/* _site/docs/
           fi
-          # Copy assets directory (CSS, JS, images) - these are at build root
+          # Copy assets (CSS, JS, images)
           if [ -d "website/docs/build/assets" ]; then
             cp -r website/docs/build/assets _site/docs/
           fi
-          # Copy any root-level files (favicon, etc.)
+          # Copy root-level files (favicon, etc.)
           find website/docs/build -maxdepth 1 -type f ! -name '*.map' -exec cp {} _site/docs/ \; 2>/dev/null || true
-          # Ensure .nojekyll exists for GitHub Pages
+          # Ensure .nojekyll for GitHub Pages
           touch _site/.nojekyll _site/docs/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
