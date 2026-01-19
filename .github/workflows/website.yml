@@ -46,6 +46,23 @@ jobs:
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
         run: yarn build
 
+      - name: Debug build output
+        run: |
+          echo "=== Build directory structure ==="
+          ls -la website/docs/build/ || echo "Build directory not found"
+          echo ""
+          echo "=== Top-level files in build ==="
+          find website/docs/build -maxdepth 1 -type f | head -20
+          echo ""
+          echo "=== Directories in build ==="
+          find website/docs/build -maxdepth 1 -type d
+          echo ""
+          echo "=== Looking for index.html ==="
+          find website/docs/build -name "index.html" -type f
+          echo ""
+          echo "=== Checking for docs subdirectory ==="
+          ls -la website/docs/build/docs/ 2>/dev/null || echo "No docs/ subdirectory found"
+
       - name: Prepare deployment
         run: |
           mkdir -p _site/docs
@@ -57,6 +74,23 @@ jobs:
           fi
           # Ensure .nojekyll for GitHub Pages
           touch _site/.nojekyll _site/docs/.nojekyll
+
+      - name: Debug deployment structure
+        run: |
+          echo "=== _site directory structure ==="
+          ls -la _site/ || echo "_site directory not found"
+          echo ""
+          echo "=== _site/docs directory structure ==="
+          ls -la _site/docs/ || echo "_site/docs directory not found"
+          echo ""
+          echo "=== Looking for index.html in _site ==="
+          find _site -name "index.html" -type f
+          echo ""
+          echo "=== Top-level files in _site ==="
+          find _site -maxdepth 1 -type f | head -20
+          echo ""
+          echo "=== Files in _site/docs ==="
+          find _site/docs -maxdepth 1 -type f | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
