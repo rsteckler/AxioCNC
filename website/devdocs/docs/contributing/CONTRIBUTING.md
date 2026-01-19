@@ -135,7 +135,7 @@ Open `http://localhost:5173` in your browser.
 
 ## Running Production Build
 
-See [Development Setup Guide](development.md#building-for-production) for build instructions.
+See [Development Setup Guide](../getting-started/development#building-for-production) for build instructions.
 
 ## Build Desktop Apps
 
