@@ -57,6 +57,69 @@ Read this when you want to contribute code changes to AxioCNC. This guide gets y
 
    Open `http://localhost:5173` in your browser. You should see the AxioCNC interface load.
 
+<details>
+<summary><strong>Running Electron Desktop App (Advanced)</strong></summary>
+
+The Electron desktop app bundles the server and web frontend into a native desktop application. This is useful for testing the production-like environment or developing desktop-specific features.
+
+### Prerequisites
+
+When developing with Electron on Linux, you may need to install system libraries that Electron depends on. If you encounter errors like:
+
+```
+error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file
+```
+
+Install the required dependencies:
+
+**For Ubuntu/Debian:**
+```bash
+sudo apt-get install -y \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libgtk-3-0 \
+  libgbm1 \
+  libasound2
+```
+
+**For Fedora/RHEL:**
+```bash
+sudo dnf install -y \
+  atk \
+  at-spi2-atk \
+  cups-libs \
+  libdrm \
+  gtk3 \
+  libgbm \
+  alsa-lib
+```
+
+These libraries are required for Electron to run on Linux systems. They are typically included in desktop Linux distributions but may be missing on minimal server installations or WSL environments.
+
+### Running Electron in Development Mode
+
+To run the Electron app in development mode:
+
+```bash
+yarn dev:start-electron
+```
+
+This command will:
+- Build Electron dev artifacts (main process, server, shared modules)
+- Start Electron in development mode
+- Watch for changes and automatically rebuild/restart when you modify:
+  - `apps/desktop/src/**/*` (Electron main process)
+  - `apps/server/src/**/*` (Server code)
+  - `packages/shared/src/**/*` (Shared modules)
+
+The Electron app will launch the server in-process (mirroring production behavior) and open a BrowserWindow pointing to the server URL. The server runs on a random port when launched from Electron.
+
+**Note:** The Electron dev mode uses the built frontend from `output/axiocnc/app/`, not the Vite dev server. If you need to test frontend changes in Electron, you'll need to rebuild the frontend or use the production build process.
+
+</details>
+
 ## Debugging Setup
 
 ### View Application Logs

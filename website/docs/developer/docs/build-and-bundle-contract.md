@@ -22,6 +22,45 @@ This section will describe how different deployment targets (Debian packages, Do
 
 [DETAILED CONTENT TO BE ADDED - Deb packaging, Docker integration, Electron embedding]
 
+### Electron Development Requirements
+
+When developing with Electron on Linux, you may need to install system libraries that Electron depends on. If you encounter errors like:
+
+
+NOTE FOR THE AGENT THAT GENERATES THIS FILE FROM THIS SKELETON:  tHIS IS MOSTLY A SKELETON FILE, BUT THIS SECTION RIGHT BELOW NEEDS TO END UP IN THE TROUBLESHOOTING SECTION AND THE PRE-REQS SECTION FOR BUILDING ELECTRON.
+
+```
+error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file
+```
+
+Install the required dependencies:
+
+**For Ubuntu/Debian:**
+```bash
+sudo apt-get install -y \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libgtk-3-0 \
+  libgbm1 \
+  libasound2
+```
+
+**For Fedora/RHEL:**
+```bash
+sudo dnf install -y \
+  atk \
+  at-spi2-atk \
+  cups-libs \
+  libdrm \
+  gtk3 \
+  libgbm \
+  alsa-lib
+```
+
+These libraries are required for Electron to run on Linux systems. They are typically included in desktop Linux distributions but may be missing on minimal server installations or WSL environments.
+
 ## Verification
 
 This section will document the tests and checks that verify the bundle integrity and compatibility across different deployment scenarios.
