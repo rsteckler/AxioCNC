@@ -75,7 +75,7 @@ const config: Config = {
           label: 'Developer Docs',
         },
         {
-          href: '/docs/',
+          href: 'https://axiocnc.com/docs/',
           label: 'User Docs',
           position: 'right',
         },
@@ -94,7 +94,7 @@ const config: Config = {
           items: [
             {
               label: 'User Documentation',
-              href: '/docs/',
+              href: 'https://axiocnc.com/docs/',
             },
             {
               label: 'Getting Started',

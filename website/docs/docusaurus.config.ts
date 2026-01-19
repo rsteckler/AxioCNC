@@ -75,7 +75,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: '/devdocs/',
+          href: 'https://axiocnc.com/devdocs/',
           label: 'Developer Docs',
           position: 'right',
         },
@@ -120,7 +120,7 @@ const config: Config = {
           items: [
             {
               label: 'Developer Docs',
-              href: '/devdocs/',
+              href: 'https://axiocnc.com/devdocs/',
             },
             {
               label: 'Website',
