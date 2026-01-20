@@ -13,41 +13,68 @@ import Store from 'electron-store';
 import chalk from 'chalk';
 import mkdirp from 'mkdirp';
 
-// Helper to get package.json with correct path
-// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
-function getPackageJson() {
-  const isBuilt = typeof __filename !== 'undefined' &&
-    !__filename.includes('apps/desktop/src');
-
-  if (isBuilt) {
-    // Built output - package.json is at ./package.json relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('./package.json');
-  } else {
-    // Source - package.json is at ../package.json relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('../package.json');
+// Resolve bundle root that contains server + web assets
+// Packaged: <resources>/axiocnc
+// Dev:      <repo>/output/axiocnc
+function getBundleRoot() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'axiocnc');
   }
+  // This file is transpiled to apps/desktop/dist/main.js in dev
+  // __dirname => <repo>/apps/desktop/dist
+  const repoRoot = path.resolve(__dirname, '../../..');
+  return path.join(repoRoot, 'output', 'axiocnc');
 }
 
-const pkg = getPackageJson();
+// Read apps/desktop/package.json in dev; packaged reads packaged app package.json
+function getDesktopPackageJson() {
+  if (app.isPackaged) {
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    return require(path.join(app.getAppPath(), 'package.json'));
+  }
+  const desktopRoot = path.resolve(__dirname, '..'); // apps/desktop (from apps/desktop/dist)
+  // eslint-disable-next-line import/no-dynamic-require, global-require
+  return require(path.join(desktopRoot, 'package.json'));
+}
 
-// Helper to get menu template functions with correct path
-// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
+// Load menu templates:
+// Dev:      apps/desktop/dist/electron-app/menu-template
+// Packaged: <appPath>/dist/electron-app/menu-template
 function getMenuTemplates() {
-  const isBuilt = typeof __filename !== 'undefined' &&
-    !__filename.includes('apps/desktop/src');
-
-  if (isBuilt) {
-    // Built output - menu-template is at ./electron-app/menu-template relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('./electron-app/menu-template');
-  } else {
-    // Source - menu-template is at ./menu-template relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('./menu-template');
+  if (app.isPackaged) {
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    return require(path.join(app.getAppPath(), 'dist', 'electron-app', 'menu-template'));
   }
+  // eslint-disable-next-line import/no-dynamic-require, global-require
+  return require(path.join(__dirname, 'electron-app', 'menu-template'));
 }
+
+// Load launchServer from bundleRoot/server/cli.js
+function getLaunchServer(bundleRoot) {
+  const cliPath = path.join(bundleRoot, 'server', 'cli.js');
+  if (!fs.existsSync(cliPath)) {
+    throw new Error(`Missing server cli.js at: ${cliPath}`);
+  }
+
+  // Ensure relative requires inside server code behave predictably
+  try {
+    process.chdir(bundleRoot);
+  } catch (e) {
+    console.warn(`Warning: could not chdir to ${bundleRoot}`, e);
+  }
+
+  // eslint-disable-next-line import/no-dynamic-require, global-require
+  const mod = require(cliPath);
+
+  // Your cli.js: module.exports = launchServer (a function)
+  if (typeof mod === 'function') {
+    return mod;
+  }
+
+  throw new Error(`server/cli.js did not export a function: ${cliPath}`);
+}
+
+const pkg = getDesktopPackageJson();
 
 const {
   createApplicationMenuTemplate,
@@ -55,36 +82,13 @@ const {
   selectionMenuTemplate,
 } = getMenuTemplates();
 
-// Helper to get launchServer function with correct path
-// Works in both source (apps/desktop/src) and built (output/axiocnc or dist/axiocnc)
-function getLaunchServer() {
-  // After Babel transpilation to CommonJS, __filename will be available
-  // In source: __filename contains 'apps/desktop/src/main.js'
-  // In built: __filename contains 'output/axiocnc/main.js' or 'dist/axiocnc/main.js'
-  const isBuilt = typeof __filename !== 'undefined' &&
-    !__filename.includes('apps/desktop/src');
-
-  if (isBuilt) {
-    // Built output - server is at ./server/cli relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('./server/cli');
-  } else {
-    // Source - server is at ../../server/src/cli relative to main.js
-    // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
-    return require('../../server/src/cli');
-  }
-}
-
-const launchServer = getLaunchServer();
-
 let mainWindow = null;
 let powerId = 0;
 const store = new Store();
 
-// https://github.com/electron/electron/blob/master/docs/api/app.md#apprequestsingleinstancelock
+// Single instance lock
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
-const shouldQuitImmediately = !gotSingleInstanceLock;
-if (shouldQuitImmediately) {
+if (!gotSingleInstanceLock) {
   app.quit();
   process.exit(0);
 }
@@ -101,38 +105,27 @@ function getBrowserWindowOptions() {
     minWidth: 1024,
     show: false,
     title: `${pkg.name} ${pkg.version}`,
-
-    // useContentSize boolean (optional) - The width and height would be used as web page's size, which means the actual window's size will include window frame's size and be slightly larger. Default is false.
     useContentSize: true,
-
-    // webPreferences Object (optional) - Settings of web page's features.
     webPreferences: {
-      // https://www.electronjs.org/docs/latest/breaking-changes#default-changed-contextisolation-defaults-to-true
-      // require() cannot be used in the renderer process unless nodeIntegration is true and contextIsolation is false.
       contextIsolation: false,
       nodeIntegration: true,
     }
   };
 
-  // { x, y, width, height }
   const lastOptions = store.get('bounds');
 
-  // Get display that most closely intersects the provided bounds
   let windowOptions = {};
   if (lastOptions) {
     const display = screen.getDisplayMatching(lastOptions);
 
     if (display.id === lastOptions.id) {
-      // Use last time options when using the same display
       windowOptions = {
         ...windowOptions,
         ...lastOptions,
       };
     } else {
-      // Or center the window when using other display
       const workArea = display.workArea;
 
-      // Calculate window size
       const width = Math.max(Math.min(lastOptions.width, workArea.width), 360);
       const height = Math.max(Math.min(lastOptions.height, workArea.height), 240);
       const x = workArea.x + (workArea.width - width) / 2;
@@ -162,6 +155,29 @@ function getBrowserWindowOptions() {
 }
 
 const showMainWindow = async () => {
+  const bundleRoot = getBundleRoot();
+
+  // Validate expected bundle structure with helpful errors
+  const expected = [
+    { p: bundleRoot, label: 'bundle root' },
+    { p: path.join(bundleRoot, 'server', 'cli.js'), label: 'server cli.js' },
+    { p: path.join(bundleRoot, 'app'), label: 'web app bundle directory' },
+  ];
+
+  for (const item of expected) {
+    if (!fs.existsSync(item.p)) {
+      console.error(chalk.red(`Bundle validation failed: missing ${item.label} at ${item.p}`));
+      if (!app.isPackaged) {
+        console.error(chalk.yellow('Dev mode: run developers/scripts/build-electron-prod.sh first.'));
+      } else {
+        console.error(chalk.yellow('Packaged mode: ensure electron-builder extraResources includes output/axiocnc -> resources/axiocnc.'));
+      }
+      throw new Error(`Missing ${item.label}: ${item.p}`);
+    }
+  }
+
+  const launchServer = getLaunchServer(bundleRoot);
+
   const browserWindowOptions = getBrowserWindowOptions();
   const browserWindow = new BrowserWindow(browserWindowOptions);
   mainWindow = browserWindow;
@@ -179,15 +195,11 @@ const showMainWindow = async () => {
   const selectionMenu = Menu.buildFromTemplate(selectionMenuTemplate);
   Menu.setApplicationMenu(applicationMenu);
 
-  // https://www.electronjs.org/docs/latest/api/web-contents#contentssetwindowopenhandlerhandler
-  // https://github.com/electron/electron/pull/24517
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // https://github.com/electron/electron/blob/main/docs/api/web-contents.md#event-context-menu
-  // https://github.com/electron/electron/issues/4068#issuecomment-274159726
   mainWindow.webContents.on('context-menu', (event, props) => {
     const { selectionText, isEditable } = props;
     if (isEditable) {
@@ -215,8 +227,7 @@ const showMainWindow = async () => {
     });
   }
 
-  // Save window size and position
-  mainWindow.on('close', (event) => {
+  mainWindow.on('close', () => {
     const bounds = mainWindow.getBounds();
     const display = screen.getDisplayMatching(bounds);
     const options = {
@@ -230,7 +241,6 @@ const showMainWindow = async () => {
     mainWindow = null;
   });
 
-  // @see 'src/app/store/index.js'
   ipcMain.handle('read-user-config', () => {
     let content = '{}';
     const configPath = path.join(userDataPath, 'cnc.json');
@@ -240,7 +250,6 @@ const showMainWindow = async () => {
     return content;
   });
 
-  // @see 'src/app/store/index.js'
   ipcMain.handle('write-user-config', (event, content) => {
     const configPath = path.join(userDataPath, 'cnc.json');
     fs.writeFileSync(configPath, content ?? '{}');
@@ -253,70 +262,24 @@ if (process.arch === 'x64') {
   app.commandLine.appendSwitch('--js-flags', `--max-old-space-size=${memoryLimit}`);
 }
 
-// Ignore the GPU blacklist and use any available GPU
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
 
 if (process.platform === 'linux') {
-  // https://github.com/electron/electron/issues/18265
-  // Run this at early startup, before app.on('ready')
-  //
-  // TODO: Maybe we can only disable --disable-setuid-sandbox
-  // reference changes: https://github.com/microsoft/vscode/pull/122909/files
   app.commandLine.appendSwitch('--no-sandbox');
 }
 
-/**
- * https://www.electronjs.org/docs/latest/api/app#event-activate-macos
- *
- * Event: 'activate' [macOS]
- *
- * Returns:
- * - `event` Event
- * - `hasVisibleWindows` boolean
- *
- * Emitted when the application is activated. Various actions can trigger this event, such as launching the application for the first time, attempting to re-launch the application when it's already running, or clicking on the application's dock or taskbar icon.
- */
-app.on('activate', async (event, hasVisibleWindows) => {
+app.on('activate', async () => {
   if (!mainWindow) {
     await showMainWindow();
   }
 });
 
-/**
- * https://www.electronjs.org/docs/latest/api/app#event-window-all-closed
- *
- * Event: 'window-all-closed'
- *
- * Emitted when all windows have been closed.
- *
- * If you do not subscribe to this event and all windows are closed, the default behavior is to quit the app; however, if you subscribe, you control whether the app quits or not. If the user pressed `Cmd + Q`, or the developer called `app.quit()`, Electron will first try to close all the windows and then emit the `will-quit` event, and in this case the `window-all-closed` event would not be emitted.
- */
 app.on('window-all-closed', () => {
   powerSaveBlocker.stop(powerId);
-
   app.quit();
 });
 
-/**
- * https://www.electronjs.org/docs/latest/api/app#event-second-instance
- *
- * Event: 'second-instance'
- *
- * Returns:
- * - `event` Event
- * - `argv` string[] - An array of the second instance's command line arguments
- * - `workingDirectory` string - The second instance's working directory
- * - `additionalData` unknown - A JSON object of additional data passed from the second instance
- *
- * This event will be emitted inside the primary instance of your application when a second instance has been executed and calls `app.requestSingleInstanceLock()`.
- *
- * `argv` is an Array of the second instance's command line arguments, and `workingDirectory` is its current working directory. Usually applications respond to this by making their primary window focused and non-minimized.
- *
- * Note: If the second instance is started by a different user than the first, the `argv` array will not include the arguments.
- *
- * This event is guaranteed to be emitted after the ready event of app gets emitted.
- */
-app.on('second-instance', (event, argv, workingDirectory, additionalData) => {
+app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
@@ -325,9 +288,4 @@ app.on('second-instance', (event, argv, workingDirectory, additionalData) => {
   }
 });
 
-/**
- * Method: app.whenReady()
- *
- * Returns Promise<void> - fulfilled when Electron is initialized. May be used as a convenient alternative to checking `app.isReady()` and subscribing to the `ready` event if the app is not ready yet.
- */
 app.whenReady().then(showMainWindow);

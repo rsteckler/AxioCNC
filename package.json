@@ -55,7 +55,6 @@
     "test:lint:web": "cd apps/web && yarn lint",
     "test:typecheck": "cd apps/web && yarn typecheck",
     "test:lint:eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet apps/server/src/**/*.js apps/server/test/**/*.js apps/desktop/src/**/*.js developers/scripts/**/*.js",
-    "build:clean": "rimraf output dist node_modules apps/server/dist apps/server/output apps/desktop/output apps/desktop/dist apps/web/output apps/web/dist apps/web/node_modules",
     "build:desktop:windows-x64": "bash -c 'developers/scripts/electron-builder.sh --windows --x64'",
     "build:desktop:macos-x64": "bash -c 'developers/scripts/electron-builder.sh --macos --x64'",
     "build:desktop:macos-arm64": "bash -c 'developers/scripts/electron-builder.sh --macos --arm64'",
@@ -66,57 +65,8 @@
     "package:server-arm64": "bash developers/scripts/package-server-deb.sh arm64",
     "package:server-armhf": "bash developers/scripts/package-server-deb.sh armhf",
     "postinstall": "npx opencollective postinstall",
+    "clean": "rimraf output dist node_modules apps/server/dist apps/server/output apps/desktop/output apps/desktop/dist apps/web/output apps/web/dist apps/web/node_modules",
     "qoltemp:deploy:rpi-arm64": "bash developers/scripts/deploy-rpi.sh arm64"
-  },
-  "build": {
-    "appId": "org.axiocnc",
-    "asar": false,
-    "asarUnpack": [],
-    "productName": "AxioCNC",
-    "directories": {
-      "buildResources": "apps/desktop/build-resources",
-      "output": "output",
-      "app": "output/axiocnc"
-    },
-    "publish": [],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        "dmg"
-      ],
-      "icon": "apps/desktop/build-resources/icon.icns"
-    },
-    "dmg": {
-      "background": "apps/desktop/build-resources/background.png",
-      "icon": "apps/desktop/build-resources/icon.icns",
-      "iconSize": 80,
-      "iconTextSize": 12,
-      "contents": [
-        {
-          "x": 448,
-          "y": 344,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 192,
-          "y": 344,
-          "type": "file"
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "apps/desktop/build-resources/icon.ico"
-    },
-    "linux": {
-      "category": "Utility",
-      "target": [
-        "deb"
-      ]
-    }
   },
   "keywords": [
     "cncjs",

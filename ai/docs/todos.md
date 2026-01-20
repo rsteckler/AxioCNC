@@ -13,6 +13,10 @@ detemrine mediamtx runtime file locations like logs and config and make sure the
 settings export/import
 feed, spindle, rapid (cool way to say go slow)
 modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
+I like the sender components warning, but the protected-code link is broken.  repo-structure doc
+same loc: Bundle and packaging directories don't exist yet
+replace cheton wu with my name as needed
+
 
 ## Pre-release
 docs
