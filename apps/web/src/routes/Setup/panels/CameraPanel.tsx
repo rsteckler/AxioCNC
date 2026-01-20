@@ -26,7 +26,6 @@ export function CameraPanel(_props: PanelProps) {
     { 
       skip: !enabledCamera?.id,
       // Retry on failure
-      retry: 2,
     }
   )
   

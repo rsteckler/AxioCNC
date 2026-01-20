@@ -2,7 +2,6 @@
 // This file only exports constants and functions, not components.
 // Fast Refresh warnings are expected for constants-only files.
 
-import React from 'react'
 import { Circle, Square, Triangle, Hexagon, CircleDot, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
 
 // CNC Actions that can be mapped to gamepad buttons

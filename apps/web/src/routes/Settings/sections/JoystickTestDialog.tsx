@@ -36,8 +36,8 @@ function circleToSquare(x: number, y: number): { x: number; y: number } {
   return { x: c * scale, y: s * scale }
 }
 import { socketService } from '@/services/socket'
-import type { JoystickConfig, CncAction, AnalogMapping } from './JoystickSection'
-import { CNC_ACTIONS, getGamepadButtons } from './JoystickSection'
+import type { JoystickConfig, AnalogMapping } from './JoystickSection'
+import { CNC_ACTIONS, getGamepadButtons, type CncAction } from './JoystickSection'
 
 interface JoystickTestDialogProps {
   open: boolean
@@ -55,7 +55,7 @@ interface GamepadState {
 
 // Get the label for a CNC action
 function getActionLabel(action: CncAction): string {
-  return CNC_ACTIONS.find(a => a.value === action)?.label || 'None'
+  return CNC_ACTIONS.find((a: { value: CncAction; label: string }) => a.value === action)?.label || 'None'
 }
 
 // Get the label for an analog mapping
@@ -381,12 +381,12 @@ export function JoystickTestDialog({
     }
 
     // Listen for gamepad state updates from server
-    socketService.on('gamepad:state', handleGamepadState)
+    socketService.on('gamepad:state', handleGamepadState as (state: unknown) => void)
     console.log('[GamepadTestDialog] Registered gamepad:state listener')
 
     return () => {
       console.log('[GamepadTestDialog] Cleaning up gamepad:state listener')
-      socketService.off('gamepad:state', handleGamepadState)
+      socketService.off('gamepad:state', handleGamepadState as (state: unknown) => void)
     }
   }, [open, config.connectionLocation, gamepadId])
 
@@ -635,7 +635,7 @@ export function JoystickTestDialog({
         <div className="mb-6">
           <h4 className="text-sm font-medium mb-3">Buttons</h4>
           <div className="grid grid-cols-4 gap-2">
-            {gamepadButtons.filter(b => !('isDpad' in b) || !(b as { isDpad?: boolean }).isDpad).map((button) => {
+            {gamepadButtons.filter((b: { isDpad?: boolean; index: number; name: string; icon: React.ReactNode }) => !('isDpad' in b) || !b.isDpad).map((button: { index: number; name: string; icon: React.ReactNode }) => {
               const isPressed = gamepadState.buttons[button.index]
               const action = config.buttonMappings[button.index]
               
@@ -672,7 +672,7 @@ export function JoystickTestDialog({
           <div className="mt-4">
             <h5 className="text-xs font-medium text-muted-foreground mb-2">D-Pad</h5>
             <div className="grid grid-cols-4 gap-2">
-              {gamepadButtons.filter(b => 'isDpad' in b && (b as { isDpad: boolean }).isDpad).map((button) => {
+              {gamepadButtons.filter((b: { isDpad?: boolean; index: number; name: string; icon: React.ReactNode }) => 'isDpad' in b && b.isDpad).map((button: { index: number; name: string; icon: React.ReactNode }) => {
                 // D-pad button detection depends on connection location
                 let isPressed = false
                 

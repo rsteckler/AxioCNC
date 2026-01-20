@@ -3,7 +3,7 @@ import { Maximize2, Terminal, Target, Move, Camera, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
 import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery, useGetGcodeQuery } from '@/services/api'
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import { VisualizerScene } from '../components/VisualizerScene'
 import { Console } from '@/components/Console'
 import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
@@ -34,7 +34,6 @@ function CameraTab() {
     enabledCamera?.id || '',
     { 
       skip: !enabledCamera?.id,
-      retry: 2,
     }
   )
   
@@ -184,6 +183,8 @@ function CameraTab() {
   )
 }
 
+import type { PanelProps } from '../types'
+
 interface VisualizerPanelProps {
   isConnected: boolean
   connectedPort: string | null
@@ -194,6 +195,7 @@ interface VisualizerPanelProps {
   probeContact?: boolean
   lastAlarmMessageRef?: React.MutableRefObject<string | null>
   currentWCS?: string
+  senderState?: PanelProps['senderState']
 }
 
 export function VisualizerPanel({ 

@@ -123,10 +123,10 @@ export default function TestPage() {
               {data && (
                 <div className="p-3 bg-primary/10 border border-primary/20 rounded-md text-sm">
                   <p className="font-medium mb-2">Active Controllers:</p>
-                  {data.controllers && data.controllers.length > 0 ? (
+                  {data && Array.isArray(data) && data.length > 0 ? (
                     <ul className="list-disc list-inside">
-                      {data.controllers.map((ctrl, i) => (
-                        <li key={i}>{ctrl.port} ({ctrl.controllerType})</li>
+                      {data.map((ctrl: { port?: string; controllerType?: string }, i: number) => (
+                        <li key={i}>{ctrl.port || 'Unknown'} ({ctrl.controllerType || 'Unknown'})</li>
                       ))}
                     </ul>
                   ) : (

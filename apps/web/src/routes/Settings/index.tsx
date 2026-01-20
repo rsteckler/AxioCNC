@@ -35,7 +35,8 @@ import {
 } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { useTheme } from '@/components/theme-provider'
-import { SettingsNav, settingsSections } from './SettingsNav'
+import { SettingsNav } from './SettingsNav'
+import { settingsSections } from './settingsSections'
 import { 
   GeneralSection, 
   AppearanceSection,
@@ -62,6 +63,7 @@ import {
   type Theme,
   type AccentColor,
   type JoystickConfig,
+  type CncAction,
   type WatchFolder,
   type GoogleDriveStatus,
 } from './sections'
@@ -190,11 +192,11 @@ M5                ; Stop spindle
 // Default joystick configuration (Xbox-style layout)
 
 // Server-side (Linux) Xbox controller button mappings
-const SERVER_BUTTON_MAPPINGS: Record<number, string> = {
+const SERVER_BUTTON_MAPPINGS: Record<number, CncAction> = {
   0: 'zero_all',       // A - Zero all axes
   1: 'emergency_stop', // B - E-Stop (red button = stop)
   3: 'home_all',       // X - Home all axes
-  4: 'spindle_toggle', // Y - Toggle spindle
+  4: 'spindle_on', // Y - Toggle spindle (using spindle_on as toggle)
   6: 'speed_slow',     // LB - Slow jog speed
   7: 'speed_fast',     // RB - Fast jog speed
   12: 'jog_y_pos',     // D-pad Up
@@ -204,11 +206,11 @@ const SERVER_BUTTON_MAPPINGS: Record<number, string> = {
 }
 
 // Client-side (browser) Xbox controller button mappings
-const CLIENT_BUTTON_MAPPINGS: Record<number, string> = {
+const CLIENT_BUTTON_MAPPINGS: Record<number, CncAction> = {
   0: 'zero_all',       // A - Zero all axes
   1: 'emergency_stop', // B - E-Stop (red button = stop)
   2: 'home_all',       // X - Home all axes
-  3: 'spindle_toggle', // Y - Toggle spindle
+  3: 'spindle_on', // Y - Toggle spindle (using spindle_on as toggle)
   4: 'speed_slow',     // LB - Slow jog speed
   5: 'speed_fast',     // RB - Fast jog speed
   6: 'none',           // LT (usually axis, but mapped as button in browser)
@@ -226,7 +228,7 @@ const CLIENT_BUTTON_MAPPINGS: Record<number, string> = {
 /**
  * Get default button mappings based on connection location
  */
-function getDefaultButtonMappings(connectionLocation: 'server' | 'client'): Record<number, string> {
+function getDefaultButtonMappings(connectionLocation: 'server' | 'client'): Record<number, CncAction> {
   return connectionLocation === 'client' ? CLIENT_BUTTON_MAPPINGS : SERVER_BUTTON_MAPPINGS
 }
 
@@ -347,8 +349,8 @@ export default function Settings() {
 
   // Scroll spy for navigation - filter out advanced if not enabled
   const sectionIds = settingsSections
-    .filter(s => s.id !== 'advanced' || advancedConfig.showAdvancedSettings)
-    .map(s => s.id)
+    .filter((s: { id: string }) => s.id !== 'advanced' || advancedConfig.showAdvancedSettings)
+    .map((s: { id: string }) => s.id)
   const { activeId, scrollTo } = useScrollSpy(sectionIds, { offset: 100 })
 
   // Track if we've initialized from API to prevent refetch overwrites
@@ -357,7 +359,7 @@ export default function Settings() {
   // Initialize advanced config from extensions API
   useEffect(() => {
     if (extensionsData && typeof extensionsData === 'object' && 'debugMode' in extensionsData) {
-      const config = extensionsData as AdvancedConfig
+      const config = extensionsData as unknown as AdvancedConfig
       setAdvancedConfig(prev => ({ ...prev, ...config }))
     }
   }, [extensionsData])
@@ -931,7 +933,14 @@ export default function Settings() {
           await updateCamera({ id: existingCamera.id, updates: cameraData }).unwrap()
         } else if (updated.ipCameraUrl) {
           // Only create new camera if we have a URL (required for creation)
-          await createCamera(cameraData).unwrap()
+          // Name defaults to 'Camera 1' if not provided
+          await createCamera({
+            name: 'Camera 1',
+            inputUrl: cleanInputUrl,
+            username: updated.username,
+            password: updated.password,
+            enabled: updated.enabled ?? false,
+          }).unwrap()
         }
         // Show saved indicator
         setLastSaved(new Date())
@@ -1092,7 +1101,7 @@ export default function Settings() {
         
         // If mappings match old defaults (or are empty), apply new defaults
         if (valuesMatch || Object.keys(prev.buttonMappings).length === 0) {
-          updated.buttonMappings = { ...newDefaults }
+          updated.buttonMappings = { ...newDefaults } as Record<number, CncAction>
         }
         // Otherwise, keep existing mappings (user has customizations)
       }
@@ -1130,9 +1139,9 @@ export default function Settings() {
       // Call server API to refresh gamepads
       try {
         const result = await refreshGamepads().unwrap()
-        const detected = result.gamepads.map(gp => ({
+        const detected = result.gamepads.map((gp, idx) => ({
           id: gp.id,
-          index: gp.index || 0,
+          index: idx,
           name: gp.name,
           buttons: gp.buttons || 16,
           axes: gp.axes || 4,

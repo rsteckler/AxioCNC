@@ -7,10 +7,12 @@
 // Re-export types from JoystickSection for convenience
 export type {
   CncAction,
+} from '@/routes/Settings/sections/joystickConstants'
+export type {
   AnalogAxis,
   AnalogMapping,
-  JoystickConfig,
 } from '@/routes/Settings/sections/JoystickSection'
+export type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
 
 // Re-export JoystickConfig interface (we need the full interface, not just the type)
 // JoystickConfigType not currently used but may be needed in future
@@ -58,6 +60,8 @@ export interface MappedAnalogAction {
 /**
  * Mapped button action (after mapping layer processing)
  */
+import type { CncAction } from '@/routes/Settings/sections/joystickConstants'
+
 export interface MappedButtonAction {
   type: 'button'
   action: CncAction
@@ -75,4 +79,6 @@ export type MappedAction = MappedAnalogAction | MappedButtonAction
  * 
  * Extends JoystickConfig with all necessary mapping configuration
  */
+import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
+
 export type MappingConfig = JoystickConfig

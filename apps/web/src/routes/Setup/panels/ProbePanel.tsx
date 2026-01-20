@@ -5,7 +5,7 @@ import { ActionRequirements } from '@/utils/machineState'
 import { LoadingState } from '@/components/LoadingState'
 import { EmptyState } from '@/components/EmptyState'
 import { useGetSettingsQuery } from '@/services/api'
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import type { ProbePanelProps } from '../types'
 
 function getMethodDescription(method: ZeroingMethod): string {

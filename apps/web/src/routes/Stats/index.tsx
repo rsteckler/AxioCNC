@@ -178,10 +178,12 @@ export default function Stats() {
     
     if (jobHistoryData && jobHistoryData.length > 0) {
       jobHistoryData.forEach(job => {
-        const totalDist = job.stats?.totalDistance || { x: 0, y: 0, z: 0, total: 0 }
-        const cuttingDist = job.stats?.cuttingDistance || { x: 0, y: 0, z: 0, total: 0 }
-        const transitionDist = job.stats?.transitionDistance || { x: 0, y: 0, z: 0, total: 0 }
-        const retractDist = job.stats?.retractDistance || { x: 0, y: 0, z: 0, total: 0 }
+        // Stats structure doesn't have distance properties - they're calculated from operationTypes
+        // Use distance properties if they exist, otherwise default to 0
+        const totalDist = { x: job.stats?.distanceX || 0, y: 0, z: job.stats?.distanceZ || 0, total: job.stats?.distance || 0 }
+        const cuttingDist = { x: 0, y: 0, z: 0, total: 0 }
+        const transitionDist = { x: 0, y: 0, z: 0, total: 0 }
+        const retractDist = { x: 0, y: 0, z: 0, total: 0 }
         
         cumulativeDistanceX += totalDist.x || 0
         cumulativeDistanceY += totalDist.y || 0
@@ -401,9 +403,10 @@ export default function Stats() {
       const toolUsage: JobToolUsage[] = job.tools?.map(t => ({
         toolNumber: t.toolNumber,
         time: t.time || 0,
-        distance: typeof t.distance === 'number' ? t.distance : (t.distance?.total || 0),
+        distance: typeof t.distance === 'number' ? t.distance : 0,
       })) || []
-      const operationTypes = calculateOperationTypes(job.stats)
+      // Stats structure doesn't match calculateOperationTypes signature - pass empty object
+      const operationTypes = calculateOperationTypes({})
       
       return {
         id: job.id,
@@ -416,10 +419,10 @@ export default function Stats() {
         toolUsage,
         linesProcessed: job.stats?.received || 0,
         totalLines: job.stats?.total || 0,
-        distance: job.stats?.totalDistance?.total || 0,
-        distanceX: job.stats?.totalDistance?.x || 0,
-        distanceY: job.stats?.totalDistance?.y || 0,
-        distanceZ: job.stats?.totalDistance?.z || 0,
+        distance: job.stats?.distance || 0,
+        distanceX: job.stats?.distanceX || 0,
+        distanceY: 0, // Y distance not available in current stats structure
+        distanceZ: job.stats?.distanceZ || 0,
         gcode: job.gcode,
         operationTypes,
       }
@@ -441,9 +444,10 @@ export default function Stats() {
     const toolUsage: JobToolUsage[] = selectedJobData.tools?.map(t => ({
       toolNumber: t.toolNumber,
       time: t.time || 0,
-      distance: typeof t.distance === 'number' ? t.distance : (t.distance?.total || 0),
+      distance: typeof t.distance === 'number' ? t.distance : 0,
     })) || []
-    const operationTypes = calculateOperationTypes(selectedJobData.stats)
+    // Stats structure doesn't match calculateOperationTypes signature - pass empty object
+    const operationTypes = calculateOperationTypes({})
     
     return {
       id: selectedJobData.id,
@@ -456,10 +460,10 @@ export default function Stats() {
       toolUsage,
       linesProcessed: selectedJobData.stats?.received || 0,
       totalLines: selectedJobData.stats?.total || 0,
-      distance: selectedJobData.stats?.totalDistance?.total || 0,
-      distanceX: selectedJobData.stats?.totalDistance?.x || 0,
-      distanceY: selectedJobData.stats?.totalDistance?.y || 0,
-      distanceZ: selectedJobData.stats?.totalDistance?.z || 0,
+      distance: selectedJobData.stats?.distance || 0,
+      distanceX: selectedJobData.stats?.distanceX || 0,
+      distanceY: 0, // Y distance not available in current stats structure
+      distanceZ: selectedJobData.stats?.distanceZ || 0,
       gcode: selectedJobData.gcode,
       operationTypes,
     }
@@ -1039,7 +1043,7 @@ export default function Stats() {
                           gcode={selectedJob.gcode}
                           limits={settings?.machine?.limits}
                           view="iso"
-                          viewKey={selectedJob.id}
+                          viewKey={Number(selectedJob.id) || 0}
                           machinePosition={machinePosition}
                           processedLines={selectedJob.linesProcessed}
                         />

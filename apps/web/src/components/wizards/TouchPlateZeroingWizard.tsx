@@ -1,4 +1,3 @@
-import React from 'react'
 import { Target, AlertCircle, HelpCircle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'

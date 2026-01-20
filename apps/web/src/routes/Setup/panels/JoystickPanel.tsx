@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Gamepad2, CheckCircle2, XCircle, Settings, Lock, Unlock } from 'lucide-react'
+import { Gamepad2, CheckCircle2, XCircle, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { useGetSettingsQuery, useSetSettingsMutation } from '@/services/api'
+import { useGetSettingsQuery } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
 import { JoystickTestDialog } from '@/routes/Settings/sections/JoystickTestDialog'
 import type { PanelProps } from '../types'
@@ -14,20 +12,10 @@ import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
 export function JoystickPanel(_props: PanelProps) {
   const navigate = useNavigate()
   const { data: settings } = useGetSettingsQuery()
-  const [setSettingsMutation] = useSetSettingsMutation()
   const [testDialogOpen, setTestDialogOpen] = useState(false)
   const [isGamepadConnected, setIsGamepadConnected] = useState(false)
 
   const joystickConfig: JoystickConfig | null = settings?.joystick ?? null
-  const isLocked = joystickConfig?.locked ?? false
-
-  const handleLockToggle = useCallback(async (locked: boolean) => {
-    await setSettingsMutation({
-      joystick: {
-        locked,
-      },
-    })
-  }, [setSettingsMutation])
 
   // Check if selected gamepad is currently connected
   const checkGamepadConnection = useCallback(() => {
@@ -118,29 +106,6 @@ export function JoystickPanel(_props: PanelProps) {
         </div>
       </div>
 
-      {/* Lock/Unlock Switch */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-          <div className="flex items-center gap-2">
-            {isLocked ? (
-              <Lock className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <Unlock className="w-4 h-4 text-muted-foreground" />
-            )}
-            <Label htmlFor="joystick-lock" className="text-sm font-medium cursor-pointer">
-              {isLocked ? 'Locked' : 'Unlocked'}
-            </Label>
-          </div>
-          <Switch
-            id="joystick-lock"
-            checked={!isLocked}
-            onCheckedChange={(checked) => handleLockToggle(!checked)}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground px-1">
-          Use the lock switch to disable the joystick when not in use to avoid unintended movement and actions.
-        </p>
-      </div>
 
       {/* Info Message */}
       {joystickConfig.connectionLocation === 'client' && !isGamepadConnected && (

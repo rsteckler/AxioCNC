@@ -315,7 +315,7 @@ export class JoystickService {
     }
     
     // Register listener
-    socketService.on('gamepad:state', this.serverGamepadHandler)
+    socketService.on('gamepad:state', this.serverGamepadHandler as (state: unknown) => void)
   }
 
   /**
@@ -323,7 +323,7 @@ export class JoystickService {
    */
   private stopServerGamepadListener(): void {
     if (this.serverGamepadHandler) {
-      socketService.off('gamepad:state', this.serverGamepadHandler)
+      socketService.off('gamepad:state', this.serverGamepadHandler as (state: unknown) => void)
       this.serverGamepadHandler = null
     }
     this.serverListenerActive = false

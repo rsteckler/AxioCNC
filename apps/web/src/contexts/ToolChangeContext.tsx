@@ -1,4 +1,4 @@
-import React, { createContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useState, useCallback, ReactNode } from 'react'
 import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
 
 interface ToolChangeContextValue {

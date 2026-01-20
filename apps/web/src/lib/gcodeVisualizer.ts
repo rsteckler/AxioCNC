@@ -43,7 +43,8 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
   let initialPosition: Vector3 | undefined = undefined // Track the toolpath origin (v1 from first addLine call)
 
   // Create toolpath processor with callbacks
-  const toolpath = new Toolpath({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toolpath: any = new (Toolpath as any)({
     // Called for each line segment (G0, G1 moves)
     // Note: The toolpath library ensures continuity - v1 of current line = v2 of previous line
     // So we only push v2 (the endpoint), not v1 - matching legacy implementation
@@ -120,17 +121,21 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
   })
 
   // Process G-code synchronously
-  toolpath.loadFromStringSync(gcode, (line: string) => {
-    frames.push({
-      data: line,
-      vertexIndex: Math.floor(positions.length / 3) // Current vertex count
+  // Extract method to avoid TypeScript inference issues with toolpath variable
+  const loadFromStringSync = (toolpath as { loadFromStringSync?: (gcode: string, callback: (line: string) => void) => void }).loadFromStringSync
+  if (loadFromStringSync && typeof loadFromStringSync === 'function') {
+    loadFromStringSync(gcode, (line: string) => {
+      frames.push({
+        data: line,
+        vertexIndex: Math.floor(positions.length / 3) // Current vertex count
+      })
     })
-  })
+  }
 
   // Create BufferGeometry
   const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
-  geometry.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
+  ;(geometry as any).setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+  ;(geometry as any).setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
   geometry.computeBoundingBox()
 
   // Calculate bounding box

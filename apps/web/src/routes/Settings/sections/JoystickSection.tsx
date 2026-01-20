@@ -28,22 +28,18 @@ import {
   Play,
   CheckCircle2,
   XCircle,
-  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JoystickTestDialog } from './JoystickTestDialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 
 import { 
   CNC_ACTIONS,
   GAMEPAD_BUTTONS,
   type CncAction,
 } from './joystickConstants'
+
+// Re-export for convenience
+export { CNC_ACTIONS, getGamepadButtons, type CncAction } from './joystickConstants'
 
 export type AnalogAxis = 'left_x' | 'left_y' | 'right_x' | 'right_y'
 export type AnalogMapping = 'none' | 'jog_x' | 'jog_y' | 'jog_z' | 'feed_rate'
@@ -196,33 +192,12 @@ export function JoystickSection({
 
           {/* Gamepad Selection */}
           <SettingsField
-            label={
-              <div className="flex items-center gap-2">
-                <span>Select Gamepad</span>
-                {config.selectedGamepad && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="inline-flex items-center">
-                          <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="space-y-1">
-                          <p className="font-medium">
-                            {isGamepadConnected ? 'Connected' : 'Disconnected'}
-                          </p>
-                          {config.connectionLocation === 'client' && (
-                            <p className="text-xs text-muted-foreground">
-                              Press a button on your gamepad while this webpage is focused to connect.
-                            </p>
-                          )}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
+            label="Select Gamepad"
+            tooltip={config.selectedGamepad 
+              ? (isGamepadConnected 
+                  ? 'Connected' 
+                  : 'Disconnected' + (config.connectionLocation === 'client' ? '. Press a button on your gamepad while this webpage is focused to connect.' : ''))
+              : undefined
             }
             description={config.connectionLocation === 'server' 
               ? 'Select a gamepad connected to the server machine'

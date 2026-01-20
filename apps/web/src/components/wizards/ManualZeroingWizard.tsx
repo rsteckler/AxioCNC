@@ -1,4 +1,3 @@
-import React from 'react'
 import { HelpCircle, RotateCcw, Check } from 'lucide-react'
 import { getAxesLabel } from './utils'
 import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'

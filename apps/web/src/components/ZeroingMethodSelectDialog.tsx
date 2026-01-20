@@ -1,4 +1,3 @@
-import React from 'react'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +13,7 @@ import {
   Hand, 
   Settings2,
 } from 'lucide-react'
-import type { ZeroingMethod, ZeroingMethodType } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod, ZeroingMethodType } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
 // Icons for method types
 const METHOD_ICONS: Record<ZeroingMethodType, React.ReactNode> = {

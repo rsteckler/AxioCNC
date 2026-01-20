@@ -18,7 +18,7 @@ import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
 import { useToolChange } from '@/contexts/ToolChangeContext'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import { ActionRequirements } from '@/utils/machineState'
 import { VisualizerScene } from '../Setup/components/VisualizerScene'
 import type { PanelProps } from '../Setup/types'
@@ -88,7 +88,6 @@ function CameraView() {
     enabledCamera?.id || '',
     { 
       skip: !enabledCamera?.id,
-      retry: 2,
     }
   )
   
@@ -299,10 +298,10 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
     if (hasValidFile) {
       const gcode = gcodeData.data || gcodeData.gcode || ''
       console.log('[Monitor] Restoring G-code from API:', gcodeData.name, 'gcode length:', gcode.length)
-      processedGcodeRef.current = gcodeData.name
-      loadedFromApiRef.current = gcodeData.name // Mark as loaded from API
+      processedGcodeRef.current = gcodeData.name || null
+      loadedFromApiRef.current = gcodeData.name || null // Mark as loaded from API
       
-      setLoadedGcode({ name: gcodeData.name, gcode })
+      setLoadedGcode({ name: gcodeData.name || '', gcode })
       // Try to restore model offset from localStorage
       const savedOffsetKey = `modelOffset_${gcodeData.name}`
       const savedOffset = localStorage.getItem(savedOffsetKey)
@@ -311,7 +310,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
           const offset = JSON.parse(savedOffset)
           if (offset && typeof offset.x === 'number' && typeof offset.y === 'number' && typeof offset.z === 'number') {
             setModelOffset(offset)
-            placedGcodeRef.current = gcodeData.name
+            placedGcodeRef.current = gcodeData.name || null
           }
         } catch {
           // Invalid saved offset, ignore
@@ -473,7 +472,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
               view={view}
               viewKey={viewKey}
               machinePosition={machinePosition}
-              modelOffset={modelOffset}
+              modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
               processedLines={processedLines}
             />
             {/* PiP camera overlay when visualizer is full screen */}
@@ -510,7 +509,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
                     view={view}
                     viewKey={viewKey}
                     machinePosition={machinePosition}
-                    modelOffset={modelOffset}
+                    modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
                     processedLines={processedLines}
                   />
                 </div>

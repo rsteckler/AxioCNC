@@ -51,7 +51,7 @@ function WorkGrid({ xSize = 300, ySize = 300 }: { xSize?: number; ySize?: number
       positions.push(xMax, y, 0) // End point at x=xMax
     }
     
-    geo.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+    ;(geo as any).setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
     return geo
   }, [xSize, ySize])
   
@@ -81,7 +81,7 @@ function XAxisArrows({ xSize = 300, ySize = 300, arrowLength = 20 }: { xSize?: n
       0, ySize, 0,  // Start
       xSize, ySize, 0  // End
     ])
-    lineGeometry.setAttribute('position', new BufferAttribute(linePositions, 3))
+    ;(lineGeometry as any).setAttribute('position', new BufferAttribute(linePositions, 3))
     const lineMaterial = new LineBasicMaterial({ color: 0x888888 }) // Gray
     const line = new Line(lineGeometry, lineMaterial)
     scene.add(line)
@@ -89,7 +89,7 @@ function XAxisArrows({ xSize = 300, ySize = 300, arrowLength = 20 }: { xSize?: n
     return () => {
       scene.remove(arrow1)
       scene.remove(line)
-      arrow1.dispose()
+      // ArrowHelper doesn't have dispose in this Three.js version - just remove from scene
       lineGeometry.dispose()
       lineMaterial.dispose()
     }
@@ -117,7 +117,7 @@ function YAxisArrows({ xSize = 300, ySize = 300, arrowLength = 20 }: { xSize?: n
       xSize, 0, 0,  // Start
       xSize, ySize, 0  // End
     ])
-    lineGeometry.setAttribute('position', new BufferAttribute(linePositions, 3))
+    ;(lineGeometry as any).setAttribute('position', new BufferAttribute(linePositions, 3))
     const lineMaterial = new LineBasicMaterial({ color: 0x888888 }) // Gray
     const line = new Line(lineGeometry, lineMaterial)
     scene.add(line)
@@ -125,7 +125,7 @@ function YAxisArrows({ xSize = 300, ySize = 300, arrowLength = 20 }: { xSize?: n
     return () => {
       scene.remove(arrow1)
       scene.remove(line)
-      arrow1.dispose()
+      // ArrowHelper doesn't have dispose in this Three.js version - just remove from scene
       lineGeometry.dispose()
       lineMaterial.dispose()
     }
@@ -162,7 +162,7 @@ function ZAxisArrows({ length = 100, arrowLength = 20, gridSizeX = 300, gridSize
         corner.x, corner.y, 0,        // Start at corner
         corner.x, corner.y, length     // End at corner + Z
       ])
-      lineGeometry.setAttribute('position', new BufferAttribute(linePositions, 3))
+      ;(lineGeometry as any).setAttribute('position', new BufferAttribute(linePositions, 3))
       lineGeometry.computeBoundingSphere()
       const lineMaterial = new LineDashedMaterial({ 
         color: grayColor,
@@ -182,7 +182,7 @@ function ZAxisArrows({ length = 100, arrowLength = 20, gridSizeX = 300, gridSize
         line.geometry.dispose()
         ;(line.material as LineDashedMaterial).dispose()
       })
-      arrow.dispose()
+      // ArrowHelper doesn't have dispose in this Three.js version - just remove from scene
     }
   }, [length, arrowLength, gridSizeX, gridSizeY, scene])
   
@@ -247,13 +247,13 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
       }
 
       const newGeometry = result.geometry.clone()
-      newGeometry.setAttribute('position', new BufferAttribute(newPositions, 3))
+      ;(newGeometry as any).setAttribute('position', new BufferAttribute(newPositions, 3))
       // Clone color attribute as well to ensure we can update it
       const colorAttr = result.geometry.getAttribute('color') as BufferAttribute
       if (colorAttr) {
         const colors = colorAttr.array as Float32Array
         const clonedColors = colors.slice()
-        newGeometry.setAttribute('color', new BufferAttribute(clonedColors, 3))
+        ;(newGeometry as any).setAttribute('color', new BufferAttribute(clonedColors, 3))
         // Update originalColorsRef to point to the cloned colors
         originalColorsRef.current = new Float32Array(clonedColors)
       }
@@ -313,7 +313,7 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial
-        vertexColors
+        vertexColors={true as any}
         opacity={0.5}
         transparent
         linewidth={1}

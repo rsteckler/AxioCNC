@@ -172,15 +172,15 @@ class MachineStateSyncService {
         // This ensures components have job state immediately on page load
         // During normal operation, sender:status events will keep it updated
         store.dispatch(setJobState({
-          name: gcodeData.name,
-          size: gcodeData.size,
-          total: gcodeData.total,
-          sent: gcodeData.sent,
-          received: gcodeData.received,
-          elapsedTime: gcodeData.elapsedTime,
-          remainingTime: gcodeData.remainingTime,
-          nextM6ToolNumber: gcodeData.nextM6ToolNumber,
-          remainingTimeToNextM6: gcodeData.remainingTimeToNextM6,
+          name: typeof gcodeData.name === 'string' ? gcodeData.name : undefined,
+          size: typeof gcodeData.size === 'number' ? gcodeData.size : undefined,
+          total: typeof gcodeData.total === 'number' ? gcodeData.total : undefined,
+          sent: typeof gcodeData.sent === 'number' ? gcodeData.sent : undefined,
+          received: typeof gcodeData.received === 'number' ? gcodeData.received : undefined,
+          elapsedTime: typeof gcodeData.elapsedTime === 'number' ? gcodeData.elapsedTime : undefined,
+          remainingTime: typeof gcodeData.remainingTime === 'number' ? gcodeData.remainingTime : undefined,
+          nextM6ToolNumber: typeof gcodeData.nextM6ToolNumber === 'number' ? gcodeData.nextM6ToolNumber : undefined,
+          remainingTimeToNextM6: typeof gcodeData.remainingTimeToNextM6 === 'number' ? gcodeData.remainingTimeToNextM6 : undefined,
         }))
       }
     } catch (error) {

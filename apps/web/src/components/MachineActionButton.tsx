@@ -97,7 +97,7 @@ export function MachineActionButton({
   }
   // Remove w-full and flex-1 from button className, but keep w-full for button if wrapper has it
   let buttonClassName = hasFlex1 || hasWFull
-    ? className.replace(/\b(flex-1|w-full)\b/g, '').trim() 
+    ? (className || '').replace(/\b(flex-1|w-full)\b/g, '').trim() 
     : className
   // If wrapper has w-full or flex-1, button should also have w-full to fill the wrapper
   if (hasWFull || hasFlex1) {
@@ -111,7 +111,12 @@ export function MachineActionButton({
     >
       <Button
         {...buttonProps}
-        className={cn(buttonProps.className, buttonClassName)}
+        className={cn(
+          'className' in buttonProps && buttonProps.className 
+            ? (typeof buttonProps.className === 'string' ? buttonProps.className : String(buttonProps.className))
+            : undefined, 
+          buttonClassName
+        )}
         disabled={isDisabled}
         onClick={handleClick}
       >

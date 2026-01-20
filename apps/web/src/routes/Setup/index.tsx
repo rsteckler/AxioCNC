@@ -22,7 +22,8 @@ import {
   useSpindleSpeed,
 } from '@/store/hooks'
 import { machineStateSync } from '@/services/machineStateSync'
-import { setConnecting, setFlashing, type MachineReadinessStatus } from '@/store/machineSlice'
+import { setConnecting, setFlashing } from '@/store/machineSlice'
+import type { MachineReadinessStatus } from '@/types/machine'
 import {
   DndContext,
   closestCenter,
@@ -62,7 +63,8 @@ import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
-import { NotificationSystem, useNotifications } from '@/components/NotificationSystem'
+import { NotificationSystem } from '@/components/NotificationSystem'
+import { useNotifications } from '@/hooks/useNotifications'
 import { RapidPanel } from './panels/RapidPanel'
 import { FilePanel } from './panels/FilePanel'
 import { ToolsPanel } from './panels/ToolsPanel'

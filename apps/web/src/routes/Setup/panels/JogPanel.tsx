@@ -90,8 +90,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
       z: zLevel,
     },
     mode === 'analog', // enabled when in analog mode
-    0.05, // 5% deadzone
-    60 // 60fps polling rate
+    0.05 // 5% deadzone
   )
   
   // Send jog control inputs to server when in analog mode
