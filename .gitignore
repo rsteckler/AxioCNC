@@ -12,6 +12,8 @@ yarn-error.log
 apps/web/dist/
 apps/server/dist/
 apps/server/output/
+apps/desktop/output/
+apps/desktop/dist/
 packages/shared/dist/
 
 # https://next.yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
