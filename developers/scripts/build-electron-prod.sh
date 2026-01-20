@@ -39,9 +39,22 @@ npx babel -d output/axiocnc/server apps/server/src
 echo "📦 Building shared package..."
 npx babel -d output/axiocnc/shared packages/shared/src
 
-# Copy Electron package.json (main entry already points to main.js for built output)
-echo "📦 Copying Electron package.json..."
-cp -f apps/desktop/package.json output/axiocnc/package.json
+# Create app package.json for electron-builder (no build config, no devDependencies)
+echo "📦 Creating app package.json..."
+node -e "
+const fs = require('fs');
+const pkg = require('./apps/desktop/package.json');
+const rootPkg = require('./package.json');
+// Set name to 'axiocnc' for electron-builder
+pkg.name = 'axiocnc';
+// Copy homepage from root package.json (required by FPM for .deb builds)
+pkg.homepage = rootPkg.homepage || 'https://github.com/rsteckler/axiocnc';
+// Remove build config (not allowed in app package.json since electron-builder 3.0)
+delete pkg.build;
+// Remove devDependencies (not needed in bundled app)
+delete pkg.devDependencies;
+fs.writeFileSync('./output/axiocnc/package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
 
 # Also copy to server/ directory for server/cli.js require('./package.json')
 cp -f apps/server/package.json output/axiocnc/server/

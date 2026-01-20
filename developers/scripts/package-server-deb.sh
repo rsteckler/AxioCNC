@@ -101,49 +101,68 @@ cp -r "${NODE_DIR}/lib" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || t
 cp -r "${NODE_DIR}/include" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 cp -r "${NODE_DIR}/share" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 
-# Production dependency pruning
-echo "Installing production dependencies..."
-PROD_INSTALL_DIR="${BUILD_DIR}/.prod-install"
+# Production dependency installation in isolated temp folder
+# This avoids mutating the repo's node_modules
+echo "Installing dependencies for server in isolated temp folder..."
+PROD_INSTALL_DIR="/tmp/axiocnc-server-deps-$$"
+trap "rm -rf '${PROD_INSTALL_DIR}'" EXIT INT TERM
+
 rm -rf "${PROD_INSTALL_DIR}"
 mkdir -p "${PROD_INSTALL_DIR}"
 
-# Copy package.json to temp location for production install
-cp apps/server/dist/package.json "${PROD_INSTALL_DIR}/"
+# Copy FULL package.json (keep devDependencies for lockfile compatibility)
+# We'll prune devDeps from node_modules after install
+cp "${PROJECT_ROOT}/apps/server/package.json" "${PROD_INSTALL_DIR}/"
 
-# Make temp directory a standalone Yarn project (not part of workspace)
+# Copy Yarn config for deterministic isolated install
+cp "${PROJECT_ROOT}/yarn.lock" "${PROD_INSTALL_DIR}/"
+# Create simplified .yarnrc.yml (no plugins - this is standalone, not a workspace)
 cat > "${PROD_INSTALL_DIR}/.yarnrc.yml" << 'EOF'
 nodeLinker: node-modules
+yarnPath: .yarn/releases/yarn-3.3.1.cjs
 EOF
+mkdir -p "${PROD_INSTALL_DIR}/.yarn/releases"
+cp -f "${PROJECT_ROOT}/.yarn/releases/yarn-3.3.1.cjs" "${PROD_INSTALL_DIR}/.yarn/releases/" 2>/dev/null || true
 
-# Install production dependencies in temp location
+# Install dependencies in isolated temp folder (deterministic via lockfile)
 cd "${PROD_INSTALL_DIR}"
+yarn install --immutable || {
+  echo "Warning: --immutable failed, falling back to regular install"
+  yarn install || {
+    echo "Error: yarn install failed in temp folder"
+    exit 1
+  }
+}
 
-# Remove devDependencies from package.json temporarily for production install
+# Prune devDependencies from node_modules (keep only production deps)
+echo "Pruning devDependencies from node_modules..."
 node -e "
   const fs = require('fs');
+  const path = require('path');
   const pkg = require('./package.json');
-  delete pkg.devDependencies;
-  fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+  const devDeps = Object.keys(pkg.devDependencies || {});
+  for (const dep of devDeps) {
+    const depPath = path.join('node_modules', dep);
+    if (fs.existsSync(depPath)) {
+      fs.rmSync(depPath, { recursive: true, force: true });
+      console.log('  Removed:', dep);
+    }
+  }
 "
-
-# Use npm for standalone install (avoids yarn workspace lockfile issues)
-# Install dependencies (will only install production deps since devDependencies were removed)
-npm install --production || {
-  # Check if node_modules was created
-  if [ ! -d "node_modules" ]; then
-    echo "Error: Production dependencies were not installed"
-    exit 1
-  fi
-}
-# Ensure zod is installed (required by shared/schemas)
-npm install zod@^4.3.5 || echo "Warning: Could not install zod"
-cd - > /dev/null
+cd "${PROJECT_ROOT}"
 
 # Copy built application
 echo "Copying application files..."
-# Copy cli.js and package.json to root, but put everything else in server/ subdirectory
+# Copy cli.js to root, but put everything else in server/ subdirectory
 cp apps/server/dist/cli.js "${PACKAGE_ROOT}${INSTALL_DIR}/"
-cp apps/server/dist/package.json "${PACKAGE_ROOT}${INSTALL_DIR}/"
+# Create production package.json from source (without scripts/devDependencies)
+node -e "
+  const fs = require('fs');
+  const pkg = require('./apps/server/package.json');
+  delete pkg.devDependencies;
+  delete pkg.scripts;
+  fs.writeFileSync('${PACKAGE_ROOT}${INSTALL_DIR}/package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/server"
 # Copy all files and directories except cli.js and package.json to server/ subdirectory
 rsync -a --exclude='cli.js' --exclude='package.json' apps/server/dist/ "${PACKAGE_ROOT}${INSTALL_DIR}/server/" || {
@@ -155,8 +174,12 @@ rsync -a --exclude='cli.js' --exclude='package.json' apps/server/dist/ "${PACKAG
     cd "${PROJECT_ROOT}"
 }
 
-# Copy pruned production node_modules from temp location
+# Copy production node_modules from isolated temp folder
 echo "Copying production node_modules..."
+if [ ! -d "${PROD_INSTALL_DIR}/node_modules" ]; then
+  echo "Error: node_modules not found in temp folder"
+  exit 1
+fi
 cp -r "${PROD_INSTALL_DIR}/node_modules" "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
 # Copy shared package (needed by server code)
