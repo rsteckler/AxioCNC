@@ -59,9 +59,9 @@
     "build:desktop:windows-x64": "bash -c 'developers/scripts/electron-builder.sh --windows --x64'",
     "build:desktop:macos-x64": "bash -c 'developers/scripts/electron-builder.sh --macos --x64'",
     "build:desktop:macos-arm64": "bash -c 'developers/scripts/electron-builder.sh --macos --arm64'",
-    "build:desktop:linux-x64": "bash -c 'developers/scripts/electron-builder.sh --linux --x64'",
-    "build:desktop:linux-armv7l": "bash -c 'developers/scripts/electron-builder.sh --linux --armv7l'",
-    "build:desktop:linux-arm64": "bash -c 'developers/scripts/electron-builder.sh --linux --arm64'",
+    "package:desktop:linux-amd64": "bash developers/scripts/package-desktop-linux.sh amd64",
+    "package:desktop:linux-arm64": "bash developers/scripts/package-desktop-linux.sh arm64",
+    "package:desktop:linux-armv7l": "bash developers/scripts/package-desktop-linux.sh armv7l",
     "package:server-amd64": "bash developers/scripts/package-server-deb.sh amd64",
     "package:server-arm64": "bash developers/scripts/package-server-deb.sh arm64",
     "package:server-armhf": "bash developers/scripts/package-server-deb.sh armhf",
@@ -114,9 +114,7 @@
     "linux": {
       "category": "Utility",
       "target": [
-        "AppImage",
-        "deb",
-        "rpm"
+        "deb"
       ]
     }
   },
@@ -289,6 +287,7 @@
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.25.9",
     "@babel/register": "^7.25.9",
+    "@electron/rebuild": "^4.0.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
     "@trendmicro/babel-config": "~1.0.2",
     "babel-core": "~7.0.0-bridge.0",
@@ -304,9 +303,8 @@
     "css-loader": "~3.0.0",
     "del-cli": "~3.0.1",
     "dotenv": "~7.0.0",
-    "electron": "~22.0.3",
-    "electron-builder": "~23.6.0",
-    "electron-rebuild": "~3.2.7",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
     "eslint": "^8.0.0",
     "eslint-config-trendmicro": "^3.2.0",
     "eslint-import-resolver-node": "^0.3.9",
