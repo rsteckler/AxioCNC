@@ -43,7 +43,7 @@ export function SpindlePanel({
   }, [isOn, backendDirection])
   
   // Find closest speed index from backend speed, or default to 10000 RPM (index 20)
-  const getSpeedIndex = (speed: number | undefined): number => {
+  const getSpeedIndex = useCallback((speed: number | undefined): number => {
     if (speed === undefined) return 20 // Default to 10000 RPM
     // Clamp speed to valid range
     const clampedSpeed = Math.max(8000, Math.min(24000, speed))
@@ -58,7 +58,7 @@ export function SpindlePanel({
       }
     })
     return closestIndex
-  }
+  }, [speeds])
   
   const [speedIndex, setSpeedIndex] = useState(() => getSpeedIndex(spindleSpeed))
   
@@ -67,7 +67,7 @@ export function SpindlePanel({
     if (!isOn && spindleSpeed !== undefined) {
       setSpeedIndex(getSpeedIndex(spindleSpeed))
     }
-  }, [spindleSpeed, isOn])
+  }, [spindleSpeed, isOn, getSpeedIndex])
   
   const speed = speeds[speedIndex]
   

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
@@ -310,12 +310,12 @@ export default function Settings() {
   const [createCamera] = useCreateCameraMutation()
   const [updateCamera] = useUpdateCameraMutation()
   
-  // Derive events/macros/tools/watchFolders from API data
+  // Derive events/macros/tools/watchFolders from API data (wrap in useMemo to prevent recreating on every render)
   // Cast event/trigger strings to the expected union types
-  const events: EventHandler[] = (eventsData?.records ?? []) as EventHandler[]
-  const macros: Macro[] = macrosData?.records ?? []
-  const tools: Tool[] = toolsData?.records ?? []
-  const watchFolders: WatchFolder[] = (watchFoldersData?.records ?? []) as WatchFolder[]
+  const events: EventHandler[] = useMemo(() => (eventsData?.records ?? []) as EventHandler[], [eventsData?.records])
+  const macros: Macro[] = useMemo(() => macrosData?.records ?? [], [macrosData?.records])
+  const tools: Tool[] = useMemo(() => toolsData?.records ?? [], [toolsData?.records])
+  const watchFolders: WatchFolder[] = useMemo(() => (watchFoldersData?.records ?? []) as WatchFolder[], [watchFoldersData?.records])
   
   const isLoading = isLoadingSettings || isLoadingEvents || isLoadingMacros || isLoadingTools || isLoadingWatchFolders
 
@@ -435,10 +435,14 @@ export default function Settings() {
   
   // Load camera from cameras API into local state (only on initial load or when camera ID changes)
   // Don't reload when user is actively editing or when enabled state changes
+  // Extract complex expression for static checking
+  const firstCameraId = camerasData?.records?.[0]?.id
+  const camerasRecords = camerasData?.records
+  
   useEffect(() => {
-    if (camerasData?.records && cameraConfig.mediaSource === 'ip-camera' && !isUserEditing.current) {
+    if (camerasRecords && cameraConfig.mediaSource === 'ip-camera' && !isUserEditing.current) {
       // Since we only support one camera, just get the first one
-      const camera = camerasData.records[0]
+      const camera = camerasRecords[0]
       const currentCameraId = camera?.id
       
       // Only load if this is a different camera (by ID) - this prevents overwriting user input
@@ -504,7 +508,7 @@ export default function Settings() {
         lastLoadedCameraId.current = currentCameraId
       }
     }
-  }, [camerasData?.records?.[0]?.id, cameraConfig.mediaSource]) // Only trigger when camera ID changes or mediaSource changes, not on enabled changes
+  }, [firstCameraId, camerasRecords, cameraConfig.mediaSource]) // Only trigger when camera ID changes, records array changes, or mediaSource changes, not on enabled changes
 
   // Accumulate pending changes for debounced save
   const pendingChanges = useRef<PartialSettings>({})

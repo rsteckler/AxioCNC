@@ -336,10 +336,15 @@ export default function Stats() {
     })
     
     return Array.from(deduplicatedTools.values()).sort((a, b) => a.toolNumber - b.toolNumber)
-  }, [toolStatsData, toolsMap, toolsData])
+  }, [toolStatsData, toolsData])
 
   // Helper to calculate operation types from distance stats
-  const calculateOperationTypes = (stats: any): OperationType[] => {
+  const calculateOperationTypes = (stats: {
+    totalDistance?: { total?: number }
+    cuttingDistance?: { total?: number }
+    transitionDistance?: { total?: number }
+    retractDistance?: { total?: number }
+  }): OperationType[] => {
     if (!stats) return []
     
     const total = stats.totalDistance?.total || 0

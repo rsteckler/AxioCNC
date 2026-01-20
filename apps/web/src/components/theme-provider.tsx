@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import { createContext, useEffect, useState, useCallback, useRef } from "react"
 import { useGetThemeQuery, useGetSettingsQuery, useSetSettingsMutation } from "@/services/api"
 import type { ThemeCSSVariables } from "@/services/api"
 
@@ -326,11 +326,7 @@ export function ThemeProvider({
   )
 }
 
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext)
-
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider")
-
-  return context
-}
+// Export the context for useTheme hook (now in separate file)
+export { ThemeProviderContext }
+// eslint-disable-next-line react-refresh/only-export-components
+export { useTheme } from "@/hooks/useTheme"

@@ -22,7 +22,8 @@ export function TouchPlateZeroingWizard({
   currentStep,
   workPosition,
   probeContact = false,
-  probeStatus = 'idle',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  probeStatus: _probeStatus = 'idle',
   isConnected,
   connectedPort,
   onProbe,

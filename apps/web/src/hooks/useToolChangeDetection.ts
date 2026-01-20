@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import { useWorkflowState, useJobState, useCurrentWCS } from '@/store/hooks'
@@ -33,7 +33,7 @@ export function useToolChangeDetection(connectedPort: string | null) {
   )
 
   // Helper function to check and trigger tool change
-  const checkAndTriggerToolChange = (holdReason: { data?: string; msg?: string } | null) => {
+  const checkAndTriggerToolChange = useCallback((holdReason: { data?: string; msg?: string } | null) => {
     if (!connectedPort || workflowState !== 'paused' || isToolChangePending || hasTriggeredRef.current) {
       return
     }
@@ -75,7 +75,7 @@ export function useToolChangeDetection(connectedPort: string | null) {
         }
       }
     }
-  }
+  }, [connectedPort, workflowState, isToolChangePending, settings, sendCommand, triggerToolChange, firstToolChangeFlag])
 
   useEffect(() => {
     if (!connectedPort) {

@@ -41,11 +41,10 @@ export function ToolsUsedPanel(props: PanelProps) {
     return null
   }, [toolReferenceData])
   
-  const nextM6ToolNumber = senderState?.nextM6ToolNumber
   const remainingTimeToNextM6 = senderState?.remainingTimeToNextM6 ?? 0
   
-  // Get tool stats from sender state
-  const toolStats = senderState?.stats?.toolStats || {}
+  // Get tool stats from sender state (wrap in useMemo to prevent recreating on every render)
+  const toolStats = useMemo(() => senderState?.stats?.toolStats || {}, [senderState?.stats?.toolStats])
   
   // Check if G-code file is loaded
   const isFileLoaded = !!senderState?.name

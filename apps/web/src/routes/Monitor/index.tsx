@@ -16,7 +16,7 @@ import { Console } from '@/components/Console'
 import { ToolChangeTab } from '@/components/ToolChangeTab'
 import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
-import { NotificationSystem, useNotifications } from '@/components/NotificationSystem'
+import { NotificationSystem } from '@/components/NotificationSystem'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
 import { ActionRequirements } from '@/utils/machineState'
@@ -383,7 +383,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
       socketService.off('gcode:load', handleGcodeLoad)
       socketService.off('gcode:unload', handleGcodeUnload)
     }
-  }, [])
+  }, [loadedGcode?.name])
   
   // Automatically place model at WCS origin when G-code is loaded (same logic as Setup page)
   useEffect(() => {
@@ -444,7 +444,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
     if (loadedGcode.name) {
       localStorage.setItem(`modelOffset_${loadedGcode.name}`, JSON.stringify(offsetValue))
     }
-  }, [loadedGcode, settings, machinePosition, workPosition])
+  }, [loadedGcode?.gcode, loadedGcode?.name, settings, machinePosition, workPosition])
   
   const [view] = useState<'top' | 'front' | 'iso' | 'fit'>('iso')
   const [viewKey] = useState(0)

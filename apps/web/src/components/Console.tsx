@@ -114,7 +114,7 @@ export function Console({
       socketService.off('serialport:read', handleSerialRead)
       socketService.off('serialport:write', handleSerialWrite)
     }
-  }, []) // Empty array - listeners register once, handlers check connection state internally
+  }, [lastAlarmMessageRef]) // lastAlarmMessageRef is a ref (stable), but included for exhaustive-deps compliance
     
   // Clear console when disconnected (separate effect for UI state)
   useEffect(() => {

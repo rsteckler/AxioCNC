@@ -531,12 +531,12 @@ export default function Setup() {
       // let homingJustCompleted = false
       // Check if we're idle and homing was in progress - this indicates homing completed
       // We check homingInProgressRef to detect the transition from Home to Idle
-      if (isIdle && !isHoming && homingInProgressRef.current && !isHomed && isConnected) {
+      if (isIdle && !isHoming && homingInProgressRef.current && !isHomedRef.current && isConnectedRef.current) {
         // Homing was in progress and now we're idle - homing completed
         setHomingInProgress(false)
         homingInProgressRef.current = false
         // homingJustCompleted = true
-      } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomed) {
+      } else if (isIdle && !isHoming && !homingInProgressRef.current && !isHomedRef.current) {
         // Reset homing progress flag if we're idle without homing active
         setHomingInProgress(false)
       }
@@ -587,7 +587,7 @@ export default function Setup() {
     
     // Listen for feeder status - marks that we've received initial state from backend
     // This is called on initial connection (page refresh) AND on state changes
-    const handleFeederStatus = (..._args: unknown[]) => {
+    const handleFeederStatus = () => {
       // Only update if we're connected
       if (!isConnectedRef.current) return
       
@@ -648,7 +648,7 @@ export default function Setup() {
       socketService.off('marlin:homing', handleHomingComplete)
       socketService.off('joystick:flashStatus', flashStatus)
     }
-  }, []) // Empty array - listeners register once, handlers use refs for current values
+  }, [dispatch, flashStatus, showErrorNotification]) // dispatch and flashStatus are stable, showErrorNotification from hook
   
   // Restore state from API on mount (only when needed - not on every navigation)
   // Only restore if:

@@ -100,7 +100,7 @@ export function MachineSection({
 
   // Fetch presets from API
   const { data: presetsData, isLoading: presetsLoading } = useGetMachinePresetsQuery()
-  const presets = presetsData?.presets || []
+  const presets = useMemo(() => presetsData?.presets || [], [presetsData?.presets])
   
   // Group presets by manufacturer
   const PRESETS_BY_MANUFACTURER = useMemo(() => {

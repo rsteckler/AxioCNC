@@ -28,7 +28,7 @@ function App() {
   }
 
   // Extract authentication logic to be reusable
-  const authenticate = async () => {
+  const authenticate = useCallback(async () => {
     try {
       // Check for existing token
       let token = localStorage.getItem('axiocnc-token')
@@ -77,7 +77,7 @@ function App() {
       console.error('Auth initialization error:', err)
       setAuthReady(true) // Still render, let components handle errors
     }
-  }
+  }, [signIn])
 
   // Auto-authenticate on app load
   useEffect(() => {
@@ -96,7 +96,7 @@ function App() {
       socketService.disconnect()
       machineStateSync.cleanup()
     }
-  }, [signIn])
+  }, [authenticate])
 
   // Show loading state while authenticating
   if (!authReady) {

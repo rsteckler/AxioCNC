@@ -321,7 +321,7 @@ export function JoystickTestDialog({
     if (open) {
       animationRef.current = requestAnimationFrame(pollGamepad)
     }
-  }, [open, findGamepad, config.buttonMappings])
+  }, [open, findGamepad, config.buttonMappings, config.connectionLocation])
 
   // Set test mode when dialog opens/closes (prevents commands during testing)
   useEffect(() => {

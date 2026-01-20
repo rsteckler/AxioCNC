@@ -33,7 +33,8 @@ export function BitSetterFirstToolWizard({
   probeContact = false,
   probeStatus = 'idle',
   probeError = null,
-  bitsetterNavigated = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  bitsetterNavigated: _bitsetterNavigated = false,
   currentWCS = 'G54',
   isConnected,
   connectedPort,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import React, { createContext, useState, useCallback, ReactNode } from 'react'
 import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
 
 interface ToolChangeContextValue {
@@ -11,7 +11,8 @@ interface ToolChangeContextValue {
   completeToolChange: () => void
 }
 
-const ToolChangeContext = createContext<ToolChangeContextValue | undefined>(undefined)
+// eslint-disable-next-line react-refresh/only-export-components
+export const ToolChangeContext = createContext<ToolChangeContextValue | undefined>(undefined)
 
 export function ToolChangeProvider({ children }: { children: ReactNode }) {
   const [isToolChangePending, setIsToolChangePending] = useState(false)
@@ -52,10 +53,6 @@ export function ToolChangeProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useToolChange() {
-  const context = useContext(ToolChangeContext)
-  if (context === undefined) {
-    throw new Error('useToolChange must be used within a ToolChangeProvider')
-  }
-  return context
-}
+// Export the context for useToolChange hook (now in separate file)
+// eslint-disable-next-line react-refresh/only-export-components
+export { useToolChange } from '@/hooks/useToolChange'

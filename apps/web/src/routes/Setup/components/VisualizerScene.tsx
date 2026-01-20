@@ -21,7 +21,7 @@ interface VisualizerSceneProps {
 }
 
 // Grid component - draws a grid on the z=0 plane, starting at origin and extending in positive X and Y
-function WorkGrid({ xSize = 300, ySize = 300, spacing = 10 }: { xSize?: number; ySize?: number; spacing?: number }) {
+function WorkGrid({ xSize = 300, ySize = 300 }: { xSize?: number; ySize?: number }) {
   const geometry = useMemo(() => {
     const geo = new BufferGeometry()
     const positions: number[] = []
@@ -53,7 +53,7 @@ function WorkGrid({ xSize = 300, ySize = 300, spacing = 10 }: { xSize?: number; 
     
     geo.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
     return geo
-  }, [xSize, ySize, spacing])
+  }, [xSize, ySize])
   
   return (
     <lineSegments geometry={geometry}>
@@ -562,7 +562,7 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
         <directionalLight position={[-10, -10, 5]} intensity={0.4} />
         
         {/* Grid on z=0 plane, using actual machine dimensions */}
-        <WorkGrid xSize={xSize} ySize={ySize} spacing={10} />
+        <WorkGrid xSize={xSize} ySize={ySize} />
         
         {/* X-axis arrows - red arrows along X edges pointing in positive direction */}
         <XAxisArrows xSize={xSize} ySize={ySize} arrowLength={20} />

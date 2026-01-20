@@ -25,9 +25,12 @@ import {
 } from '@/store/hooks'
 
 export function DebugPanel({
-  isConnected,
-  connectedPort,
-  machineStatus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isConnected: _isConnected,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  connectedPort: _connectedPort,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  machineStatus: _machineStatus,
 }: PanelProps) {
   const machineState = useMachineState()
   const isConnectedComputed = useIsConnected()

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Library, ChevronDown, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import { useGetToolsQuery, useGetControllersQuery, useCreateToolMutation, useUpdateToolMutation, type Tool } from '@/services/api'
+import { useGetToolsQuery, useCreateToolMutation, useUpdateToolMutation, type Tool } from '@/services/api'
 import { useJobState } from '@/store/hooks'
 import { mmToInches, inchesToMm } from '@/utils/units'
 
@@ -71,7 +71,7 @@ function PanelHeader({
 export function ToolsPanel() {
   // Fetch tools from API
   const { data: toolsData } = useGetToolsQuery()
-  const tools: Tool[] = toolsData?.records ?? []
+  const tools: Tool[] = useMemo(() => toolsData?.records ?? [], [toolsData?.records])
   const [createTool] = useCreateToolMutation()
   const [updateTool] = useUpdateToolMutation()
   
@@ -109,7 +109,7 @@ export function ToolsPanel() {
   }
   
   // Sort tools by toolId
-  const sortedTools = [...tools].sort((a, b) => a.toolId - b.toolId)
+  const sortedTools = useMemo(() => [...tools].sort((a, b) => a.toolId - b.toolId), [tools])
   
   // Split tools into "In Use" and "Available"
   const inUseTools = sortedTools.filter(tool => toolsInUse.has(tool.toolId))

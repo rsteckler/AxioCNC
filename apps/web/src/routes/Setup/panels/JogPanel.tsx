@@ -9,7 +9,7 @@ import { DiagonalArrowUpLeft, DiagonalArrowUpRight, DiagonalArrowDownLeft, Diago
 import { useGcodeCommand, useAnalogJog, sendJogControlInput } from '@/hooks'
 import { buildGoToZeroCommand } from '@/utils/gcode'
 import { normalizeToCircle } from '@/utils/analogNormalize'
-import { useGetExtensionsQuery, useGetSettingsQuery } from '@/services/api'
+import { useGetExtensionsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
 
 export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
@@ -30,9 +30,6 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   const debugMode = (advancedConfig && typeof advancedConfig === 'object' && 'debugMode' in advancedConfig)
     ? (advancedConfig as { debugMode?: boolean }).debugMode ?? false
     : false
-  
-  // Get settings for joystick config
-  const { data: settings } = useGetSettingsQuery()
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)

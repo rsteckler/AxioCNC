@@ -1,5 +1,3 @@
-import { Vector3 } from 'three'
-
 declare module 'gcode-toolpath' {
   interface ToolpathOptions {
     // Add options as needed

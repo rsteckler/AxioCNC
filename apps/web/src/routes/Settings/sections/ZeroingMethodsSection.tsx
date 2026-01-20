@@ -649,7 +649,6 @@ function MethodEditDialog({
 function BitSetterSettings({ 
   config, 
   onChange,
-  onSetFromCurrentPosition,
 }: { 
   config: BitSetterConfig
   onChange: (changes: Partial<BitSetterConfig>) => void

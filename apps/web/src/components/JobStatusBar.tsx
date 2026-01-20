@@ -224,7 +224,7 @@ export function JobStatusBar({
             Paused
           </Badge>
         )
-      case 'complete':
+      case 'complete': {
         const completionReason = completion?.reason || 'completed'
         const badgeText = completionReason === 'completed' 
           ? 'Complete' 
@@ -272,6 +272,7 @@ export function JobStatusBar({
             </Tooltip>
           </TooltipProvider>
         )
+      }
       case 'not_started':
       default:
         return (

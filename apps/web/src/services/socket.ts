@@ -176,7 +176,7 @@ class SocketService {
 
       // Check if this is a JWT token validation error
       if (typeof error === 'object' && error !== null) {
-        const err = error as any
+        const err = error as { code?: string; type?: string; message?: string }
         if (err.code === 'invalid_token' || err.type === 'UnauthorizedError' ||
             (err.message && err.message.includes('invalid signature'))) {
           console.warn('[SocketService] Token validation failed, triggering re-authentication')

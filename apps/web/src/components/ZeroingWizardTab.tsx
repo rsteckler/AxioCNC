@@ -271,7 +271,6 @@ export function ZeroingWizardTab({
         return
       }
       
-      let linesSent = 0
       let linesReceived = 0
       let lastWorkflowState: string | null = null
       let isCleanedUp = false
@@ -286,11 +285,12 @@ export function ZeroingWizardTab({
         const context = args[1] as { source?: string } | undefined
         
         // Only count lines sent from the feeder (not manual commands or status queries)
+        // Note: linesSent tracking removed as it was unused
         if (context?.source === 'feeder' || (!context?.source && data.trim())) {
           const trimmed = data.trim()
           // Filter out Grbl status queries and other non-G-code commands
           if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
-            linesSent++
+            // linesSent++ (removed - unused)
           }
         }
       }
@@ -373,6 +373,7 @@ export function ZeroingWizardTab({
       }
       
       // Handle disconnections
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const handleDisconnect = (..._args: unknown[]) => {
         if (isCleanedUp) return
         setProbeError('Socket disconnected during probe sequence')
@@ -452,7 +453,6 @@ export function ZeroingWizardTab({
         // Fallback: store current position if not already stored (shouldn't happen)
         storedMachineCoordsRef.current = { x: machinePosition.x, y: machinePosition.y }
       }
-      const storedMachineCoords = storedMachineCoordsRef.current
       
       const bitsetterMethod = method as Extract<ZeroingMethod, { type: 'bitsetter' }>
       const probeDistance = bitsetterMethod.probeDistance || 50
@@ -522,7 +522,6 @@ export function ZeroingWizardTab({
         return
       }
       
-      let linesSent = 0
       let linesReceived = 0
       let lastWorkflowState: string | null = null
       let isCleanedUp = false
@@ -537,11 +536,12 @@ export function ZeroingWizardTab({
         const context = args[1] as { source?: string } | undefined
         
         // Only count lines sent from the feeder (not manual commands or status queries)
+        // Note: linesSent tracking removed as it was unused
         if (context?.source === 'feeder' || (!context?.source && data.trim())) {
           const trimmed = data.trim()
           // Filter out Grbl status queries and other non-G-code commands
           if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
-            linesSent++
+            // linesSent++ (removed - unused)
           }
         }
       }
@@ -624,6 +624,7 @@ export function ZeroingWizardTab({
       }
       
       // Handle disconnections
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const handleDisconnect = (..._args: unknown[]) => {
         if (isCleanedUp) return
         setProbeError('Socket disconnected during probe sequence')
@@ -688,7 +689,7 @@ export function ZeroingWizardTab({
         cleanup()
       }
     }
-  }, [connectedPort, method, workPosition, machinePosition, isFirstToolChange, currentWCS, setExtensions, sendGcode, initialToolReference])
+  }, [connectedPort, method, machinePosition, isFirstToolChange, sendGcode, initialToolReference])
   
   const handleBitZeroProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'bitzero') {
@@ -809,7 +810,6 @@ export function ZeroingWizardTab({
       return
     }
     
-    let linesSent = 0
     let linesReceived = 0
     let lastWorkflowState: string | null = null
     let isCleanedUp = false
@@ -824,11 +824,12 @@ export function ZeroingWizardTab({
       const context = args[1] as { source?: string } | undefined
       
       // Only count lines sent from the feeder (not manual commands or status queries)
+      // Note: linesSent tracking removed as it was unused
       if (context?.source === 'feeder' || (!context?.source && data.trim())) {
         const trimmed = data.trim()
         // Filter out Grbl status queries and other non-G-code commands
         if (trimmed && !trimmed.startsWith('$') && !trimmed.match(/^<.*>$/)) {
-          linesSent++
+          // linesSent++ (removed - unused)
         }
       }
     }
@@ -909,6 +910,7 @@ export function ZeroingWizardTab({
     }
     
     // Handle disconnections
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleDisconnect = (..._args: unknown[]) => {
       if (isCleanedUp) return
       setProbeError('Socket disconnected during probe sequence')
@@ -972,7 +974,7 @@ export function ZeroingWizardTab({
       setProbeStatus('error')
       cleanup()
     }
-  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode, buildSetZeroCommand, buildSetZeroWithOffsetCommand])
+  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode])
   
   const handleCustomProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'custom') {
@@ -1094,6 +1096,7 @@ export function ZeroingWizardTab({
       }
     }
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleDisconnect = (..._args: unknown[]) => {
       if (isCleanedUp) return
       setProbeError('Socket disconnected during G-code execution')

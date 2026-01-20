@@ -188,8 +188,8 @@ class MachineStateSyncService {
     }
   }
 
-  private handleSerialPortOpen(...args: unknown[]) {
-    const data = args[0] as { port: string }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private handleSerialPortOpen(..._args: unknown[]) {
     // Connection state is now part of backendStatus, which will be updated by machine:status events
     // Just clear the connecting flag
     store.dispatch(setConnecting(false))
@@ -240,7 +240,6 @@ class MachineStateSyncService {
 
 
   private handleMachineStatus(...args: unknown[]) {
-    const port = args[0] as string
     const status = args[1] as ApiMachineStatus
 
     if (!status) return
@@ -261,7 +260,6 @@ class MachineStateSyncService {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleWorkflowState(..._args: unknown[]) {
     // port may be needed in future - keep args for now
     // const _port = _args[0] as string
@@ -381,6 +379,7 @@ class MachineStateSyncService {
    * Clear job completion state when a new file is loaded
    * This ensures job status goes back to "not_started"
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleGcodeLoad(..._args: unknown[]) {
     // Clear completion state when a new file is loaded
     // The workflow is already stopped by the controller (see GrblController.js line 1236)
