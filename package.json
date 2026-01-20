@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "dev:start-server": "(test -d node_modules/.bin/nodemon || yarn install) && nodemon --config nodemon.server.json",
-    "dev:start-app": "cd apps/web && (test -f node_modules/.yarn-state.yml || yarn install) && yarn dev",
+    "dev:start-app": "cd apps/web && yarn dev",
     "dev:start-electron": "nodemon --config nodemon.electron.json",
     "dev:grblsim:setup": "yarn dev:grblsim:clone && yarn dev:grblsim:fixup && yarn dev:grblsim:build && yarn dev:grblsim:enable",
     "dev:grblsim:run": "bash developers/scripts/grblsim/grblsim-run.sh",
@@ -55,7 +55,7 @@
     "test:lint:web": "cd apps/web && yarn lint",
     "test:typecheck": "cd apps/web && yarn typecheck",
     "test:lint:eslint-debug": "DEBUG=\"eslint:glob-util,eslint:config-*,eslint:cli*\" eslint --cache --color --quiet apps/server/src/**/*.js apps/server/test/**/*.js apps/desktop/src/**/*.js developers/scripts/**/*.js",
-    "build:clean": "del dist output",
+    "build:clean": "rimraf output dist node_modules apps/server/dist apps/server/output apps/desktop/output apps/desktop/dist apps/web/output apps/web/dist apps/web/node_modules",
     "build:desktop:windows-x64": "bash -c 'developers/scripts/electron-builder.sh --windows --x64'",
     "build:desktop:macos-x64": "bash -c 'developers/scripts/electron-builder.sh --macos --x64'",
     "build:desktop:macos-arm64": "bash -c 'developers/scripts/electron-builder.sh --macos --arm64'",
@@ -76,7 +76,7 @@
     "directories": {
       "buildResources": "apps/desktop/build-resources",
       "output": "output",
-      "app": "dist/axiocnc"
+      "app": "output/axiocnc"
     },
     "publish": [],
     "mac": {
@@ -303,7 +303,6 @@
     "css-loader": "~3.0.0",
     "del-cli": "~3.0.1",
     "dotenv": "~7.0.0",
-    "electron": "^40.0.0",
     "electron-builder": "^26.4.0",
     "eslint": "^8.0.0",
     "eslint-config-trendmicro": "^3.2.0",

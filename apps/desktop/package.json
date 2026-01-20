@@ -1,5 +1,5 @@
 {
-  "name": "axiocnc",
+  "name": "@axiocnc/desktop",
   "version": "1.10.112",
   "description": "A web-based interface for CNC milling controller running Grbl, Marlin, Smoothieware, or TinyG",
   "author": "Cheton Wu <cheton@gmail.com>",
@@ -60,5 +60,59 @@
     "webappengine": "~1.2.0",
     "winston": "~3.14.1",
     "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "electron": "40.0.0",
+    "electron-builder": "^26.4.0"
+  },
+  "build": {
+    "appId": "org.axiocnc",
+    "asar": false,
+    "asarUnpack": [],
+    "productName": "AxioCNC",
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "../../output",
+      "app": "../../output/axiocnc"
+    },
+    "publish": [],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "icon": "build-resources/icon.icns"
+    },
+    "dmg": {
+      "background": "build-resources/background.png",
+      "icon": "build-resources/icon.icns",
+      "iconSize": 80,
+      "iconTextSize": 12,
+      "contents": [
+        {
+          "x": 448,
+          "y": 344,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 192,
+          "y": 344,
+          "type": "file"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build-resources/icon.ico"
+    },
+    "linux": {
+      "category": "Utility",
+      "target": [
+        "deb"
+      ]
+    }
   }
 }
