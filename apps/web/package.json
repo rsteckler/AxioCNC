@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "npm run build:clean && npm run build:compile && npm run build:copy",
     "build:clean": "rm -rf dist",
-    "build:compile": "tsc -b --noEmitOnError false || true && vite build",
+    "build:compile": "tsc -b || true && vite build",
     "build:copy": "npm run build:copy:package",
     "build:copy:package": "cp -af package.json dist/",
     "build:dev": "vite build --mode development",
