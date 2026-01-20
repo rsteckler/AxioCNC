@@ -184,12 +184,27 @@ CLI_FILE="${AXIOCNC_DIR}/cli.js"
 LOG_DIR="/var/log/axiocnc"
 LOG_FILE="${LOG_DIR}/axiocnc.log"
 
-# Ensure log directory exists
-mkdir -p "${LOG_DIR}" || true
+# Ensure log directory exists and is writable
+# Try to create /var/log/axiocnc, fall back to user directory if that fails
+if ! mkdir -p "${LOG_DIR}" 2>/dev/null || [ ! -w "${LOG_DIR}" ]; then
+    # Fall back to user's home directory if /var/log/axiocnc is not accessible
+    FALLBACK_LOG_DIR="${HOME}/.axiocnc"
+    if mkdir -p "${FALLBACK_LOG_DIR}" 2>/dev/null; then
+        LOG_DIR="${FALLBACK_LOG_DIR}"
+        LOG_FILE="${LOG_DIR}/axiocnc.log"
+        echo "Warning: Cannot write to /var/log/axiocnc, using ${LOG_FILE} instead" >&2
+    else
+        # Last resort: use /tmp
+        LOG_DIR="/tmp/axiocnc-${USER}"
+        LOG_FILE="${LOG_DIR}/axiocnc.log"
+        mkdir -p "${LOG_DIR}" 2>/dev/null || true
+        echo "Warning: Using temporary log location ${LOG_FILE}" >&2
+    fi
+fi
 
 # Function to log messages
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "${LOG_FILE}" 2>/dev/null || true
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "${LOG_FILE}" 2>/dev/null || echo "$(date '+%Y-%m-%d %H:%M:%S'): $*"
 }
 
 # Function to log errors
@@ -302,10 +317,18 @@ if [ -n "$USER" ] && [ "$USER" != "root" ]; then
     usermod -a -G dialout "$USER" || true
 fi
 
-# Create log directory
-mkdir -p /var/log/axiocnc || true
-chown root:root /var/log/axiocnc 2>/dev/null || true
-chmod 755 /var/log/axiocnc 2>/dev/null || true
+# Create log directory with proper permissions
+# Directory is readable/executable by all, writable by root only
+# Users will fall back to ~/.axiocnc/ if they can't write here
+if mkdir -p /var/log/axiocnc 2>/dev/null; then
+    chown root:root /var/log/axiocnc 2>/dev/null || true
+    chmod 755 /var/log/axiocnc 2>/dev/null || true
+    # Create log file (users running as root or via systemd can write here)
+    # Regular users will use ~/.axiocnc/axiocnc.log (handled by launcher script)
+    touch /var/log/axiocnc/axiocnc.log 2>/dev/null || true
+    chmod 644 /var/log/axiocnc/axiocnc.log 2>/dev/null || true
+    chown root:root /var/log/axiocnc/axiocnc.log 2>/dev/null || true
+fi
 
 # Enable systemd service (optional - user can enable manually)
 # systemctl daemon-reload
