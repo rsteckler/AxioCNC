@@ -35,47 +35,21 @@ class MediaMTXManager extends events.EventEmitter {
   }
 
   /**
-   * Find project root by looking for package.json and apps/ directory
-   * Works from both source and compiled output directories
-   * Skips over build output directories (output/, dist/)
+   * Find server root by looking for vendor/mediamtx directory
+   * Works from both source and installed app directories
+   * In dev: apps/server/src/services/mediamtx -> apps/server/
+   * In prod: /opt/AxioCNC/resources/app/server/services/mediamtx -> /opt/AxioCNC/resources/app/server/
    */
-  findProjectRoot() {
+  findServerRoot() {
     let current = __dirname;
 
-    // Start from __dirname and go up until we find the actual project root
-    // Look for package.json AND apps/ directory to avoid matching build output
-    for (let i = 0; i < 15; i++) {
-      const packageJson = path.join(current, 'package.json');
-      const appsDir = path.join(current, 'apps');
+    // Start from __dirname and go up until we find vendor/mediamtx directory
+    for (let i = 0; i < 10; i++) {
+      const vendorMediamtxDir = path.join(current, 'vendor', 'mediamtx');
 
-      // Check if this looks like the project root:
-      // - Has package.json
-      // - Has apps/ directory (monorepo structure indicator)
-      // - Not inside output/ or dist/ directory
-      if (fs.existsSync(packageJson)) {
-        // Skip if we're in a build output directory
-        const dirName = path.basename(current);
-        const parentDir = path.basename(path.dirname(current));
-        if (dirName === 'output' || dirName === 'dist' || parentDir === 'output' || parentDir === 'dist') {
-          // Keep going up
-          const parent = path.dirname(current);
-          if (parent === current) {
-            break;
-          }
-          current = parent;
-          continue;
-        }
-
-        // Check for apps/ directory (monorepo structure indicator)
-        if (fs.existsSync(appsDir)) {
-          return current;
-        }
-
-        // If we have package.json and we're not in output/dist, and we have apps/server/vendor/
-        // that's also a good indicator
-        if (fs.existsSync(path.join(current, 'apps', 'server', 'vendor'))) {
-          return current;
-        }
+      // Check if vendor/mediamtx directory exists
+      if (fs.existsSync(vendorMediamtxDir) && fs.statSync(vendorMediamtxDir).isDirectory()) {
+        return current;
       }
 
       const parent = path.dirname(current);
@@ -88,13 +62,10 @@ class MediaMTXManager extends events.EventEmitter {
     // Fallback: try process.cwd() and go up if needed
     let fallback = process.cwd();
     for (let i = 0; i < 5; i++) {
-      const packageJson = path.join(fallback, 'package.json');
-      const appsDir = path.join(fallback, 'apps');
-
-      if (fs.existsSync(packageJson) && fs.existsSync(appsDir)) {
+      const vendorMediamtxDir = path.join(fallback, 'vendor', 'mediamtx');
+      if (fs.existsSync(vendorMediamtxDir) && fs.statSync(vendorMediamtxDir).isDirectory()) {
         return fallback;
       }
-
       const parent = path.dirname(fallback);
       if (parent === fallback) {
         break;
@@ -134,9 +105,10 @@ class MediaMTXManager extends events.EventEmitter {
     const platform = process.platform;
     const arch = process.arch;
 
-    // Vendor binary path (relative to project root)
-    // Directory structure: apps/server/vendor/mediamtx/linux-amd64/mediamtx
-    const projectRoot = this.findProjectRoot();
+    // Find server root (where vendor/mediamtx exists)
+    // In dev: apps/server/
+    // In prod: /opt/AxioCNC/resources/app/server/
+    const serverRoot = this.findServerRoot();
 
     // Map platform/arch to directory name
     // linux + x64 -> linux-amd64
@@ -158,9 +130,7 @@ class MediaMTXManager extends events.EventEmitter {
     }
 
     const vendorBinaryPath = path.resolve(
-      projectRoot,
-      'apps',
-      'server',
+      serverRoot,
       'vendor',
       'mediamtx',
       platformArchDir,
@@ -169,7 +139,7 @@ class MediaMTXManager extends events.EventEmitter {
 
     this.binaryPath = vendorBinaryPath;
 
-    log.debug(`MediaMTX paths: projectRoot=${projectRoot}, binary=${this.binaryPath}, config=${this.configPath}, logDir=${this.logDir}`);
+    log.debug(`MediaMTX paths: serverRoot=${serverRoot}, binary=${this.binaryPath}, config=${this.configPath}, logDir=${this.logDir}`);
   }
 
   /**
