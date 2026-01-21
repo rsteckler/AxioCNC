@@ -115,46 +115,15 @@ trap "rm -rf '${PROD_INSTALL_DIR}'" EXIT INT TERM
 rm -rf "${PROD_INSTALL_DIR}"
 mkdir -p "${PROD_INSTALL_DIR}"
 
-# Copy FULL package.json (keep devDependencies for lockfile compatibility)
-# We'll prune devDeps from node_modules after install
+# Copy package.json for isolated production install
 cp "${PROJECT_ROOT}/apps/server/package.json" "${PROD_INSTALL_DIR}/"
 
-# Copy Yarn config for deterministic isolated install
-cp "${PROJECT_ROOT}/yarn.lock" "${PROD_INSTALL_DIR}/"
-# Create simplified .yarnrc.yml (no plugins - this is standalone, not a workspace)
-cat > "${PROD_INSTALL_DIR}/.yarnrc.yml" << 'EOF'
-nodeLinker: node-modules
-yarnPath: .yarn/releases/yarn-3.3.1.cjs
-EOF
-mkdir -p "${PROD_INSTALL_DIR}/.yarn/releases"
-cp -f "${PROJECT_ROOT}/.yarn/releases/yarn-3.3.1.cjs" "${PROD_INSTALL_DIR}/.yarn/releases/" 2>/dev/null || true
-
-# Install dependencies in isolated temp folder (deterministic via lockfile)
+# Install production dependencies in isolated temp folder
 cd "${PROD_INSTALL_DIR}"
-YARN_BIN="${PROJECT_ROOT}/.yarn/releases/yarn-3.3.1.cjs"
-node "${YARN_BIN}" install --immutable || {
-  echo "Warning: --immutable failed, falling back to regular install"
-  node "${YARN_BIN}" install || {
-    echo "Error: yarn install failed in temp folder"
-    exit 1
-  }
+npm install --omit=dev --no-audit --no-fund --no-package-lock || {
+  echo "Error: npm install failed in temp folder"
+  exit 1
 }
-
-# Prune devDependencies from node_modules (keep only production deps)
-echo "Pruning devDependencies from node_modules..."
-node -e "
-  const fs = require('fs');
-  const path = require('path');
-  const pkg = require('./package.json');
-  const devDeps = Object.keys(pkg.devDependencies || {});
-  for (const dep of devDeps) {
-    const depPath = path.join('node_modules', dep);
-    if (fs.existsSync(depPath)) {
-      fs.rmSync(depPath, { recursive: true, force: true });
-      console.log('  Removed:', dep);
-    }
-  }
-"
 cd "${PROJECT_ROOT}"
 
 # Copy built application

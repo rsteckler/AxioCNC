@@ -29,3 +29,6 @@ developers/examples/grbl-sim-build/grbl/
 
 # TypeScript build info files
 *.tsbuildinfo
+
+# Windows ADS metadata files
+*:Zone.Identifier
