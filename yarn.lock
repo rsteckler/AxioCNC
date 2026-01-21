@@ -436,7 +436,7 @@ __metadata:
     tailwind-merge: ^2.5.5
     tailwindcss: ^3.4.16
     tailwindcss-animate: ^1.0.7
-    three: ^0.160.0
+    three: ^0.182.0
     typescript: ~5.6.2
     typescript-eslint: ^8.15.0
     vite: ^6.0.1
@@ -10638,7 +10638,6 @@ __metadata:
     supertest: ^7.2.2
     tap: ~21.0.0
     text-table: ~0.2.0
-    three: ~0.103.0
     timers-browserify: ^2.0.12
     transform-loader: ~0.2.4
     universal-logger: ~1.0.1
@@ -31097,13 +31096,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.160.0":
-  version: 0.160.1
-  resolution: "three@npm:0.160.1"
-  checksum: 5f4be21df6ee5abf63a21513e9650a4956e3699d59f16b4545b27e1c421405d452c132253381e8f5cca3f609d41c4e29dad24fddab526156017ec215ab244ad1
-  languageName: node
-  linkType: hard
-
 "three@npm:^0.170.0":
   version: 0.170.0
   resolution: "three@npm:0.170.0"
@@ -31111,10 +31103,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:~0.103.0":
-  version: 0.103.0
-  resolution: "three@npm:0.103.0"
-  checksum: 84ecaadbbd12f391818ab40eb8aa3533a44e68afeb2edce80915fe90a7d529762629c216c9aa9c343126ac1ee3ab3d8d79289fa3bcd9646d5995cc15839283fc
+"three@npm:^0.182.0":
+  version: 0.182.0
+  resolution: "three@npm:0.182.0"
+  checksum: f0161fe1178251e591ccafbd9d8e0dd289e641e9809ae6164e6f9e4f4eb30bacda0b06495253c5e650ea1059baabae5cbc28f7440b79da176c5bee690d564e08
   languageName: node
   linkType: hard
 
