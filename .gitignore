@@ -6,9 +6,8 @@ yarn-error.log
 /.nyc_output
 /.tap
 /coverage
-/dist
-/output
-/releases
+/build/
+/out/
 apps/web/dist/
 apps/server/dist/
 apps/server/output/
