@@ -17,7 +17,7 @@ const run = (cmd, args, options = {}) => {
 const electronBuilderArgs = process.argv.slice(2);
 const hasProjectDir = electronBuilderArgs.some(arg => arg.startsWith('--projectDir'));
 if (!hasProjectDir) {
-  electronBuilderArgs.push('--projectDir', 'apps/desktop');
+  electronBuilderArgs.push('--projectDir', '.');
 }
 const hasConfig = electronBuilderArgs.some(arg => arg.startsWith('--config'));
 if (!hasConfig) {

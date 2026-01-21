@@ -9,7 +9,7 @@
     "build:clean": "rm -rf dist",
     "build:compile": "babel src -d dist --config-file ../../babel.config.js",
     "build:i18n": "i18next-scanner --config ../../i18next-scanner.server.config.js \"src/**/*.{html,js,jsx}\" \"!src/i18n/**\" \"!**/node_modules/**\"",
-    "build:copy": "npm run build:copy:assets && npm run build:copy:i18n && npm run build:copy:views && npm run build:copy:config && npm run build:copy:package",
+    "build:copy": "node ../../developers/scripts/packaging/copy-server-assets.js",
     "build:copy:assets": "mkdir -p dist && cp -af assets dist/ 2>/dev/null || true",
     "build:copy:i18n": "mkdir -p dist && cp -af src/i18n dist/",
     "build:copy:views": "mkdir -p dist && cp -af src/views dist/",
