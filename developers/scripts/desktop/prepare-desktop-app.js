@@ -13,6 +13,10 @@ const run = (cmd, args, options = {}) => {
     stdio: 'inherit',
     ...options,
   });
+  if (result.error) {
+    console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);
+    process.exit(1);
+  }
   if (result.status !== 0) {
     process.exit(result.status || 1);
   }
@@ -40,7 +44,8 @@ const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runt
 run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
-run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+run(npmCmd, ['install', '--omit=dev', '--no-audit', '--no-fund'], {
   cwd: outputRoot,
   env: {
     ...process.env,
