@@ -32,6 +32,7 @@ ensureDir(distRoot);
 copyDir(path.join(serverRoot, 'assets'), path.join(distRoot, 'assets'));
 copyDir(path.join(serverRoot, 'src', 'i18n'), path.join(distRoot, 'i18n'));
 copyDir(path.join(serverRoot, 'src', 'views'), path.join(distRoot, 'views'));
+copyDir(path.join(serverRoot, 'vendor', 'mediamtx'), path.join(distRoot, 'vendor', 'mediamtx'));
 
 const configDir = path.join(serverRoot, 'src', 'config');
 if (fs.existsSync(configDir)) {

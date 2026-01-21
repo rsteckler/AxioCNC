@@ -11,9 +11,14 @@
  * @api public
  */
 
+const logger = require('../logger');
+
+const log = logger('middleware:errlog');
+
 const errlog = () => {
   return (err, req, res, next) => {
-    console.error(err.stack);
+    log.error(err.stack || err.message || err);
+    log.error(`Request info: method=${req.method} url=${req.originalUrl || req.url} headersSent=${res.headersSent} status=${res.statusCode}`);
     next(err);
   };
 };

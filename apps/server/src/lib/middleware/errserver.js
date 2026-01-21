@@ -27,6 +27,10 @@
  * @api public
  */
 
+const logger = require('../logger');
+
+const log = logger('middleware:errserver');
+
 const errserver = (options) => {
   options = options || {};
 
@@ -34,6 +38,13 @@ const errserver = (options) => {
     error = options.error || '';
 
   return (err, req, res, next) => {
+    if (res.headersSent) {
+      log.warn(`Headers already sent for ${req.method} ${req.originalUrl || req.url}`);
+      return;
+    }
+
+    log.error(err.stack || err.message || err);
+    log.error(`Request info: method=${req.method} url=${req.originalUrl || req.url} status=${res.statusCode}`);
     // we may use properties of the error object
     // here and next(err) appropriately, or if
     // we possibly recovered from the error, simply next().

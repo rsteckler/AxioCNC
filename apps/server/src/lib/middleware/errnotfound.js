@@ -15,6 +15,10 @@
  * @api public
  */
 
+const logger = require('../logger');
+
+const log = logger('middleware:errnotfound');
+
 const errnotfound = (options) => {
   options = options || {};
 
@@ -22,6 +26,11 @@ const errnotfound = (options) => {
     error = options.error || '';
 
   return (req, res, next) => {
+    if (res.headersSent) {
+      log.warn(`Headers already sent for ${req.method} ${req.originalUrl || req.url}`);
+      return;
+    }
+
     res.status(404);
 
     // respond with html page

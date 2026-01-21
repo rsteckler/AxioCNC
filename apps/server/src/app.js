@@ -129,11 +129,20 @@ const appMain = () => {
 
   try {
     // https://github.com/valery-barysok/session-file-store
-    const path = settings.middleware.session.path; // Defaults to '~/.axiocnc/sessions'
+    const sessionPath = settings.middleware.session.path; // Defaults to '~/.axiocnc/sessions'
 
     // Ensure session directory exists (don't delete it first - preserve existing sessions)
-    if (!fs.existsSync(path)) {
-      fs.mkdirSync(path, { recursive: true });
+    if (!fs.existsSync(sessionPath)) {
+      fs.mkdirSync(sessionPath, { recursive: true });
+    }
+
+    try {
+      const stats = fs.statSync(sessionPath);
+      log.debug(`Session store path: ${sessionPath} (isDir=${stats.isDirectory()}, mode=${stats.mode.toString(8)})`);
+      fs.accessSync(sessionPath, fs.constants.R_OK | fs.constants.W_OK);
+      log.debug(`Session store access OK: ${sessionPath}`);
+    } catch (err) {
+      log.warn(`Session store access check failed for ${sessionPath}: ${err.code} ${err.message}`);
     }
 
     const FileStore = sessionFileStore(session);
@@ -148,9 +157,24 @@ const appMain = () => {
       saveUninitialized: true,
 
       store: new FileStore({
-        path: path,
+        path: sessionPath,
         logFn: (...args) => {
-          log.debug.apply(log, args);
+          log.debug('session-store', ...args);
+          const hasEperm = args.some(arg => {
+            if (!arg) return false;
+            if (typeof arg === 'string') return arg.includes('EPERM') || arg.includes('operation not permitted');
+            return arg.code === 'EPERM';
+          });
+          if (hasEperm) {
+            log.warn('Session store EPERM detected while writing sessions.');
+            try {
+              const entries = fs.readdirSync(sessionPath);
+              const tail = entries.slice(-10).join(', ');
+              log.warn(`Session dir entries (last 10): ${tail}`);
+            } catch (listErr) {
+              log.warn(`Session dir listing failed: ${listErr.code} ${listErr.message}`);
+            }
+          }
         }
       })
     }));
@@ -232,13 +256,15 @@ const appMain = () => {
       if (!bypass) {
         // Check whether the provided credential is correct
         const token = _get(req, 'query.token') || _get(req, 'body.token');
-        try {
-          // User Validation
-          const user = jwt.verify(token, settings.secret) || {};
-          await validateUser(user);
-          bypass = true;
-        } catch (err) {
-          log.warn(err);
+        if (token) {
+          try {
+            // User Validation
+            const user = jwt.verify(token, settings.secret) || {};
+            await validateUser(user);
+            bypass = true;
+          } catch (err) {
+            log.warn(err);
+          }
         }
       }
 
