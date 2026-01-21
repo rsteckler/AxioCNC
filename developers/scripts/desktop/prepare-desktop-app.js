@@ -6,16 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '../../..');
-const serverDist = path.join(repoRoot, 'apps/server/dist');
-const webDist = path.join(repoRoot, 'apps/web/dist');
-const sharedDist = path.join(repoRoot, 'packages/shared/dist');
 const desktopDist = path.join(repoRoot, 'apps/desktop/dist');
-
-const ensureDir = (dir) => fs.mkdirSync(dir, { recursive: true });
-
-const copyDir = (from, to) => {
-  fs.cpSync(from, to, { recursive: true, dereference: true });
-};
 
 const run = (cmd, args, options = {}) => {
   const result = spawnSync(cmd, args, {
@@ -44,41 +35,9 @@ const outputRoot = path.isAbsolute(bundleDir)
   ? bundleDir
   : path.resolve(repoRoot, bundleDir);
 
-assertExists(serverDist, 'server build output');
-assertExists(webDist, 'web build output');
-assertExists(sharedDist, 'shared build output');
 assertExists(desktopDist, 'desktop runtime build output');
-
-console.log(`🧹 Cleaning ${outputRoot}...`);
-fs.rmSync(outputRoot, { recursive: true, force: true });
-ensureDir(path.join(outputRoot, 'app'));
-ensureDir(path.join(outputRoot, 'server'));
-ensureDir(path.join(outputRoot, 'shared'));
-
-console.log('📦 Copying server dist...');
-copyDir(serverDist, path.join(outputRoot, 'server'));
-
-console.log('📦 Copying web dist...');
-copyDir(webDist, path.join(outputRoot, 'app'));
-
-console.log('📦 Copying shared dist...');
-copyDir(sharedDist, path.join(outputRoot, 'shared'));
-
-console.log('📦 Copying package.json for server version lookup...');
-fs.copyFileSync(
-  path.join(repoRoot, 'apps/server/package.json'),
-  path.join(outputRoot, 'package.json')
-);
-
-const indexHbs = path.join(repoRoot, 'index.hbs');
-if (fs.existsSync(indexHbs)) {
-  fs.copyFileSync(indexHbs, path.join(outputRoot, 'app', 'index.hbs'));
-}
-
-const favicon = path.join(repoRoot, 'apps/web/public/favicon.ico');
-if (fs.existsSync(favicon)) {
-  fs.copyFileSync(favicon, path.join(outputRoot, 'app', 'favicon.ico'));
-}
+const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runtime.js');
+run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
 run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {

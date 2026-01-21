@@ -17,7 +17,9 @@ fi
 
 PACKAGE_NAME="axiocnc-server"
 INSTALL_DIR="/opt/axiocnc"
-BUILD_DIR="apps/server/output"
+BUILD_ROOT="build/linux-${ARCH}"
+BUNDLE_ROOT="${BUILD_ROOT}/axiocnc"
+OUT_DIR="out"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NODE_VERSION="20.18.0"  # Node.js LTS version to bundle
 
@@ -45,11 +47,11 @@ if [ ! -d "apps/web/dist" ] || [ -z "$(ls -A apps/web/dist 2>/dev/null)" ]; then
 fi
 
 # Clean previous package build
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
+rm -rf "${BUILD_ROOT}"
+mkdir -p "${BUILD_ROOT}"
 
 # Create package structure
-PACKAGE_ROOT="${BUILD_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
+PACKAGE_ROOT="${BUILD_ROOT}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}"
 mkdir -p "${PACKAGE_ROOT}/usr/bin"
 mkdir -p "${PACKAGE_ROOT}/etc/systemd/system"
@@ -57,7 +59,7 @@ mkdir -p "${PACKAGE_ROOT}/DEBIAN"
 
 # Download and extract Node.js binary
 echo "📥 Downloading Node.js ${NODE_VERSION} for ${ARCH}..."
-NODE_DOWNLOAD_DIR="${BUILD_DIR}/.node-download"
+NODE_DOWNLOAD_DIR="${BUILD_ROOT}/.node-download"
 rm -rf "${NODE_DOWNLOAD_DIR}"
 mkdir -p "${NODE_DOWNLOAD_DIR}"
 
@@ -100,6 +102,9 @@ cp -r "${NODE_DIR}/bin" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/"
 cp -r "${NODE_DIR}/lib" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 cp -r "${NODE_DIR}/include" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 cp -r "${NODE_DIR}/share" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
+
+# Stage runtime bundle (server/web/shared) into build scratchpad
+node "${PROJECT_ROOT}/developers/scripts/packaging/stage-runtime.js" --bundle-dir "${BUNDLE_ROOT}"
 
 # Production dependency installation in isolated temp folder
 # This avoids mutating the repo's node_modules
@@ -154,7 +159,7 @@ cd "${PROJECT_ROOT}"
 # Copy built application
 echo "Copying application files..."
 # Copy cli.js to root, but put everything else in server/ subdirectory
-cp apps/server/dist/cli.js "${PACKAGE_ROOT}${INSTALL_DIR}/"
+cp "${BUNDLE_ROOT}/server/cli.js" "${PACKAGE_ROOT}${INSTALL_DIR}/"
 # Create production package.json from source (without scripts/devDependencies)
 node -e "
   const fs = require('fs');
@@ -165,9 +170,9 @@ node -e "
 "
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/server"
 # Copy all files and directories except cli.js and package.json to server/ subdirectory
-rsync -a --exclude='cli.js' --exclude='package.json' apps/server/dist/ "${PACKAGE_ROOT}${INSTALL_DIR}/server/" || {
+rsync -a --exclude='cli.js' --exclude='package.json' "${BUNDLE_ROOT}/server/" "${PACKAGE_ROOT}${INSTALL_DIR}/server/" || {
     # Fallback if rsync not available
-    cd apps/server/dist
+    cd "${BUNDLE_ROOT}/server"
     cp -r . "${PACKAGE_ROOT}${INSTALL_DIR}/server/"
     rm -f "${PACKAGE_ROOT}${INSTALL_DIR}/server/cli.js"
     rm -f "${PACKAGE_ROOT}${INSTALL_DIR}/server/package.json"
@@ -185,14 +190,12 @@ cp -r "${PROD_INSTALL_DIR}/node_modules" "${PACKAGE_ROOT}${INSTALL_DIR}/"
 # Copy shared package (needed by server code)
 echo "Copying shared package..."
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/shared"
-cp -r packages/shared/dist/* "${PACKAGE_ROOT}${INSTALL_DIR}/shared/"
+cp -r "${BUNDLE_ROOT}/shared/"* "${PACKAGE_ROOT}${INSTALL_DIR}/shared/"
 
 # Copy web app (frontend files needed by server)
 echo "Copying web app..."
 mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/app"
-cp -r apps/web/dist/* "${PACKAGE_ROOT}${INSTALL_DIR}/app/"
-# Copy index.hbs template if it exists
-cp -af index.hbs "${PACKAGE_ROOT}${INSTALL_DIR}/app/" 2>/dev/null || true
+cp -r "${BUNDLE_ROOT}/app/"* "${PACKAGE_ROOT}${INSTALL_DIR}/app/"
 
 # Create launcher script that uses bundled Node.js
 echo "Creating launcher script..."
@@ -371,19 +374,19 @@ EOF
 chmod +x "${PACKAGE_ROOT}/DEBIAN/postrm"
 
 # Ensure output directory exists
-mkdir -p "${PROJECT_ROOT}/output"
+mkdir -p "${PROJECT_ROOT}/${OUT_DIR}"
 
 # Build .deb package
 echo "Building .deb package..."
-dpkg-deb --build "${PACKAGE_ROOT}" "${PROJECT_ROOT}/output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+dpkg-deb --build "${PACKAGE_ROOT}" "${PROJECT_ROOT}/${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
 
 # Get package size
-PACKAGE_SIZE=$(du -h "${PROJECT_ROOT}/output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" | cut -f1)
+PACKAGE_SIZE=$(du -h "${PROJECT_ROOT}/${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" | cut -f1)
 
 echo ""
-echo "✅ Server package built: output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb (${PACKAGE_SIZE})"
+echo "✅ Server package built: ${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb (${PACKAGE_SIZE})"
 echo "   Node.js ${NODE_VERSION} is bundled - no system Node.js required!"
 echo ""
 echo "Install with:"
-echo "  sudo dpkg -i output/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+echo "  sudo dpkg -i ${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
 echo "  sudo apt-get install -f  # if dependencies missing"
