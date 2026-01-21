@@ -46,7 +46,7 @@ module.exports = (api) => {
         // Only apply to files that are NOT server code
         return !filename.includes('apps/server/') &&
                !filename.includes('packages/shared/') &&
-               !filename.includes('output/axiocnc/server') &&
+               !filename.includes('build/dev/server/axiocnc/server') &&
                !filename.includes('dist/axiocnc/server');
       },
       plugins: ['react-refresh/babel'],

@@ -6,8 +6,8 @@ const log = logger('api:machine-presets');
 
 // Path to presets file
 // When compiled by Babel to CommonJS, __dirname will be available
-// File location: output/axiocnc/server/api/api.machine-presets.js
-// Config location: output/axiocnc/server/config/machine-presets.json
+// File location: build/dev/server/axiocnc/server/api/api.machine-presets.js
+// Config location: build/dev/server/axiocnc/server/config/machine-presets.json
 // So we go up one level from api/ to server/, then into config/
 const PRESETS_FILE = path.resolve(__dirname, '../config/machine-presets.json');
 

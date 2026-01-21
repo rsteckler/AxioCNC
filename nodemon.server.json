@@ -2,7 +2,7 @@
   "watch": ["apps/server/src", "packages/shared/src", "apps/server/package.json"],
   "ext": "js,json",
   "ignore": ["node_modules"],
-  "exec": "mkdir -p output/axiocnc/app output/axiocnc/server && cp -f apps/server/package.json output/axiocnc/ && ([ -f apps/web/public/favicon.ico ] && cp -f apps/web/public/favicon.ico output/axiocnc/app/ || true) && babel -d output/axiocnc/shared packages/shared/src && babel -d output/axiocnc/server apps/server/src && babel apps/server/src/cli.js -o output/axiocnc/server-cli.js && cp -af apps/server/src/{i18n,views} output/axiocnc/server/ 2>/dev/null || true && cp -af apps/server/src/config/*.json output/axiocnc/server/config/ 2>/dev/null || true && cp -af apps/server/assets output/axiocnc/server/assets 2>/dev/null || true && node ./apps/server/bin/axiocnc --port 8000 -m /widget:https://cncjs.github.io/cncjs-widget-boilerplate/v1/",
+  "exec": "mkdir -p build/dev/server/axiocnc/app build/dev/server/axiocnc/server && cp -f apps/server/package.json build/dev/server/axiocnc/ && ([ -f apps/web/public/favicon.ico ] && cp -f apps/web/public/favicon.ico build/dev/server/axiocnc/app/ || true) && babel -d build/dev/server/axiocnc/shared packages/shared/src && babel -d build/dev/server/axiocnc/server apps/server/src && babel apps/server/src/cli.js -o build/dev/server/axiocnc/server-cli.js && cp -af apps/server/src/{i18n,views} build/dev/server/axiocnc/server/ 2>/dev/null || true && cp -af apps/server/src/config/*.json build/dev/server/axiocnc/server/config/ 2>/dev/null || true && cp -af apps/server/assets build/dev/server/axiocnc/server/assets 2>/dev/null || true && node ./apps/server/bin/axiocnc --port 8000 -m /widget:https://cncjs.github.io/cncjs-widget-boilerplate/v1/",
   "env": {
     "NODE_ENV": "development"
   }

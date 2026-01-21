@@ -7,7 +7,7 @@
 import _ from 'lodash';
 import config from '../services/configstore';
 /* eslint-disable import/no-unresolved */
-// Path relative to compiled output: output/axiocnc/server/api/ -> output/axiocnc/shared/
+// Path relative to compiled output: build/dev/server/axiocnc/server/api/ -> build/dev/server/axiocnc/shared/
 import {
   SystemSettingsSchema,
   getDefaultSettings,
