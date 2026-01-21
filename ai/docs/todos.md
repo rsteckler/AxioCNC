@@ -3,10 +3,10 @@
 This document consolidates all project todos from various sources.
 
 ## Before beta release
-show disconnected status when websocket dies
+x show disconnected status when websocket dies
 auto updates
-joystick locked
-spinup time for spindle before moving
+x joystick locked
+x spinup time for spindle before moving
 First use
 outline job envelope
 detemrine mediamtx runtime file locations like logs and config and make sure they all land inside the .axiocnc folder
@@ -14,7 +14,7 @@ settings export/import
 feed, spindle, rapid (cool way to say go slow)
 modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
 I like the sender components warning, but the protected-code link is broken.  repo-structure doc
-same loc: Bundle and packaging directories don't exist yet
+x same loc: Bundle and packaging directories don't exist yet
 replace cheton wu with my name as needed
 
 
