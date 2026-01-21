@@ -44,14 +44,27 @@ const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runt
 run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-run(npmCmd, ['install', '--omit=dev', '--no-audit', '--no-fund'], {
-  cwd: outputRoot,
-  env: {
-    ...process.env,
-    npm_config_update_notifier: 'false',
-  },
-});
+const npmCli = process.platform === 'win32'
+  ? path.join(process.execPath, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  : null;
+const npmArgs = ['install', '--omit=dev', '--no-audit', '--no-fund'];
+if (npmCli) {
+  run(process.execPath, [npmCli, ...npmArgs], {
+    cwd: outputRoot,
+    env: {
+      ...process.env,
+      npm_config_update_notifier: 'false',
+    },
+  });
+} else {
+  run('npm', npmArgs, {
+    cwd: outputRoot,
+    env: {
+      ...process.env,
+      npm_config_update_notifier: 'false',
+    },
+  });
+}
 
 console.log('🔧 Rebuilding native modules for Electron...');
 // eslint-disable-next-line import/no-dynamic-require
