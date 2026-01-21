@@ -90,6 +90,7 @@ export type PartialSettings = Partial<SystemSettings> & {
   zeroingStrategies?: Partial<SystemSettings['zeroingStrategies']>
   joystick?: Partial<SystemSettings['joystick']>
   appearance?: Partial<SystemSettings['appearance']>
+  firstUse?: Partial<SystemSettings['firstUse']>
 }
 
 // Extensions are schemaless - can store any JSON

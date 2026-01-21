@@ -3,7 +3,7 @@ import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { ExternalLink, Github, Heart } from 'lucide-react'
+import { ExternalLink, Github, Heart, PlayCircle } from 'lucide-react'
 
 interface AboutSectionProps {
   version: string
@@ -13,6 +13,7 @@ interface AboutSectionProps {
   onCheckForUpdatesChange: (value: boolean) => void
   onAnalyticsChange: (value: boolean) => void
   onEnableAdvancedSettings?: () => void
+  onShowSetupTutorial?: () => void
 }
 
 export function AboutSection({ 
@@ -22,7 +23,8 @@ export function AboutSection({
   allowAnalytics,
   onCheckForUpdatesChange,
   onAnalyticsChange,
-  onEnableAdvancedSettings 
+  onEnableAdvancedSettings,
+  onShowSetupTutorial
 }: AboutSectionProps) {
   const isUpdateAvailable = latestVersion && version !== latestVersion
   const clickTimesRef = useRef<number[]>([])
@@ -101,6 +103,24 @@ export function AboutSection({
 
         {/* Links */}
         <div className="grid gap-3">
+          {onShowSetupTutorial && (
+            <button
+              type="button"
+              onClick={onShowSetupTutorial}
+              className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <PlayCircle className="w-5 h-5" />
+                <div>
+                  <p className="font-medium">Show Setup Tutorial</p>
+                  <p className="text-sm text-muted-foreground">
+                    Open the setup walkthrough again
+                  </p>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
           <a
             href="https://github.com/rsteckler/axiocnc"
             target="_blank"

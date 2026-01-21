@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
+import { useGetSettingsQuery, useGetExtensionsQuery, useSetSettingsMutation } from '@/services/api'
 // useGetControllersQuery not currently used but may be needed in future
 import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
@@ -64,6 +64,7 @@ import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
+import { SetupTutorialDialog } from '@/components/SetupTutorialDialog'
 import { useNotifications } from '@/hooks/useNotifications'
 import { RapidPanel } from './panels/RapidPanel'
 import { FilePanel } from './panels/FilePanel'
@@ -198,15 +199,52 @@ function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isColla
 
 export default function Setup() {
   const navigate = useNavigate()
+  const location = useLocation()
   
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
+  const [setSettings] = useSetSettingsMutation()
   
   // Get advanced config (for debug mode)
   const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
   const debugMode = extensionsData && typeof extensionsData === 'object' && 'debugMode' in extensionsData
     ? (extensionsData as { debugMode?: boolean }).debugMode ?? false
     : false
+
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false)
+  const [dontShowTutorialAgain, setDontShowTutorialAgain] = useState(false)
+  const hasShownTutorialRef = useRef(false)
+  const hideSetupTutorial = settings?.firstUse?.hideSetupTutorial ?? false
+  const shouldForceShowTutorial = Boolean(
+    (location.state as { showSetupTutorial?: boolean } | null)?.showSetupTutorial
+  )
+
+  useEffect(() => {
+    if (settings) {
+      setDontShowTutorialAgain(hideSetupTutorial)
+    }
+  }, [settings, hideSetupTutorial])
+
+  useEffect(() => {
+    if (shouldForceShowTutorial) {
+      setIsTutorialOpen(true)
+      hasShownTutorialRef.current = true
+      sessionStorage.setItem('axiocnc-setup-tutorial-shown', 'true')
+      navigate(location.pathname, { replace: true, state: null })
+      return
+    }
+
+    if (!settings || hideSetupTutorial) {
+      return
+    }
+
+    const hasShownInSession = sessionStorage.getItem('axiocnc-setup-tutorial-shown') === 'true'
+    if (!hasShownTutorialRef.current && !hasShownInSession) {
+      setIsTutorialOpen(true)
+      hasShownTutorialRef.current = true
+      sessionStorage.setItem('axiocnc-setup-tutorial-shown', 'true')
+    }
+  }, [settings, hideSetupTutorial, shouldForceShowTutorial, navigate, location.pathname])
   
   // Panel order - just an array of IDs
   // Load from localStorage or use default
@@ -706,6 +744,15 @@ export default function Setup() {
       return updated
     })
   }
+
+  const handleTutorialDismissChange = useCallback((value: boolean) => {
+    setDontShowTutorialAgain(value)
+    setSettings({ firstUse: { hideSetupTutorial: value } })
+      .unwrap()
+      .catch((error) => {
+        console.error('Failed to update tutorial setting:', error)
+      })
+  }, [setSettings])
   
   // Persist panel order changes (in case setPanelOrder is called elsewhere)
   useEffect(() => {
@@ -954,6 +1001,13 @@ export default function Setup() {
         </div>
       </main>
       
+      {/* Setup tutorial dialog */}
+      <SetupTutorialDialog
+        open={isTutorialOpen}
+        onOpenChange={setIsTutorialOpen}
+        dontShowAgain={dontShowTutorialAgain}
+        onDontShowAgainChange={handleTutorialDismissChange}
+      />
       {/* Method selection dialog for "ask" strategy */}
       <ZeroingMethodSelectDialog
         open={showMethodSelectDialog}

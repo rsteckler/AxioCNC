@@ -728,6 +728,14 @@ export default function Settings() {
     // TODO: Optionally remove all Google Drive watch folders via API
   }, [])
 
+  const handleShowSetupTutorial = useCallback(() => {
+    // Mark as unmounting to prevent any pending state updates
+    isMountedRef.current = false
+    // Clear any pending debounced saves
+    pendingChanges.current = {}
+    navigate('/', { state: { showSetupTutorial: true } })
+  }, [navigate])
+
 
   // Connection config handler
   const handleConnectionConfigChange = useCallback((changes: Partial<ConnectionConfig>) => {
@@ -1465,6 +1473,7 @@ export default function Settings() {
               onCheckForUpdatesChange={handleCheckForUpdatesChange}
               onAnalyticsChange={handleAnalyticsChange}
               onEnableAdvancedSettings={() => handleAdvancedConfigChange({ showAdvancedSettings: true })}
+              onShowSetupTutorial={handleShowSetupTutorial}
             />
           </main>
         </div>
