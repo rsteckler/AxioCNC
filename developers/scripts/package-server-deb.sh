@@ -131,9 +131,10 @@ cp -f "${PROJECT_ROOT}/.yarn/releases/yarn-3.3.1.cjs" "${PROD_INSTALL_DIR}/.yarn
 
 # Install dependencies in isolated temp folder (deterministic via lockfile)
 cd "${PROD_INSTALL_DIR}"
-yarn install --immutable || {
+YARN_BIN="${PROJECT_ROOT}/.yarn/releases/yarn-3.3.1.cjs"
+node "${YARN_BIN}" install --immutable || {
   echo "Warning: --immutable failed, falling back to regular install"
-  yarn install || {
+  node "${YARN_BIN}" install || {
     echo "Error: yarn install failed in temp folder"
     exit 1
   }
