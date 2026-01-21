@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'  # Only trigger on tags starting with 'v' (e.g., v1.10.113)
   pull_request:
   workflow_dispatch:
 
@@ -35,6 +37,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Extract version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        id: tag_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present (e.g., v1.10.113 -> 1.10.113)
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from tag: $TAG_NAME"
+      - name: Update version numbers
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node developers/scripts/update-version.js ${{ steps.tag_version.outputs.version }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -69,6 +84,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Extract version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        id: tag_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present (e.g., v1.10.113 -> 1.10.113)
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from tag: $TAG_NAME"
+      - name: Update version numbers
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          node developers/scripts/update-version.js ${{ steps.tag_version.outputs.version }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -93,15 +121,46 @@ jobs:
     needs: [desktop, server-deb]
     runs-on: ubuntu-latest
     steps:
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present (e.g., v1.10.113 -> 1.10.113)
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from tag: $TAG_NAME"
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
 
       - name: List release artifacts
-        run: ls -la release-artifacts
+        run: |
+          echo "Release artifacts structure:"
+          find release-artifacts -type f | head -20
+          echo ""
+          echo "Total files:"
+          find release-artifacts -type f | wc -l
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag_version.outputs.tag_name }}
+          name: Release ${{ steps.tag_version.outputs.version }}
+          body: |
+            ## AxioCNC ${{ steps.tag_version.outputs.version }}
+            
+            ### Desktop Applications
+            - Linux (amd64, arm64, armv7l)
+            - Windows (x64)
+            - macOS (x64, arm64)
+            
+            ### Server Packages
+            - Debian/Ubuntu (amd64, arm64, armhf)
+            
+            See the [changelog](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref }}) for details.
           files: release-artifacts/**/*
+          draft: false
+          prerelease: ${{ contains(steps.tag_version.outputs.version, '-') }}

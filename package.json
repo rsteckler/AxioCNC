@@ -70,6 +70,8 @@
     "package:server-amd64": "bash developers/scripts/package-server-deb.sh amd64",
     "package:server-arm64": "bash developers/scripts/package-server-deb.sh arm64",
     "package:server-armhf": "bash developers/scripts/package-server-deb.sh armhf",
+    "release:tag": "node developers/scripts/release.js",
+    "release:tag:push": "node developers/scripts/release.js --push",
     "postinstall": "npx opencollective postinstall",
     "clean": "rimraf out node_modules apps/server/dist apps/desktop/dist apps/web/dist packages/shared/dist apps/web/node_modules build",
     "qoltemp:deploy:rpi-arm64": "bash developers/scripts/deploy-rpi.sh arm64"
