@@ -24,6 +24,11 @@ if (!hasConfig) {
   electronBuilderArgs.push('--config', 'electron-builder.config.js');
 }
 
+const enableDebug = process.env.AXIOCNC_EB_DEBUG === '1' || process.env.CI === 'true';
+if (enableDebug && !electronBuilderArgs.includes('--debug')) {
+  electronBuilderArgs.push('--debug');
+}
+
 const hasFlag = (flag) => electronBuilderArgs.includes(flag);
 
 let platform;
@@ -66,6 +71,12 @@ run('yarn', ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs
     ...process.env,
     AXIOCNC_BUNDLE_DIR: bundleRoot,
     AXIOCNC_OUTPUT_DIR: builderOutputDir,
+    ...(enableDebug
+      ? {
+          DEBUG: process.env.DEBUG || 'electron-builder*',
+          ELECTRON_BUILDER_LOG_LEVEL: process.env.ELECTRON_BUILDER_LOG_LEVEL || 'debug',
+        }
+      : {}),
   },
 });
 
