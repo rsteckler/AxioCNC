@@ -272,9 +272,10 @@ paths:
       const magic = buffer.toString('hex');
       const isElf = buffer[0] === 0x7F && buffer[1] === 0x45 && buffer[2] === 0x4C && buffer[3] === 0x46; // ELF
       const isShebang = buffer[0] === 0x23 && buffer[1] === 0x21; // #!
+      const isMz = buffer[0] === 0x4D && buffer[1] === 0x5A; // MZ (Windows PE)
 
-      if (!isElf && !isShebang) {
-        log.warn(`MediaMTX file may not be a valid binary (magic: ${magic}). Expected ELF binary or script with shebang.`);
+      if (!isElf && !isShebang && !isMz) {
+        log.warn(`MediaMTX file may not be a valid binary (magic: ${magic}). Expected ELF, MZ (Windows PE), or script with shebang.`);
       }
 
       return true;

@@ -151,10 +151,12 @@ const appMain = () => {
       secret: settings.secret,
 
       // https://github.com/expressjs/session#resave
-      resave: true,
+      // Reduce write/rename churn on Windows file stores.
+      resave: false,
 
       // https://github.com/expressjs/session#saveuninitialized
-      saveUninitialized: true,
+      // Avoid creating empty sessions (reduces file IO).
+      saveUninitialized: false,
 
       store: new FileStore({
         path: sessionPath,
