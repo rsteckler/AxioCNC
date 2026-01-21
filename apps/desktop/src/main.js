@@ -95,11 +95,25 @@ let mainWindow = null;
 let powerId = 0;
 const store = new Store();
 
+process.on('uncaughtException', (error) => {
+  console.error('[main] uncaughtException', error);
+});
+
+
 // Single instance lock
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
   process.exit(0);
+}
+
+const isLinux = process.platform === 'linux';
+const isWsl = isLinux && (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
+
+if (isLinux) {
+  process.env.ELECTRON_ENABLE_LOGGING = process.env.ELECTRON_ENABLE_LOGGING || '1';
+  app.commandLine.appendSwitch('enable-logging', 'stderr');
+  app.commandLine.appendSwitch('v', '1');
 }
 
 // Create the user data directory if it does not exist
@@ -209,6 +223,14 @@ const showMainWindow = async () => {
     return { action: 'deny' };
   });
 
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[main] render-process-gone', details);
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('[main] renderer unresponsive');
+  });
+
   mainWindow.webContents.on('context-menu', (event, props) => {
     const { selectionText, isEditable } = props;
     if (isEditable) {
@@ -268,14 +290,25 @@ const showMainWindow = async () => {
 // Increase V8 heap size of the main process in production
 if (process.arch === 'x64') {
   const memoryLimit = 1024 * 4; // 4GB
-  app.commandLine.appendSwitch('--js-flags', `--max-old-space-size=${memoryLimit}`);
+  app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${memoryLimit}`);
 }
 
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
+app.disableDomainBlockingFor3DAPIs();
 
 if (process.platform === 'linux') {
-  app.commandLine.appendSwitch('--no-sandbox');
+  app.commandLine.appendSwitch('no-sandbox');
 }
+
+if (isWsl) {
+  app.commandLine.appendSwitch('use-gl', 'desktop');
+  }
+
+
+console.log('argv:', process.argv);
+console.log('use-gl:', app.commandLine.getSwitchValue('use-gl'));
+console.log('use-angle:', app.commandLine.getSwitchValue('use-angle'));
+console.log('no-sandbox:', app.commandLine.hasSwitch('no-sandbox'));
 
 app.on('activate', async () => {
   if (!mainWindow) {

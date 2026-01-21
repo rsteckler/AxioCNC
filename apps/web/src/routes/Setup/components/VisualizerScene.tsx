@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react'
+import { useMemo, useEffect, useRef, useState } from 'react'
 import { Color } from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
@@ -499,6 +499,24 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines }: VisualizerSceneProps = {}) {
+  const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setWebglAvailable(false)
+      return
+    }
+
+    try {
+      const canvas = document.createElement('canvas')
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+      setWebglAvailable(Boolean(gl))
+    } catch (err) {
+      console.warn('[VisualizerScene] WebGL unavailable', err)
+      setWebglAvailable(false)
+    }
+  }, [])
+
   // Get machine limits and homing corner from settings
   const { data: settings } = useGetSettingsQuery()
   const machineLimits = settings?.machine?.limits
@@ -540,6 +558,14 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
   // Machine position for display (default to 0,0,0 if not available)
   const displayMachinePos = machinePosition || { x: 0, y: 0, z: 0 }
   
+  if (!webglAvailable) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+        Visualizer disabled: WebGL not available.
+      </div>
+    )
+  }
+
   return (
     <div className="relative w-full h-full">
       <Canvas>
