@@ -21,11 +21,11 @@ const run = (cmd, args, options = {}) => {
 const electronBuilderArgs = process.argv.slice(2);
 const hasProjectDir = electronBuilderArgs.some(arg => arg.startsWith('--projectDir'));
 if (!hasProjectDir) {
-  electronBuilderArgs.push('--projectDir', '.');
+  electronBuilderArgs.push('--projectDir', path.join(repoRoot, 'apps', 'desktop'));
 }
 const hasConfig = electronBuilderArgs.some(arg => arg.startsWith('--config'));
 if (!hasConfig) {
-  electronBuilderArgs.push('--config', 'electron-builder.config.js');
+  electronBuilderArgs.push('--config', path.join(repoRoot, 'apps', 'desktop', 'electron-builder.config.js'));
 }
 
 const hasFlag = (flag) => electronBuilderArgs.includes(flag);
