@@ -15,7 +15,7 @@ import mkdirp from 'mkdirp';
 
 // Resolve bundle root that contains server + web assets
 // Packaged: <resources>/axiocnc
-// Dev:      <repo>/output/axiocnc
+// Dev:      <repo>/build/<platform>-<arch>/axiocnc
 function getBundleRoot() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'axiocnc');
@@ -23,7 +23,13 @@ function getBundleRoot() {
   // This file is transpiled to apps/desktop/dist/main.js in dev
   // __dirname => <repo>/apps/desktop/dist
   const repoRoot = path.resolve(__dirname, '../../..');
-  return path.join(repoRoot, 'output', 'axiocnc');
+  const platform = process.platform === 'win32'
+    ? 'win'
+    : process.platform === 'darwin'
+      ? 'mac'
+      : 'linux';
+  const arch = process.arch;
+  return path.join(repoRoot, 'build', `${platform}-${arch}`, 'axiocnc');
 }
 
 // Read apps/desktop/package.json in dev; packaged reads packaged app package.json
@@ -168,9 +174,9 @@ const showMainWindow = async () => {
     if (!fs.existsSync(item.p)) {
       console.error(chalk.red(`Bundle validation failed: missing ${item.label} at ${item.p}`));
       if (!app.isPackaged) {
-        console.error(chalk.yellow('Dev mode: run developers/scripts/build-electron-prod.sh first.'));
+        console.error(chalk.yellow('Dev mode: run yarn build:all and then package script.'));
       } else {
-        console.error(chalk.yellow('Packaged mode: ensure electron-builder extraResources includes output/axiocnc -> resources/axiocnc.'));
+        console.error(chalk.yellow('Packaged mode: ensure electron-builder extraResources includes dist/axiocnc -> resources/axiocnc.'));
       }
       throw new Error(`Missing ${item.label}: ${item.p}`);
     }

@@ -6,7 +6,7 @@
   ],
   "ext": "js,json",
   "ignore": ["node_modules", "output", "dist"],
-  "exec": "bash developers/scripts/build-electron-dev.sh && npx cross-env NODE_ENV=development npx electron ./output/axiocnc/main",
+  "exec": "bash developers/scripts/build-electron-dev.sh && npx cross-env NODE_ENV=development npx electron ./apps/desktop/dist/main",
   "env": {
     "NODE_ENV": "development"
   }

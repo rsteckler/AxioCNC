@@ -6,8 +6,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '../../..');
-const outputRoot = path.join(repoRoot, 'output', 'axiocnc');
-
 const serverDist = path.join(repoRoot, 'apps/server/dist');
 const webDist = path.join(repoRoot, 'apps/web/dist');
 const sharedDist = path.join(repoRoot, 'packages/shared/dist');
@@ -36,12 +34,22 @@ const assertExists = (targetPath, label) => {
   }
 };
 
+const bundleDirFlagIndex = process.argv.indexOf('--bundle-dir');
+const bundleDir = bundleDirFlagIndex >= 0 ? process.argv[bundleDirFlagIndex + 1] : null;
+if (!bundleDir) {
+  console.error('❌ Missing required --bundle-dir argument');
+  process.exit(1);
+}
+const outputRoot = path.isAbsolute(bundleDir)
+  ? bundleDir
+  : path.resolve(repoRoot, bundleDir);
+
 assertExists(serverDist, 'server build output');
 assertExists(webDist, 'web build output');
 assertExists(sharedDist, 'shared build output');
 assertExists(desktopDist, 'desktop runtime build output');
 
-console.log('🧹 Cleaning output/axiocnc...');
+console.log(`🧹 Cleaning ${outputRoot}...`);
 fs.rmSync(outputRoot, { recursive: true, force: true });
 ensureDir(path.join(outputRoot, 'app'));
 ensureDir(path.join(outputRoot, 'server'));

@@ -7,7 +7,7 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '../../..');
-const outputDir = path.join(repoRoot, 'output');
+const outputDir = path.join(repoRoot, 'out');
 
 const run = (cmd, args, options = {}) => {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...options });
