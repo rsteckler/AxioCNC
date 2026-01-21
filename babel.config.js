@@ -39,15 +39,11 @@ module.exports = (api) => {
 
   // Only add React Fast Refresh for non-server code in development
   if (typeof env === 'function' && env('development')) {
-    // Use overrides to apply React Fast Refresh only to non-server files
+    // Use overrides to apply React Fast Refresh only to web sources
     baseConfig.overrides.push({
       test: (filename) => {
         if (!filename) return false;
-        // Only apply to files that are NOT server code
-        return !filename.includes('apps/server/') &&
-               !filename.includes('packages/shared/') &&
-               !filename.includes('build/dev/server/axiocnc/server') &&
-               !filename.includes('dist/axiocnc/server');
+        return /apps[\\/]+web[\\/]+/.test(filename);
       },
       plugins: ['react-refresh/babel'],
     });
