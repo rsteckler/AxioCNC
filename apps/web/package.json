@@ -61,7 +61,7 @@
     "socket.io-client": "^2.5.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "three": "^0.160.0",
+    "three": "^0.182.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {

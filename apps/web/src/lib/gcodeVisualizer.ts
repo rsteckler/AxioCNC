@@ -134,8 +134,8 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
 
   // Create BufferGeometry
   const geometry = new BufferGeometry()
-  ;(geometry as any).setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
-  ;(geometry as any).setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
+  geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+  geometry.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
   geometry.computeBoundingBox()
 
   // Calculate bounding box
