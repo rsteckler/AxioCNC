@@ -4,6 +4,7 @@
   "description": "A web-based interface for CNC milling controller running Grbl, Marlin, Smoothieware, or TinyG",
   "homepage": "https://github.com/rsteckler/axiocnc",
   "author": "Cheton Wu <cheton@gmail.com>",
+  "maintainer": "Ryan Steckler <admin@axiocnc.com>",
   "main": "./dist/axiocnc/server-cli.js",
   "bin": "./apps/server/bin/axiocnc",
   "files": [

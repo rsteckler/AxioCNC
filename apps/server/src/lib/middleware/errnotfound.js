@@ -16,8 +16,9 @@
  */
 
 const logger = require('../logger');
+const getLogger = logger.default || logger;
 
-const log = logger('middleware:errnotfound');
+const log = getLogger('middleware:errnotfound');
 
 const errnotfound = (options) => {
   options = options || {};

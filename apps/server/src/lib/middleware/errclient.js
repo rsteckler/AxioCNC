@@ -15,8 +15,9 @@
  */
 
 const logger = require('../logger');
+const getLogger = logger.default || logger;
 
-const log = logger('middleware:errclient');
+const log = getLogger('middleware:errclient');
 
 const errclient = (options) => {
   options = options || {};
