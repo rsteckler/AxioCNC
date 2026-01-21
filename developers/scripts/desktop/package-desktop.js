@@ -26,27 +26,35 @@ if (!hasConfig) {
 
 const hasFlag = (flag) => electronBuilderArgs.includes(flag);
 
-const platform = hasFlag('--linux')
-  ? 'linux'
-  : hasFlag('--win') || hasFlag('--windows')
-    ? 'win'
-    : hasFlag('--mac')
-      ? 'mac'
-      : process.platform === 'win32'
-        ? 'win'
-        : process.platform === 'darwin'
-          ? 'mac'
-          : 'linux';
+let platform;
+if (hasFlag('--linux')) {
+  platform = 'linux';
+} else if (hasFlag('--win') || hasFlag('--windows')) {
+  platform = 'win';
+} else if (hasFlag('--mac')) {
+  platform = 'mac';
+} else if (process.platform === 'win32') {
+  platform = 'win';
+} else if (process.platform === 'darwin') {
+  platform = 'mac';
+} else {
+  platform = 'linux';
+}
 
-const arch = hasFlag('--x64')
-  ? 'x64'
-  : hasFlag('--arm64')
-    ? 'arm64'
-    : hasFlag('--armv7l')
-      ? 'armv7l'
-      : process.arch;
+let arch;
+if (hasFlag('--x64')) {
+  arch = 'x64';
+} else if (hasFlag('--arm64')) {
+  arch = 'arm64';
+} else if (hasFlag('--armv7l')) {
+  arch = 'armv7l';
+} else {
+  arch = process.arch;
+}
 
 const bundleRoot = path.join(repoRoot, 'build', `${platform}-${arch}`, 'axiocnc');
+const builderOutputDir = path.join(repoRoot, 'build', `${platform}-${arch}`, 'out');
+const finalOutputDir = path.join(repoRoot, 'out');
 
 run(process.execPath, [prepareScript, '--bundle-dir', bundleRoot]);
 
@@ -57,5 +65,27 @@ run('yarn', ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs
   env: {
     ...process.env,
     AXIOCNC_BUNDLE_DIR: bundleRoot,
+    AXIOCNC_OUTPUT_DIR: builderOutputDir,
   },
 });
+
+const fs = require('fs');
+
+const copyToFinalOut = () => {
+  if (!fs.existsSync(builderOutputDir)) {
+    return;
+  }
+  const entries = fs.readdirSync(builderOutputDir)
+    .filter((file) => file.endsWith('.deb'))
+    .map((file) => path.join(builderOutputDir, file));
+  if (entries.length === 0) {
+    return;
+  }
+  fs.mkdirSync(finalOutputDir, { recursive: true });
+  for (const debPath of entries) {
+    const dest = path.join(finalOutputDir, path.basename(debPath));
+    fs.copyFileSync(debPath, dest);
+  }
+};
+
+copyToFinalOut();

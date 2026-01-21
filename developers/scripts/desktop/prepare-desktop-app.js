@@ -90,6 +90,7 @@ run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {
 });
 
 console.log('🔧 Rebuilding native modules for Electron...');
+// eslint-disable-next-line import/no-dynamic-require
 const desktopPkg = require(path.join(repoRoot, 'apps/desktop/package.json'));
 const electronVersion = desktopPkg.devDependencies?.electron;
 if (!electronVersion) {

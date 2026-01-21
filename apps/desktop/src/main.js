@@ -23,11 +23,14 @@ function getBundleRoot() {
   // This file is transpiled to apps/desktop/dist/main.js in dev
   // __dirname => <repo>/apps/desktop/dist
   const repoRoot = path.resolve(__dirname, '../../..');
-  const platform = process.platform === 'win32'
-    ? 'win'
-    : process.platform === 'darwin'
-      ? 'mac'
-      : 'linux';
+  let platform;
+  if (process.platform === 'win32') {
+    platform = 'win';
+  } else if (process.platform === 'darwin') {
+    platform = 'mac';
+  } else {
+    platform = 'linux';
+  }
   const arch = process.arch;
   return path.join(repoRoot, 'build', `${platform}-${arch}`, 'axiocnc');
 }

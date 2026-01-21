@@ -39,6 +39,7 @@ import {
 } from './joystickConstants'
 
 // Re-export for convenience
+// eslint-disable-next-line react-refresh/only-export-components
 export { CNC_ACTIONS, getGamepadButtons, type CncAction } from './joystickConstants'
 
 export type AnalogAxis = 'left_x' | 'left_y' | 'right_x' | 'right_y'
