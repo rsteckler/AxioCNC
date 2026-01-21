@@ -64,7 +64,8 @@ run(process.execPath, [prepareScript, '--bundle-dir', bundleRoot]);
 
 console.log(`📦 Running electron-builder ${electronBuilderArgs.join(' ')}`);
 
-run('yarn', ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs], {
+const yarnCmd = process.platform === 'win32' ? 'yarn.cmd' : 'yarn';
+run(yarnCmd, ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs], {
   cwd: repoRoot,
   env: {
     ...process.env,
