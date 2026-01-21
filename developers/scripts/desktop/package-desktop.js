@@ -9,6 +9,10 @@ const prepareScript = path.join(__dirname, 'prepare-desktop-app.js');
 
 const run = (cmd, args, options = {}) => {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...options });
+  if (result.error) {
+    console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);
+    process.exit(1);
+  }
   if (result.status !== 0) {
     process.exit(result.status || 1);
   }
@@ -22,11 +26,6 @@ if (!hasProjectDir) {
 const hasConfig = electronBuilderArgs.some(arg => arg.startsWith('--config'));
 if (!hasConfig) {
   electronBuilderArgs.push('--config', 'electron-builder.config.js');
-}
-
-const enableDebug = process.env.AXIOCNC_EB_DEBUG === '1' || process.env.CI === 'true';
-if (enableDebug && !electronBuilderArgs.includes('--debug')) {
-  electronBuilderArgs.push('--debug');
 }
 
 const hasFlag = (flag) => electronBuilderArgs.includes(flag);
@@ -71,12 +70,6 @@ run('yarn', ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs
     ...process.env,
     AXIOCNC_BUNDLE_DIR: bundleRoot,
     AXIOCNC_OUTPUT_DIR: builderOutputDir,
-    ...(enableDebug
-      ? {
-          DEBUG: process.env.DEBUG || 'electron-builder*',
-          ELECTRON_BUILDER_LOG_LEVEL: process.env.ELECTRON_BUILDER_LOG_LEVEL || 'debug',
-        }
-      : {}),
   },
 });
 
