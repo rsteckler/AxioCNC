@@ -1,8 +1,12 @@
 const path = require('path');
 
 const bundleDir = process.env.AXIOCNC_BUNDLE_DIR;
+const outputDir = process.env.AXIOCNC_OUTPUT_DIR;
 if (!bundleDir) {
   throw new Error('AXIOCNC_BUNDLE_DIR is required for desktop packaging');
+}
+if (!outputDir) {
+  throw new Error('AXIOCNC_OUTPUT_DIR is required for desktop packaging');
 }
 
 module.exports = {
@@ -13,7 +17,7 @@ module.exports = {
   },
   directories: {
     buildResources: 'build-resources',
-    output: '../../out',
+    output: outputDir,
   },
   extraResources: [
     {

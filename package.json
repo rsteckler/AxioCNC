@@ -67,7 +67,7 @@
     "package:server-arm64": "bash developers/scripts/package-server-deb.sh arm64",
     "package:server-armhf": "bash developers/scripts/package-server-deb.sh armhf",
     "postinstall": "npx opencollective postinstall",
-    "clean": "rimraf out node_modules apps/server/dist apps/desktop/dist apps/web/dist packages/shared/dist apps/web/node_modules",
+    "clean": "rimraf out node_modules apps/server/dist apps/desktop/dist apps/web/dist packages/shared/dist apps/web/node_modules build",
     "qoltemp:deploy:rpi-arm64": "bash developers/scripts/deploy-rpi.sh arm64"
   },
   "keywords": [
