@@ -99,7 +99,6 @@ process.on('uncaughtException', (error) => {
   console.error('[main] uncaughtException', error);
 });
 
-
 // Single instance lock
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -303,7 +302,6 @@ if (process.platform === 'linux') {
 if (isWsl) {
   app.commandLine.appendSwitch('use-gl', 'desktop');
   }
-
 
 console.log('argv:', process.argv);
 console.log('use-gl:', app.commandLine.getSwitchValue('use-gl'));

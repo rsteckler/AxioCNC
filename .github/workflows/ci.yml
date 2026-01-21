@@ -1,4 +1,4 @@
-name: desktop
+name: packages
 
 on:
   push:
@@ -13,7 +13,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            package_cmd: yarn package:desktop:linux-amd64
+            verify_deb: true
+          - os: windows-latest
+            package_cmd: yarn package:desktop:windows-x64
+            verify_deb: false
+          - os: macos-latest
+            package_cmd: yarn package:desktop:macos-x64
+            verify_deb: false
+          - os: macos-14
+            package_cmd: yarn package:desktop:macos-arm64
+            verify_deb: false
     defaults:
       run:
         shell: bash
@@ -29,16 +41,36 @@ jobs:
         run: corepack enable
       - name: Install dependencies
         run: yarn install --immutable
-      - name: Build server
-        run: yarn build:server
-      - name: Build web
-        run: yarn build:web
-      - name: Build shared
-        run: yarn build:shared
-      - name: Build desktop runtime
-        run: yarn build:desktop
+      - name: Build all
+        run: yarn build:all
       - name: Package desktop app
-        run: yarn package:desktop
+        run: ${{ matrix.package_cmd }}
       - name: Verify deb layout
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.verify_deb
         run: node developers/scripts/desktop/verify-deb-layout.js
+
+  server-deb:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64, armhf]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Build all
+        run: yarn build:all
+      - name: Package server deb
+        run: yarn package:server-${{ matrix.arch }}

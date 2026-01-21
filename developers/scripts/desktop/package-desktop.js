@@ -71,12 +71,19 @@ run('yarn', ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs
 
 const fs = require('fs');
 
+const artifactExtensionsByPlatform = {
+  linux: ['.deb', '.AppImage', '.rpm'],
+  win: ['.exe', '.msi', '.zip'],
+  mac: ['.dmg', '.zip'],
+};
+
 const copyToFinalOut = () => {
   if (!fs.existsSync(builderOutputDir)) {
     return;
   }
+  const extensions = artifactExtensionsByPlatform[platform] || [];
   const entries = fs.readdirSync(builderOutputDir)
-    .filter((file) => file.endsWith('.deb'))
+    .filter((file) => extensions.some((ext) => file.endsWith(ext)))
     .map((file) => path.join(builderOutputDir, file));
   if (entries.length === 0) {
     return;
