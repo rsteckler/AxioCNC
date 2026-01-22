@@ -103,7 +103,7 @@ const config: Config = {
             },
             {
               label: 'Getting Started',
-              to: '/getting-started/',
+              to: '/01-getting-set-up',
             },
           ],
         },
