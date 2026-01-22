@@ -1,16 +1,15 @@
 #### Description
 
-Describe the issue or feature request in detail. Take a screenshot or record a video will be helpful.
+Describe the issue or feature request in detail. Take a screenshot if possible.
 
 #### Versions
 
-- CNCjs: 1.9.x
-- Node.js: 6.x
-- NPM: 5.x
+- AxioCNC: 0.0.50
 
 #### How Do You Install CNCjs?
 
-- [x] NPM
+- [ ] Docker
+- [x] deb file
 - [ ] Download the CNCjs Desktop Application
 
 #### CNC Controller
