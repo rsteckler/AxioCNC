@@ -28,7 +28,7 @@
     "consolidate": "~0.15.1",
     "cookie-parser": "~1.4.4",
     "core-js": "~3.26.1",
-    "debug": "~4.1.1",
+    "debug": "~4.4.3",
     "deep-keys": "~0.5.0",
     "ensure-array": "^1.0.0",
     "ensure-type": "^1.5.1",
