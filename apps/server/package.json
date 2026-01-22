@@ -36,7 +36,7 @@
     "escodegen": "~1.11.1",
     "esprima": "~4.0.1",
     "expand-tilde": "~2.0.2",
-    "express": "~4.16.4",
+    "express": "~5.2.1",
     "express-jwt": "~5.3.1",
     "express-session": "~1.16.1",
     "gcode-parser": "^2.2.0",
