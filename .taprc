@@ -1,7 +1,3 @@
 # Tap configuration for AxioCNC
-# Coverage thresholds - tests will fail if coverage falls below these values
-
-statements: 90
-branches: 90
-functions: 85
-lines: 90
+# Coverage thresholds are set in package.json test:coverage script
+# via --statements, --branches, --functions, and --lines flags
