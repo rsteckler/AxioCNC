@@ -1,26 +1,25 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 /**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
+ * Developer docs sidebar. Ordered by happy path: start → setup → map → workflow
+ * → architecture → standards → testing → safety → contributing → release → CI
+ * → troubleshooting → reference.
  */
 const sidebars: SidebarsConfig = {
-  // By default, Docusaurus generates a sidebar from the docs folder structure
   devdocsSidebar: [
-    'getting-started',
-    'repo-layout',
-    'build-and-bundle-contract',
-    'branch-strategy',
-    'pull-request-guidelines',
-    'testing-strategy',
-    'release-process',
-    'api-philosophy',
+    '00-start-here',
+    '01-getting-set-up',
+    '02-repository-map',
+    '03-day-1-workflow',
+    '04-architecture',
+    '05-code-standards',
+    '06-testing-strategy',
+    '07-making-changes-safely',
+    '08-contributing',
+    '09-release-process',
+    '10-ci-cd',
+    '11-troubleshooting',
+    '12-reference',
   ],
 };
 
