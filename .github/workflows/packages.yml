@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'  # Only trigger on tags starting with 'v' (e.g., v1.10.113)
   pull_request:
   workflow_dispatch:
 
