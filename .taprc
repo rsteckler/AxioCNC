@@ -1,0 +1,7 @@
+# Tap configuration for AxioCNC
+# Coverage thresholds - tests will fail if coverage falls below these values
+
+statements: 90
+branches: 90
+functions: 85
+lines: 90

@@ -49,7 +49,7 @@
     "dev:web:validate-links": "bash developers/scripts/validate-docs-links.sh",
     "dev:web:start-all:skip-validation": "concurrently \"yarn dev:web:start-user-docs\" \"yarn dev:web:start-dev-docs\" \"yarn dev:web:start-static\"",
     "test:test": "tap apps/server/test/*.js --allow-incomplete-coverage --timeout=0 --node-arg=--require --node-arg=@babel/register",
-    "test:coverage": "tap apps/server/test/*.js --coverage --coverage-report=text-lcov --nyc-arg=--require --nyc-arg=@babel/register",
+    "test:coverage": "tap apps/server/test/*.js --coverage-report=text-lcov --node-arg=--require --node-arg=@babel/register",
     "test:lint": "concurrently --kill-others-on-fail --names \"test:lint:i18n,test:lint:eslint,test:lint:web\" \"yarn test:lint:i18n\" \"yarn test:lint:eslint\" \"yarn test:lint:web\"",
     "test:lint:i18n": "bash -c 'find apps/{web,server}/src/i18n -type f -name \"*.json\" 2>/dev/null | xargs -L1 -I{} -- bash -c \"echo Linting {}; jsonlint -q {}\"'",
     "test:lint:eslint": "eslint --color apps/server/src/**/*.js apps/server/test/**/*.js apps/desktop/src/**/*.js developers/scripts/**/*.js",
