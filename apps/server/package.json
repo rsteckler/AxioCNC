@@ -58,7 +58,7 @@
     "registry-url": "~5.1.0",
     "serialport": "^10.0.0",
     "serve-favicon": "~2.5.0",
-    "serve-static": "~1.13.2",
+    "serve-static": "~2.2.1",
     "session-file-store": "latest",
     "shortid": "~2.2.14",
     "socket.io": "~2.2.0",
