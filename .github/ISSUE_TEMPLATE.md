@@ -6,11 +6,11 @@ Describe the issue or feature request in detail. Take a screenshot if possible.
 
 - AxioCNC: 0.0.50
 
-#### How Do You Install CNCjs?
+#### How Did You Install AxiosCNC?
 
 - [ ] Docker
 - [x] deb file
-- [ ] Download the CNCjs Desktop Application
+- [ ] Download the Desktop Application
 
 #### CNC Controller
 

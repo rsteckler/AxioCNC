@@ -9,13 +9,12 @@ x joystick locked
 x spinup time for spindle before moving
 First use
 outline job envelope
-detemrine mediamtx runtime file locations like logs and config and make sure they all land inside the .axiocnc folder
 settings export/import
 feed, spindle, rapid (cool way to say go slow)
 modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
 I like the sender components warning, but the protected-code link is broken.  repo-structure doc
 x same loc: Bundle and packaging directories don't exist yet
-replace cheton wu with my name as needed
+docker builds
 
 
 ## Pre-release
@@ -45,3 +44,4 @@ auto features based on grbl version
 grblhal
 resume job from twhere we left off
 workspace changing
+grblsim settings for home and rapid moves.
