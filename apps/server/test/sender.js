@@ -373,3 +373,150 @@ test('character-counting streaming protocol', (t) => {
     }
   }, 0);
 });
+
+test('Sender load() failure paths', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+
+  t.equal(sender.load('x', ''), false, 'load with empty string returns false');
+  t.equal(sender.load('x', null), false, 'load with null gcode returns false');
+  t.equal(sender.load('x', 123), false, 'load with non-string gcode returns false');
+  t.equal(sender.load('x'), false, 'load with undefined gcode (default "") returns false');
+
+  t.end();
+});
+
+test('Sender ack() / next() / rewind() when no gcode loaded', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+
+  t.equal(sender.ack(), false, 'ack with no gcode returns false');
+  t.equal(sender.next(), false, 'next with no gcode returns false');
+  t.equal(sender.rewind(), false, 'rewind with no gcode returns false');
+
+  t.end();
+});
+
+test('Sender ack() when received >= sent', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+  sender.load('test.gcode', 'G0 X0\nG1 Y10', {});
+
+  t.equal(sender.ack(), false, 'ack before any data sent returns false (received >= sent)');
+
+  t.end();
+});
+
+test('Sender hold() and unhold()', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+  sender.load('test.gcode', 'G0 X0\nG1 Y10', {});
+
+  let holdEmitted = false;
+  let unholdEmitted = false;
+  sender.on('hold', () => { holdEmitted = true; });
+  sender.on('unhold', () => { unholdEmitted = true; });
+
+  sender.hold('M0 pause');
+  t.ok(sender.state.hold, 'hold sets state.hold');
+  t.equal(sender.state.holdReason, 'M0 pause', 'hold sets holdReason');
+  t.ok(holdEmitted, 'hold emits hold event');
+
+  sender.unhold();
+  t.notOk(sender.state.hold, 'unhold clears state.hold');
+  t.equal(sender.state.holdReason, null, 'unhold clears holdReason');
+  t.ok(unholdEmitted, 'unhold emits unhold event');
+
+  t.end();
+});
+
+test('Sender peek() stateChanged', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+
+  t.equal(sender.peek(), false, 'peek() initially returns false');
+
+  sender.load('test.gcode', 'G0 X0', {});
+  t.equal(sender.peek(), true, 'peek() returns true after load (change emitted)');
+  t.equal(sender.peek(), false, 'peek() returns false after read (clears flag)');
+
+  t.end();
+});
+
+test('Sender rewind()', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+  const gcode = 'G0 X0\nG1 Y10\nG0 Z1';
+  sender.load('test.gcode', gcode, {});
+
+  sender.on('data', () => sender.ack());
+  sender.next();
+  sender.next();
+  t.ok(sender.state.sent > 0, 'some lines sent');
+  t.ok(sender.state.received > 0, 'some lines received');
+
+  const ok = sender.rewind();
+  t.equal(ok, true, 'rewind returns true');
+  t.equal(sender.state.sent, 0, 'rewind resets sent');
+  t.equal(sender.state.received, 0, 'rewind resets received');
+  t.notOk(sender.state.hold, 'rewind clears hold');
+
+  t.end();
+});
+
+test('Sender with dataFilter', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE, {
+    dataFilter: (line, ctx) => {
+      if (line.trim() === 'G0 X0') return ''; // filter out first line
+      return line;
+    }
+  });
+  sender.load('test.gcode', 'G0 X0\nG1 Y10', {});
+
+  const lines = [];
+  sender.on('data', (line) => {
+    lines.push(line);
+    sender.ack();
+  });
+  sender.on('end', () => {
+    t.ok(lines.length >= 1, 'dataFilter can filter lines');
+    t.end();
+  });
+
+  while (sender.state.sent < sender.state.total) {
+    sender.next();
+    if (sender.state.received >= sender.state.total) break;
+  }
+});
+
+test('Sender isValidTool and tool stats', (t) => {
+  t.equal(Sender.isValidTool(0), false, 'isValidTool(0) false');
+  t.equal(Sender.isValidTool(null), false, 'isValidTool(null) false');
+  t.equal(Sender.isValidTool(undefined), false, 'isValidTool(undefined) false');
+  t.equal(Sender.isValidTool(1), true, 'isValidTool(1) true');
+  t.equal(Sender.isValidTool(5), true, 'isValidTool(5) true');
+
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+  sender.load('test.gcode', 'T1\nM6\nG0 X10', {});
+
+  sender.on('data', () => sender.ack());
+  while (sender.state.sent < sender.state.total) {
+    sender.next();
+    if (sender.state.received >= sender.state.total) break;
+  }
+
+  t.ok(typeof sender.state.stats.toolStats === 'object', 'toolStats exists');
+  t.end();
+});
+
+test('Sender parseGcodeWord and calculateDistance', (t) => {
+  const sender = new Sender(SP_TYPE_SEND_RESPONSE);
+
+  const parsed = sender.parseGcodeWord('G1');
+  t.same(parsed, { letter: 'G', numericPart: '1', value: 1, isValid: true });
+
+  const invalid = sender.parseGcodeWord('');
+  t.equal(invalid, null);
+  t.equal(sender.parseGcodeWord(123), null);
+
+  const d = sender.calculateDistance({ x: 0, y: 0, z: 0 }, { x: 3, y: 4, z: 0 });
+  t.equal(d.total, 5, 'calculateDistance 3-4-0 -> total 5');
+  t.equal(d.x, 3);
+  t.equal(d.y, 4);
+
+  t.end();
+});
