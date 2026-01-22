@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Update version numbers across all package.json files in the monorepo
- * 
+ *
  * Usage: node developers/scripts/update-version.js <version>
  * Example: node developers/scripts/update-version.js 1.10.113
- * 
+ *
  * This script updates the version field in:
  * - package.json (root)
  * - apps/server/package.json
@@ -40,7 +40,7 @@ if (!semverRegex.test(version)) {
 
 // List of package.json files to update
 const packageFiles = [
-  'package.json',                    // Root
+  'package.json', // Root
   'apps/server/package.json',
   'apps/web/package.json',
   'apps/desktop/package.json',
@@ -55,27 +55,27 @@ let updatedCount = 0;
 
 for (const packageFile of packageFiles) {
   const filePath = join(rootDir, packageFile);
-  
+
   try {
     // Read package.json
     const content = readFileSync(filePath, 'utf8');
     const pkg = JSON.parse(content);
-    
+
     // Check if version field exists
     if (!('version' in pkg)) {
       console.warn(`⚠️  Warning: ${packageFile} does not have a version field, skipping`);
       continue;
     }
-    
+
     const oldVersion = pkg.version;
-    
+
     // Update version
     pkg.version = version;
-    
+
     // Write back with proper formatting (2 spaces indentation)
     const updatedContent = JSON.stringify(pkg, null, 2) + '\n';
     writeFileSync(filePath, updatedContent, 'utf8');
-    
+
     console.log(`✅ Updated ${packageFile}: ${oldVersion} → ${version}`);
     updatedCount++;
   } catch (error) {

@@ -139,6 +139,7 @@ const appMain = () => {
     try {
       const stats = fs.statSync(sessionPath);
       log.debug(`Session store path: ${sessionPath} (isDir=${stats.isDirectory()}, mode=${stats.mode.toString(8)})`);
+      // eslint-disable-next-line no-bitwise
       fs.accessSync(sessionPath, fs.constants.R_OK | fs.constants.W_OK);
       log.debug(`Session store access OK: ${sessionPath}`);
     } catch (err) {
@@ -163,8 +164,12 @@ const appMain = () => {
         logFn: (...args) => {
           log.debug('session-store', ...args);
           const hasEperm = args.some(arg => {
-            if (!arg) return false;
-            if (typeof arg === 'string') return arg.includes('EPERM') || arg.includes('operation not permitted');
+            if (!arg) {
+ return false;
+}
+            if (typeof arg === 'string') {
+ return arg.includes('EPERM') || arg.includes('operation not permitted');
+}
             return arg.code === 'EPERM';
           });
           if (hasEperm) {

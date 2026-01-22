@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
  * Release script: Update versions, commit, and create tag
- * 
+ *
  * Usage: node developers/scripts/release.js <version> [--push]
  * Example: node developers/scripts/release.js v1.10.113
  * Example: node developers/scripts/release.js v1.10.113 --push
- * 
+ *
  * This script:
  * 1. Updates version in all package.json files
  * 2. Commits the changes
  * 3. Creates a git tag (uses the provided version as-is)
  * 4. Optionally pushes to remote (if --push flag is provided)
- * 
+ *
  * Note: Version must start with 'v' (e.g., v1.10.113)
  */
 
@@ -37,7 +37,7 @@ if (!version) {
 
 // Validate version starts with 'v'
 if (!version.startsWith('v')) {
-  console.error(`Error: Version must start with 'v'`);
+  console.error('Error: Version must start with \'v\'');
   console.error(`   Provided: ${version}`);
   console.error(`   Expected: v${version}`);
   console.error('Example: v1.10.113');
@@ -70,9 +70,9 @@ try {
 
 // Check if working directory is clean
 try {
-  const status = execSync('git status --porcelain', { 
-    cwd: rootDir, 
-    encoding: 'utf8' 
+  const status = execSync('git status --porcelain', {
+    cwd: rootDir,
+    encoding: 'utf8'
   });
   if (status.trim() && !shouldPush) {
     console.warn('⚠️  Warning: Working directory has uncommitted changes');
@@ -89,7 +89,7 @@ console.log(`🚀 Starting release process for version ${versionWithoutV} (tag: 
 // Step 1: Update version numbers
 console.log('📝 Step 1: Updating version numbers...');
 try {
-  execSync(`node ${updateScript} ${versionWithoutV}`, { 
+  execSync(`node ${updateScript} ${versionWithoutV}`, {
     cwd: rootDir,
     stdio: 'inherit'
   });
@@ -111,7 +111,7 @@ const packageFiles = [
 
 try {
   packageFiles.forEach(file => {
-    execSync(`git add ${file}`, { 
+    execSync(`git add ${file}`, {
       cwd: rootDir,
       stdio: 'ignore'
     });
@@ -123,10 +123,10 @@ try {
 }
 
 // Step 3: Commit changes
-console.log(`💾 Step 3: Committing version changes...`);
+console.log('💾 Step 3: Committing version changes...');
 const commitMessage = `chore: bump version to ${versionWithoutV}`;
 try {
-  execSync(`git commit -m "${commitMessage}"`, { 
+  execSync(`git commit -m "${commitMessage}"`, {
     cwd: rootDir,
     stdio: 'inherit'
   });
@@ -143,9 +143,9 @@ console.log(`🏷️  Step 4: Creating tag ${tagName}...`);
 try {
   // Check if tag already exists
   try {
-    execSync(`git rev-parse ${tagName}`, { 
-      cwd: rootDir, 
-      stdio: 'ignore' 
+    execSync(`git rev-parse ${tagName}`, {
+      cwd: rootDir,
+      stdio: 'ignore'
     });
     console.error(`❌ Error: Tag ${tagName} already exists`);
     console.error('   Delete it first with: git tag -d ' + tagName);
@@ -154,7 +154,7 @@ try {
     // Tag doesn't exist, which is what we want
   }
 
-  execSync(`git tag ${tagName}`, { 
+  execSync(`git tag ${tagName}`, {
     cwd: rootDir,
     stdio: 'inherit'
   });
@@ -168,11 +168,11 @@ try {
 if (shouldPush) {
   console.log('📤 Step 5: Pushing to remote...');
   try {
-    execSync('git push', { 
+    execSync('git push', {
       cwd: rootDir,
       stdio: 'inherit'
     });
-    execSync(`git push origin ${tagName}`, { 
+    execSync(`git push origin ${tagName}`, {
       cwd: rootDir,
       stdio: 'inherit'
     });
@@ -180,7 +180,7 @@ if (shouldPush) {
   } catch (error) {
     console.error('❌ Failed to push to remote');
     console.error('   You can push manually with:');
-    console.error(`   git push`);
+    console.error('   git push');
     console.error(`   git push origin ${tagName}`);
     process.exit(1);
   }
@@ -192,13 +192,13 @@ if (shouldPush) {
 }
 
 console.log('✨ Release process completed successfully!');
-console.log(`\n📋 Summary:`);
+console.log('\n📋 Summary:');
 console.log(`   Version: ${versionWithoutV}`);
 console.log(`   Tag: ${tagName}`);
 console.log(`   Commit: ${commitMessage}`);
 if (!shouldPush) {
-  console.log(`\n💡 Next steps:`);
-  console.log(`   git push`);
+  console.log('\n💡 Next steps:');
+  console.log('   git push');
   console.log(`   git push origin ${tagName}`);
-  console.log(`\n   Or run with --push flag next time to push automatically.`);
+  console.log('\n   Or run with --push flag next time to push automatically.');
 }

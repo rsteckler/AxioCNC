@@ -12,6 +12,7 @@
  */
 
 const logger = require('../logger');
+
 const getLogger = logger.default || logger;
 
 const log = getLogger('middleware:errlog');
