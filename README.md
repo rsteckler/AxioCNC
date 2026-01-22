@@ -294,24 +294,11 @@ A: AxioCNC accepts standard G-code files (`.nc`, `.gcode`, `.cnc`). It works wit
 
 > **Note:** The sections below are for developers and contributors. End users can find everything they need above.
 
-### Build Status
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub Release](https://img.shields.io/badge/Release-v1.10.15-blue)](https://github.com/rsteckler/AxioCNC/releases)
-
-Build status and test coverage information will be added here as CI/CD is configured.
-
 ### Contributing
 
-We welcome contributions! Before you get started:
+We welcome contributions! Complete developer documentation is available at **[axiocnc.com/devdocs](https://axiocnc.com/devdocs)**.
 
-1. **Read our [Contributing Guide](developers/docs/contributing.md)** - Learn about our workflow, code style, and protected code areas
-2. **See [Development Setup](developers/docs/development.md)** - How to set up a local development environment
-3. **Check [Protected Code](developers/docs/protected-code.md)** - Some areas require explicit permission before modification
-4. **Review [Development Preferences](developers/docs/dev_prefs.md)** - UI patterns and architectural decisions
-5. **See [Testing Guide](developers/docs/testing.md)** - How we test and maintain code quality
-
-**Quick Development Setup:**
+**Quick Start:**
 
 ```bash
 # Clone the repository
@@ -326,10 +313,17 @@ yarn install
 yarn dev:start-server
 
 # Terminal 2: Frontend
-cd src/app && yarn dev
+yarn dev:start-app
 ```
 
-For more details, see [Development Guide](developers/docs/development.md), [Contributing Guide](developers/docs/contributing.md), and the [Developer Documentation](ai/docs/overview.md).
+**Developer Documentation:**
+- **[Getting Set Up](https://axiocnc.com/devdocs/01-getting-set-up)** - Prerequisites and local development setup
+- **[Contributing Guide](https://axiocnc.com/devdocs/08-contributing)** - PR process, commit conventions, and code review
+- **[Architecture](https://axiocnc.com/devdocs/04-architecture)** - System design and mental model
+- **[Code Standards](https://axiocnc.com/devdocs/05-code-standards)** - Coding conventions and style guide
+- **[Testing Strategy](https://axiocnc.com/devdocs/06-testing-strategy)** - How to write and run tests
+
+For the complete guide, see **[axiocnc.com/devdocs](https://axiocnc.com/devdocs)**.
 
 ---
 
