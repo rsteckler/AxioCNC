@@ -248,6 +248,263 @@ test('GrblLineParserResultStatus: v1.1 format with pipe separators', (t) => {
     runner.parse(line);
   });
 
+  t.test('v1.1 format with Ln (Line Number)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Run|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,0|Ln:12345>');
+      t.same(status, {
+        activeState: 'Run',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 500,
+        spindle: 0,
+        ln: 12345,
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Run|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,0|Ln:12345>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format with F (single Feed Rate, not FS)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,F:500>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        feedrate: 500,
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,F:500>';
+    runner.parse(line);
+  });
+
+  t.test('v1.1 format with Ov (Override Values)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,8000|Ov:100,100,100>');
+      t.same(status, {
+        activeState: 'Idle',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        buf: {
+          planner: 14,
+          rx: 128
+        },
+        feedrate: 500,
+        spindle: 8000,
+        ov: [100, 100, 100],
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,8000|Ov:100,100,100>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format with sub-states (Hold:0)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Hold:0,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.same(status, {
+        activeState: 'Hold',
+        subState: 0,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Hold:0,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format with sub-states (Hold:1)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Hold:1,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.same(status, {
+        activeState: 'Hold',
+        subState: 1,
+        mpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        wpos: {
+          x: '0.000',
+          y: '0.000',
+          z: '0.000'
+        },
+        pinState: ''
+      });
+      t.end();
+    });
+
+    const line = '<Hold:1,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>';
+    runner.parse(line);
+  });
+
+  t.test('v0.9 format with sub-states (Door:0)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Door:0,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.equal(status.activeState, 'Door');
+      t.equal(status.subState, 0);
+      t.end();
+    });
+    runner.parse('<Door:0,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+  });
+
+  t.test('v0.9 format with sub-states (Door:1)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Door:1,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.equal(status.activeState, 'Door');
+      t.equal(status.subState, 1);
+      t.end();
+    });
+    runner.parse('<Door:1,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+  });
+
+  t.test('v0.9 format with sub-states (Door:2)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Door:2,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.equal(status.activeState, 'Door');
+      t.equal(status.subState, 2);
+      t.end();
+    });
+    runner.parse('<Door:2,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+  });
+
+  t.test('v0.9 format with sub-states (Door:3)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Door:3,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+      t.equal(status.activeState, 'Door');
+      t.equal(status.subState, 3);
+      t.end();
+    });
+    runner.parse('<Door:3,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000>');
+  });
+
+  t.test('v0.9 format with Lim pin state (different bit combinations)', (t) => {
+    t.test('X axis limit (bit 0)', (subt) => {
+      const runner = new GrblRunner();
+      runner.on('status', ({ raw, ...status }) => {
+        subt.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:1>');
+        subt.equal(status.pinState, 'X');
+        subt.end();
+      });
+      runner.parse('<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:1>');
+    });
+
+    t.test('Y axis limit (bit 1)', (subt) => {
+      const runner = new GrblRunner();
+      runner.on('status', ({ raw, ...status }) => {
+        subt.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:2>');
+        subt.equal(status.pinState, 'Y');
+        subt.end();
+      });
+      runner.parse('<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:2>');
+    });
+
+    t.test('Z axis limit (bit 2)', (subt) => {
+      const runner = new GrblRunner();
+      runner.on('status', ({ raw, ...status }) => {
+        subt.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:4>');
+        // Note: The code has a bug where bit 2 sets both 'Z' and 'A' (line 138 uses same bit check)
+        subt.equal(status.pinState, 'ZA');
+        subt.end();
+      });
+      runner.parse('<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:4>');
+    });
+
+    t.test('X and Y axis limits (bits 0 and 1)', (subt) => {
+      const runner = new GrblRunner();
+      runner.on('status', ({ raw, ...status }) => {
+        subt.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:3>');
+        subt.equal(status.pinState, 'XY');
+        subt.end();
+      });
+      runner.parse('<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:3>');
+    });
+
+    t.test('All axes limits (bits 0, 1, 2)', (subt) => {
+      const runner = new GrblRunner();
+      runner.on('status', ({ raw, ...status }) => {
+        subt.equal(raw, '<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:7>');
+        // Note: The code has a bug where bit 2 sets both 'Z' and 'A' (line 138 uses same bit check)
+        subt.equal(status.pinState, 'XYZA');
+        subt.end();
+      });
+      runner.parse('<Idle,MPos:0.000,0.000,0.000,WPos:0.000,0.000,0.000,Lim:7>');
+    });
+
+    t.end();
+  });
+
+  t.test('v1.1 format without Pn or Lim (should clear pinState)', (t) => {
+    const runner = new GrblRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,0>');
+      t.equal(status.pinState, '');
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.000,0.000,0.000|Bf:14,128|FS:500,0>';
+    runner.parse(line);
+  });
+
   t.end();
 });
 

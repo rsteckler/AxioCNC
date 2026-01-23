@@ -251,6 +251,90 @@ test('SmoothieRunnerLineParserResultStatus: new status format', (t) => {
     });
   });
 
+  t.test('F: feedrate for Hold state (not Home/Run)', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Hold|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:2000.0,50.0>');
+      t.same(status, {
+        activeState: 'Hold',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        feedrate: 2000.0,
+        feedrateOverride: 50.0
+      });
+      // Should NOT have currentFeedrate for Hold state
+      t.notOk(status.currentFeedrate, 'Hold state should not have currentFeedrate');
+      t.end();
+    });
+
+    const line = '<Hold|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:2000.0,50.0>';
+    runner.parse(line);
+  });
+
+  t.test('F: feedrate for Alarm state (not Home/Run)', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Alarm|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:1000.0,75.0>');
+      t.same(status, {
+        activeState: 'Alarm',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        feedrate: 1000.0,
+        feedrateOverride: 75.0
+      });
+      // Should NOT have currentFeedrate for Alarm state
+      t.notOk(status.currentFeedrate, 'Alarm state should not have currentFeedrate');
+      t.end();
+    });
+
+    const line = '<Alarm|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:1000.0,75.0>';
+    runner.parse(line);
+  });
+
+  t.test('T: temperature (current and target)', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:4000.0,100.0|T:25.5,30.0>');
+      t.same(status, {
+        activeState: 'Idle',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000'
+        },
+        feedrate: 4000.0,
+        feedrateOverride: 100.0,
+        currentTemperature: 25.5,
+        targetTemperature: 30.0
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:4000.0,100.0|T:25.5,30.0>';
+    runner.parse(line);
+  });
+
   t.end();
 });
 
@@ -435,23 +519,162 @@ test('SmoothieRunnerLineParserResultParameters:PRB', (t) => {
   runner.parse('[PRB:0.000,0.000,1.492:1]');
 });
 
-test('SmoothieRunnerLineParserResultVersion', (t) => {
-  const runner = new SmoothieRunner();
-  runner.on('version', ({ raw, ...others }) => {
-    t.equal(raw, 'Build version: edge-3332442, Build date: xxx, MCU: LPC1769, System Clock: 120MHz');
-    t.same(others, {
-      build: {
-        version: 'edge-3332442',
-        date: 'xxx'
-      },
-      mcu: 'LPC1769',
-      sysclk: '120MHz'
+test('SmoothieRunnerLineParserResultAction', (t) => {
+  t.test('pause action', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('action', ({ raw, message }) => {
+      subt.equal(raw, '// action:pause');
+      subt.equal(message, 'pause');
+      subt.end();
     });
-    t.end();
+
+    const line = '// action:pause';
+    runner.parse(line);
   });
 
-  const line = 'Build version: edge-3332442, Build date: xxx, MCU: LPC1769, System Clock: 120MHz';
-  runner.parse(line);
+  t.test('resume action', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('action', ({ raw, message }) => {
+      subt.equal(raw, '// action:resume');
+      subt.equal(message, 'resume');
+      subt.end();
+    });
+
+    const line = '// action:resume';
+    runner.parse(line);
+  });
+
+  t.test('cancel action', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('action', ({ raw, message }) => {
+      subt.equal(raw, '// action:cancel');
+      subt.equal(message, 'cancel');
+      subt.end();
+    });
+
+    const line = '// action:cancel';
+    runner.parse(line);
+  });
+
+  t.test('action with custom message', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('action', ({ raw, message }) => {
+      subt.equal(raw, '// action:custom-action-name');
+      subt.equal(message, 'custom-action-name');
+      subt.end();
+    });
+
+    const line = '// action:custom-action-name';
+    runner.parse(line);
+  });
+
+  t.end();
+});
+
+test('SmoothieRunnerLineParserResultVersion', (t) => {
+  t.test('full version string with all fields', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('version', ({ raw, ...others }) => {
+      subt.equal(raw, 'Build version: edge-3332442, Build date: xxx, MCU: LPC1769, System Clock: 120MHz');
+      subt.same(others, {
+        build: {
+          version: 'edge-3332442',
+          date: 'xxx'
+        },
+        mcu: 'LPC1769',
+        sysclk: '120MHz'
+      });
+      subt.end();
+    });
+
+    const line = 'Build version: edge-3332442, Build date: xxx, MCU: LPC1769, System Clock: 120MHz';
+    runner.parse(line);
+  });
+
+  t.test('version with LPC1768 (alternative MCU)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('version', ({ raw, ...others }) => {
+      subt.equal(raw, 'Build version: dev-123, Build date: Jan 1 2020, MCU: LPC1768, System Clock: 100MHz');
+      subt.same(others, {
+        build: {
+          version: 'dev-123',
+          date: 'Jan 1 2020'
+        },
+        mcu: 'LPC1768',
+        sysclk: '100MHz'
+      });
+      subt.end();
+    });
+
+    const line = 'Build version: dev-123, Build date: Jan 1 2020, MCU: LPC1768, System Clock: 100MHz';
+    runner.parse(line);
+  });
+
+  t.test('version with only MCU (minimal required field)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('version', ({ raw, ...others }) => {
+      subt.equal(raw, 'MCU: LPC1769');
+      subt.same(others, {
+        mcu: 'LPC1769'
+      });
+      subt.end();
+    });
+
+    const line = 'MCU: LPC1769';
+    runner.parse(line);
+  });
+
+  t.test('version with partial fields (only build version and MCU)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('version', ({ raw, ...others }) => {
+      subt.equal(raw, 'Build version: edge-3332442, MCU: LPC1769');
+      subt.same(others, {
+        build: {
+          version: 'edge-3332442'
+        },
+        mcu: 'LPC1769'
+      });
+      subt.end();
+    });
+
+    const line = 'Build version: edge-3332442, MCU: LPC1769';
+    runner.parse(line);
+  });
+
+  t.test('version without MCU (should not parse)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('others', ({ raw }) => {
+      subt.equal(raw, 'Build version: edge-3332442, Build date: xxx, System Clock: 120MHz');
+      subt.end();
+    });
+
+    const line = 'Build version: edge-3332442, Build date: xxx, System Clock: 120MHz';
+    runner.parse(line);
+  });
+
+  t.test('version with non-LPC176 MCU (should not parse)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('others', ({ raw }) => {
+      subt.equal(raw, 'Build version: edge-3332442, Build date: xxx, MCU: ATmega2560, System Clock: 16MHz');
+      subt.end();
+    });
+
+    const line = 'Build version: edge-3332442, Build date: xxx, MCU: ATmega2560, System Clock: 16MHz';
+    runner.parse(line);
+  });
+
+  t.test('version with invalid format (no colons)', (subt) => {
+    const runner = new SmoothieRunner();
+    runner.on('others', ({ raw }) => {
+      subt.equal(raw, 'Build version edge-3332442 Build date xxx MCU LPC1769');
+      subt.end();
+    });
+
+    const line = 'Build version edge-3332442 Build date xxx MCU LPC1769';
+    runner.parse(line);
+  });
+
+  t.end();
 });
 
 test('Not supported output format', (t) => {

@@ -2,16 +2,16 @@
 
 Generated from `yarn test:coverage` (tap on `apps/server/test/*.js`).
 
-**Last updated:** After fixing all test failures. **1722 total tests** (1721 pass, 0 fail, 1 skip). ✅ All tests passing!
+**Last updated:** After parser result classes work. **1781 total tests** (1780 pass, 0 fail, 1 skip). ✅ All tests passing!
 
 ## Current vs target
 
 | Metric     | Current | Target (package.json) | Gap    |
 |------------|---------|------------------------|--------|
-| Statements | 92.15%  | 90%                    | +2.15% ✅ |
-| Branches   | 86.89%  | 90%                    | −3.11% |
+| Statements | 92.43%  | 90%                    | +2.43% ✅ |
+| Branches   | 87.59%  | 90%                    | −2.41% |
 | Functions  | 72.1%   | 85%                    | −12.9% |
-| Lines      | 92.15%  | 90%                    | +2.15% ✅ |
+| Lines      | 92.43%  | 90%                    | +2.43% ✅ |
 
 **Note:** Coverage now includes API tests and services. ✅ **All test failures fixed!** (was 9 failures, now 0)
 
@@ -31,6 +31,7 @@ Generated from `yarn test:coverage` (tap on `apps/server/test/*.js`).
 - After **logger** tests: 96.54% stmts (+0.03%), 85.95% branches (+0.25%), 77.31% funcs (+1.03%), 96.54% lines (+0.03%)
 - After **API tests included + module resolution fix**: **92.14% stmts, 86.71% branches, 72.1% funcs, 92.14% lines** ✅
 - After **fixing all 9 test failures**: **92.15% stmts (+0.01%), 86.89% branches (+0.18%), 72.1% funcs, 92.15% lines (+0.01%)** ✅
+- After **parser result classes** (Action, Version, Status parsers): **92.43% stmts (+0.28%), 87.59% branches (+0.70%), 72.1% funcs, 92.43% lines (+0.28%)** ✅
 
 **Milestones:** Statements & lines now **≥ 96%** (well above 90% target). Function coverage improved by **+24.22 percentage points** from baseline (53% → 77.31%).
 
@@ -180,6 +181,7 @@ Generated from `yarn test:coverage` (tap on `apps/server/test/*.js`).
 7. ✅ Add **decimal-places** tests ( § 3.1 ) — **MOSTLY COMPLETED** (83% branches, up from 25%).
 8. ✅ Add **logger** tests ( § 3.2 ) — **MOSTLY COMPLETED** (90% stmts, 84% branches, 80% funcs).
 9. ✅ **API tests** ( § 4 ) — **COMPLETED** (all tests passing, module resolution fixed, all failures resolved).
+10. ✅ **Parser result classes** ( § 9 ) — **COMPLETED** (SmoothieLineParserResultAction, SmoothieLineParserResultVersion, GrblLineParserResultStatus, SmoothieLineParserResultStatus).
 
 **Next up:** See § 7 below for the prioritized list.
 
@@ -187,17 +189,18 @@ Generated from `yarn test:coverage` (tap on `apps/server/test/*.js`).
 
 ## 7. What's next for test coverage
 
-**Current:** Statements & lines **92.15%** ✅ (above 90% target). Focus on **functions (72.1% vs 85%, gap: -12.9%)** and **branches (86.89% vs 90%, gap: -3.11%)**.
+**Current:** Statements & lines **92.43%** ✅ (above 90% target). Focus on **functions (72.1% vs 85%, gap: -12.9%)** and **branches (87.59% vs 90%, gap: -2.41%)**.
 
 | Priority | Area | Why |
 |----------|------|-----|
-| **1** | **Parser result classes** (§ 9) | Low-hanging fruit: SmoothieLineParserResultAction, SmoothieLineParserResultVersion, GrblLineParserResultStatus, SmoothieLineParserResultStatus — simple tests, good branch/function impact |
+| **1** | **Low function coverage files** | Need to identify and test files with < 85% function coverage (excluding parser result classes which are expected at 50%) |
 | 2 | **Sender.js** (§ 2.1) | 95% stmts, 88% branches — mostly done, minor edge cases remain (lines 1002, 1006–1008) |
 | 3 | **logger** (§ 3.2) | 90% stmts, 84% branches, 80% funcs — mostly done, lines 8-11, 56-57 may be difficult to cover |
 | 4 | **decimal-places** (§ 3.1) | 88% stmts, 83% branches — mostly done, lines 5-6 appear unreachable |
-| 5 | **API tests** (§ 4) | ✅ **COMPLETED** — All tests passing, module resolution fixed, all failures resolved |
+| 5 | **Parser result classes** (§ 9) | ✅ **COMPLETED** — SmoothieLineParserResultAction, SmoothieLineParserResultVersion, GrblLineParserResultStatus, SmoothieLineParserResultStatus |
+| 6 | **API tests** (§ 4) | ✅ **COMPLETED** — All tests passing, module resolution fixed, all failures resolved |
 
-**Remaining gaps:** Functions −12.9%; branches −3.11%.
+**Remaining gaps:** Functions −12.9%; branches −2.41%.
 
 ---
 
@@ -223,11 +226,11 @@ Use the text coverage table and "Uncovered Line #s" to add tests for the specifi
 **Goal:** Reach **90% branches** and **85% functions** with minimal test effort.
 
 **Current gaps (with API tests included):**
-- **Branches:** 86.89% → 90% (need **+3.11%**)
+- **Branches:** 87.59% → 90% (need **+2.41%**)
 - **Functions:** 72.1% → 85% (need **+12.9%**)
-- **Statements:** 92.15% → 90% ✅ (already above target)
+- **Statements:** 92.43% → 90% ✅ (already above target)
 
-**Note:** ✅ All test failures fixed! Module resolution fixed. All 1721 tests passing.
+**Note:** ✅ All test failures fixed! Module resolution fixed. All 1780 tests passing.
 
 ### Strategy: Target simple parser result classes and branch-heavy files
 
@@ -267,13 +270,19 @@ Use the text coverage table and "Uncovered Line #s" to add tests for the specifi
      - Coverage tool reporting issues
    - **Action:** Verify tests are actually running and covering the file
 
-**Estimated impact if all completed:**
-- **Branches:** +1.0-1.5% (86.89% → ~88-89%) — **still need ~1-2% more to reach 90%**
-- **Functions:** +0.1-0.2% (72.1% → ~72.2-72.3%) — **still need ~12.7% more to reach 85%**
+**Estimated impact if parser classes completed:**
+- **Branches:** +0.70% (87.59% achieved) — **need ~2.41% more to reach 90%**
+- **Functions:** +0% (parser classes are static, expected at 50%) — **need ~12.9% more to reach 85%**
+
+**Next high-impact targets for function coverage:**
+- **ImmutableStore.js** (16.66% funcs) — Add tests for store methods
+- **configstore/index.js** (12.5% funcs) — Add tests for config store operations
+- **TaskRunner.js** (33.33% funcs) — Add tests for task runner functionality
+- **gcode.js** (28.57% funcs) — Investigate why existing tests aren't covering it
 
 ### Additional strategies for remaining gaps
 
-**For branches (need ~3.11% to reach 90%):**
+**For branches (need ~2.41% to reach 90%):**
 - Focus on **Status parser** files (Grbl, Smoothie) — they have many conditional branches
 - Add edge case tests for parser result classes
 - Target files with 70-85% branch coverage and add 2-3 more branch tests each
@@ -281,15 +290,18 @@ Use the text coverage table and "Uncovered Line #s" to add tests for the specifi
 **For functions (need ~12.9% to reach 85%):**
 - **Parser result classes** show 50% function coverage because they're static classes (class vs static method). This is expected and may not be improvable.
 - Focus on files with **< 85% function coverage** that aren't parser result classes:
-  - `gcode.js` (28.57% funcs) — if this is a real issue, needs investigation
-  - Other non-parser files with low function coverage
+  - `gcode.js` (28.57% funcs) — ⚠️ **Investigation needed** - has tests but low coverage
+  - `ImmutableStore.js` (16.66% funcs) — **High impact target**
+  - `configstore/index.js` (12.5% funcs) — **High impact target**
+  - `TaskRunner.js` (33.33% funcs) — **High impact target**
 
 **Least intrusive approach:**
-1. ✅ **Start with SmoothieLineParserResultAction** — 5-minute test addition
-2. ✅ **Add SmoothieLineParserResultVersion edge cases** — 10-minute test addition
-3. **Add more GrblLineParserResultStatus branches** — 20-30 minutes
-4. **Add more SmoothieLineParserResultStatus branches** — 20-30 minutes
+1. ✅ **SmoothieLineParserResultAction** — COMPLETED (100% stmts, 100% branches)
+2. ✅ **SmoothieLineParserResultVersion edge cases** — COMPLETED (93.1% stmts, 86.66% branches)
+3. ✅ **GrblLineParserResultStatus branches** — COMPLETED (added Ln, F, Ov, sub-states, Lim pin states)
+4. ✅ **SmoothieLineParserResultStatus branches** — COMPLETED (added F for Hold/Alarm, T temperature)
 5. **Investigate gcode.js coverage discrepancy** — if real issue, fix tests
+6. **Identify low function coverage files** — Focus on non-parser files with < 85% function coverage
 
 **Module resolution fix:**
 - ✅ **FIXED** — Changed imports from relative paths to package name imports (`@axiocnc/shared/src/schemas/settings`)
@@ -297,4 +309,7 @@ Use the text coverage table and "Uncovered Line #s" to add tests for the specifi
 - ✅ Removed babel-plugin-module-resolver workaround
 - **Result:** All module resolution errors fixed. ✅ All test failures resolved (was 9, now 0).
 
-**Recommendation:** Start with items 1-2 (Smoothie parsers), then assess if branches/functions are improving enough. If not, move to Status parser branch coverage or investigate gcode.js.
+**Recommendation:** 
+- ✅ **Parser result classes completed** — Good progress on branches (+0.70%)
+- **Next:** Focus on **function coverage** — Target ImmutableStore.js, configstore/index.js, TaskRunner.js, and investigate gcode.js
+- **For branches:** Need +2.41% — Continue with edge cases in existing well-tested files or add more branch tests to status parsers

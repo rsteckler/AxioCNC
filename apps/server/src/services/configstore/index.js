@@ -25,7 +25,13 @@ class ConfigStore extends events.EventEmitter {
 
       if (this.watcher) {
         // Stop watching for changes
-        this.watcher.close();
+        if (typeof this.watcher.close === 'function') {
+          this.watcher.close();
+        }
+        // Also unwatch the file as backup
+        if (this.file) {
+          fs.unwatchFile(this.file);
+        }
         this.watcher = null;
       }
 
@@ -142,3 +148,4 @@ class ConfigStore extends events.EventEmitter {
 const configstore = new ConfigStore();
 
 export default configstore;
+export { ConfigStore };
