@@ -4,7 +4,6 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
 import { BufferGeometry, BufferAttribute, ArrowHelper, Vector3, LineBasicMaterial, Line, LineDashedMaterial, PlaneGeometry, EdgesGeometry, Group } from 'three'
 import type { Vector3 as Vector3Type } from 'three'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
 import { machineToThree, type MachineLimits, type Coordinate } from '@/lib/coordinates'
 import type { HomingCorner } from '@/lib/machineLimits'
@@ -390,7 +389,7 @@ function BillboardText({ position, children, fontSize = 20, ...props }: React.Co
 // Camera controller component that responds to view changes
 function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: number; ySize: number; zSize: number; view?: 'top' | 'front' | 'iso' | 'fit'; viewKey?: number }) {
   const { camera } = useThree()
-  const controlsRef = useRef<OrbitControlsImpl>(null)
+  const controlsRef = useRef<any>(null)
   
   const gridCenterX = xSize / 2
   const gridCenterY = ySize / 2

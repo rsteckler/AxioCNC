@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "yarn run build:clean && yarn run build:compile && yarn run build:copy",
+    "build": "pnpm run build:clean && pnpm run build:compile && pnpm run build:copy",
     "build:clean": "rm -rf dist",
     "build:compile": "tsc -b && vite build",
-    "build:copy": "yarn run build:copy:package",
+    "build:copy": "pnpm run build:copy:package",
     "build:copy:package": "cp -af package.json dist/",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",

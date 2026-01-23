@@ -1,6 +1,6 @@
 #!/bin/bash
-# Package server build into .deb file
-# Uses new workspace structure: apps/server/dist/
+# Package server build into .deb file using pnpm deploy
+# Much simpler than the old complex staging approach
 
 set -e
 
@@ -18,9 +18,8 @@ fi
 PACKAGE_NAME="axiocnc-server"
 INSTALL_DIR="/opt/axiocnc"
 BUILD_ROOT="build/linux-${ARCH}"
-BUNDLE_ROOT="${BUILD_ROOT}/axiocnc"
 OUT_DIR="out"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 NODE_VERSION="20.18.0"  # Node.js LTS version to bundle
 
 cd "${PROJECT_ROOT}"
@@ -29,33 +28,39 @@ echo "📦 Packaging AxioCNC server for ${ARCH}..."
 
 # Get current version from server package.json
 VERSION=$(node -e "console.log(require('./apps/server/package.json').version)")
-
 echo "Version: ${VERSION}"
 
-# Ensure server, shared, and web packages are built
-if [ ! -d "apps/server/dist" ] || [ -z "$(ls -A apps/server/dist 2>/dev/null)" ]; then
-    echo "Building server first..."
-    yarn workspace @axiocnc/server build
-fi
-if [ ! -d "apps/shared/dist" ] || [ -z "$(ls -A apps/shared/dist 2>/dev/null)" ]; then
-    echo "Building shared package..."
-    yarn workspace @axiocnc/shared build
-fi
-if [ ! -d "apps/web/dist" ] || [ -z "$(ls -A apps/web/dist 2>/dev/null)" ]; then
-    echo "Building web app..."
-    yarn workspace @axiocnc/web build
-fi
+# Build all components first
+echo "Building all components..."
+pnpm build:all
 
 # Clean previous package build
 rm -rf "${BUILD_ROOT}"
 mkdir -p "${BUILD_ROOT}"
 
-# Create package structure
-PACKAGE_ROOT="${BUILD_ROOT}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
-mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}"
-mkdir -p "${PACKAGE_ROOT}/usr/bin"
-mkdir -p "${PACKAGE_ROOT}/etc/systemd/system"
-mkdir -p "${PACKAGE_ROOT}/DEBIAN"
+# Use pnpm deploy to create standalone deployment package
+echo "Creating standalone deployment package with pnpm deploy..."
+DEPLOY_DIR="${BUILD_ROOT}/deploy"
+rm -rf "${DEPLOY_DIR}"
+mkdir -p "${DEPLOY_DIR}"
+
+pnpm deploy --prod --filter @axiocnc/server --legacy "${DEPLOY_DIR}" || {
+  echo "Error: pnpm deploy failed"
+  exit 1
+}
+
+# Copy web app and shared to the deployed package
+echo "Copying web app and shared to deployment..."
+mkdir -p "${DEPLOY_DIR}/app"
+mkdir -p "${DEPLOY_DIR}/shared"
+
+if [ -d "apps/web/dist" ]; then
+  cp -r apps/web/dist/* "${DEPLOY_DIR}/app/"
+fi
+
+if [ -d "apps/shared/dist" ]; then
+  cp -r apps/shared/dist/* "${DEPLOY_DIR}/shared/"
+fi
 
 # Download and extract Node.js binary
 echo "📥 Downloading Node.js ${NODE_VERSION} for ${ARCH}..."
@@ -94,6 +99,13 @@ tar -xf "${NODE_TARBALL}"
 
 cd "${PROJECT_ROOT}"
 
+# Create package structure
+PACKAGE_ROOT="${BUILD_ROOT}/${PACKAGE_NAME}_${VERSION}_${ARCH}"
+mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}"
+mkdir -p "${PACKAGE_ROOT}/usr/bin"
+mkdir -p "${PACKAGE_ROOT}/etc/systemd/system"
+mkdir -p "${PACKAGE_ROOT}/DEBIAN"
+
 # Copy Node.js binary to package
 echo "📋 Bundling Node.js..."
 NODE_DIR="${NODE_DOWNLOAD_DIR}/node-v${NODE_VERSION}-linux-${NODE_ARCH}"
@@ -103,78 +115,14 @@ cp -r "${NODE_DIR}/lib" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || t
 cp -r "${NODE_DIR}/include" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 cp -r "${NODE_DIR}/share" "${PACKAGE_ROOT}${INSTALL_DIR}/nodejs/" 2>/dev/null || true
 
-# Stage runtime bundle (server/web/shared) into build scratchpad
-node "${PROJECT_ROOT}/developers/scripts/packaging/stage-runtime.js" --bundle-dir "${BUNDLE_ROOT}"
+# Copy the deployed application to package structure
+echo "Copying deployed application..."
+cp -r "${DEPLOY_DIR}"/* "${PACKAGE_ROOT}${INSTALL_DIR}/"
 
-# Production dependency installation in isolated temp folder
-# This avoids mutating the repo's node_modules
-echo "Installing dependencies for server in isolated temp folder..."
-PROD_INSTALL_DIR="/tmp/axiocnc-server-deps-$$"
-trap "rm -rf '${PROD_INSTALL_DIR}'" EXIT INT TERM
-
-rm -rf "${PROD_INSTALL_DIR}"
-mkdir -p "${PROD_INSTALL_DIR}"
-
-# Create clean package.json without workspace dependencies for isolated production install
-node -e "
-  const fs = require('fs');
-  const pkg = require('${PROJECT_ROOT}/apps/server/package.json');
-  // Remove workspace dependencies for isolated install
-  if (pkg.dependencies) {
-    delete pkg.dependencies['@axiocnc/shared'];
-  }
-  fs.writeFileSync('${PROD_INSTALL_DIR}/package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-cp "${PROJECT_ROOT}/yarn.lock" "${PROD_INSTALL_DIR}/"
-
-# Install production dependencies in isolated temp folder
-cd "${PROD_INSTALL_DIR}"
-yarn workspaces focus --production || {
-  echo "Error: yarn install failed in temp folder"
-  exit 1
-}
-cd "${PROJECT_ROOT}"
-
-# Copy built application
-echo "Copying application files..."
-# Copy cli.js to root, but put everything else in server/ subdirectory
-cp "${BUNDLE_ROOT}/server/cli.js" "${PACKAGE_ROOT}${INSTALL_DIR}/"
-# Create production package.json from source (without scripts/devDependencies)
-node -e "
-  const fs = require('fs');
-  const pkg = require('./apps/server/package.json');
-  delete pkg.devDependencies;
-  delete pkg.scripts;
-  fs.writeFileSync('${PACKAGE_ROOT}${INSTALL_DIR}/package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/server"
-# Copy all files and directories except cli.js and package.json to server/ subdirectory
-rsync -a --exclude='cli.js' --exclude='package.json' "${BUNDLE_ROOT}/server/" "${PACKAGE_ROOT}${INSTALL_DIR}/server/" || {
-    # Fallback if rsync not available
-    cd "${BUNDLE_ROOT}/server"
-    cp -r . "${PACKAGE_ROOT}${INSTALL_DIR}/server/"
-    rm -f "${PACKAGE_ROOT}${INSTALL_DIR}/server/cli.js"
-    rm -f "${PACKAGE_ROOT}${INSTALL_DIR}/server/package.json"
-    cd "${PROJECT_ROOT}"
-}
-
-# Copy production node_modules from isolated temp folder
-echo "Copying production node_modules..."
-if [ ! -d "${PROD_INSTALL_DIR}/node_modules" ]; then
-  echo "Error: node_modules not found in temp folder"
-  exit 1
+# Move cli.js to root level for executable (if it exists)
+if [ -f "${PACKAGE_ROOT}${INSTALL_DIR}/dist/cli.js" ]; then
+  mv "${PACKAGE_ROOT}${INSTALL_DIR}/dist/cli.js" "${PACKAGE_ROOT}${INSTALL_DIR}/server-cli.js"
 fi
-cp -r "${PROD_INSTALL_DIR}/node_modules" "${PACKAGE_ROOT}${INSTALL_DIR}/"
-
-# Copy shared package (needed by server code)
-echo "Copying shared package..."
-mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/shared"
-cp -r "${BUNDLE_ROOT}/shared/"* "${PACKAGE_ROOT}${INSTALL_DIR}/shared/"
-
-# Copy web app (frontend files needed by server)
-echo "Copying web app..."
-mkdir -p "${PACKAGE_ROOT}${INSTALL_DIR}/app"
-cp -r "${BUNDLE_ROOT}/app/"* "${PACKAGE_ROOT}${INSTALL_DIR}/app/"
 
 # Create launcher script that uses bundled Node.js
 echo "Creating launcher script..."
@@ -185,7 +133,7 @@ cat > "${PACKAGE_ROOT}/usr/bin/axiocnc" << 'EOF'
 
 AXIOCNC_DIR="/opt/axiocnc"
 NODE_BIN="${AXIOCNC_DIR}/nodejs/bin/node"
-CLI_FILE="${AXIOCNC_DIR}/cli.js"
+CLI_FILE="${AXIOCNC_DIR}/server-cli.js"
 LOG_DIR="${HOME}/.axiocnc/logs"
 LOG_FILE="${LOG_DIR}/axiocnc.log"
 
@@ -267,7 +215,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=${INSTALL_DIR}
-ExecStart=${INSTALL_DIR}/nodejs/bin/node ${INSTALL_DIR}/cli.js --port 8000 --host 0.0.0.0 --allow-remote-access
+ExecStart=${INSTALL_DIR}/nodejs/bin/node ${INSTALL_DIR}/server-cli.js --port 8000 --host 0.0.0.0 --allow-remote-access
 Restart=always
 RestartSec=10
 StandardOutput=journal

@@ -8,6 +8,7 @@
   "private": true,
   "dependencies": {
     "chalk": "~4.1.1",
+    "debug": "^4.3.4",
     "electron-store": "~8.1.0",
     "lodash": "~4.17.11",
     "mkdirp": "~0.5.1"

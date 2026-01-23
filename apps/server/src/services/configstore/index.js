@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import _ from 'lodash';
 import chalk from 'chalk';
-import { getDefaultSettings } from '@axiocnc/shared/src/schemas/settings';
+import { getDefaultSettings } from '@axiocnc/shared';
 import logger from '../../lib/logger';
 import x from '../../lib/json-stringify';
 

@@ -97,11 +97,20 @@ const options = program.opts();
 
 const launchServer = () => new Promise((resolve, reject) => {
   // Server code location depends on build structure:
+  // - In packaged deployment: server-cli.js is at root, server code is at ./dist/
   // - In production: server-cli.js is at root, server code is at ./server/
   // - In dev build: cli.js is in server/, server code is at ./
-  // Detect location by checking if we're in a server/ subdirectory
+  // Detect location by checking file structure
   const isInServerDir = __filename.includes('/server/cli.js') || __filename.includes('\\server\\cli.js');
-  const serverIndexPath = isInServerDir ? './index' : './server/index';
+  const hasDistIndex = require('fs').existsSync('./dist/index.js');
+  let serverIndexPath;
+  if (isInServerDir) {
+    serverIndexPath = './index'; // dev build
+  } else if (hasDistIndex) {
+    serverIndexPath = './dist/index'; // packaged deployment
+  } else {
+    serverIndexPath = './server/index'; // production build
+  }
   // eslint-disable-next-line import/no-dynamic-require, import/no-unresolved
   require(serverIndexPath).createServer({
     port: options.port,
