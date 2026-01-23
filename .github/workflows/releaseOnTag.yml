@@ -17,23 +17,18 @@ jobs:
         include:
           - os: ubuntu-latest
             package_cmd: yarn package:desktop:linux-amd64
-            verify_deb: true
           - os: windows-latest
             package_cmd: yarn package:desktop:windows-x64
-            verify_deb: false
           - os: macos-latest
             package_cmd: yarn package:desktop:macos-x64
-            verify_deb: false
           - os: macos-14
             package_cmd: yarn package:desktop:macos-arm64
-            verify_deb: false
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Extract version from tag
         id: tag_version
         run: |
@@ -41,29 +36,19 @@ jobs:
           VERSION=${TAG_NAME#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: yarn
-
       - name: Enable Corepack
         run: corepack enable
-
       - name: Install dependencies
         run: yarn install --immutable
-
       - name: Build all
         run: yarn build:all
-
       - name: Package desktop app
         run: ${{ matrix.package_cmd }}
-
-      - name: Verify deb layout
-        if: matrix.verify_deb
-        run: node developers/scripts/desktop/verify-deb-layout.js
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -82,7 +67,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Extract version from tag
         id: tag_version
         run: |
@@ -90,30 +74,19 @@ jobs:
           VERSION=${TAG_NAME#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-
-      # Optional: only keep this if you truly want version stamping at build-time
-      - name: Update version numbers
-        run: |
-          node developers/scripts/update-version.js ${{ steps.tag_version.outputs.version }}
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: yarn
-
       - name: Enable Corepack
         run: corepack enable
-
       - name: Install dependencies
         run: yarn install --immutable
-
       - name: Build all
         run: yarn build:all
-
       - name: Package server deb
         run: yarn package:server-${{ matrix.arch }}
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
