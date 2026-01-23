@@ -64,27 +64,14 @@ run(process.execPath, [prepareScript, '--bundle-dir', bundleRoot]);
 
 console.log(`📦 Running electron-builder ${electronBuilderArgs.join(' ')}`);
 
-const yarnArgs = ['--cwd', 'apps/desktop', 'electron-builder', ...electronBuilderArgs];
-if (process.platform === 'win32') {
-  const yarnCli = path.join(repoRoot, '.yarn', 'releases', 'yarn-3.3.1.cjs');
-  run(process.execPath, [yarnCli, ...yarnArgs], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      AXIOCNC_BUNDLE_DIR: bundleRoot,
-      AXIOCNC_OUTPUT_DIR: builderOutputDir,
-    },
-  });
-} else {
-  run('yarn', yarnArgs, {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      AXIOCNC_BUNDLE_DIR: bundleRoot,
-      AXIOCNC_OUTPUT_DIR: builderOutputDir,
-    },
-  });
-}
+run('npx', ['electron-builder', ...electronBuilderArgs], {
+  cwd: repoRoot,
+  env: {
+    ...process.env,
+    AXIOCNC_BUNDLE_DIR: bundleRoot,
+    AXIOCNC_OUTPUT_DIR: builderOutputDir,
+  },
+});
 
 const fs = require('fs');
 

@@ -20,6 +20,8 @@ class MediaMTXManager extends events.EventEmitter {
   restartCount = 0;
   maxRestartDelay = 30000; // 30 seconds max
   minRestartDelay = 1000; // 1 second min
+  lastStderrLines = []; // Store last few stderr lines for diagnostics
+  lastStdoutLines = []; // Store last few stdout lines for diagnostics
 
   // Paths
   binaryPath = null;
@@ -204,11 +206,17 @@ class MediaMTXManager extends events.EventEmitter {
 logDestinations:
   - stdout
 
-# MediaMTX defaults:
+# MediaMTX port configuration:
 # - HLS on :8888 (HTTP)
 # - RTSP on :8554
+# - RTP/UDP on :8002 (changed from default :8000 to avoid conflict with AxioCNC server on :8000)
+# - RTCP/UDP on :8003 (must be consecutive with RTP port)
 # We use defaults for simplicity. HLS will be available on 127.0.0.1:8888
 # (though MediaMTX binds to all interfaces, we'll reverse proxy from Node)
+
+# Configure RTP/RTCP to use ports 8002/8003 instead of default 8000/8001 (which conflicts with AxioCNC server)
+rtpAddress: :8002
+rtcpAddress: :8003
 
 paths:
 `;
@@ -238,10 +246,12 @@ paths:
     try {
       const yamlContent = this.generateConfigYAML();
       fs.writeFileSync(this.configPath, yamlContent, 'utf8');
-      log.debug(`MediaMTX config written to ${this.configPath}`);
+      log.info(`MediaMTX config written to ${this.configPath}`);
+      log.debug(`MediaMTX config content:\n${yamlContent}`);
       return true;
     } catch (error) {
       log.error(`Failed to write MediaMTX config: ${error.message}`);
+      log.error(`Config path: ${this.configPath}`);
       return false;
     }
   }
@@ -286,6 +296,114 @@ paths:
   }
 
   /**
+   * Clean up stale MediaMTX processes that are holding ports
+   * This helps recover from crashes or incomplete shutdowns
+   */
+  cleanupStaleProcesses() {
+    try {
+      const { execSync } = require('child_process');
+      
+      // Find all processes using MediaMTX ports
+      // Note: Ports 8000/8001 UDP were changed to 8002/8003 UDP to avoid conflict with AxioCNC server on port 8000
+      const ports = [
+        { port: 8002, protocol: 'UDP' },
+        { port: 8003, protocol: 'UDP' },
+        { port: 8554, protocol: 'TCP' },
+        { port: 8888, protocol: 'TCP' }
+      ];
+      
+      const stalePids = new Set();
+      
+      for (const { port, protocol } of ports) {
+        try {
+          // lsof output format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+          // We want PID and COMMAND columns
+          const result = execSync(
+            `lsof -i ${protocol}:${port} -t 2>/dev/null || true`,
+            { encoding: 'utf8' }
+          );
+          
+          if (result.trim()) {
+            const pids = result.trim().split('\n').filter(p => p.trim());
+            pids.forEach(pid => {
+              // Check if this is a MediaMTX process
+              try {
+                const cmdline = execSync(
+                  `ps -p ${pid} -o comm= 2>/dev/null || true`,
+                  { encoding: 'utf8' }
+                ).trim().toLowerCase();
+                
+                // Check if it's a MediaMTX process (could be "mediamtx" or full path)
+                if (cmdline.includes('mediamtx') || cmdline === 'mediamtx') {
+                  stalePids.add(pid);
+                  log.info(`Found stale MediaMTX process: PID ${pid} (command: ${cmdline})`);
+                }
+              } catch (err) {
+                // Process might have exited, ignore
+              }
+            });
+          }
+        } catch (err) {
+          // lsof might not be available or port not in use, ignore
+        }
+      }
+      
+        // Kill stale processes (but not our own if we have one)
+        if (stalePids.size > 0) {
+          log.warn(`Found ${stalePids.size} stale MediaMTX process(es) holding ports. Cleaning up...`);
+          
+          stalePids.forEach(pid => {
+            // Don't kill our own process if it exists
+            if (this.pid && parseInt(pid) === this.pid) {
+              log.debug(`Skipping cleanup of our own process (PID ${pid})`);
+              return;
+            }
+            
+            try {
+              log.info(`Killing stale MediaMTX process: PID ${pid}`);
+              // Try SIGTERM first (graceful)
+              execSync(`kill -TERM ${pid} 2>/dev/null || true`);
+            } catch (err) {
+              log.warn(`Failed to send TERM to process ${pid}: ${err.message}`);
+            }
+          });
+          
+          // Wait a moment for graceful termination
+          log.debug('Waiting 500ms for graceful termination...');
+          const startWait = Date.now();
+          while (Date.now() - startWait < 500) {
+            // Busy wait (short duration, acceptable for startup)
+          }
+          
+          // Force kill any that are still alive
+          stalePids.forEach(pid => {
+            if (this.pid && parseInt(pid) === this.pid) {
+              return; // Skip our own process
+            }
+            
+            try {
+              // Check if process still exists (kill -0 returns 0 if exists)
+              execSync(`kill -0 ${pid} 2>/dev/null`, { encoding: 'utf8' });
+              // Still alive, force kill
+              log.warn(`Process ${pid} did not terminate gracefully, force killing...`);
+              execSync(`kill -9 ${pid} 2>/dev/null || true`);
+            } catch (err) {
+              // Process is gone (kill -0 failed), good
+              log.debug(`Stale process ${pid} terminated successfully`);
+            }
+          });
+          
+          log.info('Stale process cleanup completed');
+        } else {
+          log.debug('No stale MediaMTX processes found');
+        }
+    } catch (err) {
+      log.warn(`Error during stale process cleanup: ${err.message}`);
+      // Don't fail startup if cleanup fails
+    }
+  }
+
+  /**
    * Start MediaMTX process
    */
   start() {
@@ -305,6 +423,44 @@ paths:
     if (!this.writeConfig()) {
       log.error('Failed to write MediaMTX config, aborting start');
       return;
+    }
+
+    // Clean up stale MediaMTX processes before starting
+    this.cleanupStaleProcesses();
+
+    // Check for port conflicts (MediaMTX uses ports 8002/UDP for RTP, 8003/UDP for RTCP, 8554/TCP for RTSP, 8888/TCP for HLS)
+    // Note: Ports 8000/8001 UDP were changed to 8002/8003 UDP to avoid conflict with AxioCNC server on port 8000
+    // This is a best-effort check - MediaMTX will still fail if ports are in use
+    const checkPort = (port, protocol = 'tcp') => {
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`lsof -i ${protocol === 'udp' ? 'UDP' : 'TCP'}:${port} 2>/dev/null || true`, { encoding: 'utf8' });
+        if (result.trim()) {
+          log.warn(`Port ${port} (${protocol.toUpperCase()}) appears to be in use:`);
+          result.split('\n').filter(l => l.trim()).forEach(line => {
+            log.warn(`  ${line}`);
+          });
+          return true;
+        }
+        return false;
+      } catch (err) {
+        // lsof might not be available, ignore
+        return false;
+      }
+    };
+
+    log.debug('Checking for port conflicts...');
+    const portsInUse = [];
+    if (checkPort(8002, 'udp')) portsInUse.push('8002/udp');
+    if (checkPort(8003, 'udp')) portsInUse.push('8003/udp');
+    if (checkPort(8554, 'tcp')) portsInUse.push('8554/tcp');
+    if (checkPort(8888, 'tcp')) portsInUse.push('8888/tcp');
+    
+    if (portsInUse.length > 0) {
+      log.warn(`⚠️  MediaMTX ports appear to be in use: ${portsInUse.join(', ')}`);
+      log.warn(`   MediaMTX may fail to start. Check for other MediaMTX instances or conflicting services.`);
+    } else {
+      log.debug('No port conflicts detected');
     }
 
     // Ensure binary has execute permissions
@@ -332,13 +488,22 @@ paths:
 
     log.info(`Starting MediaMTX from ${this.binaryPath}`);
     log.info(`MediaMTX config: ${this.configPath}`);
+    log.info(`MediaMTX log file: ${logFile}`);
 
     // Use absolute path and ensure shell: false
     // Also set PATH to ensure no shell interpretation
     const absoluteBinaryPath = path.resolve(this.binaryPath);
 
-    log.debug(`Spawning MediaMTX with absolute path: ${absoluteBinaryPath}`);
-    log.debug(`Config path: ${this.configPath}`);
+    log.info(`Spawning MediaMTX with absolute path: ${absoluteBinaryPath}`);
+    log.info(`Config path: ${this.configPath}`);
+    
+    // Log binary info
+    try {
+      const stats = fs.statSync(absoluteBinaryPath);
+      log.debug(`MediaMTX binary size: ${stats.size} bytes, mode: ${stats.mode.toString(8)}`);
+    } catch (err) {
+      log.warn(`Could not stat MediaMTX binary: ${err.message}`);
+    }
 
     // MediaMTX takes config file as positional argument, not -c flag
     // Usage: mediamtx [<confpath>] [flags]
@@ -378,22 +543,73 @@ paths:
     this.process.stdout.pipe(logStream, { end: false });
     this.process.stderr.pipe(logStream, { end: false });
 
+    // Reset diagnostic buffers
+    this.lastStderrLines = [];
+    this.lastStdoutLines = [];
+
     // Also log to our logger
     this.process.stdout.on('data', (data) => {
-      const line = data.toString().trim();
-      // Filter out HLS part duration warning (known MediaMTX warning that's not actionable)
-      if (line.includes('[HLS]') && line.includes('part duration changed') && line.includes('will cause an error in iOS clients')) {
-        return; // Skip logging this specific warning
-      }
-      log.debug(`MediaMTX stdout: ${line}`);
+      const lines = data.toString().split('\n').filter(l => l.trim());
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        
+        // Store last 10 lines for diagnostics
+        this.lastStdoutLines.push(trimmed);
+        if (this.lastStdoutLines.length > 10) {
+          this.lastStdoutLines.shift();
+        }
+        
+        // Filter out HLS part duration warning (known MediaMTX warning that's not actionable)
+        if (trimmed.includes('[HLS]') && trimmed.includes('part duration changed') && trimmed.includes('will cause an error in iOS clients')) {
+          return; // Skip logging this specific warning
+        }
+        
+        // Log errors and warnings at info level, rest at debug
+        if (trimmed.includes('ERR') || trimmed.includes('ERROR') || trimmed.includes('FATAL')) {
+          log.error(`MediaMTX stdout: ${trimmed}`);
+        } else if (trimmed.includes('WARN') || trimmed.includes('WARNING')) {
+          log.warn(`MediaMTX stdout: ${trimmed}`);
+        } else {
+          log.debug(`MediaMTX stdout: ${trimmed}`);
+        }
+      });
     });
 
     this.process.stderr.on('data', (data) => {
-      log.debug(`MediaMTX stderr: ${data.toString().trim()}`);
+      const lines = data.toString().split('\n').filter(l => l.trim());
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        
+        // Store last 10 lines for diagnostics
+        this.lastStderrLines.push(trimmed);
+        if (this.lastStderrLines.length > 10) {
+          this.lastStderrLines.shift();
+        }
+        
+        // Log stderr at info level (stderr is usually important)
+        if (trimmed.includes('ERR') || trimmed.includes('ERROR') || trimmed.includes('FATAL')) {
+          log.error(`MediaMTX stderr: ${trimmed}`);
+        } else if (trimmed.includes('WARN') || trimmed.includes('WARNING')) {
+          log.warn(`MediaMTX stderr: ${trimmed}`);
+        } else {
+          log.info(`MediaMTX stderr: ${trimmed}`);
+        }
+      });
     });
 
     this.process.on('error', (error) => {
-      log.error(`MediaMTX process error: ${error.message}`);
+      log.error(`MediaMTX process spawn error: ${error.message}`);
+      log.error(`  Binary path: ${this.binaryPath}`);
+      log.error(`  Error code: ${error.code || 'unknown'}`);
+      log.error(`  Error syscall: ${error.syscall || 'unknown'}`);
+      if (error.code === 'ENOENT') {
+        log.error(`  ⚠️  Binary not found! Check that MediaMTX binary exists at: ${this.binaryPath}`);
+      } else if (error.code === 'EACCES') {
+        log.error(`  ⚠️  Permission denied! Check binary execute permissions: ${this.binaryPath}`);
+        log.error(`  💡 Try: chmod +x ${this.binaryPath}`);
+      }
       this.process = null;
       this.pid = null;
       this.emit('error', error);
@@ -402,6 +618,46 @@ paths:
 
     this.process.on('exit', (code, signal) => {
       log.warn(`MediaMTX process exited with code ${code}, signal ${signal}`);
+
+      // Log diagnostic information if process exited with error
+      if (code !== 0 && code !== null) {
+        log.error(`MediaMTX diagnostic information:`);
+        log.error(`  Binary path: ${this.binaryPath}`);
+        log.error(`  Config path: ${this.configPath}`);
+        log.error(`  Log directory: ${this.logDir}`);
+        
+        // Show last stderr lines (usually contains error messages)
+        if (this.lastStderrLines.length > 0) {
+          log.error(`  Last stderr output (${this.lastStderrLines.length} lines):`);
+          this.lastStderrLines.forEach((line, idx) => {
+            log.error(`    [${idx + 1}] ${line}`);
+          });
+        }
+        
+        // Show last stdout lines if no stderr
+        if (this.lastStderrLines.length === 0 && this.lastStdoutLines.length > 0) {
+          log.error(`  Last stdout output (${this.lastStdoutLines.length} lines):`);
+          this.lastStdoutLines.forEach((line, idx) => {
+            log.error(`    [${idx + 1}] ${line}`);
+          });
+        }
+        
+        // Check for common issues
+        const allOutput = [...this.lastStderrLines, ...this.lastStdoutLines].join(' ').toLowerCase();
+        if (allOutput.includes('address already in use') || allOutput.includes('bind')) {
+          log.error(`  ⚠️  Port conflict detected! Another process may be using MediaMTX's ports.`);
+          log.error(`  💡 Try: lsof -i :8000 -i :8554 -i :8888 (or check for other MediaMTX processes)`);
+        }
+        if (allOutput.includes('permission denied')) {
+          log.error(`  ⚠️  Permission denied! Check binary execute permissions: ${this.binaryPath}`);
+        }
+        if (allOutput.includes('no such file') || allOutput.includes('not found')) {
+          log.error(`  ⚠️  File not found! Check that MediaMTX binary exists: ${this.binaryPath}`);
+        }
+        if (allOutput.includes('config') && allOutput.includes('error')) {
+          log.error(`  ⚠️  Config file error! Check MediaMTX config: ${this.configPath}`);
+        }
+      }
 
       // Close the log stream after a short delay to ensure all data is written
       setTimeout(() => {

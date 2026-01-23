@@ -8,7 +8,7 @@ import _ from 'lodash';
 import {
   SystemSettingsSchema,
   getDefaultSettings,
-} from '@axiocnc/shared/src/schemas/settings';
+} from '@axiocnc/shared';
 import config from '../services/configstore';
 import {
   ERR_BAD_REQUEST,

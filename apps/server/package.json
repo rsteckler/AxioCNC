@@ -5,7 +5,7 @@
   "private": true,
   "main": "src/cli.js",
   "scripts": {
-    "build": "npm run build:clean && npm run build:compile && npm run build:i18n && npm run build:copy",
+    "build": "pnpm run build:clean && pnpm run build:compile && pnpm run build:copy",
     "build:clean": "rm -rf dist",
     "build:compile": "babel src -d dist --config-file ../../babel.config.js",
     "build:i18n": "i18next-scanner --config ../../i18next-scanner.server.config.js \"src/**/*.{html,js,jsx}\" \"!src/i18n/**\" \"!**/node_modules/**\"",

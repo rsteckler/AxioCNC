@@ -29,6 +29,10 @@ const assertExists = (targetPath, label) => {
   }
 };
 
+const ensureDir = (dir) => {
+  fs.mkdirSync(dir, { recursive: true });
+};
+
 const bundleDirFlagIndex = process.argv.indexOf('--bundle-dir');
 const bundleDir = bundleDirFlagIndex >= 0 ? process.argv[bundleDirFlagIndex + 1] : null;
 if (!bundleDir) {
@@ -44,46 +48,65 @@ const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runt
 run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
-const npmCli = process.platform === 'win32'
-  ? path.join(process.execPath, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js')
-  : null;
-const npmArgs = ['install', '--omit=dev', '--no-audit', '--no-fund'];
-if (npmCli) {
-  run(process.execPath, [npmCli, ...npmArgs], {
-    cwd: outputRoot,
-    env: {
-      ...process.env,
-      npm_config_update_notifier: 'false',
-    },
-  });
-} else {
-  run('npm', npmArgs, {
-    cwd: outputRoot,
-    env: {
-      ...process.env,
-      npm_config_update_notifier: 'false',
-    },
-  });
-}
+// Use isolated temp directory like server packaging
+const tempDir = `/tmp/axiocnc-desktop-deps-$$`;
+require('child_process').spawnSync('trap', ['rm -rf \'' + tempDir + '\'', 'EXIT', 'INT', 'TERM'], { stdio: 'inherit' });
+require('child_process').spawnSync('rm', ['-rf', tempDir], { stdio: 'inherit' });
+require('child_process').spawnSync('mkdir', ['-p', tempDir], { stdio: 'inherit' });
 
-console.log('🔧 Rebuilding native modules for Electron...');
-// eslint-disable-next-line import/no-dynamic-require
-const desktopPkg = require(path.join(repoRoot, 'apps/desktop/package.json'));
-const electronVersion = desktopPkg.devDependencies?.electron;
-if (!electronVersion) {
-  console.error('❌ Could not read Electron version from apps/desktop/package.json');
+// Copy and modify package.json (remove workspace deps)
+const pkg = JSON.parse(fs.readFileSync(path.join(outputRoot, 'package.json'), 'utf8'));
+if (pkg.dependencies && pkg.dependencies['@axiocnc/shared']) {
+  delete pkg.dependencies['@axiocnc/shared'];
+}
+fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+fs.copyFileSync(path.join(repoRoot, 'pnpm-lock.yaml'), path.join(tempDir, 'pnpm-lock.yaml'));
+
+// Install in temp directory
+run('pnpm', ['install', '--prod', '--no-frozen-lockfile'], {
+  cwd: tempDir,
+  env: {
+    ...process.env,
+  },
+});
+
+// Copy node_modules back
+run('cp', ['-r', path.join(tempDir, 'node_modules'), outputRoot]);
+
+// Link shared library into node_modules so server code can import it
+console.log('🔗 Linking shared library into node_modules...');
+const sharedNodeModulesPath = path.join(outputRoot, 'node_modules', '@axiocnc');
+const sharedLinkPath = path.join(sharedNodeModulesPath, 'shared');
+ensureDir(sharedNodeModulesPath);
+if (fs.existsSync(sharedLinkPath)) {
+  fs.rmSync(sharedLinkPath, { recursive: true, force: true });
+}
+// Create symlink to the shared dist directory
+const sharedDistPath = path.join(outputRoot, 'shared');
+if (fs.existsSync(sharedDistPath)) {
+  fs.symlinkSync(path.relative(sharedNodeModulesPath, sharedDistPath), sharedLinkPath, 'dir');
+  // Copy package.json to shared directory with corrected main path
+  const sharedPkgPath = path.join(repoRoot, 'apps/shared/package.json');
+  const sharedPkg = JSON.parse(fs.readFileSync(sharedPkgPath, 'utf8'));
+  // Update main to point to index.js (since dist contents are copied directly to shared/)
+  sharedPkg.main = 'index.js';
+  sharedPkg.types = 'index.d.ts';
+  fs.writeFileSync(path.join(sharedDistPath, 'package.json'), JSON.stringify(sharedPkg, null, 2) + '\n');
+  console.log(`✅ Linked shared library: ${sharedLinkPath} -> ${sharedDistPath}`);
+} else {
+  console.error(`❌ Shared dist not found at ${sharedDistPath}`);
   process.exit(1);
 }
 
-const rebuildCli = path.join(repoRoot, 'node_modules', '@electron', 'rebuild', 'lib', 'cli.js');
-run(process.execPath, [
-  rebuildCli,
-  '--version',
-  electronVersion,
-  '--module-dir',
-  outputRoot,
-  '--force',
-]);
+console.log('🔧 Skipping native modules rebuild for Electron (needs @electron/rebuild setup for pnpm)...');
+// TODO: Add electron rebuild support for pnpm
+// const desktopPkg = require(path.join(repoRoot, 'apps/desktop/package.json'));
+// const electronVersion = desktopPkg.devDependencies?.electron;
+// if (!electronVersion) {
+//   console.error('❌ Could not read Electron version from apps/desktop/package.json');
+//   process.exit(1);
+// }
+// run('pnpm', ['exec', '@electron/rebuild', '--version', electronVersion, '--module-dir', outputRoot, '--force']);
 
 console.log('✅ Verifying bundle layout...');
 assertExists(path.join(outputRoot, 'server', 'cli.js'), 'server cli.js');

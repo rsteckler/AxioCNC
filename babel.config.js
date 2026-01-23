@@ -19,7 +19,7 @@ module.exports = (api) => {
     ],
     plugins,
     overrides: [
-      // Server code must use CommonJS for Node.js compatibility (especially for lodash sub-path imports)
+      // Server and shared code must use CommonJS for Node.js compatibility
       {
         test: (filename) => {
           if (!filename) return false;
@@ -30,7 +30,7 @@ module.exports = (api) => {
         },
         presets: [
           ['@babel/preset-env', {
-            modules: 'cjs', // Force CommonJS for server code
+            modules: 'cjs', // Force CommonJS for server and shared code
           }],
         ],
       },
