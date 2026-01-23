@@ -78,7 +78,7 @@ console.log(`📦 Running electron-builder ${electronBuilderArgs.join(' ')}`);
 if (process.platform === 'darwin') {
   const electronBuilderCmd = `npx electron-builder ${electronBuilderArgs.join(' ')}`;
   const shellCmd = `ulimit -n 65536 && ${electronBuilderCmd}`;
-  console.log(`✅ Setting file descriptor limit to 65536 for macOS build`);
+  console.log('✅ Setting file descriptor limit to 65536 for macOS build');
   run('bash', ['-c', shellCmd], {
     cwd: repoRoot,
     env: {
