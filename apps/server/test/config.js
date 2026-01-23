@@ -1,6 +1,5 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
-import os from 'os';
 
 test('config', (t) => {
   // Note: process.platform branch in getUserHome() is hard to test with proxyquire

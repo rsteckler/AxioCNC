@@ -2,7 +2,7 @@ import { test } from 'tap';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { ConfigStore } from '../src/services/configstore/index.js';
+import { ConfigStore } from '../src/services/configstore/index';
 
 // Helper to create a temporary file for testing
 const createTempFile = () => {
@@ -85,7 +85,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.equal(store.get('nested.key'), 'value');
     subt.equal(store.get('foo'), 'bar');
     subt.equal(store.get('nested.key'), 'value');
-    
+
     // Immediately close watcher to prevent hanging
     console.log('[TEST] Closing watcher...');
     if (store.watcher) {
@@ -112,7 +112,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(result.settings, 'should have settings');
     subt.ok(result.extensions, 'should have extensions');
     subt.same(result.extensions, {}, 'extensions should be empty object');
-    
+
     // Immediately close watcher to prevent hanging
     console.log('[TEST] Closing watcher...');
     if (store.watcher) {
@@ -178,7 +178,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(loadConfig.settings, 'config should have settings');
     subt.ok(loadConfig.extensions, 'config should have extensions');
     subt.equal(store.get('foo'), 'bar', 'original data should be preserved');
-    
+
     // Immediately close watcher to prevent hanging
     console.log('[TEST] Closing watcher...');
     if (store.watcher) {
@@ -216,7 +216,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(result, 'should return true');
     subt.equal(store.get('foo'), 'baz', 'should reload updated value');
     subt.equal(store.get('new'), 'value', 'should reload new values');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     console.log('[TEST] Completed: reload - reloads config from file');
     subt.end();
@@ -238,7 +238,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     subt.notOk(result, 'should return false on error');
     subt.ok(errorEmitted, 'should emit error event');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -257,7 +257,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(store.config.settings, 'should have settings');
     subt.ok(store.config.extensions, 'should have extensions');
     subt.same(store.config.extensions, {}, 'extensions should be empty object');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -273,7 +273,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     const settings = store.get('settings');
     subt.ok(settings, 'should have settings');
     subt.ok(settings.machine, 'settings should have machine property');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -294,7 +294,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     const settings = store.get('settings');
     subt.equal(settings.lang, 'es', 'should preserve existing settings');
     subt.ok(settings.machine, 'should merge with defaults');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -309,7 +309,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     const extensions = store.get('extensions');
     subt.same(extensions, {}, 'should initialize extensions as empty object');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -326,7 +326,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(fs.existsSync(tempFile), 'should create file');
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.same(content, { foo: 'bar', nested: { key: 'value' } }, 'should write correct content');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -342,7 +342,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     const content = fs.readFileSync(tempFile, 'utf8');
     subt.ok(content.includes('\n'), 'should format with newlines');
     subt.ok(content.includes('    '), 'should format with 4-space indentation');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -418,7 +418,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(store.config.settings, 'should have settings');
     subt.ok(store.config.extensions, 'should have extensions');
     subt.equal(store.config.foo, 'bar', 'should preserve original data');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -437,7 +437,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.equal(store.get('foo'), 'bar', 'should set value');
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.equal(content.foo, 'bar', 'should sync to file');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -456,7 +456,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.equal(store.get('nested.key'), 'value');
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.equal(content.nested.key, 'value', 'should sync nested value to file');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -477,7 +477,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.notOk(content.new, 'should not sync to file when silent');
     subt.equal(content.existing, 'value', 'should preserve existing values');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -496,7 +496,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.same(content, initialConfig, 'should not modify config');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -521,7 +521,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.equal(store.get('foo'), 'baz', 'should reload external changes');
     subt.equal(store.get('external'), 'value', 'should include external changes');
     subt.equal(store.get('new'), 'value', 'should set new value');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -543,7 +543,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.notOk(content.baz, 'should sync removal to file');
     subt.equal(content.foo, 'bar', 'should preserve other keys in file');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -562,7 +562,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     subt.equal(store.get('nested.key'), undefined, 'should remove nested key');
     subt.equal(store.get('nested.other'), 'data', 'should preserve other nested keys');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -581,7 +581,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     const content = JSON.parse(fs.readFileSync(tempFile, 'utf8'));
     subt.same(content, initialConfig, 'should not modify config');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -606,7 +606,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.equal(store.get('foo'), 'baz', 'should reload external changes');
     subt.equal(store.get('external'), 'value', 'should include external changes');
     subt.equal(store.get('toRemove'), undefined, 'should remove key');
-    
+
     cleanupTempFile(tempDir, tempFile, store);
     subt.end();
   });
@@ -627,7 +627,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
 
     subt.ok(errorEmitted, 'should emit error event');
     subt.ok(errorValue, 'error event should have error value');
-    
+
     // Close watcher if it was created despite error
     console.log('[TEST] Closing watcher after error test...');
     if (store.watcher) {
@@ -663,7 +663,7 @@ test('ConfigStore', { timeout: 30000 }, (t) => {
     subt.ok(store.watcher, 'should have watcher for second file');
     subt.equal(store.file, file2, 'should update file path');
     subt.equal(store.get('file'), 2, 'should load second file data');
-    
+
     // Clean up watchers - close both watchers
     console.log('[TEST] Closing watchers...');
     if (store.watcher) {

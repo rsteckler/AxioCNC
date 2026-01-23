@@ -143,21 +143,21 @@ export const update = (req, res) => {
     record.mtime = new Date().getTime();
     // If property exists in body and is null/undefined, convert to empty string
     // Otherwise, use the provided value or keep original if missing
-    record.name = String(
-      ('name' in req.body) 
-        ? (req.body.name === null || req.body.name === undefined ? '' : req.body.name)
-        : record.name
-    );
-    record.description = String(
-      ('description' in req.body)
-        ? (req.body.description === null || req.body.description === undefined ? '' : req.body.description)
-        : record.description
-    );
-    record.content = String(
-      ('content' in req.body)
-        ? (req.body.content === null || req.body.content === undefined ? '' : req.body.content)
-        : record.content
-    );
+    if ('name' in req.body) {
+      record.name = req.body.name === null || req.body.name === undefined ? '' : String(req.body.name);
+    } else {
+      record.name = String(record.name);
+    }
+    if ('description' in req.body) {
+      record.description = req.body.description === null || req.body.description === undefined ? '' : String(req.body.description);
+    } else {
+      record.description = String(record.description);
+    }
+    if ('content' in req.body) {
+      record.content = req.body.content === null || req.body.content === undefined ? '' : String(req.body.content);
+    } else {
+      record.content = String(record.content);
+    }
 
     config.set(CONFIG_KEY, records);
 

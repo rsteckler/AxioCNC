@@ -15,8 +15,8 @@ test('ensure-type', (t) => {
     st.equal(ensureBoolean(false), false, 'false -> false');
     st.equal(ensureBoolean(1), true, '1 -> Boolean(1) true');
     st.equal(ensureBoolean(0), false, '0 -> Boolean(0) false');
-    st.equal(ensureBoolean(''), false, "'' -> Boolean('') false");
-    st.equal(ensureBoolean('yes'), true, "'yes' -> Boolean('yes') true");
+    st.equal(ensureBoolean(''), false, 'empty string -> Boolean(empty string) false');
+    st.equal(ensureBoolean('yes'), true, 'yes string -> Boolean(yes string) true');
     st.end();
   });
 
@@ -25,7 +25,7 @@ test('ensure-type', (t) => {
     st.equal(ensureString(null), '', 'null -> default empty string');
     st.equal(ensureString(undefined, 'x'), 'x', 'undefined with default -> default');
     st.equal(ensureString(null, 'x'), 'x', 'null with default -> default');
-    st.equal(ensureString('hi'), 'hi', "'hi' -> 'hi'");
+    st.equal(ensureString('hi'), 'hi', 'hi -> hi');
     st.equal(ensureString(42), '42', '42 -> String(42)');
     st.equal(ensureString(true), 'true', 'true -> String(true)');
     st.end();
@@ -37,7 +37,7 @@ test('ensure-type', (t) => {
     st.equal(ensureNumber(undefined, 99), 99, 'undefined with default 99 -> 99');
     st.equal(ensureNumber(null, 99), 99, 'null with default 99 -> 99');
     st.equal(ensureNumber(42), 42, '42 -> 42');
-    st.equal(ensureNumber('100'), 100, "'100' -> Number(100)");
+    st.equal(ensureNumber('100'), 100, '100 string -> Number(100)');
     st.equal(ensureNumber(true), 1, 'true -> Number(true) 1');
     st.end();
   });

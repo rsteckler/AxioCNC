@@ -420,4 +420,5 @@ class MachineStatusManager extends events.EventEmitter {
 // Create singleton instance
 const machineStatusManager = new MachineStatusManager();
 
+export { MachineStatusManager };
 export default machineStatusManager;

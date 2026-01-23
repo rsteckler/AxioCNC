@@ -5,11 +5,11 @@
  * For extension/widget data, use /api/extensions instead.
  */
 import _ from 'lodash';
-import config from '../services/configstore';
 import {
   SystemSettingsSchema,
   getDefaultSettings,
 } from '@axiocnc/shared/src/schemas/settings';
+import config from '../services/configstore';
 import {
   ERR_BAD_REQUEST,
 } from '../constants';

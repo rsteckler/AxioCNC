@@ -410,8 +410,12 @@ test('Sender hold() and unhold()', (t) => {
 
   let holdEmitted = false;
   let unholdEmitted = false;
-  sender.on('hold', () => { holdEmitted = true; });
-  sender.on('unhold', () => { unholdEmitted = true; });
+  sender.on('hold', () => {
+ holdEmitted = true;
+});
+  sender.on('unhold', () => {
+ unholdEmitted = true;
+});
 
   sender.hold('M0 pause');
   t.ok(sender.state.hold, 'hold sets state.hold');
@@ -461,7 +465,9 @@ test('Sender rewind()', (t) => {
 test('Sender with dataFilter', (t) => {
   const sender = new Sender(SP_TYPE_SEND_RESPONSE, {
     dataFilter: (line, ctx) => {
-      if (line.trim() === 'G0 X0') return ''; // filter out first line
+      if (line.trim() === 'G0 X0') {
+ return '';
+} // filter out first line
       return line;
     }
   });
@@ -479,7 +485,9 @@ test('Sender with dataFilter', (t) => {
 
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 });
 
@@ -496,7 +504,9 @@ test('Sender isValidTool and tool stats', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.ok(typeof sender.state.stats.toolStats === 'object', 'toolStats exists');
@@ -536,7 +546,9 @@ test('Sender updateToolTime()', (t) => {
   sender.state.stats.toolStartTime = Date.now() - 1000; // 1 second ago
 
   let changeEmitted = false;
-  sender.on('change', () => { changeEmitted = true; });
+  sender.on('change', () => {
+ changeEmitted = true;
+});
 
   sender.updateToolTime();
   t.ok(changeEmitted, 'updateToolTime emits change');
@@ -632,7 +644,9 @@ test('Sender processLineForDistance - G2/G3 arcs', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.ok(sender.state.stats.totalDistance.total > 0, 'arc distance calculated');
@@ -649,7 +663,9 @@ test('Sender processLineForDistance - G18/G19 planes', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.equal(sender.state.stats.modalState.plane, 'G19', 'G19 sets plane');
@@ -665,7 +681,9 @@ test('Sender processLineForDistance - M3/M4/M5 spindle', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.equal(sender.state.stats.modalState.spindle, 'M5', 'M5 sets spindle off');
@@ -684,7 +702,9 @@ test('Sender processLineForDistance - G28/G30 homing', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.same(sender.state.stats.position, { x: 0, y: 0, z: 0 }, 'G28/G30 reset position to 0');
@@ -699,7 +719,9 @@ test('Sender processLineForDistance - G90/G91 absolute/incremental', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.equal(sender.state.stats.position.x, 20, 'G90 sets absolute position');
@@ -711,7 +733,9 @@ test('Sender processLineForDistance - G90/G91 absolute/incremental', (t) => {
   sender2.on('data', () => sender2.ack());
   while (sender2.state.sent < sender2.state.total) {
     sender2.next();
-    if (sender2.state.received >= sender2.state.total) break;
+    if (sender2.state.received >= sender2.state.total) {
+ break;
+}
   }
   t.equal(sender2.state.stats.position.x, 5, 'G91 adds to position');
   t.equal(sender2.state.stats.position.y, 5, 'G91 adds to position');
@@ -726,7 +750,9 @@ test('Sender processLineForDistance - G20/G21 units', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   t.equal(sender.state.stats.modalState.units, 'G21', 'G21 sets units to mm');
@@ -772,7 +798,9 @@ test('Sender processLineForDistance - tool change with startTime = 0', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   // Tool should be set but not tracked (no startTime)
@@ -789,7 +817,9 @@ test('Sender processLineForDistance - retract detection', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   // Retract is when position.z > previousPosition.z
@@ -808,7 +838,9 @@ test('Sender processLineForDistance - transition vs cutting', (t) => {
   sender.on('data', () => sender.ack());
   while (sender.state.sent < sender.state.total) {
     sender.next();
-    if (sender.state.received >= sender.state.total) break;
+    if (sender.state.received >= sender.state.total) {
+ break;
+}
   }
 
   // Verify that transition and cutting distance stats exist
