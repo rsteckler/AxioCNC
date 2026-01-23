@@ -6,13 +6,10 @@
  */
 import _ from 'lodash';
 import config from '../services/configstore';
-/* eslint-disable import/no-unresolved */
-// Path relative to compiled output: build/dev/server/axiocnc/server/api/ -> build/dev/server/axiocnc/shared/
 import {
   SystemSettingsSchema,
   getDefaultSettings,
-} from '../../shared/schemas/settings';
-/* eslint-enable import/no-unresolved */
+} from '@axiocnc/shared/src/schemas/settings';
 import {
   ERR_BAD_REQUEST,
 } from '../constants';
@@ -25,6 +22,12 @@ const CONFIG_KEY = 'settings';
  */
 export const get = (req, res) => {
   const stored = config.get(CONFIG_KEY, {});
+
+  // If no stored settings, return defaults directly
+  if (!stored || Object.keys(stored).length === 0) {
+    res.send(getDefaultSettings());
+    return;
+  }
 
   // Parse with Zod to apply defaults and validate structure
   const result = SystemSettingsSchema.safeParse(stored);

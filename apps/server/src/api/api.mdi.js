@@ -188,6 +188,13 @@ export const bulkUpdate = (req, res) => {
   const filteredRecords = ensureArray(records)
     .filter(record => isPlainObject(record));
 
+  if (filteredRecords.length === 0) {
+    res.status(ERR_BAD_REQUEST).send({
+      msg: 'The "records" parameter must not be empty'
+    });
+    return;
+  }
+
   for (let i = 0; i < filteredRecords.length; ++i) {
     const record = filteredRecords[i];
     const { id, name, command, grid = {} } = { ...record };

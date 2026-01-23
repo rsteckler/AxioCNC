@@ -17,6 +17,7 @@
     "build:copy:package": "cp -af package.json dist/"
   },
   "dependencies": {
+    "@axiocnc/shared": "workspace:*",
     "@serialport/parser-readline": "^10.0.0",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "~1.18.3",

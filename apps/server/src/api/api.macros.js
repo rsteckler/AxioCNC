@@ -139,17 +139,25 @@ export const update = (req, res) => {
     return;
   }
 
-  const {
-    name = record.name,
-    description = record.description,
-    content = record.content
-  } = { ...req.body };
-
   try {
     record.mtime = new Date().getTime();
-    record.name = String(name || '');
-    record.description = String(description || '');
-    record.content = String(content || '');
+    // If property exists in body and is null/undefined, convert to empty string
+    // Otherwise, use the provided value or keep original if missing
+    record.name = String(
+      ('name' in req.body) 
+        ? (req.body.name === null || req.body.name === undefined ? '' : req.body.name)
+        : record.name
+    );
+    record.description = String(
+      ('description' in req.body)
+        ? (req.body.description === null || req.body.description === undefined ? '' : req.body.description)
+        : record.description
+    );
+    record.content = String(
+      ('content' in req.body)
+        ? (req.body.content === null || req.body.content === undefined ? '' : req.body.content)
+        : record.content
+    );
 
     config.set(CONFIG_KEY, records);
 

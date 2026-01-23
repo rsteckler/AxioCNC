@@ -489,16 +489,25 @@ test('api.commands', (t) => {
     ];
     mockConfigStore._data.commands = records;
 
-    const req = createMockRequest({
-      params: { id: mockConfigStore._data.commands[0]?.id }
+    // First call fetch to sanitize and get the generated ID
+    const fetchReq = createMockRequest();
+    const fetchRes = createMockResponse();
+    apiCommands.fetch(fetchReq, fetchRes);
+
+    subt.equal(fetchRes.statusCode, 200, 'fetch should succeed');
+    subt.ok(fetchRes.body.records[0].id, 'fetch should generate ID');
+
+    // Now use the generated ID to read the record
+    const readReq = createMockRequest({
+      params: { id: fetchRes.body.records[0].id }
     });
-    const res = createMockResponse();
+    const readRes = createMockResponse();
 
-    // First call sanitizes and adds ID
-    apiCommands.read(req, res);
+    apiCommands.read(readReq, readRes);
 
-    subt.equal(res.statusCode, 200, 'should find record after sanitization');
-    subt.ok(res.body.id, 'should return record with ID');
+    subt.equal(readRes.statusCode, 200, 'should find record after sanitization');
+    subt.ok(readRes.body.id, 'should return record with ID');
+    subt.equal(readRes.body.id, fetchRes.body.records[0].id, 'should return same ID as generated');
     subt.end();
   });
 

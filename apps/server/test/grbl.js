@@ -822,3 +822,51 @@ test('Not supported output format', (t) => {
   const line = 'Not supported output format';
   runner.parse(line);
 });
+
+test('GrblLineParserResultEcho', (t) => {
+  const runner = new GrblRunner();
+  runner.on('others', ({ raw, message }) => {
+    t.equal(raw, '[echo:test message]');
+    t.equal(message, 'test message');
+    t.end();
+  });
+
+  const line = '[echo:test message]';
+  runner.parse(line);
+});
+
+test('GrblLineParserResultHelp', (t) => {
+  const runner = new GrblRunner();
+  runner.on('others', ({ raw, message }) => {
+    t.equal(raw, '[HLP:Available commands]');
+    t.equal(message, 'Available commands');
+    t.end();
+  });
+
+  const line = '[HLP:Available commands]';
+  runner.parse(line);
+});
+
+test('GrblLineParserResultOption', (t) => {
+  const runner = new GrblRunner();
+  runner.on('others', ({ raw, message }) => {
+    t.equal(raw, '[OPT:VERSION,1.1f]');
+    t.equal(message, 'VERSION,1.1f');
+    t.end();
+  });
+
+  const line = '[OPT:VERSION,1.1f]';
+  runner.parse(line);
+});
+
+test('GrblLineParserResultVersion', (t) => {
+  const runner = new GrblRunner();
+  runner.on('others', ({ raw, message }) => {
+    t.equal(raw, '[VER:1.1f.20170801]');
+    t.equal(message, '1.1f.20170801');
+    t.end();
+  });
+
+  const line = '[VER:1.1f.20170801]';
+  runner.parse(line);
+});

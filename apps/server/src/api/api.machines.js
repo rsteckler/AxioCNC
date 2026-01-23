@@ -152,9 +152,11 @@ export const update = (req, res) => {
     ].forEach(it => {
       const [key, ensureType] = it;
       const defaultValue = _get(record, key);
-      const value = _get(nextRecord, key, defaultValue);
+      const value = _get(nextRecord, key);
+      // If value is null or undefined, use the original value (defaultValue)
+      const finalValue = (value === null || value === undefined) ? defaultValue : value;
 
-      _set(record, key, (typeof ensureType === 'function') ? ensureType(value) : value);
+      _set(record, key, (typeof ensureType === 'function') ? ensureType(finalValue) : finalValue);
     });
 
     config.set(CONFIG_KEY, records);

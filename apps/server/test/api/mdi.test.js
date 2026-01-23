@@ -695,7 +695,7 @@ test('api.mdi', (t) => {
     subt.equal(storedRecords.length, 2, 'should store both records');
     subt.ok(storedRecords[0].id, 'first record should have generated ID');
     subt.ok(storedRecords[1].id, 'second record should have generated ID');
-    subt.notEqual(storedRecords[0].id, storedRecords[1].id, 'IDs should be different');
+    subt.notSame(storedRecords[0].id, storedRecords[1].id, 'IDs should be different');
     subt.end();
   });
 

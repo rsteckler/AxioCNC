@@ -1,7 +1,7 @@
 import { test } from 'tap';
 import proxyquire from 'proxyquire';
 import { createMockRequest, createMockResponse, createMockConfigStore } from './helpers';
-import { getDefaultSettings } from '../../../../packages/shared/src/schemas/settings';
+import { getDefaultSettings } from '@axiocnc/shared/src/schemas/settings';
 import { ERR_BAD_REQUEST } from '../../src/constants/index';
 
 test('api.settings', (t) => {
