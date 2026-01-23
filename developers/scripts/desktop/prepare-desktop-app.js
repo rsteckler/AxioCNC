@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '../../..');
@@ -33,6 +34,23 @@ const ensureDir = (dir) => {
   fs.mkdirSync(dir, { recursive: true });
 };
 
+const copyRecursiveSync = (src, dest) => {
+  const exists = fs.existsSync(src);
+  const stats = exists && fs.statSync(src);
+  const isDirectory = exists && stats.isDirectory();
+  if (isDirectory) {
+    fs.mkdirSync(dest, { recursive: true });
+    fs.readdirSync(src).forEach((childItemName) => {
+      copyRecursiveSync(
+        path.join(src, childItemName),
+        path.join(dest, childItemName)
+      );
+    });
+  } else {
+    fs.copyFileSync(src, dest);
+  }
+};
+
 const bundleDirFlagIndex = process.argv.indexOf('--bundle-dir');
 const bundleDir = bundleDirFlagIndex >= 0 ? process.argv[bundleDirFlagIndex + 1] : null;
 if (!bundleDir) {
@@ -48,11 +66,30 @@ const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runt
 run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
-// Use isolated temp directory like server packaging
-const tempDir = '/tmp/axiocnc-desktop-deps-$$';
-require('child_process').spawnSync('trap', ['rm -rf \'' + tempDir + '\'', 'EXIT', 'INT', 'TERM'], { stdio: 'inherit' });
-require('child_process').spawnSync('rm', ['-rf', tempDir], { stdio: 'inherit' });
-require('child_process').spawnSync('mkdir', ['-p', tempDir], { stdio: 'inherit' });
+// Use isolated temp directory like server packaging (cross-platform)
+const tempDir = path.join(os.tmpdir(), `axiocnc-desktop-deps-${process.pid}`);
+
+// Cleanup function for temp directory
+const cleanup = () => {
+  try {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  } catch (err) {
+    // Ignore cleanup errors
+  }
+};
+
+// Register cleanup on exit
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(1); });
+process.on('SIGTERM', () => { cleanup(); process.exit(1); });
+
+// Remove temp dir if it exists, then create it
+if (fs.existsSync(tempDir)) {
+  fs.rmSync(tempDir, { recursive: true, force: true });
+}
+ensureDir(tempDir);
 
 // Copy and modify package.json (remove workspace deps)
 const pkg = JSON.parse(fs.readFileSync(path.join(outputRoot, 'package.json'), 'utf8'));
@@ -70,8 +107,13 @@ run('pnpm', ['install', '--prod', '--no-frozen-lockfile'], {
   },
 });
 
-// Copy node_modules back
-run('cp', ['-r', path.join(tempDir, 'node_modules'), outputRoot]);
+// Copy node_modules back (cross-platform)
+const nodeModulesSrc = path.join(tempDir, 'node_modules');
+const nodeModulesDest = path.join(outputRoot, 'node_modules');
+if (fs.existsSync(nodeModulesDest)) {
+  fs.rmSync(nodeModulesDest, { recursive: true, force: true });
+}
+copyRecursiveSync(nodeModulesSrc, nodeModulesDest);
 
 // Link shared library into node_modules so server code can import it
 console.log('🔗 Linking shared library into node_modules...');
@@ -84,7 +126,15 @@ if (fs.existsSync(sharedLinkPath)) {
 // Create symlink to the shared dist directory
 const sharedDistPath = path.join(outputRoot, 'shared');
 if (fs.existsSync(sharedDistPath)) {
-  fs.symlinkSync(path.relative(sharedNodeModulesPath, sharedDistPath), sharedLinkPath, 'dir');
+  // Use junction on Windows, symlink on Unix
+  const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+  try {
+    fs.symlinkSync(path.relative(sharedNodeModulesPath, sharedDistPath), sharedLinkPath, linkType);
+  } catch (err) {
+    // If symlink fails (e.g., permissions), fall back to copying
+    console.warn(`⚠️  Symlink failed (${err.message}), using copy instead...`);
+    copyRecursiveSync(sharedDistPath, sharedLinkPath);
+  }
   // Copy package.json to shared directory with corrected main path
   const sharedPkgPath = path.join(repoRoot, 'apps/shared/package.json');
   const sharedPkg = JSON.parse(fs.readFileSync(sharedPkgPath, 'utf8'));
@@ -114,3 +164,6 @@ assertExists(path.join(outputRoot, 'app'), 'web app directory');
 assertExists(path.join(outputRoot, 'node_modules'), 'node_modules');
 
 console.log(`✅ Bundle ready at ${outputRoot}`);
+
+// Cleanup temp directory
+cleanup();
