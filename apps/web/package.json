@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@axiocnc/shared": "workspace:*",
     "@codemirror/autocomplete": "^6.20.0",
     "@codemirror/basic-setup": "^0.20.0",
     "@codemirror/commands": "^6.10.1",

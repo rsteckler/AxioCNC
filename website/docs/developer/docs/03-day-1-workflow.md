@@ -94,7 +94,7 @@ yarn dev:start-server
 
 - Runs on `http://localhost:8000`
 - Hot reload via nodemon
-- Watches: `apps/server/src`, `packages/shared/src`
+- Watches: `apps/server/src`, `apps/shared/src`
 
 ### 4. Start Frontend
 

@@ -24,7 +24,7 @@ module.exports = (api) => {
         test: (filename) => {
           if (!filename) return false;
           return filename.includes('apps/server/') ||
-                 filename.includes('packages/shared/') ||
+                 filename.includes('apps/shared/') ||
                  filename.includes('/server/') ||
                  filename.includes('/shared/');
         },

@@ -1,8 +1,8 @@
 {
   "watch": [
     "apps/desktop/src",
-    "apps/server/src", 
-    "packages/shared/src"
+    "apps/server/src",
+    "apps/shared/src"
   ],
   "ext": "js,json",
   "ignore": ["node_modules", "output", "dist"],

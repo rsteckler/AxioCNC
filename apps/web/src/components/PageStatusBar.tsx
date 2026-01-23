@@ -1,6 +1,6 @@
 import { MachineStatusBar } from './MachineStatusBar'
 import { JobStatusBar } from './JobStatusBar'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 
 interface PageStatusBarProps {
   // MachineStatusBar props

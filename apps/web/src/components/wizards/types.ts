@@ -2,7 +2,7 @@
  * Shared types for zeroing wizard components
  */
 
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 
 export type ProbeStatus = 'idle' | 'probing' | 'capturing' | 'storing' | 'complete' | 'error'
 

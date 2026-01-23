@@ -71,7 +71,7 @@ AxioCNC/
 
 ## Shared Packages
 
-### `packages/shared/` - Common Code
+### `apps/shared/` - Common Code
 
 **Tech:** Zod schemas, TypeScript types
 

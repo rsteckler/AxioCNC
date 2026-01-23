@@ -1,5 +1,5 @@
 import { createContext, useState, useCallback, ReactNode } from 'react'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 
 interface ToolChangeContextValue {
   isToolChangePending: boolean

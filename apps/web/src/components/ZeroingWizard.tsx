@@ -3,7 +3,7 @@ import { Target, X, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 
 interface ZeroingWizardProps {
   method: ZeroingMethod

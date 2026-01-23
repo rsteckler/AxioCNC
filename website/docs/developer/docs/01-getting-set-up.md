@@ -26,7 +26,7 @@ cd AxioCNC
 yarn install
 ```
 
-This installs dependencies for all workspaces: `apps/web`, `apps/server`, `apps/desktop`, `packages/shared`.
+This installs dependencies for all workspaces: `apps/web`, `apps/server`, `apps/desktop`, `apps/shared`.
 
 ### 2. Start Development Servers
 

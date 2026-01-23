@@ -2,7 +2,7 @@ import { ZeroingWizardTab } from './ZeroingWizardTab'
 import { ZeroingMethodSelectDialog } from './ZeroingMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import { useGetSettingsQuery } from '@/services/api'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 
 interface ToolChangeTabProps {
   isConnected: boolean

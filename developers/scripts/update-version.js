@@ -10,7 +10,7 @@
  * - apps/server/package.json
  * - apps/web/package.json
  * - apps/desktop/package.json
- * - packages/shared/package.json
+ * - apps/shared/package.json
  */
 
 import { readFileSync, writeFileSync } from 'fs';
@@ -44,7 +44,7 @@ const packageFiles = [
   'apps/server/package.json',
   'apps/web/package.json',
   'apps/desktop/package.json',
-  'packages/shared/package.json',
+  'apps/shared/package.json',
 ];
 
 const rootDir = join(__dirname, '../..');

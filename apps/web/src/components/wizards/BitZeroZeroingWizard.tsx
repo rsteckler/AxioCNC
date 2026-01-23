@@ -1,6 +1,6 @@
 import { Target, AlertCircle, HelpCircle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 
 interface BitZeroZeroingWizardProps {
   method: Extract<ZeroingMethod, { type: 'bitzero' }>

@@ -37,7 +37,7 @@ npx cross-env NODE_ENV=development npx babel apps/desktop/src/main.js \
 npx babel -d "${DEV_BUNDLE}/server" apps/server/src
 
 # Build shared (if needed)
-npx babel -d "${DEV_BUNDLE}/shared" packages/shared/src
+npx babel -d "${DEV_BUNDLE}/shared" apps/shared/src
 
 # Copy package.json (needed by both main.js and server/cli.js)
 cp -f apps/server/package.json "${DEV_BUNDLE}/"

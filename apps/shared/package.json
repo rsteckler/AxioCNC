@@ -3,9 +3,10 @@
   "version": "1.10.112",
   "description": "AxioCNC Shared - Common schemas and utilities",
   "private": true,
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "babel src -d dist --config-file ../../babel.config.js"
+    "build": "babel src -d dist --config-file ../../babel.config.js && cp -r src/**/*.d.ts dist/ 2>/dev/null || true"
   },
   "dependencies": {
     "zod": "^4.3.5"

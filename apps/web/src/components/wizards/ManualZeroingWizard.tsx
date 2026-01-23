@@ -1,6 +1,6 @@
 import { HelpCircle, RotateCcw, Check } from 'lucide-react'
 import { getAxesLabel } from './utils'
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 
 interface ManualZeroingWizardProps {
   method: Extract<ZeroingMethod, { type: 'manual' }>

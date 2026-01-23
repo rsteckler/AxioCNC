@@ -14,7 +14,7 @@ Security considerations and protected code boundaries.
 
 **Server-side:**
 - Validate all user input before processing
-- Use Zod schemas for API request/response validation (`packages/shared/src/schemas/`)
+- Use Zod schemas for API request/response validation (`apps/shared/src/schemas/`)
 - Sanitize file paths (avoid path traversal)
 - Validate G-code before sending to machine
 
@@ -119,7 +119,7 @@ The G-code sender system is responsible for:
 | `apps/server/src/api/` | REST API handlers — translate HTTP to controller commands |
 | `apps/server/src/services/` | CNCEngine, ConfigStore, Monitor, TaskRunner, etc. |
 | `apps/web/src/` | Frontend — all of it |
-| `packages/shared/src/` | Shared schemas and utilities |
+| `apps/shared/src/` | Shared schemas and utilities |
 
 ### Modifying Protected Code
 

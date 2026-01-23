@@ -4,7 +4,7 @@ import { useToolChange } from '@/contexts/ToolChangeContext'
 import { useWorkflowState, useJobState, useCurrentWCS } from '@/store/hooks'
 import { socketService } from '@/services/socket'
 import { useGcodeCommand } from './useGcodeCommand'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 
 /**
  * Hook to detect M6 tool change pauses and trigger tool change flow

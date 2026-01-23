@@ -7,7 +7,7 @@ const path = require('path');
 const repoRoot = path.resolve(__dirname, '../../..');
 const serverDist = path.join(repoRoot, 'apps/server/dist');
 const webDist = path.join(repoRoot, 'apps/web/dist');
-const sharedDist = path.join(repoRoot, 'packages/shared/dist');
+const sharedDist = path.join(repoRoot, 'apps/shared/dist');
 
 const ensureDir = (dir) => fs.mkdirSync(dir, { recursive: true });
 

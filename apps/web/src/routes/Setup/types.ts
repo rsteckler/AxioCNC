@@ -1,4 +1,4 @@
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 import type { JobStats } from '@/store/jobSlice'
 
 export interface PanelProps {

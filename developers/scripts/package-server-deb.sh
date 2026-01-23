@@ -37,7 +37,7 @@ if [ ! -d "apps/server/dist" ] || [ -z "$(ls -A apps/server/dist 2>/dev/null)" ]
     echo "Building server first..."
     yarn workspace @axiocnc/server build
 fi
-if [ ! -d "packages/shared/dist" ] || [ -z "$(ls -A packages/shared/dist 2>/dev/null)" ]; then
+if [ ! -d "apps/shared/dist" ] || [ -z "$(ls -A apps/shared/dist 2>/dev/null)" ]; then
     echo "Building shared package..."
     yarn workspace @axiocnc/shared build
 fi
@@ -115,13 +115,21 @@ trap "rm -rf '${PROD_INSTALL_DIR}'" EXIT INT TERM
 rm -rf "${PROD_INSTALL_DIR}"
 mkdir -p "${PROD_INSTALL_DIR}"
 
-# Copy package.json and yarn.lock for isolated production install
-cp "${PROJECT_ROOT}/apps/server/package.json" "${PROD_INSTALL_DIR}/"
+# Create clean package.json without workspace dependencies for isolated production install
+node -e "
+  const fs = require('fs');
+  const pkg = require('${PROJECT_ROOT}/apps/server/package.json');
+  // Remove workspace dependencies for isolated install
+  if (pkg.dependencies) {
+    delete pkg.dependencies['@axiocnc/shared'];
+  }
+  fs.writeFileSync('${PROD_INSTALL_DIR}/package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
 cp "${PROJECT_ROOT}/yarn.lock" "${PROD_INSTALL_DIR}/"
 
 # Install production dependencies in isolated temp folder
 cd "${PROD_INSTALL_DIR}"
-yarn install --production --frozen-lockfile || {
+yarn workspaces focus --production || {
   echo "Error: yarn install failed in temp folder"
   exit 1
 }

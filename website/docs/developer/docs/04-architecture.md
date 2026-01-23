@@ -137,7 +137,7 @@ Services depend on controllers, but controllers don't depend on services (one-wa
 
 ### Schemas
 
-**Location:** `packages/shared/src/schemas/`
+**Location:** `apps/shared/src/schemas/`
 
 **Purpose:** Zod validation schemas shared between frontend and backend
 

@@ -5,7 +5,7 @@ import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
 import { useGetSettingsQuery, useGetExtensionsQuery } from '@/services/api'
 // useGetControllersQuery not currently used but may be needed in future
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 import { useGcodeCommand, useJoystickInput } from '@/hooks'
 import { 
   useMachineState, 

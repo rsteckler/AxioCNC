@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import { useGetSettingsQuery } from '@/services/api'
 import type { MachineReadinessStatus } from '@/types/machine'
-import type { ZeroingMethod } from '../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store'
 

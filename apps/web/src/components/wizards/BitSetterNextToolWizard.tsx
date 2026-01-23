@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { useGetToolsQuery } from '@/services/api'
 import { useJobState } from '@/store/hooks'
 import { mmToInches } from '@/utils/units'
-import type { ZeroingMethod } from '../../../../../packages/shared/src/schemas/settings'
+import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
 
 interface BitSetterNextToolWizardProps {
   method: Extract<ZeroingMethod, { type: 'bitsetter' }>

@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import type { SystemSettings } from '../../../../packages/shared/src/schemas/settings'
+import type { SystemSettings } from '../../../shared/src/schemas/settings'
 
 // Types for API responses
 // Controller status from API (matches controller.status getter)
