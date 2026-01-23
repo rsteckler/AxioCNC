@@ -16,7 +16,7 @@ const run = (cmd, args, options = {}) => {
   if (process.platform === 'win32' && !path.isAbsolute(cmd) && !cmd.includes(path.sep)) {
     spawnOptions.shell = true;
   }
-  
+
   const result = spawnSync(cmd, args, spawnOptions);
   if (result.error) {
     console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);

@@ -26,7 +26,7 @@ const run = (cmd, args, options = {}) => {
   if (process.platform === 'win32' && !path.isAbsolute(cmd) && !cmd.includes(path.sep)) {
     spawnOptions.shell = true;
   }
-  
+
   const result = spawnSync(cmd, args, spawnOptions);
   if (result.error) {
     console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);
@@ -96,8 +96,14 @@ const cleanup = () => {
 
 // Register cleanup on exit
 process.on('exit', cleanup);
-process.on('SIGINT', () => { cleanup(); process.exit(1); });
-process.on('SIGTERM', () => { cleanup(); process.exit(1); });
+process.on('SIGINT', () => {
+  cleanup();
+  process.exit(1);
+});
+process.on('SIGTERM', () => {
+  cleanup();
+  process.exit(1);
+});
 
 // Remove temp dir if it exists, then create it
 if (fs.existsSync(tempDir)) {

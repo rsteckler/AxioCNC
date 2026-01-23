@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef, useState } from 'react'
+import type { ComponentRef } from 'react'
 import { Color } from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei'
@@ -389,7 +390,7 @@ function BillboardText({ position, children, fontSize = 20, ...props }: React.Co
 // Camera controller component that responds to view changes
 function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: number; ySize: number; zSize: number; view?: 'top' | 'front' | 'iso' | 'fit'; viewKey?: number }) {
   const { camera } = useThree()
-  const controlsRef = useRef<any>(null)
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   
   const gridCenterX = xSize / 2
   const gridCenterY = ySize / 2
