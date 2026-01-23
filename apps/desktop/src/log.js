@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unresolved
 import debug from 'debug';
 import pkg from '../package.json';
 
