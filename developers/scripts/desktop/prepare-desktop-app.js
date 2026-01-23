@@ -49,7 +49,7 @@ run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
 console.log('📦 Installing server production dependencies...');
 // Use isolated temp directory like server packaging
-const tempDir = `/tmp/axiocnc-desktop-deps-$$`;
+const tempDir = '/tmp/axiocnc-desktop-deps-$$';
 require('child_process').spawnSync('trap', ['rm -rf \'' + tempDir + '\'', 'EXIT', 'INT', 'TERM'], { stdio: 'inherit' });
 require('child_process').spawnSync('rm', ['-rf', tempDir], { stdio: 'inherit' });
 require('child_process').spawnSync('mkdir', ['-p', tempDir], { stdio: 'inherit' });
