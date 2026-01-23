@@ -9,11 +9,25 @@ const { spawnSync } = require('child_process');
 const repoRoot = path.resolve(__dirname, '../../..');
 const desktopDist = path.join(repoRoot, 'apps/desktop/dist');
 
+// Helper to get pnpm command (handles Windows .cmd extension)
+const getPnpmCommand = () => {
+  if (process.platform === 'win32') {
+    return 'pnpm.cmd';
+  }
+  return 'pnpm';
+};
+
 const run = (cmd, args, options = {}) => {
-  const result = spawnSync(cmd, args, {
+  // On Windows, use shell: true to find commands in PATH
+  const spawnOptions = {
     stdio: 'inherit',
     ...options,
-  });
+  };
+  if (process.platform === 'win32' && !path.isAbsolute(cmd) && !cmd.includes(path.sep)) {
+    spawnOptions.shell = true;
+  }
+  
+  const result = spawnSync(cmd, args, spawnOptions);
   if (result.error) {
     console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);
     process.exit(1);
@@ -100,7 +114,7 @@ fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkg, null, 2
 fs.copyFileSync(path.join(repoRoot, 'pnpm-lock.yaml'), path.join(tempDir, 'pnpm-lock.yaml'));
 
 // Install in temp directory
-run('pnpm', ['install', '--prod', '--no-frozen-lockfile'], {
+run(getPnpmCommand(), ['install', '--prod', '--no-frozen-lockfile'], {
   cwd: tempDir,
   env: {
     ...process.env,
