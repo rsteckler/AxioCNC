@@ -294,11 +294,7 @@ A: AxioCNC accepts standard G-code files (`.nc`, `.gcode`, `.cnc`). It works wit
 
 > **Note:** The sections below are for developers and contributors. End users can find everything they need above.
 
-[![Build and Package](https://github.com/rsteckler/AxioCNC/actions/workflows/buildAndPackage.yml/badge.svg?branch=main)](https://github.com/rsteckler/AxioCNC/actions/workflows/buildAndPackage.yml)
-
-[![CodeQL](https://github.com/rsteckler/AxioCNC/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/rsteckler/AxioCNC/actions/workflows/github-code-scanning/codeql)
-
-[![Deploy Website](https://github.com/rsteckler/AxioCNC/actions/workflows/deployWebsite.yml/badge.svg)](https://github.com/rsteckler/AxioCNC/actions/workflows/deployWebsite.yml)
+[![Build and Package](https://github.com/rsteckler/AxioCNC/actions/workflows/buildAndPackage.yml/badge.svg?branch=main)](https://github.com/rsteckler/AxioCNC/actions/workflows/buildAndPackage.yml) [![CodeQL](https://github.com/rsteckler/AxioCNC/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/rsteckler/AxioCNC/actions/workflows/github-code-scanning/codeql) [![Deploy Website](https://github.com/rsteckler/AxioCNC/actions/workflows/deployWebsite.yml/badge.svg)](https://github.com/rsteckler/AxioCNC/actions/workflows/deployWebsite.yml)
 
 ### Contributing
 
