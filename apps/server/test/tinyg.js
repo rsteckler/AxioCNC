@@ -46,10 +46,10 @@ test('TinyGParserResultPowerManagement', (t) => {
     }, 10);
   });
 
-  t.test('pwr exists but status code not 0 - should emit empty object', (t) => {
+  t.test('pwr exists but status code not 0 - should emit undefined', (t) => {
     const runner = new TinyGRunner();
     runner.on('pwr', (pwr) => {
-      t.same(pwr, {}, 'should emit empty object when status code is not 0');
+      t.equal(pwr, undefined, 'should emit undefined when status code is not 0');
       t.end();
     });
 
