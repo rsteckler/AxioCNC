@@ -115,13 +115,14 @@ trap "rm -rf '${PROD_INSTALL_DIR}'" EXIT INT TERM
 rm -rf "${PROD_INSTALL_DIR}"
 mkdir -p "${PROD_INSTALL_DIR}"
 
-# Copy package.json for isolated production install
+# Copy package.json and yarn.lock for isolated production install
 cp "${PROJECT_ROOT}/apps/server/package.json" "${PROD_INSTALL_DIR}/"
+cp "${PROJECT_ROOT}/yarn.lock" "${PROD_INSTALL_DIR}/"
 
 # Install production dependencies in isolated temp folder
 cd "${PROD_INSTALL_DIR}"
-npm install --omit=dev --no-audit --no-fund --no-package-lock || {
-  echo "Error: npm install failed in temp folder"
+yarn install --production --frozen-lockfile || {
+  echo "Error: yarn install failed in temp folder"
   exit 1
 }
 cd "${PROJECT_ROOT}"
