@@ -73,14 +73,30 @@ run(process.execPath, [prepareScript, '--bundle-dir', bundleRoot]);
 
 console.log(`📦 Running electron-builder ${electronBuilderArgs.join(' ')}`);
 
-run('npx', ['electron-builder', ...electronBuilderArgs], {
-  cwd: repoRoot,
-  env: {
-    ...process.env,
-    AXIOCNC_BUNDLE_DIR: bundleRoot,
-    AXIOCNC_OUTPUT_DIR: builderOutputDir,
-  },
-});
+// On macOS, increase file descriptor limit to avoid EMFILE errors during packaging
+// Wrap electron-builder in a shell that sets ulimit first
+if (process.platform === 'darwin') {
+  const electronBuilderCmd = `npx electron-builder ${electronBuilderArgs.join(' ')}`;
+  const shellCmd = `ulimit -n 65536 && ${electronBuilderCmd}`;
+  console.log(`✅ Setting file descriptor limit to 65536 for macOS build`);
+  run('bash', ['-c', shellCmd], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      AXIOCNC_BUNDLE_DIR: bundleRoot,
+      AXIOCNC_OUTPUT_DIR: builderOutputDir,
+    },
+  });
+} else {
+  run('npx', ['electron-builder', ...electronBuilderArgs], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      AXIOCNC_BUNDLE_DIR: bundleRoot,
+      AXIOCNC_OUTPUT_DIR: builderOutputDir,
+    },
+  });
+}
 
 const fs = require('fs');
 
