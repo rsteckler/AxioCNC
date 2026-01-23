@@ -91,5 +91,25 @@ test('MarlinRunner methods', (t) => {
     st.end();
   });
 
+  t.test('parse - unrecognized responses', (st) => {
+    const runner = new MarlinRunner();
+    let othersEmitted = false;
+    let othersPayload = null;
+
+    runner.on('others', (payload) => {
+      othersEmitted = true;
+      othersPayload = payload;
+    });
+
+    // Send a response that doesn't match any known MarlinLineParserResult type
+    // but still has content to trigger the fallback branch
+    runner.parse('UNKNOWN:some data here');
+
+    st.ok(othersEmitted, 'should emit others event for unrecognized responses');
+    st.ok(othersPayload, 'should pass payload to others event');
+
+    st.end();
+  });
+
   t.end();
 });

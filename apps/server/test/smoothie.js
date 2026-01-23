@@ -194,6 +194,84 @@ test('SmoothieRunnerLineParserResultStatus: new status format', (t) => {
     runner.parse(line);
   });
 
+  t.test('Temperature', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Idle|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|T:25.0,200.0>');
+      t.same(status, {
+        activeState: 'Idle',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        currentTemperature: 25.0,
+        targetTemperature: 200.0,
+      });
+      t.end();
+    });
+
+    const line = '<Idle|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|T:25.0,200.0>';
+    runner.parse(line);
+  });
+
+  t.test('Alarm', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Alarm|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:1000.0,50.0>');
+      t.same(status, {
+        activeState: 'Alarm',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        feedrate: '1000.0',
+        feedrateOverride: '50.0',
+      });
+      t.end();
+    });
+
+    const line = '<Alarm|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:1000.0,50.0>';
+    runner.parse(line);
+  });
+
+  t.test('Hold', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('status', ({ raw, ...status }) => {
+      t.equal(raw, '<Hold|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:500.0,25.0>');
+      t.same(status, {
+        activeState: 'Hold',
+        mpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        wpos: {
+          x: '0.0000',
+          y: '0.0000',
+          z: '0.0000',
+        },
+        feedrate: '500.0',
+        feedrateOverride: '25.0',
+      });
+      t.end();
+    });
+
+    const line = '<Hold|MPos:0.0000,0.0000,0.0000|WPos:0.0000,0.0000,0.0000|F:500.0,25.0>';
+    runner.parse(line);
+  });
+
   t.test('state transition', (t) => {
     let lineNumber = 0;
     const lines = [

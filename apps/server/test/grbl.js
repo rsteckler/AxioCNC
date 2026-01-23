@@ -802,6 +802,35 @@ test('GrblLineParserResultParserState', (t) => {
     runner.parse(line);
   });
 
+  t.test('ignores unknown modal codes', (t) => {
+    const runner = new GrblRunner();
+    runner.on('parserstate', ({ raw, ...parserstate }) => {
+      t.equal(raw, '[GC:G0 G54 G17 G21 G90 G94 G99 M0 M5 M9 M99 T0 F2540. S0.]');
+      t.same(parserstate, {
+        modal: {
+          motion: 'G0', // G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
+          wcs: 'G54', // G54, G55, G56, G57, G58, G59
+          plane: 'G17', // G17: xy-plane, G18: xz-plane, G19: yz-plane
+          units: 'G21', // G20: Inches, G21: Millimeters
+          distance: 'G90', // G90: Absolute, G91: Relative
+          feedrate: 'G94', // G93: Inverse Time Mode, G94: Units Per Minutes
+          program: 'M0', // M0, M1, M2, M30
+          spindle: 'M5', // M3, M4, M5
+          coolant: 'M9', // M7, M8, M9
+        },
+        tool: '0',
+        feedrate: '2540.',
+        spindle: '0.'
+      });
+      t.equal(runner.getTool(), 0);
+      t.end();
+    });
+
+    // G99 and M99 are not in GRBL_MODAL_GROUPS, so they should be ignored
+    const line = '[GC:G0 G54 G17 G21 G90 G94 G99 M0 M5 M9 M99 T0 F2540. S0.]';
+    runner.parse(line);
+  });
+
   t.end();
 });
 
@@ -1126,4 +1155,84 @@ test('GrblLineParserResultVersion', (t) => {
 
   const line = '[VER:1.1f.20170801]';
   runner.parse(line);
+});
+
+// Constructor tests for GrblLineParserResult classes
+// Note: These classes are designed for static method usage only,
+// but we test constructors for completeness and 100% coverage
+test('GrblLineParserResultError constructor', (t) => {
+  const GrblLineParserResultError = require('../src/controllers/Grbl/GrblLineParserResultError').default;
+  const instance = new GrblLineParserResultError();
+  t.ok(instance instanceof GrblLineParserResultError, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultEcho constructor', (t) => {
+  const GrblLineParserResultEcho = require('../src/controllers/Grbl/GrblLineParserResultEcho').default;
+  const instance = new GrblLineParserResultEcho();
+  t.ok(instance instanceof GrblLineParserResultEcho, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultHelp constructor', (t) => {
+  const GrblLineParserResultHelp = require('../src/controllers/Grbl/GrblLineParserResultHelp').default;
+  const instance = new GrblLineParserResultHelp();
+  t.ok(instance instanceof GrblLineParserResultHelp, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultOption constructor', (t) => {
+  const GrblLineParserResultOption = require('../src/controllers/Grbl/GrblLineParserResultOption').default;
+  const instance = new GrblLineParserResultOption();
+  t.ok(instance instanceof GrblLineParserResultOption, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultVersion constructor', (t) => {
+  const GrblLineParserResultVersion = require('../src/controllers/Grbl/GrblLineParserResultVersion').default;
+  const instance = new GrblLineParserResultVersion();
+  t.ok(instance instanceof GrblLineParserResultVersion, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultAlarm constructor', (t) => {
+  const GrblLineParserResultAlarm = require('../src/controllers/Grbl/GrblLineParserResultAlarm').default;
+  const instance = new GrblLineParserResultAlarm();
+  t.ok(instance instanceof GrblLineParserResultAlarm, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultFeedback constructor', (t) => {
+  const GrblLineParserResultFeedback = require('../src/controllers/Grbl/GrblLineParserResultFeedback').default;
+  const instance = new GrblLineParserResultFeedback();
+  t.ok(instance instanceof GrblLineParserResultFeedback, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultOk constructor', (t) => {
+  const GrblLineParserResultOk = require('../src/controllers/Grbl/GrblLineParserResultOk').default;
+  const instance = new GrblLineParserResultOk();
+  t.ok(instance instanceof GrblLineParserResultOk, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultParameters constructor', (t) => {
+  const GrblLineParserResultParameters = require('../src/controllers/Grbl/GrblLineParserResultParameters').default;
+  const instance = new GrblLineParserResultParameters();
+  t.ok(instance instanceof GrblLineParserResultParameters, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultSettings constructor', (t) => {
+  const GrblLineParserResultSettings = require('../src/controllers/Grbl/GrblLineParserResultSettings').default;
+  const instance = new GrblLineParserResultSettings();
+  t.ok(instance instanceof GrblLineParserResultSettings, 'should create instance');
+  t.end();
+});
+
+test('GrblLineParserResultStartup constructor', (t) => {
+  const GrblLineParserResultStartup = require('../src/controllers/Grbl/GrblLineParserResultStartup').default;
+  const instance = new GrblLineParserResultStartup();
+  t.ok(instance instanceof GrblLineParserResultStartup, 'should create instance');
+  t.end();
 });

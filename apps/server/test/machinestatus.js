@@ -42,5 +42,71 @@ test('MachineStatusManager', (t) => {
     subt.end();
   });
 
+  t.test('computeMachineStatus - not connected', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = { connected: false };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'not_connected', 'should return not_connected when not connected');
+    subt.end();
+  });
+
+  t.test('computeMachineStatus - alarm state', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = {
+      connected: true,
+      controllerState: { activeState: 'Alarm' }
+    };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'alarm', 'should return alarm when in alarm state');
+    subt.end();
+  });
+
+  t.test('computeMachineStatus - hold state', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = {
+      connected: true,
+      controllerState: { activeState: 'Hold' }
+    };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'hold', 'should return hold when in hold state');
+    subt.end();
+  });
+
+  t.test('computeMachineStatus - running workflow', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = {
+      connected: true,
+      controllerState: { activeState: 'Idle' },
+      workflowState: 'running'
+    };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'running', 'should return running when workflow is running');
+    subt.end();
+  });
+
+  t.test('computeMachineStatus - connected and homed', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = {
+      connected: true,
+      controllerState: { activeState: 'Idle' },
+      isHomed: true
+    };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'connected_post_home', 'should return connected_post_home when homed');
+    subt.end();
+  });
+
+  t.test('computeMachineStatus - connected but not homed', (subt) => {
+    const manager = new MachineStatusManager();
+    const status = {
+      connected: true,
+      controllerState: { activeState: 'Idle' },
+      isHomed: false
+    };
+    const result = manager.computeMachineStatus(status);
+    subt.equal(result, 'connected_pre_home', 'should return connected_pre_home when not homed');
+    subt.end();
+  });
+
   t.end();
 });
