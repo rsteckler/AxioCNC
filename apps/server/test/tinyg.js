@@ -28,6 +28,35 @@ test('TinyGParserResultPowerManagement', (t) => {
     runner.parse(line);
   });
 
+  t.test('no pwr in response - should not emit', (t) => {
+    const runner = new TinyGRunner();
+    let eventEmitted = false;
+
+    runner.on('pwr', () => {
+      eventEmitted = true;
+    });
+
+    const line = '{"r":{},"f":[1,0,9]}';
+    runner.parse(line);
+
+    // Wait a bit to ensure no event is emitted
+    setTimeout(() => {
+      t.notOk(eventEmitted, 'should not emit pwr event when pwr is undefined');
+      t.end();
+    }, 10);
+  });
+
+  t.test('pwr exists but status code not 0 - should emit empty object', (t) => {
+    const runner = new TinyGRunner();
+    runner.on('pwr', (pwr) => {
+      t.same(pwr, {}, 'should emit empty object when status code is not 0');
+      t.end();
+    });
+
+    const line = '{"r":{"pwr":{"1":1,"2":1}},"f":[1,1,9]}'; // status code is 1, not 0
+    runner.parse(line);
+  });
+
   t.end();
 });
 

@@ -534,3 +534,16 @@ test('MarlinLineParserResultTemperature', (t) => {
 
   t.end();
 });
+
+test('MarlinLineParser - unrecognized line', (t) => {
+  const MarlinLineParser = require('../src/controllers/Marlin/MarlinLineParser').default;
+  const parser = new MarlinLineParser();
+
+  // Test with a line that doesn't match any parser
+  const line = 'unrecognized:line:with:colons';
+  const result = parser.parse(line);
+
+  t.equal(result.type, null, 'should return null type for unrecognized lines');
+  t.equal(result.payload.raw, line, 'should include raw line in payload');
+  t.end();
+});

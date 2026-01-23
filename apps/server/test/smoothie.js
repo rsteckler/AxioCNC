@@ -430,6 +430,26 @@ test('SmoothieRunnerLineParserResultParserState', (t) => {
     runner.parse(line);
   });
 
+  test('#3 - unknown G/M codes are ignored', (t) => {
+    const runner = new SmoothieRunner();
+    runner.on('parserstate', ({ raw, ...parserstate }) => {
+      t.equal(raw, '[G0 G99 M42 T0 F100. S0.]');
+      t.same(parserstate, {
+        modal: {
+          motion: 'G0',
+        },
+        tool: '0',
+        feedrate: '100.',
+        spindle: '0.'
+      });
+      t.end();
+    });
+
+    // G99 and M42 are not in SMOOTHIE_MODAL_GROUPS, so they should be ignored
+    const line = '[G0 G99 M42 T0 F100. S0.]';
+    runner.parse(line);
+  });
+
   t.end();
 });
 
@@ -441,6 +461,9 @@ test('SmoothieRunnerLineParserResultParameters:G54,G55,G56,G57,G58,G59,G28,G30,G
     '[G57:0.000,0.000,0.000]',
     '[G58:0.000,0.000,0.000]',
     '[G59:0.000,0.000,0.000]',
+    '[G59.1:0.000,0.000,0.000]',
+    '[G59.2:0.000,0.000,0.000]',
+    '[G59.3:0.000,0.000,0.000]',
     '[G28:0.000,0.000,0.000]',
     '[G30:0.000,0.000,0.000]',
     '[G92:0.000,0.000,0.000]'

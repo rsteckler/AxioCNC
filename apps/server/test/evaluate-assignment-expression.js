@@ -133,3 +133,44 @@ test('expressions', (t) => {
 
   t.end();
 });
+
+test('edge cases', (t) => {
+  t.test('handles empty src', (subt) => {
+    const vars = { existing: 'value' };
+    const result = evaluateAssignmentExpression('', vars);
+    subt.same(result, vars, 'should return original vars for empty src');
+    subt.end();
+  });
+
+  t.test('handles null src', (subt) => {
+    const vars = { existing: 'value' };
+    const result = evaluateAssignmentExpression(null, vars);
+    subt.same(result, vars, 'should return original vars for null src');
+    subt.end();
+  });
+
+  t.test('handles undefined src', (subt) => {
+    const vars = { existing: 'value' };
+    const result = evaluateAssignmentExpression(undefined, vars);
+    subt.same(result, vars, 'should return original vars for undefined src');
+    subt.end();
+  });
+
+  t.test('handles non-assignment expressions', (subt) => {
+    const vars = { existing: 'value' };
+    // This should call the fallback evaluateExpression path
+    const result = evaluateAssignmentExpression('42', vars);
+    subt.same(result, vars, 'should return vars unchanged for non-assignment expressions');
+    subt.end();
+  });
+
+  t.test('handles function call expressions', (subt) => {
+    const vars = { existing: 'value' };
+    // Function calls should be handled by the fallback
+    const result = evaluateAssignmentExpression('Math.max(1, 2)', vars);
+    subt.same(result, vars, 'should return vars unchanged for function calls');
+    subt.end();
+  });
+
+  t.end();
+});
