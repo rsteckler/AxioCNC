@@ -8,7 +8,16 @@ const repoRoot = path.resolve(__dirname, '../../..');
 const prepareScript = path.join(__dirname, 'prepare-desktop-app.js');
 
 const run = (cmd, args, options = {}) => {
-  const result = spawnSync(cmd, args, { stdio: 'inherit', ...options });
+  // On Windows, use shell: true to find commands in PATH
+  const spawnOptions = {
+    stdio: 'inherit',
+    ...options,
+  };
+  if (process.platform === 'win32' && !path.isAbsolute(cmd) && !cmd.includes(path.sep)) {
+    spawnOptions.shell = true;
+  }
+  
+  const result = spawnSync(cmd, args, spawnOptions);
   if (result.error) {
     console.error(`❌ Failed to run ${cmd}:`, result.error.message || result.error);
     process.exit(1);
