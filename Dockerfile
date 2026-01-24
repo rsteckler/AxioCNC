@@ -1,78 +1,95 @@
 # syntax=docker/dockerfile:1.4
+# Docker image for AxioCNC server — same content as package:server-amd64 (linux .deb).
+# Build: pnpm package:server-docker
 
-# Build stage
-FROM node:18-slim as builder
+# ------------------------------------------------------------------------------
+# Build stage: pnpm build:all + deploy + bundled Node.js (mirrors package-headless)
+# ------------------------------------------------------------------------------
+FROM node:20-slim AS builder
 
-WORKDIR /build
-
-# Copy package files first for better layer caching
-COPY package.json yarn.lock ./
-COPY .yarnrc.yml .yarnrc.yml
-COPY .yarn/releases .yarn/releases
-COPY src/app/package.json ./src/app/
-
-# Install system packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
+    curl \
+    xz-utils \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies (including dev dependencies for build)
-# Use BuildKit cache mount for yarn cache to speed up rebuilds
-RUN --mount=type=cache,target=/root/.yarn \
-    --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --frozen-lockfile
+WORKDIR /build
 
-# Copy source files
-COPY . .
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
-# Build the application
-RUN find scripts -name "*.sh" -type f -exec chmod +x {} \; && bash scripts/build-prod.sh
+# Copy package manifests and lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json apps/server/
+COPY apps/web/package.json apps/web/
+COPY apps/shared/package.json apps/shared/
+COPY apps/desktop/package.json apps/desktop/
 
-# Runtime stage
-FROM node:18-slim
+# Install all dependencies (including dev for build)
+RUN pnpm install --frozen-lockfile
 
-# Install system dependencies (udev for serialport)
+# Copy source and config needed for build
+COPY apps ./apps
+COPY babel.config.js build.config.js ./
+COPY developers ./developers
+COPY i18next-scanner.server.config.js ./
+
+# Build server, web, shared, desktop runtime (same as build:all)
+RUN pnpm build:all
+
+# Deploy @axiocnc/server to standalone dir (same as package-headless)
+RUN mkdir -p /build/deploy \
+    && pnpm deploy --prod --filter @axiocnc/server --legacy /build/deploy
+
+# Copy web app and shared into deploy (mirrors package-headless)
+RUN mkdir -p /build/deploy/app /build/deploy/shared \
+    && cp -r apps/web/dist/. /build/deploy/app/ \
+    && cp -r apps/shared/dist/. /build/deploy/shared/
+
+# Move cli.js to root as server-cli.js (same as package-headless)
+RUN mv /build/deploy/dist/cli.js /build/deploy/server-cli.js
+
+# Download and extract Node.js 20.18.0 linux-x64 (match package-headless)
+ARG NODE_VERSION=20.18.0
+RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /tmp \
+    && mv /tmp/node-v${NODE_VERSION}-linux-x64 /build/nodejs \
+    && rm /tmp/node.tar.xz
+
+# Assemble final layout at /build/axiocnc (same as /opt/axiocnc in .deb)
+RUN mkdir -p /build/axiocnc \
+    && cp -r /build/deploy/. /build/axiocnc/ \
+    && cp -r /build/nodejs /build/axiocnc/
+
+# ------------------------------------------------------------------------------
+# Runtime stage: minimal image with udev, bundled Node, server app
+# ------------------------------------------------------------------------------
+FROM debian:bookworm-slim
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  udev \
-  ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+    udev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /opt/axiocnc
 
-# Copy built application from build stage
-COPY --from=builder /build/dist/axiocnc ./
+# Version metadata (passed at build time)
+ARG VERSION=unknown
 
-# Copy Yarn 3 binary for consistent behavior
-COPY --from=builder /build/.yarnrc.yml ./.yarnrc.yml
-COPY --from=builder /build/.yarn/releases ./.yarn/releases
+COPY --from=builder /build/axiocnc .
 
-# Install production dependencies only
-# dist/axiocnc is a standalone package (not a workspace), so we install without lockfile
-# Since package.json only has dependencies (no devDependencies), all deps are production
-RUN yarn install
-
-# Create non-root user for better security (optional, commented out for now)
-# RUN useradd -m -u 1000 axiocnc && chown -R axiocnc:axiocnc /opt/axiocnc
-# USER axiocnc
-
-# Expose port
 EXPOSE 8000
 
-# Health check - /api returns 401 when healthy (not authenticated)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8000/api', (r) => process.exit(r.statusCode === 401 ? 0 : 1))"
+  CMD /opt/axiocnc/nodejs/bin/node -e "require('http').get('http://localhost:8000/api', (r) => process.exit(r.statusCode === 401 ? 0 : 1))"
 
-# Labels for GHCR (Open Container Initiative)
 LABEL org.opencontainers.image.title="AxioCNC"
-LABEL org.opencontainers.image.description="A web-based interface for CNC milling controller running Grbl, Marlin, Smoothieware, or TinyG"
+LABEL org.opencontainers.image.description="Web-based interface for CNC controllers (Grbl, Marlin, Smoothieware, TinyG)"
 LABEL org.opencontainers.image.vendor="AxioCNC"
-LABEL org.opencontainers.image.version="1.10.112"
+LABEL org.opencontainers.image.version="$VERSION"
 
-# Entrypoint
-ENTRYPOINT ["node", "server-cli.js"]
-
-# Default command arguments
+ENTRYPOINT ["/opt/axiocnc/nodejs/bin/node", "server-cli.js"]
 CMD ["--port", "8000", "--host", "0.0.0.0", "--allow-remote-access"]

@@ -62,6 +62,7 @@
     "package:server-amd64": "bash developers/scripts/packaging/package-headless.sh amd64",
     "package:server-arm64": "bash developers/scripts/packaging/package-headless.sh arm64",
     "package:server-armhf": "bash developers/scripts/packaging/package-headless.sh armhf",
+    "package:server-docker": "docker build -t ghcr.io/rsteckler/axiocnc:latest .",
     "release:tag": "node developers/scripts/release.js",
     "release:tag:push": "node developers/scripts/release.js --push",
     "clean": "rimraf out build node_modules apps/server/dist apps/desktop/dist apps/web/dist apps/shared/dist apps/web/node_modules apps/server/node_modules apps/desktop/node_modules apps/shared/node_modules"

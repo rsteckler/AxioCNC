@@ -10,6 +10,8 @@ node_modules
 # Build outputs (will be built in Docker)
 dist
 output
+build
+out
 *.log
 
 # Development files
@@ -56,9 +58,8 @@ app-legacy
 electron-build
 # scripts - needed for build-prod.sh during Docker build
 
-# Package manager files (keep yarn.lock, ignore others)
+# Package manager files (keep pnpm-lock.yaml for reproducible Docker builds)
 package-lock.json
-pnpm-lock.yaml
 
 # IDE
 .cursor
