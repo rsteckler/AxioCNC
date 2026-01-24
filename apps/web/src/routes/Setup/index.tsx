@@ -212,18 +212,24 @@ export default function Setup() {
     : false
 
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
-  const [dontShowTutorialAgain, setDontShowTutorialAgain] = useState(false)
   const hasShownTutorialRef = useRef(false)
   const hideSetupTutorial = settings?.firstUse?.hideSetupTutorial ?? false
   const shouldForceShowTutorial = Boolean(
     (location.state as { showSetupTutorial?: boolean } | null)?.showSetupTutorial
   )
 
-  useEffect(() => {
-    if (settings) {
-      setDontShowTutorialAgain(hideSetupTutorial)
+  const handleTutorialOpenChange = useCallback((open: boolean) => {
+    setIsTutorialOpen(open)
+    
+    // When closing the dialog, mark it as seen so it doesn't show again
+    if (!open && !hideSetupTutorial) {
+      setSettings({ firstUse: { hideSetupTutorial: true } })
+        .unwrap()
+        .catch((error) => {
+          console.error('Failed to update tutorial setting:', error)
+        })
     }
-  }, [settings, hideSetupTutorial])
+  }, [hideSetupTutorial, setSettings])
 
   useEffect(() => {
     if (shouldForceShowTutorial) {
@@ -745,15 +751,6 @@ export default function Setup() {
     })
   }
 
-  const handleTutorialDismissChange = useCallback((value: boolean) => {
-    setDontShowTutorialAgain(value)
-    setSettings({ firstUse: { hideSetupTutorial: value } })
-      .unwrap()
-      .catch((error) => {
-        console.error('Failed to update tutorial setting:', error)
-      })
-  }, [setSettings])
-  
   // Persist panel order changes (in case setPanelOrder is called elsewhere)
   useEffect(() => {
     localStorage.setItem('axiocnc-setup-panel-order', JSON.stringify(panelOrder))
@@ -851,6 +848,11 @@ export default function Setup() {
           <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="https://axiocnc.com/docs" target="_blank" rel="noopener noreferrer">
+              Docs
+            </a>
+          </Button>
         </div>
         
         {/* Spacer */}
@@ -1004,9 +1006,7 @@ export default function Setup() {
       {/* Setup tutorial dialog */}
       <SetupTutorialDialog
         open={isTutorialOpen}
-        onOpenChange={setIsTutorialOpen}
-        dontShowAgain={dontShowTutorialAgain}
-        onDontShowAgainChange={handleTutorialDismissChange}
+        onOpenChange={handleTutorialOpenChange}
       />
       {/* Method selection dialog for "ask" strategy */}
       <ZeroingMethodSelectDialog
