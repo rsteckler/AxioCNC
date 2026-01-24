@@ -207,7 +207,7 @@ export default function Setup() {
   const [setSettings] = useSetSettingsMutation()
   
   // Get current version from API
-  const { data: currentVersionData } = useGetCurrentVersionQuery()
+  const { data: currentVersionData, isLoading: isLoadingCurrentVersion } = useGetCurrentVersionQuery()
   const currentVersion = currentVersionData?.version ?? '0.0.0'
   
   // Get latest version from GitHub (only if automatic updates are enabled)
@@ -277,13 +277,25 @@ export default function Setup() {
       return
     }
     
-    // Wait for both current and latest version to be available
-    if (!currentVersion || !gitHubLatestVersion) {
+    // Wait for current version query to finish loading
+    if (isLoadingCurrentVersion) {
       return
     }
     
+    // Wait for both current and latest version to be available
+    // Also check that currentVersion is not the default fallback value "0.0.0"
+    if (!currentVersion || currentVersion === '0.0.0' || !gitHubLatestVersion) {
+      return
+    }
+    
+    // Normalize versions (remove any 'v' prefix and trim whitespace)
+    const normalizedCurrent = currentVersion.trim().replace(/^v/i, '')
+    const normalizedLatest = gitHubLatestVersion.trim().replace(/^v/i, '')
+    
     // Check if update is available (latest > current)
-    const isUpdateAvailable = compareVersions(currentVersion, gitHubLatestVersion) < 0
+    // Only show dialog if latest version is strictly greater than current version
+    const comparison = compareVersions(normalizedCurrent, normalizedLatest)
+    const isUpdateAvailable = comparison < 0 && normalizedCurrent !== normalizedLatest
     
     if (isUpdateAvailable) {
       const hasShownInSession = sessionStorage.getItem('axiocnc-update-notification-shown') === 'true'
@@ -293,7 +305,7 @@ export default function Setup() {
         sessionStorage.setItem('axiocnc-update-notification-shown', 'true')
       }
     }
-  }, [checkForUpdates, currentVersion, gitHubLatestVersion])
+  }, [checkForUpdates, currentVersion, gitHubLatestVersion, isLoadingCurrentVersion])
   
   // Panel order - just an array of IDs
   // Load from localStorage or use default
