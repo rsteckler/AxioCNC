@@ -5,9 +5,12 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { useGetWorkfilesQuery, useUploadWorkfileMutation, useLazyGetWorkfileContentQuery, useGetControllersQuery, useGetGcodeQuery } from '@/services/api'
 import { socketService } from '@/services/socket'
+import { useGcodeCommand } from '@/hooks'
+import { calculateOutline } from '@/lib/gcodeOutline'
+import { useNotifications } from '@/hooks/useNotifications'
 import type { PanelProps } from '../types'
 
-export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus }: PanelProps) {
+export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition, machineStatus }: PanelProps) {
   // Get connected port from controllers (may be null if not connected)
   const { data: controllers } = useGetControllersQuery()
   const connectedPort = connectedPortProp || controllers?.[0]?.port || null
@@ -15,7 +18,14 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [loadedFileName, setLoadedFileName] = useState<string | null>(null)
+  const [isOutlining, setIsOutlining] = useState(false)
+  const [outlineError, setOutlineError] = useState<string | null>(null)
+  const outliningStartedRef = useRef(false) // Track if we've started outlining
+  const previousMachineStatusRef = useRef<string | undefined>(undefined) // Track previous machine status
+  const outlineFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Fallback timeout for completion
   const [getWorkfileContent] = useLazyGetWorkfileContentQuery()
+  const { sendGcode } = useGcodeCommand(connectedPort)
+  const { showErrorNotification, showInfoNotification } = useNotifications()
 
   const { data: workfilesData, isLoading: isLoadingFiles } = useGetWorkfilesQuery()
   const [uploadWorkfile] = useUploadWorkfileMutation()
@@ -188,6 +198,198 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
     }
   }, [connectedPort, loadedFileName])
 
+  // Handle outline button click
+  const handleOutline = useCallback(async () => {
+    if (!isConnected || !connectedPort || !loadedFileName || !machinePosition) {
+      if (!isConnected || !connectedPort) {
+        onFlashStatus()
+      } else {
+        showErrorNotification('Outline Error', 'Machine position not available')
+      }
+      return
+    }
+
+    if (isOutlining) {
+      return // Already running
+    }
+
+    setIsOutlining(true)
+    setOutlineError(null)
+
+    try {
+      // Fetch G-code content
+      const result = await getWorkfileContent(loadedFileName).unwrap()
+      
+      if (!result.gcode) {
+        throw new Error('G-code content is empty')
+      }
+
+      // Calculate outline
+      const outlineResult = calculateOutline(
+        result.gcode,
+        {
+          x: machinePosition.x,
+          y: machinePosition.y,
+          z: machinePosition.z,
+        },
+        {
+          concavity: 5, // Less detailed, smoother outline
+          margin: 2, // 2mm margin
+          closePath: true,
+          returnToStart: true,
+          minPointDistance: 5, // 5mm minimum distance between points
+        }
+      )
+
+      if (!outlineResult) {
+        throw new Error('Failed to calculate outline. Need at least 3 XY points in toolpath.')
+      }
+
+      if (outlineResult.commands.length === 0) {
+        throw new Error('No outline commands generated')
+      }
+
+      console.log('[FilePanel] Outline calculated:', {
+        hullPoints: outlineResult.hullPoints.length,
+        commands: outlineResult.commands.length,
+        bounds: outlineResult.bounds,
+      })
+
+      // Mark that we started outlining
+      outliningStartedRef.current = true
+      previousMachineStatusRef.current = machineStatus
+      const totalCommands = outlineResult.commands.length
+      const wasIdleAtStart = machineStatus !== 'running' && machineStatus !== 'hold'
+      
+      console.log('[FilePanel] Starting outline:', {
+        totalCommands,
+        wasIdleAtStart,
+        machineStatus,
+        hullPoints: outlineResult.hullPoints.length,
+      })
+      
+      // Send commands sequentially with delays (similar to ZeroingWizard pattern)
+      outlineResult.commands.forEach((cmd, index) => {
+        setTimeout(() => {
+          sendGcode(cmd)
+        }, index * 300) // 300ms delay between commands
+      })
+
+      // Show start notification immediately
+      showInfoNotification('Outline Started', `Tracing outline with ${outlineResult.hullPoints.length} points`)
+      
+      // Calculate when last command will be sent
+      const lastCommandSendTime = (totalCommands - 1) * 300
+      
+      // If machine was idle at start, rapid moves might not trigger "running" state
+      // In that case, wait for commands to be sent + execution time, then check if still idle
+      if (wasIdleAtStart) {
+        // Wait for all commands to be sent, then add execution time
+        // Rapid moves are fast - estimate based on path length
+        let totalDistance = 0
+        for (let i = 0; i < outlineResult.hullPoints.length; i++) {
+          const p1 = outlineResult.hullPoints[i]
+          const p2 = outlineResult.hullPoints[(i + 1) % outlineResult.hullPoints.length]
+          const dx = p2.x - p1.x
+          const dy = p2.y - p1.y
+          totalDistance += Math.sqrt(dx * dx + dy * dy)
+        }
+        // Estimate: rapid speed ~2000-5000 mm/min, use conservative 2000 mm/min = 33.3 mm/s
+        const executionTime = (totalDistance / 2000) * 60 * 1000 // Convert to ms
+        const fallbackTimeout = lastCommandSendTime + executionTime + 2000 // 2 second buffer
+        
+        console.log('[FilePanel] Setting fallback timeout (idle start):', {
+          lastCommandSendTime,
+          executionTime,
+          totalDistance: totalDistance.toFixed(2),
+          fallbackTimeout,
+        })
+        
+        const fallbackTimeoutId = setTimeout(() => {
+          console.log('[FilePanel] Fallback timeout fired (idle start), completing outline')
+          if (outliningStartedRef.current) {
+            setIsOutlining(false)
+            outliningStartedRef.current = false
+            showInfoNotification('Outline Complete', 'Outline tracing finished')
+          }
+          outlineFallbackTimeoutRef.current = null
+        }, fallbackTimeout)
+        
+        outlineFallbackTimeoutRef.current = fallbackTimeoutId
+      } else {
+        // Machine was running - rely on status transition detection
+        // But still set a long fallback timeout as safety net
+        const fallbackTimeout = lastCommandSendTime + 30000 // 30 second safety net
+        console.log('[FilePanel] Setting fallback timeout (running start):', fallbackTimeout, 'ms')
+        const fallbackTimeoutId = setTimeout(() => {
+          console.log('[FilePanel] Fallback timeout fired (running start), completing outline')
+          if (outliningStartedRef.current) {
+            setIsOutlining(false)
+            outliningStartedRef.current = false
+            showInfoNotification('Outline Complete', 'Outline tracing finished')
+          }
+          outlineFallbackTimeoutRef.current = null
+        }, fallbackTimeout)
+        
+        outlineFallbackTimeoutRef.current = fallbackTimeoutId
+      }
+
+    } catch (error) {
+      console.error('[FilePanel] Outline error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate outline'
+      setOutlineError(errorMessage)
+      showErrorNotification('Outline Error', errorMessage)
+      setIsOutlining(false)
+      outliningStartedRef.current = false
+      // Clear fallback timeout on error
+      if (outlineFallbackTimeoutRef.current) {
+        clearTimeout(outlineFallbackTimeoutRef.current)
+        outlineFallbackTimeoutRef.current = null
+      }
+    }
+  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, getWorkfileContent, sendGcode, onFlashStatus, showErrorNotification, showInfoNotification])
+
+  // Monitor machine status to detect when outline is complete
+  // Primary: Detect running -> idle transition
+  // Fallback: Timeout (handled in handleOutline)
+  React.useEffect(() => {
+    if (!isOutlining || !outliningStartedRef.current) {
+      // Update previous status even when not outlining
+      previousMachineStatusRef.current = machineStatus
+      return
+    }
+
+    const previousStatus = previousMachineStatusRef.current
+    const currentStatus = machineStatus
+    
+    // Check if machine transitioned from 'running' to a non-running state
+    // This indicates the outline commands have finished executing
+    const wasRunning = previousStatus === 'running'
+    const isNotRunning = currentStatus !== 'running' && currentStatus !== 'hold'
+    
+    if (wasRunning && isNotRunning) {
+      // Machine transitioned from running to idle/other state - outline is complete
+      // Clear fallback timeout since we detected completion via status
+      if (outlineFallbackTimeoutRef.current) {
+        clearTimeout(outlineFallbackTimeoutRef.current)
+        outlineFallbackTimeoutRef.current = null
+      }
+      
+      const timeoutId = setTimeout(() => {
+        setIsOutlining(false)
+        outliningStartedRef.current = false
+        showInfoNotification('Outline Complete', 'Outline tracing finished')
+      }, 500) // 500ms delay to ensure state is stable
+      
+      previousMachineStatusRef.current = currentStatus
+      return () => clearTimeout(timeoutId)
+    }
+    
+    // Update previous status
+    previousMachineStatusRef.current = currentStatus
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machineStatus, isOutlining, showInfoNotification])
+
   // Listen for gcode:load and gcode:unload events to track loaded file
   React.useEffect(() => {
     // gcode:load emits (name, gcode, context) as separate arguments
@@ -268,6 +470,66 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         )}
       </div>
 
+      {/* Loaded file card */}
+      <div className="bg-muted/30 rounded border border-border p-3 space-y-2">
+        <div className="text-xs font-medium text-muted-foreground mb-1">
+          Loaded File
+        </div>
+        {loadedFileName ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileCode className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium truncate">{loadedFileName}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 flex-shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUnload()
+                }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            {/* Actions - only show when connected */}
+            {connectedPort && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  size="sm" 
+                  disabled={isOutlining || !loadedFileName || !machinePosition}
+                  onClick={handleOutline}
+                >
+                  {isOutlining ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" /> Tracing...
+                    </>
+                  ) : (
+                    <>
+                      <Circle className="w-4 h-4 mr-1" /> Outline
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            {/* Error message */}
+            {outlineError && (
+              <div className="text-xs text-destructive mt-1">
+                {outlineError}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-sm text-muted-foreground text-center py-1">
+            No file loaded
+          </div>
+        )}
+      </div>
+
       {/* File list */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
@@ -335,37 +597,6 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
           </div>
         </OverlayScrollbarsComponent>
       </div>
-
-      {/* Loaded file info and actions */}
-      {loadedFileName && (
-        <div className="bg-muted/30 rounded border border-border p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <FileCode className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-sm font-medium truncate">{loadedFileName}</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleUnload()
-              }}
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          </div>
-          {/* Actions - only show when connected */}
-          {connectedPort && (
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" size="sm" disabled>
-                <Circle className="w-4 h-4 mr-1" /> Outline
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

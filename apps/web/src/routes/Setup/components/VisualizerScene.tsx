@@ -18,6 +18,7 @@ interface VisualizerSceneProps {
   machinePosition?: { x: number; y: number; z: number }
   modelOffset?: Vector3Type // Offset to apply to model (for "Place Model" feature)
   processedLines?: number // Number of G-code lines that have been processed (for animation)
+  outlinePoints?: Array<{ x: number; y: number }> // Outline points to visualize
 }
 
 // Grid component - draws a grid on the z=0 plane, starting at origin and extending in positive X and Y
@@ -308,11 +309,11 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
     colorAttr.needsUpdate = true
   }, [processedLines, redColor])
 
-  if (!geometry) {
-    return null
-  }
-
+  // Create line object - must be before early return to satisfy Rules of Hooks
   const lineObject = useMemo(() => {
+    if (!geometry) {
+      return null
+    }
     const mat = new LineBasicMaterial({
       vertexColors: true,
       opacity: 0.5,
@@ -320,6 +321,51 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
     })
     return new Line(geometry, mat)
   }, [geometry])
+
+  if (!geometry || !lineObject) {
+    return null
+  }
+
+  return <primitive object={lineObject} />
+}
+
+// Outline visualization component - draws the outline path in pink
+function OutlinePath({ points, offset, zHeight = 5 }: { points: Array<{ x: number; y: number }>; offset?: Vector3Type; zHeight?: number }) {
+  const lineObject = useMemo(() => {
+    if (!points || points.length < 2) {
+      return null
+    }
+
+    const positions: number[] = []
+    
+    // Create closed loop by adding first point at the end
+    const closedPoints = [...points, points[0]]
+    
+    for (const point of closedPoints) {
+      const x = point.x + (offset?.x || 0)
+      const y = point.y + (offset?.y || 0)
+      const z = zHeight + (offset?.z || 0)
+      positions.push(x, y, z)
+    }
+
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+    
+    // Pink color: RGB(255, 192, 203) or use a brighter pink: RGB(255, 20, 147)
+    const pinkColor = new Color(1, 0.4, 0.8) // Bright pink
+    const material = new LineBasicMaterial({
+      color: pinkColor,
+      linewidth: 2,
+      opacity: 0.9,
+      transparent: true,
+    })
+    
+    return new Line(geometry, material)
+  }, [points, offset?.x, offset?.y, offset?.z, zHeight])
+
+  if (!lineObject) {
+    return null
+  }
 
   return <primitive object={lineObject} />
 }
@@ -500,7 +546,7 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines }: VisualizerSceneProps = {}) {
+export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines, outlinePoints }: VisualizerSceneProps = {}) {
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -645,6 +691,11 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
         
         {/* G-code toolpath visualization */}
         <GCodeToolpath gcode={gcode} offset={modelOffset} processedLines={processedLines} />
+        
+        {/* Outline visualization - pink line showing toolpath boundary */}
+        {outlinePoints && outlinePoints.length > 0 && (
+          <OutlinePath points={outlinePoints} offset={modelOffset} zHeight={machinePosition?.z ? machinePosition.z + 5 : 5} />
+        )}
         
         {/* Tool/endmill indicator - positioned at current machine coordinates */}
         <ToolIndicator position={toolPosition} />

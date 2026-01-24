@@ -10,6 +10,7 @@ import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
 import { ToolChangeTab } from '@/components/ToolChangeTab'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import { processGCode } from '@/lib/gcodeVisualizer'
+import { calculateOutline, type Point2D } from '@/lib/gcodeOutline'
 import { Vector3 } from 'three'
 import { machineToThree, type MachineLimits } from '@/lib/coordinates'
 import type { HomingCorner } from '@/lib/machineLimits'
@@ -241,6 +242,7 @@ export function VisualizerPanel({
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
+  const [outlinePoints, setOutlinePoints] = useState<Point2D[] | null>(null)
   
   // Memoize Vector3 to prevent unnecessary geometry recreation
   const modelOffsetVector3 = useMemo(() => {
@@ -295,6 +297,20 @@ export function VisualizerPanel({
         console.log('[VisualizerPanel] Restoring G-code from API:', gcodeData.name)
         setLoadedGcode({ name: gcodeData.name, gcode })
         lastRestoredApiFileRef.current = gcodeData.name
+        
+        // Calculate outline for visualization
+        if (gcode && machinePosition) {
+          const outlineResult = calculateOutline(gcode, machinePosition, { 
+            concavity: 5,
+            minPointDistance: 5, // 5mm minimum distance between points
+          })
+          if (outlineResult) {
+            setOutlinePoints(outlineResult.hullPoints)
+          } else {
+            setOutlinePoints(null)
+          }
+        }
+        
         // Try to restore model offset from localStorage
         const savedOffsetKey = `modelOffset_${gcodeData.name}`
         const savedOffset = localStorage.getItem(savedOffsetKey)
@@ -333,6 +349,20 @@ export function VisualizerPanel({
         // Only reset if this is a different file than the one we've already placed
         const isNewFile = placedGcodeRef.current !== name
         setLoadedGcode({ name, gcode })
+        
+        // Calculate outline for visualization
+        if (machinePosition) {
+          const outlineResult = calculateOutline(gcode, machinePosition, { 
+            concavity: 5,
+            minPointDistance: 5, // 5mm minimum distance between points
+          })
+          if (outlineResult) {
+            setOutlinePoints(outlineResult.hullPoints)
+          } else {
+            setOutlinePoints(null)
+          }
+        }
+        
         // Clear unload sentinel when a file is loaded
         if (lastRestoredApiFileRef.current === '') {
           lastRestoredApiFileRef.current = null
@@ -352,6 +382,7 @@ export function VisualizerPanel({
       }
       setLoadedGcode(null)
       setModelOffset(null)
+      setOutlinePoints(null)
       placedGcodeRef.current = null
       // Set sentinel value to prevent API restoration after explicit unload
       lastRestoredApiFileRef.current = ''
@@ -364,7 +395,24 @@ export function VisualizerPanel({
       socketService.off('gcode:load', handleGcodeLoad)
       socketService.off('gcode:unload', handleGcodeUnload)
     }
-  }, [])
+  }, [machinePosition])
+
+  // Recalculate outline when G-code or machine position changes
+  useEffect(() => {
+    if (loadedGcode?.gcode && machinePosition) {
+      const outlineResult = calculateOutline(loadedGcode.gcode, machinePosition, { 
+        concavity: 2,
+        minPointDistance: 1, // 1mm minimum distance between points
+      })
+      if (outlineResult) {
+        setOutlinePoints(outlineResult.hullPoints)
+      } else {
+        setOutlinePoints(null)
+      }
+    } else {
+      setOutlinePoints(null)
+    }
+  }, [loadedGcode?.gcode, machinePosition?.x, machinePosition?.y, machinePosition?.z])
 
   // Automatically place model at WCS origin when G-code is loaded
   useEffect(() => {
@@ -604,6 +652,7 @@ export function VisualizerPanel({
           machinePosition={machinePosition}
           processedLines={senderState?.received}
           modelOffset={modelOffsetVector3}
+          outlinePoints={outlinePoints || undefined}
         />
         
         {/* View controls overlay */}

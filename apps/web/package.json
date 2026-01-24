@@ -46,6 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "colornames": "^1.1.1",
+    "concaveman": "^2.0.0",
     "gcode-toolpath": "^3.0.0",
     "hls.js": "^1.6.15",
     "i18next": "^24.0.5",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@types/concaveman": "^1.1.6",
     "@types/minimatch": "^5.1.2",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",

@@ -386,7 +386,7 @@ export default function Settings() {
 
   // Track if we've initialized from API to prevent refetch overwrites
   const hasInitialized = useRef(false)
-  const [forceReinit, setForceReinit] = useState(0)
+  const [forceReinit] = useState(0) // Reserved for future use (e.g., settings import)
 
   // Initialize advanced config from extensions API
   useEffect(() => {
