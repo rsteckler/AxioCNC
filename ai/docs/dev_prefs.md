@@ -254,12 +254,12 @@ routes/
 
 ```bash
 # Backend
-yarn dev:start-server          # Start backend on port 8000 (with file watching)
+pnpm dev:start-server          # Start backend on port 8000 (with file watching)
 
 # Frontend
-yarn dev:start-app      # Vite dev server on port 5173
-cd src/app && yarn build    # Production build
-cd src/app && yarn build:dev # Development build
+pnpm dev:start-app      # Vite dev server on port 5173
+cd apps/web && pnpm build    # Production build
+cd apps/web && pnpm build:dev # Development build
 ```
 
 ### Output Directories

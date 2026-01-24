@@ -50,7 +50,7 @@ These are safety-critical G-code sender components. Bugs can cause machine crash
 
 ## Build & Development
 
-**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd apps/web && yarn dev`, `yarn dev:start-server`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
+**Never start or stop dev servers** — Always ask the user to start/stop servers. Do not run `cd apps/web && pnpm dev`, `pnpm dev:start-server`, or kill/restart any running processes. Just tell the user what to run and they will handle it.
 
 ---
 

@@ -308,14 +308,14 @@ git clone https://github.com/rsteckler/AxioCNC.git
 cd AxioCNC
 
 # Install dependencies
-yarn install
+pnpm install
 
 # Start development servers (requires two terminals)
 # Terminal 1: Backend
-yarn dev:start-server
+pnpm dev:start-server
 
 # Terminal 2: Frontend
-yarn dev:start-app
+pnpm dev:start-app
 ```
 
 **Developer Documentation:**

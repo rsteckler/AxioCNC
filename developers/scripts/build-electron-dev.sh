@@ -53,7 +53,7 @@ cp -af apps/server/assets "${DEV_BUNDLE}/server/assets" 2>/dev/null || true
 # Only build if app directory is empty or index.html doesn't exist
 if [ ! -f "${DEV_BUNDLE}/app/index.html" ]; then
   echo "Building frontend..."
-  cd "${PROJECT_ROOT}/apps/web" && yarn build:dev && cd "${PROJECT_ROOT}"
+  cd "${PROJECT_ROOT}/apps/web" && pnpm build:dev && cd "${PROJECT_ROOT}"
   # Copy Vite output
   cp -af apps/web/dist/* "${DEV_BUNDLE}/app/"
 fi

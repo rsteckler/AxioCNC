@@ -13,7 +13,7 @@ echo "Enabling grbl-sim in $CONFIG_FILE..."
 # Check if config file exists
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "❌ Error: Config file not found at $CONFIG_FILE"
-    echo "   Please run 'yarn dev:start-server' first to create the config file."
+    echo "   Please run 'pnpm dev:start-server' first to create the config file."
     exit 1
 fi
 

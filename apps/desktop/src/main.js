@@ -190,7 +190,7 @@ const showMainWindow = async () => {
     if (!fs.existsSync(item.p)) {
       console.error(chalk.red(`Bundle validation failed: missing ${item.label} at ${item.p}`));
       if (!app.isPackaged) {
-        console.error(chalk.yellow('Dev mode: run yarn build:all and then package script.'));
+        console.error(chalk.yellow('Dev mode: run pnpm build:all and then package script.'));
       } else {
         console.error(chalk.yellow('Packaged mode: ensure electron-builder extraResources includes dist/axiocnc -> resources/axiocnc.'));
       }
