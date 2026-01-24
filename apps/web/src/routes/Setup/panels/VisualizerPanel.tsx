@@ -237,9 +237,15 @@ export function VisualizerPanel({
       setTab(prevTab => prevTab === 'toolchange' ? '3d' : prevTab)
     }
   }, [isToolChangePending])
+  
   // G-code state for visualizer
   const [loadedGcode, setLoadedGcode] = useState<{ name: string; gcode: string } | null>(null)
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
+  
+  // Memoize Vector3 to prevent unnecessary geometry recreation
+  const modelOffsetVector3 = useMemo(() => {
+    return modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined
+  }, [modelOffset?.x, modelOffset?.y, modelOffset?.z])
   const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
   const loadedGcodeRef = useRef<{ name: string; gcode: string } | null>(null) // Ref for accessing current loadedGcode in event handlers
   
@@ -597,7 +603,7 @@ export function VisualizerPanel({
           viewKey={viewKey}
           machinePosition={machinePosition}
           processedLines={senderState?.received}
-          modelOffset={modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined}
+          modelOffset={modelOffsetVector3}
         />
         
         {/* View controls overlay */}

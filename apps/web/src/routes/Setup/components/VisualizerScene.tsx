@@ -218,11 +218,8 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
   const redColor = useMemo(() => new Color(1, 0, 0), []) // Red color for processed lines
 
   const geometry = useMemo(() => {
-    console.log('[GCodeToolpath] Processing G-code:', { hasGcode: !!gcode, gcodeLength: gcode?.length })
     const result = processGCode(gcode)
-    console.log('[GCodeToolpath] Process result:', { hasResult: !!result, hasGeometry: !!result?.geometry, framesCount: result?.frames?.length })
     if (!result?.geometry) {
-      console.warn('[GCodeToolpath] No geometry from processGCode')
       geometryRef.current = null
       framesRef.current = []
       originalColorsRef.current = null
@@ -263,7 +260,13 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
 
     geometryRef.current = result.geometry
     return result.geometry
-  }, [gcode, offset])
+  }, [
+    gcode,
+    // Compare offset values instead of reference to prevent unnecessary recreation
+    offset?.x,
+    offset?.y,
+    offset?.z,
+  ])
 
   // Update colors based on processed lines
   useEffect(() => {
@@ -286,8 +289,8 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
     colors.set(originalColors)
 
     // Turn processed lines red
-    // processedLines is the number of lines that have been received/processed
-    for (let i = 0; i < Math.min(processedLines, frames.length); i++) {
+    const linesToPaint = Math.min(processedLines ?? 0, frames.length)
+    for (let i = 0; i < linesToPaint; i++) {
       const frame = frames[i]
       const startVertexIndex = frame.vertexIndex
       // Find the end vertex index (next frame's vertexIndex, or end of geometry)
@@ -306,7 +309,6 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
   }, [processedLines, redColor])
 
   if (!geometry) {
-    console.log('[GCodeToolpath] No geometry, returning null')
     return null
   }
 
