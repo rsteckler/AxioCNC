@@ -548,48 +548,125 @@
 
     <!-- Download Section -->
     <section id="download" class="py-20 fade-in">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="text-4xl font-bold mb-4">Download</h2>
-            <div class="h-1 w-24 bg-primary-light mx-auto mb-8"></div>
-            <p class="text-xl text-zinc-600 dark:text-zinc-400 mb-4">
-                Available for Linux, Windows, and Raspberry Pi
-            </p>
-            <p class="text-lg text-zinc-500 dark:text-zinc-500 mb-12">
-                Easy installation on all platforms
-            </p>
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold mb-4">Download</h2>
+                <div class="h-1 w-24 bg-primary-light mx-auto mb-6"></div>
+                <p class="text-xl text-zinc-600 dark:text-zinc-400 mb-2">
+                    Choose the right package for your system
+                </p>
+                <p class="text-lg text-zinc-500 dark:text-zinc-500">
+                    All downloads available on <a href="https://github.com/rsteckler/AxioCNC/releases" class="text-primary-light hover:underline" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
+                </p>
+            </div>
 
-            <div class="grid md:grid-cols-3 gap-6 mb-12">
-                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    <div class="text-4xl mb-4">🐧</div>
-                    <h3 class="text-xl font-semibold mb-2">Linux</h3>
-                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">.deb packages and AppImages</p>
-                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
-                        Download
-                    </button>
-                </div>
+            <!-- Server Downloads -->
+            <div class="mb-12">
+                <h3 class="text-2xl font-semibold mb-6 text-center">Server Packages (Headless)</h3>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Linux Headless -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/tux.svg" alt="Tux" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Linux Headless</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">amd64</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">Debian/Ubuntu .deb package</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
 
-                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    <div class="text-4xl mb-4">🪟</div>
-                    <h3 class="text-xl font-semibold mb-2">Windows</h3>
-                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">Installer package</p>
-                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
-                        Download
-                    </button>
-                </div>
+                    <!-- Raspberry Pi ARMv7 -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/raspberrypi.svg" alt="Raspberry Pi" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Raspberry Pi</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">ARMv7</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">For Raspberry Pi 3+</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
 
-                <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    <div class="text-4xl mb-4">🍓</div>
-                    <h3 class="text-xl font-semibold mb-2">Raspberry Pi</h3>
-                    <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-4">Headless server or desktop</p>
-                    <button class="px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full">
-                        Download
-                    </button>
+                    <!-- Raspberry Pi ARMhf -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/raspberrypi.svg" alt="Raspberry Pi" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Raspberry Pi</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">ARMhf</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">For Raspberry Pi 1-2</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
                 </div>
             </div>
 
-            <p class="text-sm text-zinc-500 dark:text-zinc-500">
-                Installation instructions available in the <a href="/docs/" class="text-primary-light hover:underline">documentation</a>
-            </p>
+            <!-- Desktop Downloads -->
+            <div class="mb-12">
+                <h3 class="text-2xl font-semibold mb-6 text-center">Desktop Applications</h3>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Linux Desktop -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/tux.svg" alt="Tux" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Linux Desktop</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">amd64</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">Debian/Ubuntu .deb package</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
+
+                    <!-- Windows Desktop -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/windows.svg" alt="Windows" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Windows Desktop</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">x64</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">Installer (.exe)</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
+
+                    <!-- Mac Desktop -->
+                    <div class="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-primary-light transition-colors">
+                        <div class="flex justify-center mb-4"><img src="media/apple.svg" alt="Apple" class="w-12 h-12" width="48" height="48" /></div>
+                        <h4 class="text-lg font-semibold mb-2 text-center">Mac Desktop</h4>
+                        <p class="text-zinc-600 dark:text-zinc-400 text-sm mb-1 text-center">Intel & Apple Silicon</p>
+                        <p class="text-zinc-500 dark:text-zinc-500 text-xs mb-4 text-center">.dmg package</p>
+                        <a href="https://github.com/rsteckler/AxioCNC/releases/latest" class="block px-6 py-2 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-center" target="_blank" rel="noopener noreferrer">
+                            Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Docker Option -->
+            <div class="mb-8">
+                <div class="bg-gradient-to-r from-primary-light/10 to-primary-dark/10 dark:from-primary-light/20 dark:to-primary-dark/20 p-8 rounded-lg border-2 border-primary-light/30 text-center">
+                    <div class="flex justify-center mb-4"><img src="media/docker.svg" alt="Docker" class="w-14 h-14" width="56" height="56" /></div>
+                    <h3 class="text-2xl font-semibold mb-3">Get Started with Docker</h3>
+                    <p class="text-zinc-600 dark:text-zinc-400 mb-6 max-w-2xl mx-auto">
+                        Run AxioCNC in a container for easy deployment and updates. Perfect for headless servers and consistent environments.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <a href="/docs/user/docs/DOCKER.html" class="px-8 py-3 bg-primary-light text-white rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                            Docker Documentation
+                        </a>
+                        <a href="https://github.com/rsteckler/AxioCNC/pkgs/container/axiocnc" class="px-8 py-3 border-2 border-primary-light text-primary-light rounded-lg font-semibold hover:bg-primary-light/10 transition-colors" target="_blank" rel="noopener noreferrer">
+                            View on GitHub Container Registry
+                        </a>
+                    </div>
+                    <div class="mt-6 bg-zinc-900 dark:bg-zinc-800 rounded-lg p-4 text-left max-w-2xl mx-auto">
+                        <code class="text-green-400 text-sm">
+                            docker pull ghcr.io/rsteckler/axiocnc:latest
+                        </code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <p class="text-sm text-zinc-500 dark:text-zinc-500">
+                    Installation instructions available in the <a href="/docs/" class="text-primary-light hover:underline">documentation</a>
+                </p>
+            </div>
         </div>
     </section>
 
@@ -688,6 +765,7 @@
             </div>
             <div class="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 dark:text-zinc-500">
                 <p>&copy; 2024 AxioCNC. Built for the CNC community.</p>
+                <p class="mt-2"><a href="mailto:admin@axiocnc.com" class="text-primary-light hover:underline">admin@axiocnc.com</a></p>
             </div>
         </div>
     </footer>
