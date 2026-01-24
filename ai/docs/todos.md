@@ -4,16 +4,10 @@ This document consolidates all project todos from various sources.
 
 ## Before beta release
 x show disconnected status when websocket dies
-auto updates
+x auto updates
 x joystick locked
 x spinup time for spindle before moving
-First use
-outline job envelope
-settings export/import
-feed, spindle, rapid (cool way to say go slow)
-modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
-I like the sender components warning, but the protected-code link is broken.  repo-structure doc
-x same loc: Bundle and packaging directories don't exist yet
+x First use
 docker builds
 
 
@@ -24,8 +18,12 @@ docs
 
 
 ## Later
-coolant/air
+outline job envelope
+settings export/import
+feed, spindle, rapid (cool way to say go slow)
+modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
 
+coolant/air
 - [ ] Move the gcode into the server and abstract it with commands
 - [ ] Add keyboard jogging (WASD)
 - [ ] Add ortho viewing projection mode
