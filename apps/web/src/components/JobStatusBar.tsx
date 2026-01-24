@@ -9,8 +9,9 @@ import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import { useGetSettingsQuery } from '@/services/api'
 import type { MachineReadinessStatus } from '@/types/machine'
 import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import type { RootState } from '@/store'
+import { clearJobCompletion } from '@/store/jobSlice'
 
 export type JobStatus = 'not_started' | 'running' | 'paused' | 'complete'
 
@@ -44,6 +45,7 @@ export function JobStatusBar({
   const { data: settings } = useGetSettingsQuery()
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
   
   // Get completion state from Redux
   const completion = useSelector((state: RootState) => state.job.completion)
@@ -115,6 +117,12 @@ export function JobStatusBar({
       return
     }
     
+    // If job was previously complete, clear completion state to reset status to 'not_started'
+    // This ensures the status immediately shows as 'not_started' before transitioning to 'running'
+    if (jobStatus === 'complete') {
+      dispatch(clearJobCompletion())
+    }
+    
     // If machine needs homing confirmation, show dialog
     if (needsHomingConfirmation) {
       setShowConfirmDialog(true)
@@ -144,11 +152,17 @@ export function JobStatusBar({
       // No wizard handler or strategy not set - start directly (with navigation check)
       startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard, startJobWithNavigation])
+  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard, startJobWithNavigation, jobStatus, dispatch])
 
   const handleStartConfirmed = useCallback(() => {
     if (!isConnected || !connectedPort) {
       return
+    }
+    
+    // If job was previously complete, clear completion state to reset status to 'not_started'
+    // This ensures the status immediately shows as 'not_started' before transitioning to 'running'
+    if (jobStatus === 'complete') {
+      dispatch(clearJobCompletion())
     }
     
     // Check zeroing strategy before starting (same logic as handleStartClick)
@@ -174,7 +188,7 @@ export function JobStatusBar({
       // No wizard handler or strategy not set - start directly (with navigation check)
       startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard, startJobWithNavigation])
+  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard, startJobWithNavigation, jobStatus, dispatch])
 
   const handlePause = useCallback(() => {
     if (!isConnected || !connectedPort) {
