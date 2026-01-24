@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "babel src -d dist --config-file ../../babel.config.js && cp -r src/**/*.d.ts dist/ 2>/dev/null || true"
+    "build": "babel src -d dist --config-file ../../babel.config.js && cp src/index.d.ts dist/ && mkdir -p dist/schemas && cp src/schemas/*.d.ts dist/schemas/ 2>/dev/null || true"
   },
   "dependencies": {
     "zod": "^4.3.5"
