@@ -117,7 +117,6 @@ function App() {
           <Route path="/" element={<Setup />} />
           <Route path="/monitor" element={<Monitor />} />
           <Route path="/stats" element={<Stats />} />
-          <Route path="/test" element={<TestPage />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </ToolChangeProvider>
