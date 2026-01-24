@@ -214,7 +214,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         plateThickness: 3.175, // 1/8" is common
         probeFeedrate: 100,
         probeDistance: 50,
-        requireCheck: false,
+        requireCheck: true,
       }
     case 'manual':
       return {
