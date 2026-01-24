@@ -85,6 +85,8 @@ interface GeneralSectionProps {
   onRemoveWatchFolder: (id: string) => void
   onConnectGoogleDrive: () => void
   onDisconnectGoogleDrive: () => void
+  isExporting?: boolean
+  isImporting?: boolean
 }
 
 export function GeneralSection({ 
@@ -99,6 +101,8 @@ export function GeneralSection({
   onRemoveWatchFolder,
   onConnectGoogleDrive,
   onDisconnectGoogleDrive,
+  isExporting = false,
+  isImporting = false,
 }: GeneralSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false)
@@ -112,21 +116,49 @@ export function GeneralSection({
     const file = event.target.files?.[0]
     if (!file) return
 
+    // Check file extension
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      console.error('Invalid file type. Please select a JSON file.')
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target?.result as string)
+        const text = e.target?.result as string
+        if (!text) {
+          throw new Error('File is empty')
+        }
+        const data = JSON.parse(text)
         onImportSettings(data)
-      } catch {
-        console.error('Invalid JSON file')
+      } catch (error) {
+        console.error('Failed to parse JSON file:', error)
+        // Error notification will be shown by the parent component
+        // Reset input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    }
+    reader.onerror = () => {
+      console.error('Failed to read file')
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
     }
     reader.readAsText(file)
     
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+    // Reset input after a short delay to allow processing
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }, 100)
   }
 
   const handleAddFolder = () => {
@@ -459,15 +491,26 @@ export function GeneralSection({
               accept=".json"
               className="hidden"
               onChange={handleFileSelect}
+              disabled={isImporting || isExporting}
             />
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               className="gap-2"
+              disabled={isImporting || isExporting}
             >
-              <Upload className="w-4 h-4" />
-              Import
+              {isImporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Import
+                </>
+              )}
             </Button>
 
             {/* Export */}
@@ -476,9 +519,19 @@ export function GeneralSection({
               size="sm"
               onClick={onExportSettings}
               className="gap-2"
+              disabled={isImporting || isExporting}
             >
-              <Download className="w-4 h-4" />
-              Export
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Export
+                </>
+              )}
             </Button>
 
             {/* Restore Defaults */}

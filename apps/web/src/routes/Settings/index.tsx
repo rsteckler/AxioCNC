@@ -30,11 +30,14 @@ import {
   useGetCamerasQuery,
   useCreateCameraMutation,
   useUpdateCameraMutation,
+  useDeleteCameraMutation,
   type PartialSettings,
   type Camera,
 } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { useTheme } from '@/components/theme-provider'
+import { store } from '@/store'
+import { api } from '@/services/api'
 import { SettingsNav } from './SettingsNav'
 import { settingsSections } from './settingsSections'
 import { 
@@ -70,6 +73,16 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { useNotifications } from '@/hooks/useNotifications'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import type { SystemSettings, Extensions } from '@/services/api'
 
 
 // =============================================================================
@@ -267,7 +280,7 @@ export default function Settings() {
   const isMountedRef = useRef(true)
   
   // RTK Query hooks
-  const { data: settings, isLoading: isLoadingSettings } = useGetSettingsQuery()
+  const { data: settings, isLoading: isLoadingSettings, refetch: refetchSettings } = useGetSettingsQuery()
   const [setSettings] = useSetSettingsMutation()
   
   // Events API
@@ -313,6 +326,24 @@ export default function Settings() {
   const { data: camerasData } = useGetCamerasQuery()
   const [createCamera] = useCreateCameraMutation()
   const [updateCamera] = useUpdateCameraMutation()
+  const [deleteCamera] = useDeleteCameraMutation()
+  
+  // Notifications
+  const { showErrorNotification, showInfoNotification } = useNotifications()
+  
+  // Import confirmation dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [pendingImportData, setPendingImportData] = useState<{
+    settings?: SystemSettings
+    macros?: Macro[]
+    events?: EventHandler[]
+    tools?: Tool[]
+    cameras?: Camera[]
+    watchFolders?: WatchFolder[]
+    extensions?: Extensions
+  } | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
   
   // Derive events/macros/tools/watchFolders from API data (wrap in useMemo to prevent recreating on every render)
   // Cast event/trigger strings to the expected union types
@@ -357,6 +388,7 @@ export default function Settings() {
 
   // Track if we've initialized from API to prevent refetch overwrites
   const hasInitialized = useRef(false)
+  const [forceReinit, setForceReinit] = useState(0)
 
   // Initialize advanced config from extensions API
   useEffect(() => {
@@ -366,10 +398,13 @@ export default function Settings() {
     }
   }, [extensionsData])
 
-  // Initialize local state from API data (only on first load)
+  // Initialize local state from API data (only on first load or after import)
   useEffect(() => {
+    console.log('[Init Effect] Running - settings:', settings, 'hasInitialized:', hasInitialized.current, 'forceReinit:', forceReinit)
     // Only initialize once - after that, local state is the source of truth
-    if (settings && !hasInitialized.current) {
+    // But allow re-initialization if forceReinit changes (after import)
+    if (settings && (!hasInitialized.current || forceReinit > 0)) {
+      console.log('[Init Effect] Initializing state from settings...')
       hasInitialized.current = true
       
       setLanguage(settings.lang ?? 'en')
@@ -434,7 +469,7 @@ export default function Settings() {
         })
       }
     }
-  }, [settings])
+  }, [settings, forceReinit])
   
   // Track which camera we've loaded to prevent overwriting user input
   const lastLoadedCameraId = useRef<string | null>(null)
@@ -591,16 +626,377 @@ export default function Settings() {
     debouncedSave({ allowAnonymousUsageDataCollection: value })
   }, [debouncedSave])
 
-  // Settings backup handlers (UI only for now)
-  const handleImportSettings = useCallback((data: unknown) => {
-    console.log('Import settings:', data)
-    // TODO: Implement import functionality
-  }, [])
+  // Settings backup handlers
+  const handleExportSettings = useCallback(async () => {
+    if (isExporting) return
+    
+    setIsExporting(true)
+    try {
+      // Get all extensions (not just 'advanced')
+      // For now, we'll just export the advanced extension, but this could be expanded
+      const allExtensions: Extensions = {}
+      if (extensionsData) {
+        allExtensions.advanced = extensionsData
+      }
+      
+      // Collect all data for export
+      const exportData = {
+        version: '1.0.0',
+        exportDate: new Date().toISOString(),
+        appVersion: currentVersionData?.version ?? '0.0.0',
+        settings: settings ?? {},
+        macros: macrosData?.records ?? [],
+        events: eventsData?.records ?? [],
+        tools: toolsData?.records ?? [],
+        cameras: camerasData?.records ?? [],
+        watchFolders: watchFoldersData?.records ?? [],
+        extensions: allExtensions,
+      }
 
-  const handleExportSettings = useCallback(() => {
-    console.log('Export settings')
-    // TODO: Implement export functionality
-  }, [])
+      // Create and download file
+      const json = JSON.stringify(exportData, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+      link.download = `axiocnc-settings-${timestamp}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      // Show success notification
+      showInfoNotification('Settings Exported', 'Your settings have been exported successfully.')
+    } catch (error) {
+      console.error('Export failed:', error)
+      showErrorNotification('Export Failed', 'Failed to export settings. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }, [
+    isExporting,
+    settings,
+    macrosData,
+    eventsData,
+    toolsData,
+    camerasData,
+    watchFoldersData,
+    extensionsData,
+    currentVersionData,
+    showInfoNotification,
+    showErrorNotification,
+  ])
+
+  const handleImportSettings = useCallback((data: unknown) => {
+    // Validate structure
+    if (!data || typeof data !== 'object') {
+      showErrorNotification('Import Failed', 'Invalid file format. Please select a valid settings file.')
+      return
+    }
+
+    const importData = data as {
+      version?: string
+      settings?: SystemSettings
+      macros?: Macro[]
+      events?: EventHandler[]
+      tools?: Tool[]
+      cameras?: Camera[]
+      watchFolders?: WatchFolder[]
+      extensions?: Extensions
+    }
+
+    // Validate that we have at least some data
+    if (!importData.settings && !importData.macros && !importData.events && 
+        !importData.tools && !importData.cameras && !importData.watchFolders && 
+        !importData.extensions) {
+      showErrorNotification('Import Failed', 'The file does not contain any settings data.')
+      return
+    }
+
+    // Store pending import data and show confirmation dialog
+    setPendingImportData(importData)
+    setImportDialogOpen(true)
+  }, [showErrorNotification])
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!pendingImportData || isImporting) return
+
+    setIsImporting(true)
+    setImportDialogOpen(false)
+
+    try {
+      // Apply system settings
+      if (pendingImportData.settings) {
+        await setSettings(pendingImportData.settings).unwrap()
+      }
+
+      // Apply macros (delete all existing, then create imported ones)
+      if (pendingImportData.macros) {
+        // Delete all existing macros
+        for (const macro of macros) {
+          try {
+            await deleteMacro(macro.id).unwrap()
+          } catch (error) {
+            console.error('Failed to delete macro during import:', error)
+          }
+        }
+        // Create imported macros
+        for (const macro of pendingImportData.macros) {
+          try {
+            await createMacro({
+              name: macro.name,
+              description: macro.description,
+              content: macro.content,
+            }).unwrap()
+          } catch (error) {
+            console.error('Failed to create macro during import:', error)
+          }
+        }
+      }
+
+      // Apply events (delete all existing, then create imported ones)
+      if (pendingImportData.events) {
+        // Delete all existing events
+        for (const event of events) {
+          try {
+            await deleteEvent(event.id).unwrap()
+          } catch (error) {
+            console.error('Failed to delete event during import:', error)
+          }
+        }
+        // Create imported events
+        for (const event of pendingImportData.events) {
+          try {
+            await createEvent({
+              event: event.event,
+              trigger: event.trigger,
+              commands: event.commands,
+              enabled: event.enabled ?? true,
+            }).unwrap()
+          } catch (error) {
+            console.error('Failed to create event during import:', error)
+          }
+        }
+      }
+
+      // Apply tools (delete all existing, then create imported ones)
+      if (pendingImportData.tools) {
+        // Delete all existing tools
+        for (const tool of tools) {
+          try {
+            await deleteTool(tool.id).unwrap()
+          } catch (error) {
+            console.error('Failed to delete tool during import:', error)
+          }
+        }
+        // Create imported tools
+        for (const tool of pendingImportData.tools) {
+          try {
+            await createTool({
+              toolId: tool.toolId,
+              name: tool.name,
+              description: tool.description,
+              diameter: tool.diameter,
+              diameterUnit: tool.diameterUnit,
+              type: tool.type,
+            }).unwrap()
+          } catch (error) {
+            console.error('Failed to create tool during import:', error)
+          }
+        }
+      }
+
+      // Apply cameras (delete all existing, then create imported ones)
+      if (pendingImportData.cameras) {
+        // Delete all existing cameras
+        const existingCameras = camerasData?.records ?? []
+        for (const camera of existingCameras) {
+          try {
+            await deleteCamera(camera.id).unwrap()
+          } catch (error) {
+            console.error('Failed to delete camera during import:', error)
+          }
+        }
+        // Create imported cameras (passwords won't be in export for security)
+        for (const camera of pendingImportData.cameras) {
+          try {
+            await createCamera({
+              name: camera.name,
+              inputUrl: camera.inputUrl,
+              username: camera.username,
+              password: camera.password, // May be undefined if exported without password
+              enabled: camera.enabled ?? false,
+            }).unwrap()
+          } catch (error) {
+            console.error('Failed to create camera during import:', error)
+          }
+        }
+      }
+
+      // Apply watch folders (delete all existing, then create imported ones)
+      if (pendingImportData.watchFolders) {
+        // Delete all existing watch folders
+        for (const folder of watchFolders) {
+          try {
+            await deleteWatchFolder(folder.id).unwrap()
+          } catch (error) {
+            console.error('Failed to delete watch folder during import:', error)
+          }
+        }
+        // Create imported watch folders
+        for (const folder of pendingImportData.watchFolders) {
+          try {
+            await createWatchFolder({
+              name: folder.name,
+              type: folder.type,
+              path: folder.path,
+              enabled: folder.enabled ?? true,
+            }).unwrap()
+          } catch (error) {
+            console.error('Failed to create watch folder during import:', error)
+          }
+        }
+      }
+
+      // Apply extensions
+      if (pendingImportData.extensions) {
+        for (const [key, value] of Object.entries(pendingImportData.extensions)) {
+          try {
+            await setExtensions({ key, data: value as Record<string, unknown> }).unwrap()
+          } catch (error) {
+            console.error(`Failed to set extension ${key} during import:`, error)
+          }
+        }
+      }
+
+      // Invalidate all relevant cache tags to force refetch of all data
+      store.dispatch(api.util.invalidateTags([
+        'Settings',
+        'Extensions',
+        'Macros',
+        'Events',
+        'Tools',
+        'Cameras',
+        'WatchFolders',
+      ]))
+
+      // Directly update local state from imported settings (don't wait for refetch)
+      if (pendingImportData.settings) {
+        const importedSettings = pendingImportData.settings
+        
+        // Update general settings
+        setLanguage(importedSettings.lang ?? 'en')
+        setCheckForUpdates(importedSettings.checkForUpdates ?? true)
+        setAllowAnalytics(importedSettings.allowAnonymousUsageDataCollection ?? false)
+        
+        // Update machine config
+        if (importedSettings.machine) {
+          setMachineConfig(prev => ({
+            ...prev,
+            name: importedSettings.machine?.name ?? prev.name,
+            limits: importedSettings.machine?.limits ?? prev.limits,
+            homingCorner: importedSettings.machine?.homingCorner ?? prev.homingCorner,
+            autoSwitchToMonitorEnabled: importedSettings.machine?.autoSwitchToMonitor ?? prev.autoSwitchToMonitorEnabled,
+            toolSpinupDelayEnabled: importedSettings.machine?.toolSpinup?.enabled ?? prev.toolSpinupDelayEnabled,
+            toolSpinupDelaySeconds: importedSettings.machine?.toolSpinup?.delaySeconds ?? prev.toolSpinupDelaySeconds,
+          }))
+        }
+        
+        // Update connection config
+        if (importedSettings.connection) {
+          setConnectionConfig(prev => ({ ...prev, ...importedSettings.connection }))
+        }
+        
+        // Update camera config
+        if (importedSettings.camera) {
+          setCameraConfig(prev => ({ ...prev, ...importedSettings.camera }))
+        }
+        
+        // Update zeroing methods config
+        if (importedSettings.zeroingMethods) {
+          setZeroingMethodsConfig(prev => ({ ...prev, ...importedSettings.zeroingMethods }))
+        }
+        
+        // Update zeroing strategies config
+        if (importedSettings.zeroingStrategies) {
+          setZeroingStrategiesConfig(prev => ({ ...prev, ...importedSettings.zeroingStrategies }))
+        }
+        
+        // Update joystick config
+        if (importedSettings.joystick) {
+          setJoystickConfig(prev => {
+            const loaded = { ...prev, ...importedSettings.joystick }
+            const connectionLocation = loaded.connectionLocation || 'server'
+            const defaultMappings = getDefaultButtonMappings(connectionLocation)
+            if (!loaded.buttonMappings || Object.keys(loaded.buttonMappings).length === 0) {
+              loaded.buttonMappings = { ...defaultMappings }
+            }
+            return loaded
+          })
+        }
+        
+        // Update appearance settings (theme, accent color, custom theme)
+        if (importedSettings.appearance) {
+          if (importedSettings.appearance.theme) {
+            setTheme(importedSettings.appearance.theme as 'light' | 'dark' | 'system')
+          }
+          if (importedSettings.appearance.accentColor) {
+            setAccentColor(importedSettings.appearance.accentColor as 'orange' | 'blue' | 'green' | 'purple' | 'red' | 'zinc')
+          }
+          if (importedSettings.appearance.customThemeId !== undefined) {
+            setCustomTheme(importedSettings.appearance.customThemeId)
+          }
+        }
+      }
+      
+      // Update advanced config from imported extensions
+      if (pendingImportData.extensions?.advanced) {
+        const advancedData = pendingImportData.extensions.advanced
+        if (typeof advancedData === 'object' && advancedData !== null) {
+          const config = advancedData as unknown as AdvancedConfig
+          setAdvancedConfig(prev => ({ ...prev, ...config }))
+        }
+      }
+      
+      // Also refetch to ensure cache is updated for future operations
+      await refetchSettings()
+
+      showInfoNotification('Settings Imported', 'Your settings have been imported successfully. You may need to re-enter camera passwords.')
+    } catch (error) {
+      console.error('Import failed:', error)
+      showErrorNotification('Import Failed', 'Failed to import some settings. Please check the console for details.')
+    } finally {
+      setIsImporting(false)
+      setPendingImportData(null)
+    }
+  }, [
+    pendingImportData,
+    isImporting,
+    setSettings,
+    macros,
+    deleteMacro,
+    createMacro,
+    events,
+    deleteEvent,
+    createEvent,
+    tools,
+    deleteTool,
+    createTool,
+    camerasData,
+    deleteCamera,
+    createCamera,
+    watchFolders,
+    deleteWatchFolder,
+    createWatchFolder,
+    setExtensions,
+    refetchSettings,
+    setTheme,
+    setAccentColor,
+    setCustomTheme,
+    showInfoNotification,
+    showErrorNotification,
+  ])
 
   const handleRestoreDefaults = useCallback(async () => {
     // Reset all settings to factory defaults
@@ -1401,6 +1797,8 @@ export default function Settings() {
               onRemoveWatchFolder={handleRemoveWatchFolder}
               onConnectGoogleDrive={handleConnectGoogleDrive}
               onDisconnectGoogleDrive={handleDisconnectGoogleDrive}
+              isExporting={isExporting}
+              isImporting={isImporting}
             />
 
             <AppearanceSection
@@ -1490,6 +1888,66 @@ export default function Settings() {
           </main>
         </div>
       </div>
+
+      {/* Import Confirmation Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Settings</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p className="text-destructive font-medium">
+                  This will replace all your current settings. This action cannot be undone.
+                </p>
+                <p>
+                  The following data will be imported:
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1 ml-2">
+                  {pendingImportData?.settings && <li>System settings (connection, machine, camera, etc.)</li>}
+                  {pendingImportData?.macros && <li>{pendingImportData.macros.length} macro(s)</li>}
+                  {pendingImportData?.events && <li>{pendingImportData.events.length} event handler(s)</li>}
+                  {pendingImportData?.tools && <li>{pendingImportData.tools.length} tool(s)</li>}
+                  {pendingImportData?.cameras && <li>{pendingImportData.cameras.length} camera(s)</li>}
+                  {pendingImportData?.watchFolders && <li>{pendingImportData.watchFolders.length} watch folder(s)</li>}
+                  {pendingImportData?.extensions && <li>Extension data</li>}
+                </ul>
+                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                    Important: Camera passwords are not included in exports for security reasons. 
+                    You will need to re-enter camera passwords after importing.
+                  </p>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImportDialogOpen(false)
+                setPendingImportData(null)
+              }}
+              disabled={isImporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmImport}
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                'Import Settings'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
