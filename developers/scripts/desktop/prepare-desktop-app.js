@@ -3,7 +3,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '../../..');
@@ -79,61 +78,42 @@ assertExists(desktopDist, 'desktop runtime build output');
 const stageScript = path.join(repoRoot, 'developers/scripts/packaging/stage-runtime.js');
 run(process.execPath, [stageScript, '--bundle-dir', outputRoot]);
 
-console.log('📦 Installing server production dependencies...');
-// Use isolated temp directory like server packaging (cross-platform)
-const tempDir = path.join(os.tmpdir(), `axiocnc-desktop-deps-${process.pid}`);
-
-// Cleanup function for temp directory
-const cleanup = () => {
-  try {
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  } catch (err) {
-    // Ignore cleanup errors
-  }
-};
-
-// Register cleanup on exit
-process.on('exit', cleanup);
-process.on('SIGINT', () => {
-  cleanup();
-  process.exit(1);
-});
-process.on('SIGTERM', () => {
-  cleanup();
-  process.exit(1);
-});
-
-// Remove temp dir if it exists, then create it
-if (fs.existsSync(tempDir)) {
-  fs.rmSync(tempDir, { recursive: true, force: true });
+console.log('📦 Deploying server production dependencies with pnpm deploy...');
+// Use pnpm deploy to create lean deployment (only files needed at runtime)
+// This significantly reduces file count compared to pnpm install
+const deployDir = path.join(outputRoot, 'node_modules');
+if (fs.existsSync(deployDir)) {
+  fs.rmSync(deployDir, { recursive: true, force: true });
 }
-ensureDir(tempDir);
+ensureDir(deployDir);
 
-// Copy and modify package.json (remove workspace deps)
-const pkg = JSON.parse(fs.readFileSync(path.join(outputRoot, 'package.json'), 'utf8'));
+// pnpm deploy needs to run from the repo root and deploy to the output directory
+// We need to temporarily modify package.json to remove @axiocnc/shared dependency
+// since we'll link it manually
+const pkgPath = path.join(outputRoot, 'package.json');
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+const originalSharedDep = pkg.dependencies && pkg.dependencies['@axiocnc/shared'];
 if (pkg.dependencies && pkg.dependencies['@axiocnc/shared']) {
   delete pkg.dependencies['@axiocnc/shared'];
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 }
-fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
-fs.copyFileSync(path.join(repoRoot, 'pnpm-lock.yaml'), path.join(tempDir, 'pnpm-lock.yaml'));
 
-// Install in temp directory
-run(getPnpmCommand(), ['install', '--prod', '--no-frozen-lockfile'], {
-  cwd: tempDir,
-  env: {
-    ...process.env,
-  },
-});
-
-// Copy node_modules back (cross-platform)
-const nodeModulesSrc = path.join(tempDir, 'node_modules');
-const nodeModulesDest = path.join(outputRoot, 'node_modules');
-if (fs.existsSync(nodeModulesDest)) {
-  fs.rmSync(nodeModulesDest, { recursive: true, force: true });
+try {
+  // Use pnpm deploy to create lean deployment
+  // --legacy flag needed for compatibility with older pnpm versions
+  run(getPnpmCommand(), ['deploy', '--prod', '--filter', '@axiocnc/server', '--legacy', deployDir], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+    },
+  });
+} finally {
+  // Restore @axiocnc/shared dependency if it was removed
+  if (originalSharedDep) {
+    pkg.dependencies['@axiocnc/shared'] = originalSharedDep;
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  }
 }
-copyRecursiveSync(nodeModulesSrc, nodeModulesDest);
 
 // Link shared library into node_modules so server code can import it
 console.log('🔗 Linking shared library into node_modules...');
@@ -184,6 +164,3 @@ assertExists(path.join(outputRoot, 'app'), 'web app directory');
 assertExists(path.join(outputRoot, 'node_modules'), 'node_modules');
 
 console.log(`✅ Bundle ready at ${outputRoot}`);
-
-// Cleanup temp directory
-cleanup();
