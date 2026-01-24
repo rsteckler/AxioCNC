@@ -312,16 +312,16 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
     return null
   }
 
-  return (
-    <line geometry={geometry}>
-      <lineBasicMaterial
-        vertexColors={true}
-        opacity={0.5}
-        transparent
-        linewidth={1}
-      />
-    </line>
-  )
+  const lineObject = useMemo(() => {
+    const mat = new LineBasicMaterial({
+      vertexColors: true,
+      opacity: 0.5,
+      transparent: true,
+    })
+    return new Line(geometry, mat)
+  }, [geometry])
+
+  return <primitive object={lineObject} />
 }
 
 // Tool/Endmill indicator - cone tip pointing down toward grid, cylindrical shank above
