@@ -687,6 +687,9 @@ importers:
       '@docusaurus/preset-classic':
         specifier: 3.9.2
         version: 3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@19.2.3))(@types/react@18.3.27)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.6.3)(webpack-cli@5.1.4(webpack-dev-server@5.2.3)(webpack@5.94.0))
+      '@docusaurus/theme-common':
+        specifier: 3.9.2
+        version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.6.3)(webpack-cli@5.1.4(webpack-dev-server@5.2.3)(webpack@5.94.0)))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack-cli@5.1.4(webpack-dev-server@5.2.3)(webpack@5.94.0))
       '@docusaurus/theme-mermaid':
         specifier: 3.9.2
         version: 3.9.2(@docusaurus/plugin-content-docs@3.9.2(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.6.3)(webpack-cli@5.1.4(webpack-dev-server@5.2.3)(webpack@5.94.0)))(@mdx-js/react@3.1.1(@types/react@18.3.27)(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.6.3)(webpack-cli@5.1.4(webpack-dev-server@5.2.3)(webpack@5.94.0))
