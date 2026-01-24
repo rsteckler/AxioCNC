@@ -121,10 +121,9 @@ export function processGCode(gcode: string | null | undefined): GCodeGeometryRes
   })
 
   // Process G-code synchronously
-  // Extract method to avoid TypeScript inference issues with toolpath variable
-  const loadFromStringSync = (toolpath as { loadFromStringSync?: (gcode: string, callback: (line: string) => void) => void }).loadFromStringSync
-  if (loadFromStringSync && typeof loadFromStringSync === 'function') {
-    loadFromStringSync(gcode, (line: string) => {
+  // Call method directly on toolpath instance to preserve 'this' context
+  if (toolpath && typeof (toolpath as { loadFromStringSync?: (gcode: string, callback: (line: string) => void) => void }).loadFromStringSync === 'function') {
+    (toolpath as { loadFromStringSync: (gcode: string, callback: (line: string) => void) => void }).loadFromStringSync(gcode, (line: string) => {
       frames.push({
         data: line,
         vertexIndex: Math.floor(positions.length / 3) // Current vertex count
