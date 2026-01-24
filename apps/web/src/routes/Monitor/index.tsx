@@ -619,8 +619,27 @@ function ProgressPanel({
   const fileSize = senderState?.size ?? 0
   const fileName = senderState?.name ?? ''
   
-  // Feedrate from backend (mm/min)
-  const feedRateMax = 3000 // Default max, could be made configurable
+  // Dynamic feedrate max - tracks the highest feedrate seen during the current job
+  const feedRateMaxRef = useRef(3000) // Default max
+  const currentJobNameRef = useRef<string | undefined>(fileName)
+  
+  // Reset max feedrate when a new job starts (job name changes)
+  useEffect(() => {
+    if (currentJobNameRef.current !== fileName) {
+      // Reset to default, but if current feedrate is already above 3000, use that
+      feedRateMaxRef.current = Math.max(3000, feedrate)
+      currentJobNameRef.current = fileName
+    }
+  }, [fileName, feedrate])
+  
+  // Update max feedrate if current feedrate exceeds it
+  useEffect(() => {
+    if (feedrate > feedRateMaxRef.current) {
+      feedRateMaxRef.current = feedrate
+    }
+  }, [feedrate])
+  
+  const feedRateMax = feedRateMaxRef.current
 
   // Format file size helper
   const formatBytes = (bytes: number): string => {
@@ -1165,6 +1184,9 @@ export default function Monitor() {
   useEffect(() => {
     if (isToolChangePending) {
       setTab('toolchange')
+    } else {
+      // When tool change tab closes, switch back to visualizer view
+      setTab(prevTab => prevTab === 'toolchange' ? 'visualizer' : prevTab)
     }
   }, [isToolChangePending])
 
