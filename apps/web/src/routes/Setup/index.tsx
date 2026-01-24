@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
-import { useGetSettingsQuery, useGetExtensionsQuery, useSetSettingsMutation } from '@/services/api'
+import { useGetSettingsQuery, useGetExtensionsQuery, useSetSettingsMutation, useGetCurrentVersionQuery } from '@/services/api'
 // useGetControllersQuery not currently used but may be needed in future
 import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
-import { useGcodeCommand, useJoystickInput } from '@/hooks'
+import { useGcodeCommand, useJoystickInput, useGitHubVersion, compareVersions } from '@/hooks'
 import { 
   useMachineState, 
   useJobState, 
@@ -63,6 +63,7 @@ import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
+import { UpdateNotificationDialog } from '@/components/UpdateNotificationDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
 import { SetupTutorialDialog } from '@/components/SetupTutorialDialog'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -205,6 +206,14 @@ export default function Setup() {
   const { data: settings } = useGetSettingsQuery()
   const [setSettings] = useSetSettingsMutation()
   
+  // Get current version from API
+  const { data: currentVersionData } = useGetCurrentVersionQuery()
+  const currentVersion = currentVersionData?.version ?? '0.0.0'
+  
+  // Get latest version from GitHub (only if automatic updates are enabled)
+  const checkForUpdates = settings?.firstUse?.checkForUpdates ?? true
+  const { latestVersion: gitHubLatestVersion, releaseUrl } = useGitHubVersion()
+  
   // Get advanced config (for debug mode)
   const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
   const debugMode = extensionsData && typeof extensionsData === 'object' && 'debugMode' in extensionsData
@@ -213,6 +222,10 @@ export default function Setup() {
 
   const [isTutorialOpen, setIsTutorialOpen] = useState(false)
   const hasShownTutorialRef = useRef(false)
+  
+  // Update notification dialog state
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false)
+  const hasShownUpdateRef = useRef(false)
   const hideSetupTutorial = settings?.firstUse?.hideSetupTutorial ?? false
   const shouldForceShowTutorial = Boolean(
     (location.state as { showSetupTutorial?: boolean } | null)?.showSetupTutorial
@@ -251,6 +264,36 @@ export default function Setup() {
       sessionStorage.setItem('axiocnc-setup-tutorial-shown', 'true')
     }
   }, [settings, hideSetupTutorial, shouldForceShowTutorial, navigate, location.pathname])
+  
+  // Check for updates and show dialog once per session
+  useEffect(() => {
+    // Only check if automatic updates are enabled
+    if (!checkForUpdates) {
+      return
+    }
+    
+    // Don't show if we've already shown it this session
+    if (hasShownUpdateRef.current) {
+      return
+    }
+    
+    // Wait for both current and latest version to be available
+    if (!currentVersion || !gitHubLatestVersion) {
+      return
+    }
+    
+    // Check if update is available (latest > current)
+    const isUpdateAvailable = compareVersions(currentVersion, gitHubLatestVersion) < 0
+    
+    if (isUpdateAvailable) {
+      const hasShownInSession = sessionStorage.getItem('axiocnc-update-notification-shown') === 'true'
+      if (!hasShownInSession) {
+        setIsUpdateDialogOpen(true)
+        hasShownUpdateRef.current = true
+        sessionStorage.setItem('axiocnc-update-notification-shown', 'true')
+      }
+    }
+  }, [checkForUpdates, currentVersion, gitHubLatestVersion])
   
   // Panel order - just an array of IDs
   // Load from localStorage or use default
@@ -1008,6 +1051,16 @@ export default function Setup() {
         open={isTutorialOpen}
         onOpenChange={handleTutorialOpenChange}
       />
+      {/* Update notification dialog */}
+      {gitHubLatestVersion && (
+        <UpdateNotificationDialog
+          open={isUpdateDialogOpen}
+          onOpenChange={setIsUpdateDialogOpen}
+          currentVersion={currentVersion}
+          latestVersion={gitHubLatestVersion}
+          releaseUrl={releaseUrl || undefined}
+        />
+      )}
       {/* Method selection dialog for "ask" strategy */}
       <ZeroingMethodSelectDialog
         open={showMethodSelectDialog}
