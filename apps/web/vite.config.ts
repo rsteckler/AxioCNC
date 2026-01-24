@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
   
   return {
+    // Load .env.local from project root (two levels up from apps/web)
+    envDir: path.resolve(__dirname, '../..'),
     plugins: [
       react(),
       nodePolyfills({

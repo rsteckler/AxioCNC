@@ -22,6 +22,7 @@ import config from '../../services/configstore';
 import monitor from '../../services/monitor';
 import taskRunner from '../../services/taskrunner';
 import jobHistory from '../../services/jobhistory';
+import analytics from '../../services/analytics';
 import store from '../../store';
 import {
   GLOBAL_OBJECTS as globalObjects,
@@ -81,6 +82,42 @@ class GrblController {
         this.ready = false;
         if (err) {
           log.error(`Unexpected error while reading/writing serial port "${this.options.port}":`, err);
+          
+          // Track controller error
+          if (analytics.isEnabled()) {
+            try {
+              const errorMessage = err.message || String(err);
+              const sanitizedMessage = errorMessage.length > 200 
+                ? errorMessage.substring(0, 200) + '...' 
+                : errorMessage;
+              
+              // Sanitize port (remove full path, keep device name)
+              const port = this.options.port || 'unknown';
+              const sanitizedPort = port.split(/[/\\]/).pop() || port;
+              
+              // Determine error type
+              let errorType = 'unknown';
+              if (errorMessage.toLowerCase().includes('timeout')) {
+                errorType = 'timeout';
+              } else if (errorMessage.toLowerCase().includes('parse') || errorMessage.toLowerCase().includes('parse_error')) {
+                errorType = 'parse_error';
+              } else if (errorMessage.toLowerCase().includes('connection') || errorMessage.toLowerCase().includes('connection_lost')) {
+                errorType = 'connection_lost';
+              }
+              
+              analytics.track('controller_error', {
+                controller_type: this.type || 'Grbl',
+                error_type: errorType,
+                error_message: sanitizedMessage,
+                port: sanitizedPort,
+              });
+            } catch (analyticsError) {
+              // Don't break error handling if analytics fails
+              if (process.env.NODE_ENV === 'development') {
+                log.warn('[GrblController] Failed to track controller error:', analyticsError);
+              }
+            }
+          }
         }
       }
     };
@@ -598,6 +635,40 @@ class GrblController {
       this.runner.on('error', (res) => {
         const code = Number(res.message) || undefined;
         const error = _.find(GRBL_ERRORS, { code: code });
+        
+        // Track controller error from runner
+        if (analytics.isEnabled()) {
+          try {
+            const errorMessage = error ? error.message : `Error code ${code}`;
+            const sanitizedMessage = errorMessage.length > 200 
+              ? errorMessage.substring(0, 200) + '...' 
+              : errorMessage;
+            
+            // Sanitize port
+            const port = this.options.port || 'unknown';
+            const sanitizedPort = port.split(/[/\\]/).pop() || port;
+            
+            // Determine error type
+            let errorType = 'parse_error'; // Grbl errors are typically parse errors
+            if (errorMessage.toLowerCase().includes('timeout')) {
+              errorType = 'timeout';
+            } else if (errorMessage.toLowerCase().includes('connection')) {
+              errorType = 'connection_lost';
+            }
+            
+            analytics.track('controller_error', {
+              controller_type: this.type || 'Grbl',
+              error_type: errorType,
+              error_message: sanitizedMessage,
+              port: sanitizedPort,
+            });
+          } catch (analyticsError) {
+            // Don't break error handling if analytics fails
+            if (process.env.NODE_ENV === 'development') {
+              log.warn('[GrblController] Failed to track runner error:', analyticsError);
+            }
+          }
+        }
 
         if (this.workflow.state === WORKFLOW_STATE_RUNNING) {
           const { lines, received } = this.sender.state;

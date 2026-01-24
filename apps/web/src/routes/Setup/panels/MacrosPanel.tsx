@@ -5,6 +5,7 @@ import { LoadingState } from '@/components/LoadingState'
 import { EmptyState } from '@/components/EmptyState'
 import { useGetMacrosQuery, type Macro } from '@/services/api'
 import { useGcodeCommand } from '@/hooks'
+import { trackFeatureUsed } from '@/services/analytics'
 import { 
   parseMacroParameters, 
   validateParameterValue, 
@@ -116,6 +117,9 @@ export function MacrosPanel({
     if (!confirmMacro || !connectedPort) {
       return
     }
+    
+    // Track feature usage
+    trackFeatureUsed('macro', 'MacrosPanel', 'run_macro', confirmMacro.name)
     
     // Build context object with parameter values
     const context: Record<string, string | number | boolean> = {}

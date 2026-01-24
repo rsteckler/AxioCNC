@@ -41,7 +41,10 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          build-args: VERSION=${{ steps.package_version.outputs.version }}-${{ github.sha }}
+          build-args: |
+            VERSION=${{ steps.package_version.outputs.version }}-${{ github.sha }}
+            APTABASE_KEY=${{ secrets.APTABASE_KEY }}
+            VITE_APTABASE_KEY=${{ secrets.APTABASE_KEY }}
           tags: ghcr.io/${{ steps.repo.outputs.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -81,8 +84,14 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Aptabase key config (backend)
+        run: node developers/scripts/generate-aptabase-key.js
+        env:
+          APTABASE_KEY: ${{ secrets.APTABASE_KEY }}
       - name: Build all
         run: pnpm build:all
+        env:
+          VITE_APTABASE_KEY: ${{ secrets.APTABASE_KEY }}
       - name: Package desktop app
         run: ${{ matrix.package_cmd }}
       - name: Upload artifacts
@@ -114,8 +123,14 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Aptabase key config (backend)
+        run: node developers/scripts/generate-aptabase-key.js
+        env:
+          APTABASE_KEY: ${{ secrets.APTABASE_KEY }}
       - name: Build all
         run: pnpm build:all
+        env:
+          VITE_APTABASE_KEY: ${{ secrets.APTABASE_KEY }}
       - name: Package server deb
         run: pnpm package:server-${{ matrix.arch }}
       - name: Upload artifacts

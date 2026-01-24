@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { socketService } from '@/services/socket'
+import { track } from '@/services/analytics'
 import { useGetSettingsQuery, useGetExtensionsQuery, useSetSettingsMutation, useGetCurrentVersionQuery } from '@/services/api'
 // useGetControllersQuery not currently used but may be needed in future
 import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
@@ -574,26 +575,63 @@ export default function Setup() {
   // Track if we manually disconnected (to prevent restore after manual disconnect)
   const manuallyDisconnectedRef = useRef(false)
   
+  // Track connection start time for duration calculation
+  const connectionStartTimeRef = useRef<number | null>(null)
+  
   // Listen for connection events and errors
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleSerialPortOpen = (..._args: unknown[]) => {
+    const handleSerialPortOpen = (...args: unknown[]) => {
       // data may be needed in future - keep args for now
-      // const data = _args[0] as { port: string }
+      const data = args[0] as { port?: string; baudrate?: number; controllerType?: string } | undefined
       
       // Clear manual disconnect flag when we successfully connect
       manuallyDisconnectedRef.current = false
       
       // Machine state updates are handled by machineStateSync
       dispatch(setConnecting(false))
+      
+      // Track connection start time
+      connectionStartTimeRef.current = Date.now()
+      
+      // Track controller connection
+      try {
+        // Get baud rate from data first, then settings, with proper fallback
+        const baudRate = data?.baudrate ?? settings?.connection?.baudRate ?? 115200
+        track('controller_connected', {
+          controller_type: data?.controllerType || 'unknown',
+          port: data?.port || connectedPort || 'unknown',
+          baud_rate: baudRate,
+        })
+      } catch (analyticsError) {
+        // Don't break connection if analytics fails
+        if (import.meta.env.DEV) {
+          console.warn('[Setup] Failed to track controller connection:', analyticsError)
+        }
+      }
     }
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleSerialPortClose = (..._args: unknown[]) => {
+    const handleSerialPortClose = () => {
       // Machine state updates are handled by machineStateSync
       // Only update page-specific state
       setHomingInProgress(false)
       homingInProgressRef.current = false
+      
+      // Track controller disconnection
+      try {
+        const connectionStartTime = connectionStartTimeRef.current
+        const duration = connectionStartTime ? Math.floor((Date.now() - connectionStartTime) / 1000) : 0
+        
+        track('controller_disconnected', {
+          controller_type: settings?.controller?.type || 'unknown',
+          port: connectedPort || 'unknown',
+          duration,
+        })
+      } catch (analyticsError) {
+        // Don't break disconnection if analytics fails
+        if (import.meta.env.DEV) {
+          console.warn('[Setup] Failed to track controller disconnection:', analyticsError)
+        }
+      }
     }
     
     const handleSocketError = (...args: unknown[]) => {

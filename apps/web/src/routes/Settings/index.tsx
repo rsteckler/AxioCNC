@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
+import { trackSettingsChange } from '@/services/analytics'
 import { 
   useGetSettingsQuery, 
   useSetSettingsMutation,
@@ -586,6 +587,28 @@ export default function Settings() {
       setIsSaving(true)
       try {
         await setSettings(changes).unwrap()
+        
+        // Track settings changes to analytics
+        try {
+          // Track each changed setting
+          for (const [category, value] of Object.entries(changes)) {
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              // Nested object (e.g., connection, machine, appearance)
+              for (const [key, settingValue] of Object.entries(value)) {
+                trackSettingsChange(category, key, settingValue)
+              }
+            } else {
+              // Top-level setting (e.g., lang, checkForUpdates)
+              trackSettingsChange('general', category, value)
+            }
+          }
+        } catch (analyticsError) {
+          // Don't break settings save if analytics fails
+          if (import.meta.env.DEV) {
+            console.warn('[Settings] Failed to track settings change:', analyticsError)
+          }
+        }
+        
         // Check again after async operation - component might have unmounted
         if (isMountedRef.current) {
           setLastSaved(new Date())

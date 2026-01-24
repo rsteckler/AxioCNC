@@ -13,6 +13,7 @@ import machineStatusManager from '../machinestatus/MachineStatusManager';
 import gamepadService from '../gamepad';
 import joystickService from '../joystick';
 import jogLoop from '../joystick/jogloop';
+import analytics from '../analytics';
 import {
   GrblController,
   MarlinController,
@@ -462,6 +463,45 @@ class CNCEngine {
             machineStatusManager.handleUnlock(port);
           } else if (cmd === 'homing') {
             machineStatusManager.handleHoming(port);
+          }
+
+          // Track job execution events
+          if (analytics.isEnabled() && controller.sender) {
+            try {
+              const sender = controller.sender;
+              const jobActions = ['gcode:start', 'gcode:pause', 'gcode:resume', 'gcode:stop'];
+              
+              if (jobActions.includes(cmd)) {
+                const action = cmd.replace('gcode:', ''); // 'start', 'pause', 'resume', 'stop'
+                const senderState = sender.state || {};
+                const fileName = senderState.name || 'unknown';
+                const fileSize = senderState.size || 0;
+                const lineCount = senderState.total || 0;
+                
+                // Calculate progress for complete/stop actions
+                let progressPercent = null;
+                if ((action === 'stop' || action === 'complete') && lineCount > 0) {
+                  const linesReceived = senderState.received || 0;
+                  progressPercent = Math.round((linesReceived / lineCount) * 100);
+                }
+                
+                // Sanitize file name (remove path, keep only filename)
+                const sanitizedFileName = fileName.split(/[/\\]/).pop() || fileName;
+                
+                analytics.track('job_execution', {
+                  action,
+                  file_name: sanitizedFileName,
+                  file_size: fileSize,
+                  line_count: lineCount,
+                  progress_percent: progressPercent,
+                });
+              }
+            } catch (analyticsError) {
+              // Don't break commands if analytics fails
+              if (process.env.NODE_ENV === 'development') {
+                log.warn('[CNCEngine] Failed to track job execution:', analyticsError);
+              }
+            }
           }
 
           controller.command.apply(controller, [cmd].concat(args));

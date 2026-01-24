@@ -37,8 +37,18 @@ COPY babel.config.js build.config.js ./
 COPY developers ./developers
 COPY i18next-scanner.server.config.js ./
 
+# Generate Aptabase key config (if APTABASE_KEY is provided)
+ARG APTABASE_KEY=""
+RUN if [ -n "$APTABASE_KEY" ]; then \
+      APTABASE_KEY="$APTABASE_KEY" node developers/scripts/generate-aptabase-key.js; \
+    else \
+      node developers/scripts/generate-aptabase-key.js; \
+    fi
+
 # Build server, web, shared, desktop runtime (same as build:all)
-RUN pnpm build:all
+# VITE_APTABASE_KEY is passed as build arg and used during build
+ARG VITE_APTABASE_KEY=""
+RUN VITE_APTABASE_KEY="$VITE_APTABASE_KEY" pnpm build:all
 
 # Deploy @axiocnc/server to standalone dir (same as package-headless)
 RUN mkdir -p /build/deploy \

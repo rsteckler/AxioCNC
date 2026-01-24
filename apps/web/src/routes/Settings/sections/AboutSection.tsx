@@ -88,7 +88,7 @@ export function AboutSection({
         {/* Update and Privacy Settings */}
         <div className="space-y-4 pt-2">
           <SettingsField
-            label="Automatic Updates"
+            label="Notify me of updates"
             description="Check for new versions of AxioCNC on startup"
             horizontal
           >
@@ -155,6 +155,25 @@ export function AboutSection({
               onCheckedChange={onAnalyticsChange}
             />
           </SettingsField>
+          
+          {/* Transparency note about Aptabase */}
+          <div className="pt-2 text-sm text-muted-foreground space-y-1">
+            <p>
+              We use{' '}
+              <a
+                href="https://aptabase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Aptabase
+              </a>
+              {' '}— a privacy-focused usage monitor — so we can improve the software.
+            </p>
+            <p className="text-xs">
+              We don't track people, sell data, or collect G-code files. We only track feature usage and errors to help us understand how AxioCNC is used and fix bugs.
+            </p>
+          </div>
         </div>
 
         {/* Links */}

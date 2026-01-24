@@ -5,6 +5,7 @@ import { MachineActionButton } from '@/components/MachineActionButton'
 import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements } from '@/utils/machineState'
 import { useGcodeCommand } from '@/hooks'
+import { trackFeatureUsed } from '@/services/analytics'
 import type { PanelProps } from '../types'
 
 export function SpindlePanel({ 
@@ -81,9 +82,11 @@ export function SpindlePanel({
   const handleToggleSpindle = useCallback(() => {
     if (isOn) {
       // Stop spindle
+      trackFeatureUsed('spindle', 'SpindlePanel', 'toggle_spindle', 'off')
       sendGcode('M5')
     } else {
       // Start spindle with current speed and direction
+      trackFeatureUsed('spindle', 'SpindlePanel', 'toggle_spindle', `${direction}_${speed}`)
       const command = direction === 'cw' ? `M3 S${speed}` : `M4 S${speed}`
       sendGcode(command)
     }
@@ -93,6 +96,7 @@ export function SpindlePanel({
   const handleDirectionChange = useCallback((newDirection: 'cw' | 'ccw') => {
     if (isOn) return // Can't change direction while running
     
+    trackFeatureUsed('spindle', 'SpindlePanel', 'direction_change', newDirection)
     // Update local state - will be applied when starting
     setLocalDirection(newDirection)
   }, [isOn])
@@ -101,9 +105,11 @@ export function SpindlePanel({
   const handleSpeedChange = useCallback((newSpeedIndex: number) => {
     if (isOn) return // Can't change speed while running
     
+    const newSpeed = speeds[newSpeedIndex]
+    trackFeatureUsed('spindle', 'SpindlePanel', 'speed_change', newSpeed)
     setSpeedIndex(newSpeedIndex)
     // Speed will be applied when starting spindle
-  }, [isOn])
+  }, [isOn, speeds])
   
   // Flash status if action attempted while disabled (but not if disabled due to spindle running)
   const handleDisabledAction = useCallback(() => {

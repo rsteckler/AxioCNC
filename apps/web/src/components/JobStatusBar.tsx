@@ -12,6 +12,7 @@ import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 import { useSelector, useDispatch } from 'react-redux'
 import type { RootState } from '@/store'
 import { clearJobCompletion } from '@/store/jobSlice'
+import { track } from '@/services/analytics'
 
 export type JobStatus = 'not_started' | 'running' | 'paused' | 'complete'
 
@@ -47,8 +48,9 @@ export function JobStatusBar({
   const location = useLocation()
   const dispatch = useDispatch()
   
-  // Get completion state from Redux
+  // Get completion state and job state from Redux
   const completion = useSelector((state: RootState) => state.job.completion)
+  const jobState = useSelector((state: RootState) => state.job)
   
   // Detect M6 tool changes and trigger tool change flow
   useToolChangeDetection(connectedPort)
@@ -92,7 +94,16 @@ export function JobStatusBar({
   const needsHomingConfirmation = machineStatus === 'connected_pre_home'
 
   // Helper to start job with optional navigation to Monitor
-  const startJobWithNavigation = useCallback(() => {
+  const startJobWithNavigation = useCallback((isResume = false) => {
+    // Track analytics for job start (not resume)
+    if (!isResume && jobStatus !== 'paused') {
+      track('job_started', {
+        file_name: jobState.name || 'unknown',
+        file_size: jobState.size || 0,
+        line_count: jobState.total || 0,
+      })
+    }
+    
     // Check if we're in Setup and setting is enabled
     const isInSetup = location.pathname === '/' || location.pathname === '/setup'
     const shouldSwitch = settings?.machine?.autoSwitchToMonitor ?? true // Default to true
@@ -108,7 +119,7 @@ export function JobStatusBar({
       // Start job directly
       sendCommand('gcode:start')
     }
-  }, [location.pathname, settings, navigate, sendCommand])
+  }, [location.pathname, settings, navigate, sendCommand, jobStatus, jobState])
 
   // Internal handlers for job control buttons
   const handleStartClick = useCallback(() => {
@@ -195,6 +206,9 @@ export function JobStatusBar({
       onFlashStatus?.()
       return
     }
+    track('job_paused', {
+      reason: 'user_action',
+    })
     sendCommand('gcode:pause')
   }, [isConnected, connectedPort, onFlashStatus, sendCommand])
 
@@ -203,6 +217,9 @@ export function JobStatusBar({
       onFlashStatus?.()
       return
     }
+    track('job_resumed', {
+      reason: 'user_action',
+    })
     sendCommand('gcode:resume')
   }, [isConnected, connectedPort, onFlashStatus, sendCommand])
 

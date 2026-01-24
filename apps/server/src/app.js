@@ -40,6 +40,7 @@ import errnotfound from './lib/middleware/errnotfound';
 import errserver from './lib/middleware/errserver';
 import config from './services/configstore';
 import mediamtxService from './services/mediamtx';
+import analytics from './services/analytics';
 import {
   authorizeIPAddress,
   validateUser
@@ -857,6 +858,43 @@ const appMain = () => {
       return undefined;
     }
   });
+
+  { // API endpoint tracking middleware
+    // Track API calls (but not camera endpoints for privacy)
+    app.use((req, res, next) => {
+      const startTime = Date.now();
+      const endpoint = req.originalUrl || req.url || 'unknown';
+      
+      // Skip tracking for camera endpoints
+      if (endpoint.includes('/api/cameras') || endpoint.includes('/api/streams')) {
+        return next();
+      }
+      
+      // Track response when it finishes
+      const originalSend = res.send;
+      res.send = function(data) {
+        try {
+          if (analytics.isEnabled()) {
+            const responseTime = Date.now() - startTime;
+            analytics.track('api_endpoint_called', {
+              endpoint: endpoint.split('?')[0], // Remove query params
+              method: req.method,
+              status_code: res.statusCode,
+              response_time_ms: responseTime,
+            });
+          }
+        } catch (analyticsError) {
+          // Don't break API calls if analytics fails
+          if (process.env.NODE_ENV === 'development') {
+            log.warn('[app] Failed to track API endpoint:', analyticsError);
+          }
+        }
+        return originalSend.call(this, data);
+      };
+      
+      next();
+    });
+  }
 
   { // Error handling
     app.use(errlog());

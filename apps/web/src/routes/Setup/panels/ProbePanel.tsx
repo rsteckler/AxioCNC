@@ -5,6 +5,7 @@ import { ActionRequirements } from '@/utils/machineState'
 import { LoadingState } from '@/components/LoadingState'
 import { EmptyState } from '@/components/EmptyState'
 import { useGetSettingsQuery } from '@/services/api'
+import { trackFeatureUsed } from '@/services/analytics'
 import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import type { ProbePanelProps } from '../types'
 
@@ -44,6 +45,7 @@ export function ProbePanel({
   const methods: ZeroingMethod[] = settings?.zeroingMethods?.methods?.filter((m: ZeroingMethod) => m.enabled) ?? []
   
   const handleRun = useCallback((method: ZeroingMethod) => {
+    trackFeatureUsed('zero', 'ProbePanel', `run_${method.type}`, method.axes)
     if (onStartWizard) {
       onStartWizard(method)
     }

@@ -97,6 +97,10 @@ See [Day-1 Workflow](./03-day-1-workflow.md#pnpm-commands-cheat-sheet) for more.
 
 **Copyright:** See LICENSE file. Includes "Copyright (c) 2015–2017 Cheton Wu (cncjs foundation)" and "Copyright (c) 2024 AxioCNC Contributors".
 
+## Development Guides
+
+- **[Test Analytics Locally](./13-test-analytics-locally.md)** — Set up Aptabase Analytics for local development
+
 ## Next Steps
 
 - **[Architecture](./04-architecture.md)** — System design and data flow

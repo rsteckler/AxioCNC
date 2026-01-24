@@ -994,20 +994,6 @@ export default function Monitor() {
   
   // Job state (sender state) - jobState is used via other extracted values
   
-  // Debug log to verify job state
-  React.useEffect(() => {
-    console.log('[Monitor] jobState changed:', jobState)
-    console.log('[Monitor] senderState values:', {
-      name: jobState.name,
-      size: jobState.size,
-      total: jobState.total,
-      sent: jobState.sent,
-      received: jobState.received,
-      elapsedTime: jobState.elapsedTime,
-      remainingTime: jobState.remainingTime,
-    })
-  }, [jobState])
-  
   // Panel order - load from localStorage or use default
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem('axiocnc-monitor-panel-order')

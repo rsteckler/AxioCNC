@@ -100,8 +100,8 @@ importers:
         specifier: ~3.0.1
         version: 3.0.1
       dotenv:
-        specifier: ~7.0.0
-        version: 7.0.0
+        specifier: ~16.6.1
+        version: 16.6.1
       electron-builder:
         specifier: ^26.4.0
         version: 26.4.0(electron-builder-squirrel-windows@26.4.0)
@@ -310,6 +310,9 @@ importers:
       deep-keys:
         specifier: ~0.5.0
         version: 0.5.0
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
       ensure-array:
         specifier: ^1.0.0
         version: 1.0.0
@@ -439,6 +442,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@aptabase/web':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@axiocnc/shared':
         specifier: workspace:*
         version: link:../shared
@@ -808,6 +814,9 @@ packages:
 
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
+
+  '@aptabase/web@0.5.0':
+    resolution: {integrity: sha512-+RFdaS0bLJtqTZyB1uG32S7tuTfJTGbG2bkdVMs3AT7yG7DP2yb6JY5rZoBf3UyW9sigFHGRkbXoAXdCMZibWA==}
 
   '@babel/cli@7.28.6':
     resolution: {integrity: sha512-6EUNcuBbNkj08Oj4gAZ+BUU8yLCgKzgVX4gaTh09Ya2C8ICM4P+G30g4m3akRxSYAp3A/gnWchrNst7px4/nUQ==}
@@ -6761,10 +6770,6 @@ packages:
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
-
-  dotenv@7.0.0:
-    resolution: {integrity: sha512-M3NhsLbV1i6HuGzBUH8vXrtxOk+tWmzWKDMbAVSUp3Zsjm7ywFeuwrUXhmhQyRK1q5B5GGy7hcXPbj3bnfZg2g==}
-    engines: {node: '>=6'}
 
   draco3d@1.5.7:
     resolution: {integrity: sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==}
@@ -13730,6 +13735,8 @@ snapshots:
     dependencies:
       package-manager-detector: 1.6.0
       tinyexec: 1.0.2
+
+  '@aptabase/web@0.5.0': {}
 
   '@babel/cli@7.28.6(@babel/core@7.28.6)':
     dependencies:
@@ -20824,8 +20831,6 @@ snapshots:
       dotenv: 16.6.1
 
   dotenv@16.6.1: {}
-
-  dotenv@7.0.0: {}
 
   draco3d@1.5.7: {}
 

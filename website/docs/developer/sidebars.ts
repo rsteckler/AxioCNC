@@ -3,7 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 /**
  * Developer docs sidebar. Ordered by happy path: start → setup → map → workflow
  * → architecture → standards → testing → safety → contributing → release → CI
- * → troubleshooting → reference.
+ * → troubleshooting → reference → test-analytics-locally.
  */
 const sidebars: SidebarsConfig = {
   devdocsSidebar: [
@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
     '10-ci-cd',
     '11-troubleshooting',
     '12-reference',
+    '13-test-analytics-locally',
   ],
 };
 

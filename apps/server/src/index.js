@@ -24,6 +24,7 @@ import monitor from './services/monitor';
 import config from './services/configstore';
 import mediamtxService from './services/mediamtx';
 import jobHistory from './services/jobhistory';
+import analytics from './services/analytics';
 import logger, { setLevel } from './lib/logger';
 import urljoin from './lib/urljoin';
 
@@ -265,6 +266,72 @@ const createServer = (options, callback) => {
       log.info('='.repeat(60));
       log.info(chalk.cyan(`AxioCNC Server v${pkg.version}`));
       log.info('='.repeat(60));
+
+      // Initialize analytics service
+      log.debug('Initializing analytics service...');
+      analytics.initialize();
+      
+      // Track server start time for uptime calculation
+      const serverStartTime = Date.now();
+      
+      if (analytics.isEnabled()) {
+        log.info('Analytics enabled - tracking server_started event');
+        analytics.track('server_started', {
+          version: pkg.version,
+          node_version: process.version,
+          platform: process.platform,
+        });
+      } else {
+        log.debug('Analytics disabled (key missing or user has not enabled)');
+      }
+      
+      // Setup graceful shutdown handlers
+      const shutdownHandler = (signal) => {
+        return () => {
+          log.info(`Received ${signal}, shutting down gracefully...`);
+          
+          // Calculate uptime in seconds
+          const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
+          
+          // Track server shutdown
+          if (analytics.isEnabled()) {
+            try {
+              analytics.track('server_shutdown', {
+                uptime,
+              });
+              // Flush analytics queue before exit
+              analytics.flush().catch((err) => {
+                log.warn('Failed to flush analytics on shutdown:', err);
+              });
+            } catch (err) {
+              log.warn('Failed to track server shutdown:', err);
+            }
+          }
+          
+          // Give analytics a moment to send, then exit
+          setTimeout(() => {
+            process.exit(0);
+          }, 1000);
+        };
+      };
+      
+      // Register shutdown handlers (only once per process)
+      if (!process.__shutdownHandlersRegistered) {
+        process.on('SIGTERM', shutdownHandler('SIGTERM'));
+        process.on('SIGINT', shutdownHandler('SIGINT'));
+        process.__shutdownHandlersRegistered = true;
+      }
+      
+      // Handle uncaught exceptions and unhandled rejections
+      process.on('uncaughtException', (err) => {
+        log.error('Uncaught exception:', err);
+        shutdownHandler('uncaughtException')();
+      });
+      
+      process.on('unhandledRejection', (reason, promise) => {
+        log.error('Unhandled rejection at:', promise, 'reason:', reason);
+        shutdownHandler('unhandledRejection')();
+      });
 
       callback && callback(null, {
         address,

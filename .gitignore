@@ -23,3 +23,10 @@ developers/examples/grbl-sim-build/grbl/
 # Windows ADS metadata files
 *:Zone.Identifier
 
+# Generated Aptabase key (created at build time from CI secrets)
+apps/server/src/config/aptabase-key.js
+
+# Local environment variables (for development)
+.env.local
+.env*.local
+

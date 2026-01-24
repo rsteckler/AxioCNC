@@ -10,6 +10,7 @@ import { useGcodeCommand, useAnalogJog, sendJogControlInput } from '@/hooks'
 import { buildGoToZeroCommand } from '@/utils/gcode'
 import { normalizeToCircle } from '@/utils/analogNormalize'
 import { useGetExtensionsQuery } from '@/services/api'
+import { trackFeatureUsed } from '@/services/analytics'
 import type { PanelProps } from '../types'
 
 export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
@@ -48,6 +49,10 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     
     const command = parts.join(' ')
     
+    // Track feature usage
+    const axis = x !== 0 ? 'x' : y !== 0 ? 'y' : 'z'
+    trackFeatureUsed('jog', 'JogPanel', `jog_${axis}`, distance)
+    
     // Send jog commands: G91 (relative), G0 (rapid move), G90 (absolute)
     sendGcode('G91') // relative mode
     sendGcode(`G0 ${command}`) // rapid move
@@ -56,6 +61,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   
   // Handle go to zero for XY axes
   const handleGoToZeroXY = useCallback(() => {
+    trackFeatureUsed('jog', 'JogPanel', 'go_to_zero_xy')
     const gcode = buildGoToZeroCommand('XY')
     if (gcode) {
       sendGcode(gcode)
@@ -64,6 +70,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   
   // Handle go to zero for Z axis
   const handleGoToZeroZ = useCallback(() => {
+    trackFeatureUsed('jog', 'JogPanel', 'go_to_zero_z')
     const gcode = buildGoToZeroCommand('Z')
     if (gcode) {
       sendGcode(gcode)
@@ -222,6 +229,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           onClick={() => {
             setMode('steps')
             localStorage.setItem('axiocnc-setup-jog-mode', 'steps')
+            trackFeatureUsed('jog', 'JogPanel', 'mode_change', 'steps')
           }}
         >
           Steps
@@ -233,6 +241,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           onClick={() => {
             setMode('analog')
             localStorage.setItem('axiocnc-setup-jog-mode', 'analog')
+            trackFeatureUsed('jog', 'JogPanel', 'mode_change', 'analog')
           }}
         >
           Analog

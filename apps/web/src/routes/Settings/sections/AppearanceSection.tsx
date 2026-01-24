@@ -41,6 +41,7 @@ import {
   type CustomThemeMeta,
   type CustomThemeDefinition,
 } from '@/services/api'
+import { trackSettingsChange } from '@/services/analytics'
 
 export type Theme = 'light' | 'dark' | 'system'
 
@@ -126,13 +127,29 @@ export function AppearanceSection({
   const handleDeleteTheme = async (themeId: string) => {
     // If deleting the active theme, switch to default first
     if (customThemeId === themeId) {
-      onCustomThemeChange(null)
+      handleCustomThemeChange(null)
     }
     await deleteTheme(themeId)
     refetchThemes()
   }
 
   const selectedTheme = customThemes.find(t => t.id === customThemeId)
+
+  // Wrapper functions to track analytics
+  const handleThemeChange = (newTheme: Theme) => {
+    trackSettingsChange('appearance', 'theme', newTheme)
+    onThemeChange(newTheme)
+  }
+
+  const handleAccentColorChange = (newColor: AccentColor) => {
+    trackSettingsChange('appearance', 'accentColor', newColor)
+    onAccentColorChange(newColor)
+  }
+
+  const handleCustomThemeChange = (themeId: string | null) => {
+    trackSettingsChange('appearance', 'customThemeId', themeId)
+    onCustomThemeChange(themeId)
+  }
 
   return (
     <SettingsSection
@@ -149,7 +166,7 @@ export function AppearanceSection({
           <Button
             variant={theme === 'light' ? 'default' : 'outline'}
             className="flex-1 gap-2"
-            onClick={() => onThemeChange('light')}
+            onClick={() => handleThemeChange('light')}
           >
             <Sun className="w-4 h-4" />
             Light
@@ -157,7 +174,7 @@ export function AppearanceSection({
           <Button
             variant={theme === 'dark' ? 'default' : 'outline'}
             className="flex-1 gap-2"
-            onClick={() => onThemeChange('dark')}
+            onClick={() => handleThemeChange('dark')}
           >
             <Moon className="w-4 h-4" />
             Dark
@@ -165,7 +182,7 @@ export function AppearanceSection({
           <Button
             variant={theme === 'system' ? 'default' : 'outline'}
             className="flex-1 gap-2"
-            onClick={() => onThemeChange('system')}
+            onClick={() => handleThemeChange('system')}
           >
             <Monitor className="w-4 h-4" />
             System
@@ -181,7 +198,7 @@ export function AppearanceSection({
         <div className="flex gap-2">
           <Select 
             value={customThemeId || 'none'} 
-            onValueChange={(value) => onCustomThemeChange(value === 'none' ? null : value)}
+            onValueChange={(value) => handleCustomThemeChange(value === 'none' ? null : value)}
           >
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select a theme..." />
@@ -316,7 +333,7 @@ export function AppearanceSection({
             {ACCENT_COLORS.map((color) => (
               <button
                 key={color.value}
-                onClick={() => onAccentColorChange(color.value)}
+                onClick={() => handleAccentColorChange(color.value)}
                 className={cn(
                   'group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all',
                   accentColor === color.value

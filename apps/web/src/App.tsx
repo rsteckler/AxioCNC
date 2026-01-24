@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ToolChangeProvider } from '@/contexts/ToolChangeContext'
-import { useSignInMutation } from '@/services/api'
+import { useSignInMutation, useGetSettingsQuery } from '@/services/api'
 import { socketService } from '@/services/socket'
 import { machineStateSync } from '@/services/machineStateSync'
+import { initializeAnalytics, track, isEnabled } from '@/services/analytics'
+import { getAptabaseKey } from '@/config/analytics'
 import Settings from '@/routes/Settings'
 import Setup from '@/routes/Setup'
 import Monitor from '@/routes/Monitor'
@@ -13,6 +16,8 @@ import Stats from '@/routes/Stats'
 function App() {
   const [signIn] = useSignInMutation()
   const [authReady, setAuthReady] = useState(false)
+  const location = useLocation()
+  const { data: settings } = useGetSettingsQuery()
 
   // Basic JWT format validation
   const isValidJwtFormat = (token: string): boolean => {
@@ -78,6 +83,38 @@ function App() {
     }
   }, [signIn])
 
+  // Initialize analytics
+  useEffect(() => {
+    try {
+      const appKey = getAptabaseKey()
+      const userEnabled = settings?.allowAnonymousUsageDataCollection ?? false
+      const appVersion = '0.0.50' // TODO: Get from package.json or API
+      
+      initializeAnalytics(appKey, userEnabled, appVersion)
+      
+      if (isEnabled()) {
+        // Detect platform (electron vs web)
+        const isElectron = typeof window !== 'undefined' && 'electron' in window
+        const platform = isElectron ? 'electron' : 'web'
+        track('app_started', {
+          version: appVersion,
+          platform,
+        })
+      }
+    } catch {
+      // Fail silently - don't break the app
+    }
+  }, [settings])
+
+  // Track route changes
+  useEffect(() => {
+    if (isEnabled() && authReady) {
+      track('page_view', {
+        path: location.pathname,
+      })
+    }
+  }, [location.pathname, authReady])
+
   // Auto-authenticate on app load
   useEffect(() => {
     // Set up socket service to handle token invalidation
@@ -111,16 +148,18 @@ function App() {
   }
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
-      <ToolChangeProvider>
-        <Routes>
-          <Route path="/" element={<Setup />} />
-          <Route path="/monitor" element={<Monitor />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </ToolChangeProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark" storageKey="cncjs-ui-theme">
+        <ToolChangeProvider>
+          <Routes>
+            <Route path="/" element={<Setup />} />
+            <Route path="/monitor" element={<Monitor />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </ToolChangeProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 

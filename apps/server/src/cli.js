@@ -1,9 +1,36 @@
 /* eslint-disable no-console */
 /* eslint no-console: 0 */
+// Load .env.local for local development (before anything else)
+// Try multiple possible locations for .env.local
+const path = require('path');
+const fs = require('fs');
+
+// Find project root by looking for package.json or .git
+const findProjectRoot = () => {
+  let currentDir = __dirname;
+  while (currentDir !== path.dirname(currentDir)) {
+    const packageJson = path.join(currentDir, 'package.json');
+    const gitDir = path.join(currentDir, '.git');
+    if (fs.existsSync(packageJson) || fs.existsSync(gitDir)) {
+      // Check if this looks like the project root (has apps/ directory)
+      if (fs.existsSync(path.join(currentDir, 'apps'))) {
+        return currentDir;
+      }
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  // Fallback: assume we're in apps/server/src, go up 3 levels
+  return path.resolve(__dirname, '../../..');
+};
+
+const projectRoot = findProjectRoot();
+const envLocalPath = path.join(projectRoot, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  require('dotenv').config({ path: envLocalPath });
+}
+
 require('core-js/stable'); // to polyfill ECMAScript features
 require('regenerator-runtime/runtime'); // needed to use transpiled generator functions
-
-const path = require('path');
 const isElectron = require('is-electron');
 const program = require('commander');
 // In dev/prod builds, package.json is copied alongside the compiled server-cli.js

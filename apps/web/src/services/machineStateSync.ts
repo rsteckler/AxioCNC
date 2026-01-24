@@ -6,6 +6,7 @@ import {
 } from '@/store/machineSlice'
 import { setJobState, clearJobState, setJobCompletion, clearJobCompletion } from '@/store/jobSlice'
 import { socketService } from './socket'
+import { track } from '@/services/analytics'
 // useLazyGetMachineStatusQuery not currently used but may be needed in future
 // import { useLazyGetMachineStatusQuery } from '@/services/api'
 import type { MachineStatus as ApiMachineStatus } from '@/services/api'
@@ -26,6 +27,8 @@ class MachineStateSyncService {
   private handleSenderStatusBound?: (...args: unknown[]) => void
   private handleJobCompleteBound?: (...args: unknown[]) => void
   private handleGcodeLoadBound?: (...args: unknown[]) => void
+  private previousWorkflowState: 'idle' | 'running' | 'paused' | null = null
+  private jobStartTime: number | null = null
 
   /**
    * Initialize the service - set up Socket.IO listeners
@@ -265,6 +268,22 @@ class MachineStateSyncService {
     // const _port = _args[0] as string
     const workflowState = _args[1] as 'idle' | 'running' | 'paused'
 
+    // Track job start time for duration calculation (analytics events are tracked on button clicks)
+    const previousState = this.previousWorkflowState
+    const jobState = store.getState().job
+    
+    // Set job start time when workflow becomes running (for duration calculation)
+    // Analytics events (job_started, job_paused, job_resumed) are tracked on button clicks
+    if (workflowState === 'running' && this.jobStartTime === null && jobState.name) {
+      // Only set if we haven't already started tracking this job
+      // and we have a job loaded (name exists)
+      if (previousState === 'idle' || previousState === null) {
+        this.jobStartTime = Date.now()
+      }
+    }
+    
+    this.previousWorkflowState = workflowState
+
     // Update backendStatus if it exists, otherwise it will be updated by next machine:status event
     const currentStatus = store.getState().machine.backendStatus
     if (currentStatus) {
@@ -290,6 +309,7 @@ class MachineStateSyncService {
         nextM6ToolNumber: undefined,
         remainingTimeToNextM6: undefined,
       }))
+      this.jobStartTime = null
     }
   }
 
@@ -369,6 +389,27 @@ class MachineStateSyncService {
         wasSuccessful: completion.wasSuccessful,
         senderState: completion.senderState,
       }))
+      
+      // Track job completion
+      try {
+        const duration = this.jobStartTime 
+          ? Math.floor((Date.now() - this.jobStartTime) / 1000)
+          : completion.senderState.finishTime || 0
+        
+        track('job_completed', {
+          duration,
+          success: completion.wasSuccessful,
+          lines_executed: completion.senderState.received || 0,
+          lines_total: completion.senderState.total || 0,
+        })
+      } catch (analyticsError) {
+        // Don't break job completion if analytics fails
+        if (import.meta.env?.DEV) {
+          console.warn('[machineStateSync] Failed to track job completion:', analyticsError)
+        }
+      }
+      
+      this.jobStartTime = null
     } else {
       console.warn('[machineStateSync] job:complete received invalid data:', args)
     }

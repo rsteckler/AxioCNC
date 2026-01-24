@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aptabase/web": "^0.5.0",
     "@axiocnc/shared": "workspace:*",
     "@codemirror/autocomplete": "^6.20.0",
     "@codemirror/basic-setup": "^0.20.0",
