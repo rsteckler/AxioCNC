@@ -16,13 +16,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            package_cmd: yarn package:desktop:linux-amd64
+            package_cmd: pnpm package:desktop:linux-amd64
           - os: windows-latest
-            package_cmd: yarn package:desktop:windows-x64
+            package_cmd: pnpm package:desktop:windows-x64
           - os: macos-latest
-            package_cmd: yarn package:desktop:macos-x64
+            package_cmd: pnpm package:desktop:macos-x64
           - os: macos-14
-            package_cmd: yarn package:desktop:macos-arm64
+            package_cmd: pnpm package:desktop:macos-arm64
     defaults:
       run:
         shell: bash
@@ -36,17 +36,19 @@ jobs:
           VERSION=${TAG_NAME#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: yarn
-      - name: Enable Corepack
-        run: corepack enable
+          cache: 'pnpm'
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
       - name: Build all
-        run: yarn build:all
+        run: pnpm build:all
       - name: Package desktop app
         run: ${{ matrix.package_cmd }}
       - name: Upload artifacts
@@ -74,19 +76,21 @@ jobs:
           VERSION=${TAG_NAME#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: yarn
-      - name: Enable Corepack
-        run: corepack enable
+          cache: 'pnpm'
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
       - name: Build all
-        run: yarn build:all
+        run: pnpm build:all
       - name: Package server deb
-        run: yarn package:server-${{ matrix.arch }}
+        run: pnpm package:server-${{ matrix.arch }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

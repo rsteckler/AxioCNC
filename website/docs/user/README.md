@@ -29,22 +29,23 @@ website/docs/
 ### Prerequisites
 
 - Node.js 20 or higher
-- Yarn package manager
+- pnpm package manager
 
 ### Local Development
 
 ```bash
-# Install dependencies
-yarn install
+# Install dependencies (from repo root)
+pnpm install
 
 # Start development server
-yarn start
+cd website/docs/user
+pnpm start
 
 # Build for production
-yarn build
+pnpm build
 
 # Serve production build locally
-yarn serve
+pnpm serve
 ```
 
 The development server will be available at `http://localhost:3000/docs/`.

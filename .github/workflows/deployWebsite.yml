@@ -28,14 +28,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       - name: Build User Docs Docusaurus
         working-directory: website/docs/user
@@ -44,7 +49,7 @@ jobs:
           GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
           GISCUS_CATEGORY: ${{ secrets.GISCUS_CATEGORY || 'Announcements' }}
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
-        run: yarn build
+        run: pnpm build
 
       - name: Build Dev Docs Docusaurus
         working-directory: website/docs/developer
@@ -53,7 +58,7 @@ jobs:
           GISCUS_REPO_ID: ${{ secrets.GISCUS_REPO_ID }}
           GISCUS_CATEGORY: ${{ secrets.GISCUS_CATEGORY || 'Announcements' }}
           GISCUS_CATEGORY_ID: ${{ secrets.GISCUS_CATEGORY_ID }}
-        run: yarn build
+        run: pnpm build
 
       - name: Prepare deployment
         run: |

@@ -27,14 +27,15 @@
 ### 2. Install Dependencies
 
 ```bash
-cd website/docs
-yarn install
+# From repo root
+pnpm install
 ```
 
 ### 3. Test Locally
 
 ```bash
-yarn start
+cd website/docs/user
+pnpm start
 ```
 
 Visit `http://localhost:3000/docs/` to see the documentation.
@@ -88,8 +89,8 @@ website/docs/
 
 ### Build fails
 - Ensure Node.js 20+ is installed
-- Run `yarn install` in `website/docs/`
-- Check for TypeScript errors: `yarn typecheck`
+- Run `pnpm install` from repo root
+- Check for TypeScript errors: `cd website/docs/user && pnpm typecheck`
 
 ### Links broken
 - Remember base URL is `/docs/`, so internal links should be relative

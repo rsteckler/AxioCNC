@@ -16,7 +16,7 @@ This document describes how to set up and use the grbl-sim simulator for testing
 Clone the `grbl` and `grbl-sim` repositories into the build directory:
 
 ```bash
-yarn grblsim:clone
+pnpm dev:grblsim:clone
 ```
 
 This creates:
@@ -28,7 +28,7 @@ This creates:
 Apply necessary patches to make grbl-sim compatible with the current grbl version:
 
 ```bash
-yarn grblsim:fixup
+pnpm dev:grblsim:fixup
 ```
 
 This script:
@@ -44,7 +44,7 @@ The fixup script is idempotent - you can run it multiple times safely.
 Build the grbl-sim executable:
 
 ```bash
-yarn grblsim:build
+pnpm dev:grblsim:build
 ```
 
 This will:
@@ -57,7 +57,7 @@ This will:
 Start the simulator with a virtual serial port:
 
 ```bash
-yarn grblsim:run
+pnpm dev:grblsim:run
 ```
 
 This will:
@@ -96,7 +96,7 @@ The simulator creates a virtual serial port that you can connect to from:
 Remove compiled files but keep the cloned repositories:
 
 ```bash
-yarn grblsim:clean
+pnpm dev:grblsim:clean
 ```
 
 ### Full cleanup
@@ -104,7 +104,7 @@ yarn grblsim:clean
 Remove the entire build directory (cloned repositories and all files):
 
 ```bash
-yarn grblsim:clean:all
+pnpm dev:grblsim:clean:all
 ```
 
 ### Stop the simulator
@@ -112,7 +112,8 @@ yarn grblsim:clean:all
 Stop all running simulator processes:
 
 ```bash
-yarn grblsim:kill
+# Note: grblsim:kill command not available in pnpm scripts
+# Use: pkill -f grbl_sim or manually stop the process
 ```
 
 ## Workflow
@@ -121,12 +122,12 @@ Typical workflow for testing:
 
 ```bash
 # 1. Setup (first time only, or after clean:all)
-yarn grblsim:clone
-yarn grblsim:fixup
-yarn grblsim:build
+pnpm dev:grblsim:clone
+pnpm dev:grblsim:fixup
+pnpm dev:grblsim:build
 
 # 2. Run simulator
-yarn grblsim:run
+pnpm dev:grblsim:run
 
 # 3. In another terminal or the AxioCNC UI:
 #    - Connect to /dev/ttyFAKE
@@ -134,7 +135,7 @@ yarn grblsim:run
 #    - Test your CNC commands
 
 # 4. When done
-yarn grblsim:kill
+# Stop the simulator process (Ctrl+C or pkill -f grbl_sim)
 ```
 
 ## Homing Support
@@ -160,13 +161,13 @@ sudo chmod a+rw /dev/ttyFAKE
 
 - Check that `socat` is installed: `which socat`
 - Check if port is already in use: `ls -l /dev/ttyFAKE`
-- Stop any existing simulator: `yarn grblsim:kill`
+- Stop any existing simulator: `pkill -f grbl_sim`
 
 ### Build fails
 
-- Ensure you've run `yarn grblsim:clone` first
-- Try `yarn grblsim:clean:all` and start over
-- Check that the fixup script ran successfully: `yarn grblsim:fixup`
+- Ensure you've run `pnpm dev:grblsim:clone` first
+- Try `pnpm dev:grblsim:clean:all` and start over
+- Check that the fixup script ran successfully: `pnpm dev:grblsim:fixup`
 
 ### Homing doesn't work
 

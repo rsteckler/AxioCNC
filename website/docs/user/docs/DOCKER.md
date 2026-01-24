@@ -494,8 +494,8 @@ docker buildx build --no-cache --load -t axiocnc:latest .
 ```
 
 Cache mounts speed up:
-- Yarn package installation (cached between builds)
-- npm/yarn cache directories
+- pnpm package installation (cached between builds)
+- pnpm cache directories
 
 ### Build Arguments (Future)
 
@@ -511,7 +511,7 @@ docker buildx build \
 ### Build Cache
 
 The Dockerfile is optimized for layer caching:
-- Package files (`package.json`, `yarn.lock`) are copied first
+- Package files (`package.json`, `pnpm-lock.yaml`) are copied first
 - Dependencies are installed before source code is copied
 - Source code changes don't invalidate dependency layers
 
