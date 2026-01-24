@@ -645,6 +645,11 @@ export default function Stats() {
           <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
           <Button variant="default" size="sm">Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="https://axiocnc.com/docs" target="_blank" rel="noopener noreferrer">
+              Docs
+            </a>
+          </Button>
         </div>
         
         {/* Spacer */}

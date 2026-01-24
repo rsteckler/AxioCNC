@@ -202,6 +202,14 @@ export const AppearanceSettingsSchema = z.object({
 });
 
 // =============================================================================
+// First-use Settings
+// =============================================================================
+
+export const FirstUseSettingsSchema = z.object({
+  hideSetupTutorial: z.boolean().default(false),
+});
+
+// =============================================================================
 // Complete System Settings Schema
 // =============================================================================
 
@@ -234,6 +242,9 @@ export const SystemSettingsSchema = z.object({
   
   // Appearance settings
   appearance: AppearanceSettingsSchema.default({}),
+
+  // First-use settings
+  firstUse: FirstUseSettingsSchema.default({}),
 });
 
 // =============================================================================
@@ -255,6 +266,7 @@ export const getDefaultSettings = () => {
     zeroingStrategies: ZeroingStrategiesSettingsSchema.parse({}),
     joystick: JoystickSettingsSchema.parse({}),
     appearance: AppearanceSettingsSchema.parse({}),
+    firstUse: FirstUseSettingsSchema.parse({}),
   };
   
   // Then parse through the full schema to ensure all top-level defaults are applied

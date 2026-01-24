@@ -22,6 +22,7 @@ import {
   CustomMethodSchema,
   JoystickSettingsSchema,
   AppearanceSettingsSchema,
+  FirstUseSettingsSchema,
 } from './settings.js';
 
 // Inferred types from Zod schemas
@@ -46,6 +47,7 @@ export type CustomMethod = z.infer<typeof CustomMethodSchema>;
 
 export type JoystickSettings = z.infer<typeof JoystickSettingsSchema>;
 export type AppearanceSettings = z.infer<typeof AppearanceSettingsSchema>;
+export type FirstUseSettings = z.infer<typeof FirstUseSettingsSchema>;
 
 // Re-export schemas
 export {
@@ -67,6 +69,7 @@ export {
   CustomMethodSchema,
   JoystickSettingsSchema,
   AppearanceSettingsSchema,
+  FirstUseSettingsSchema,
   getDefaultSettings,
   validatePartialSettings,
   parseSettings,
