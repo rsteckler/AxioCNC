@@ -333,6 +333,72 @@ class MachineStateSyncService {
     }
 
     if (senderState && typeof senderState === 'object') {
+      // Get current job state before updating to detect when received becomes zero
+      const currentJobState = store.getState().job
+      const previousReceived = currentJobState.received ?? 0
+      const newReceived = senderState.received ?? 0
+
+      // Detect when processedLines becomes zero and log the reason
+      if (previousReceived > 0 && newReceived === 0) {
+        const completion = currentJobState.completion
+        const backendStatus = store.getState().machine.backendStatus
+        const workflowState = backendStatus?.workflowState
+
+        const reasons: string[] = []
+        
+        // Check if job was completed (sender was rewound after completion)
+        if (completion?.reason === 'completed' && completion.senderState?.received) {
+          reasons.push(`Job completed with ${completion.senderState.received} lines processed`)
+          reasons.push(`Completion senderState.received: ${completion.senderState.received}`)
+        } else if (completion?.reason) {
+          reasons.push(`Job ended with reason: ${completion.reason}`)
+          if (completion.senderState?.received) {
+            reasons.push(`Completion senderState.received: ${completion.senderState.received}`)
+          }
+        }
+
+        // Check if sender was rewound (sent also reset to 0)
+        if (senderState.sent === 0) {
+          reasons.push('Sender was rewound (sent=0, received=0)')
+        }
+
+        // Check workflow state
+        if (workflowState) {
+          reasons.push(`Workflow state: ${workflowState}`)
+        }
+
+        // Check if G-code was unloaded
+        if (!senderState.name && previousReceived > 0) {
+          reasons.push('G-code was unloaded (name is empty)')
+        }
+
+        // Check if this is a new job (different jobId)
+        if (senderState.jobId && currentJobState.jobId && senderState.jobId !== currentJobState.jobId) {
+          reasons.push(`New job started (jobId changed from ${currentJobState.jobId} to ${senderState.jobId})`)
+        }
+
+        console.warn(
+          '[machineStateSync] ⚠️ Processed lines reset to zero!',
+          {
+            previousReceived,
+            newReceived,
+            previousTotal: currentJobState.total,
+            newTotal: senderState.total,
+            previousName: currentJobState.name,
+            newName: senderState.name,
+            reasons: reasons.length > 0 ? reasons : ['Unknown reason - sender:status received with received=0'],
+            completionState: completion,
+            senderState: {
+              sent: senderState.sent,
+              received: senderState.received,
+              total: senderState.total,
+              name: senderState.name,
+              jobId: senderState.jobId,
+            },
+          }
+        )
+      }
+
       const jobStateUpdate = {
         name: senderState.name,
         size: senderState.size,

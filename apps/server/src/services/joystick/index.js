@@ -154,14 +154,7 @@ class JoystickService extends events.EventEmitter {
     // Skip if locked or this client is in test mode (prevents commands during testing/locking)
     const isLocked = this.config?.locked ?? false;
     if (actions.length > 0 && !isLocked && !this.testModeSockets.has(socketId)) {
-      log.debug(`[client-gamepad:${socketId}] mapped to ${actions.length} action(s)`);
       this.emit('actions', actions, `client-gamepad-${socketId}`);
-    } else if (actions.length > 0) {
-      if (isLocked) {
-        log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - joystick locked`);
-      } else {
-        log.debug(`[client-gamepad:${socketId}] ignoring ${actions.length} action(s) - test mode active`);
-      }
     }
   }
 

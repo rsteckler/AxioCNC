@@ -489,7 +489,6 @@ class JogLoop extends events.EventEmitter {
    */
   startJogging() {
     if (!this.controller) {
-      log.debug('Cannot start jogging: controller not available');
       // Emit event to flash status on frontend
       this.emit('flashStatus');
       return;

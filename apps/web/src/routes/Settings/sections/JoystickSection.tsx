@@ -58,6 +58,7 @@ export interface JoystickConfig {
   invertZ: boolean
   analogJogSpeedXY: number // mm/min max speed for X/Y analog jogging
   analogJogSpeedZ: number  // mm/min max speed for Z analog jogging
+  locked: boolean // Lock joystick to prevent accidental movement
 }
 
 interface DetectedGamepad {

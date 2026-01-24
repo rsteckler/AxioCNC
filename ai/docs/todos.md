@@ -8,18 +8,27 @@ x auto updates
 x joystick locked
 x spinup time for spindle before moving
 x First use
-docker builds
+x new version popup showing when versions are equal
+x webcam
+x joystick button lock missing
+x run job
+x place model button missing
+red lines on cutting flash
+outline job envelope
+settings export/import
+anonymous usage data
 
 
 ## Pre-release
 docs
+build package
+test platfroms
+link filenames in download section of static web
 - [ ] Make sure continue on error works
 - [ ] Test all button mappings on gamepad
 
 
 ## Later
-outline job envelope
-settings export/import
 feed, spindle, rapid (cool way to say go slow)
 modal groups (mcpdfupsc): (https://community.carbide3d.com/t/cncjs-feedrate-converted-to-mm-even-though-g20/27111)
 
@@ -30,7 +39,6 @@ coolant/air
 - [ ] Widget system
 - [ ] File management
 i18n
-anonymous usage data
 add automatic pulling of bed size and speeds from $$ and spindle speed
 Figure out how to allow typing for spindle speed, steps movement, joystick speed, etc
 air cutting

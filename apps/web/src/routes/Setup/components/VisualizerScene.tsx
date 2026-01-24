@@ -311,14 +311,14 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
   }
 
   return (
-    <lineSegments geometry={geometry}>
+    <line geometry={geometry}>
       <lineBasicMaterial
         vertexColors={true}
         opacity={0.5}
         transparent
         linewidth={1}
       />
-    </lineSegments>
+    </line>
   )
 }
 

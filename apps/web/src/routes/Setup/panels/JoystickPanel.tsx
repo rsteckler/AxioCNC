@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Gamepad2, CheckCircle2, XCircle, Settings } from 'lucide-react'
+import { Gamepad2, CheckCircle2, XCircle, Settings, Lock, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useGetSettingsQuery } from '@/services/api'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { useGetSettingsQuery, useSetSettingsMutation } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
 import { JoystickTestDialog } from '@/routes/Settings/sections/JoystickTestDialog'
 import type { PanelProps } from '../types'
@@ -12,6 +14,7 @@ import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
 export function JoystickPanel(_props: PanelProps) {
   const navigate = useNavigate()
   const { data: settings } = useGetSettingsQuery()
+  const [setSettings] = useSetSettingsMutation()
   const [testDialogOpen, setTestDialogOpen] = useState(false)
   const [isGamepadConnected, setIsGamepadConnected] = useState(false)
 
@@ -115,6 +118,41 @@ export function JoystickPanel(_props: PanelProps) {
           </p>
         </div>
       )}
+
+      {/* Lock Toggle */}
+      <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+        <div className="flex items-center gap-2">
+          {joystickConfig.locked ? (
+            <Lock className="w-4 h-4 text-orange-500" />
+          ) : (
+            <Unlock className="w-4 h-4 text-green-500" />
+          )}
+          <Label htmlFor="joystick-lock" className="text-sm font-medium cursor-pointer">
+            Lock Joystick
+          </Label>
+        </div>
+        <Switch
+          id="joystick-lock"
+          checked={joystickConfig.locked}
+          onCheckedChange={async (checked) => {
+            // Prevent unlocking if joystick is not connected
+            if (!checked && !isGamepadConnected) {
+              return
+            }
+            try {
+              await setSettings({
+                joystick: {
+                  ...joystickConfig,
+                  locked: checked,
+                },
+              }).unwrap()
+            } catch (error) {
+              console.error('Failed to toggle joystick lock:', error)
+            }
+          }}
+          disabled={!joystickConfig.selectedGamepad || (joystickConfig.locked && !isGamepadConnected)}
+        />
+      </div>
 
       {/* Actions */}
       <div className="space-y-2 pt-2">

@@ -333,11 +333,11 @@ export default function Setup() {
         // Invalid JSON, use default
       }
     }
-    return ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera']
+    return ['dro', 'rapid', 'jog', 'file', 'probe', 'macros', 'spindle', 'camera']
   })
   
   // Add/remove joystick panel to order when joystick is enabled/disabled
-  // Preserve its position when re-adding
+  // Preserve its position when re-adding, default to after 'jog'
   useEffect(() => {
     if (settings?.joystick?.enabled && !panelOrder.includes('joystick')) {
       setPanelOrder(prev => {
@@ -347,7 +347,14 @@ export default function Setup() {
           newOrder.splice(joystickPositionRef.current, 0, 'joystick')
           return newOrder
         }
-        // Otherwise add to end
+        // Otherwise insert after 'jog' (default position)
+        const jogIndex = prev.indexOf('jog')
+        if (jogIndex !== -1) {
+          const newOrder = [...prev]
+          newOrder.splice(jogIndex + 1, 0, 'joystick')
+          return newOrder
+        }
+        // Fallback: add to end if 'jog' not found
         return [...prev, 'joystick']
       })
     } else if (!settings?.joystick?.enabled && panelOrder.includes('joystick')) {
@@ -363,7 +370,7 @@ export default function Setup() {
   }, [settings?.joystick?.enabled, panelOrder])
   
   // Add/remove debug panel to order when debug mode is enabled/disabled
-  // Preserve its position when re-adding
+  // Preserve its position when re-adding, default to end
   useEffect(() => {
     if (debugMode && !panelOrder.includes('debug')) {
       setPanelOrder(prev => {
@@ -373,7 +380,7 @@ export default function Setup() {
           newOrder.splice(debugPositionRef.current, 0, 'debug')
           return newOrder
         }
-        // Otherwise add to end
+        // Otherwise add to end (default position)
         return [...prev, 'debug']
       })
     } else if (!debugMode && panelOrder.includes('debug')) {

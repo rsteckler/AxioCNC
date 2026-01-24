@@ -159,10 +159,8 @@ class CNCEngine {
       // Listen for joystick actions and dispatch them
       const dispatcher = require('../joystick/dispatcher');
       joystickService.on('actions', (actions, source) => {
-        log.debug(`[joystick:${source}] dispatching ${actions.length} action(s)`);
         actions.forEach(action => {
           if (action.type === 'analog') {
-            log.debug(`[joystick:${source}] → analog jog: x=${action.x.toFixed(3)}, y=${action.y.toFixed(3)}, z=${action.z.toFixed(3)}`);
             // Route to jog loop for continuous jogging
             jogLoop.handleAnalogInput(action.x, action.y, action.z);
           } else if (action.type === 'button') {
