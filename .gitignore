@@ -12,6 +12,7 @@ apps/server/output/
 apps/desktop/output/
 apps/desktop/dist/
 apps/shared/dist/
+.cursor/debug.log
 
 # Grbl simulator build directory (contains cloned git repo)
 developers/examples/grbl-sim-build/grbl/
@@ -21,3 +22,4 @@ developers/examples/grbl-sim-build/grbl/
 
 # Windows ADS metadata files
 *:Zone.Identifier
+
