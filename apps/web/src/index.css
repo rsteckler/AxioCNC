@@ -136,4 +136,18 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--muted-foreground) / 0.5);
   }
+  
+  /* Slow pulse animation for paused job status */
+  @keyframes slow-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+  
+  .animate-slow-pulse {
+    animation: slow-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }
