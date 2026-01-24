@@ -44,6 +44,7 @@ export const MachineSettingsSchema = z.object({
   limits: MachineLimitsSchema.optional(),
   homingCorner: z.enum(['back-left', 'back-right', 'front-left', 'front-right']).optional(),
   toolSpinup: ToolSpinupSchema.optional(),
+  autoSwitchToMonitor: z.boolean().default(true),
 });
 
 // =============================================================================

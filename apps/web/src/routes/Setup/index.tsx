@@ -479,14 +479,28 @@ export default function Setup() {
     // If we were starting a job, start it now that wizard is complete
     if (pendingJobStart) {
       setPendingJobStart(false)
-      // Small delay to ensure wizard tab is closed before starting
-      setTimeout(() => {
-        if (connectedPort) {
-          sendCommand('gcode:start')
-        }
-      }, 100)
+      // Check if we should navigate to Monitor before starting
+      const shouldSwitch = settings?.machine?.autoSwitchToMonitor ?? true // Default to true
+      
+      if (shouldSwitch) {
+        // Navigate to Monitor first, then start job after navigation completes
+        navigate('/monitor')
+        // Small delay to ensure navigation completes before starting job
+        setTimeout(() => {
+          if (connectedPort) {
+            sendCommand('gcode:start')
+          }
+        }, 100)
+      } else {
+        // Start job directly without navigation
+        setTimeout(() => {
+          if (connectedPort) {
+            sendCommand('gcode:start')
+          }
+        }, 100)
+      }
     }
-  }, [pendingJobStart, connectedPort, sendCommand])
+  }, [pendingJobStart, connectedPort, sendCommand, settings, navigate])
   
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineReadinessStatus>(machineStatus)

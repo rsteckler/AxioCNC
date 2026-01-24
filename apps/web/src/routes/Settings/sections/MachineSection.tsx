@@ -27,6 +27,7 @@ export interface MachineConfig {
     zmax: number
   }
   homingCorner?: HomingCorner  // Optional: inferred if not provided
+  autoSwitchToMonitorEnabled: boolean
   toolSpinupDelayEnabled: boolean
   toolSpinupDelaySeconds: number
 }
@@ -366,6 +367,18 @@ export function MachineSection({
 
       {/* Controller Behavior */}
       <div className="space-y-3 pt-4">
+        <SettingsField
+          label="Auto-switch to Monitor when jobs start"
+          description="Automatically navigate to the Monitor tab when starting a job from Setup"
+          tooltip="When enabled and you're in Setup, starting a job will automatically switch to the Monitor tab before the job begins running."
+          horizontal
+        >
+          <Switch
+            checked={config.autoSwitchToMonitorEnabled}
+            onCheckedChange={(checked) => onConfigChange({ autoSwitchToMonitorEnabled: checked })}
+          />
+        </SettingsField>
+
         <SettingsField
           label="Tool Spinup Delay"
           description="Delay motion to allow the tool to spin up when running or resuming a program"

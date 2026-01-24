@@ -100,6 +100,7 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
     zmax: 0,
   },
   homingCorner: 'front-left',  // Most common homing position
+  autoSwitchToMonitorEnabled: true,   // Enabled by default
   toolSpinupDelayEnabled: true,   // Enabled by default
   toolSpinupDelaySeconds: 3,      // 3 seconds default delay
 }
@@ -255,6 +256,7 @@ const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
   invertZ: false,
   analogJogSpeedXY: 3000, // mm/min max jog speed for X/Y
   analogJogSpeedZ: 1000,
+  locked: false,
 }
 
 export default function Settings() {
@@ -385,6 +387,9 @@ export default function Settings() {
       }
       
       // Controller settings
+      if (settings.machine?.autoSwitchToMonitor !== undefined) {
+        setMachineConfig(prev => ({ ...prev, autoSwitchToMonitorEnabled: settings.machine!.autoSwitchToMonitor! }))
+      }
       if (settings.machine?.toolSpinup?.enabled !== undefined) {
         setMachineConfig(prev => ({ ...prev, toolSpinupDelayEnabled: settings.machine!.toolSpinup!.enabled! }))
       }
@@ -669,6 +674,7 @@ export default function Settings() {
       machine: {
         name: DEFAULT_MACHINE_CONFIG.name,
         limits: DEFAULT_MACHINE_CONFIG.limits,
+        autoSwitchToMonitor: DEFAULT_MACHINE_CONFIG.autoSwitchToMonitorEnabled,
         toolSpinup: {
           enabled: DEFAULT_MACHINE_CONFIG.toolSpinupDelayEnabled,
           delaySeconds: DEFAULT_MACHINE_CONFIG.toolSpinupDelaySeconds,
@@ -840,6 +846,9 @@ export default function Settings() {
       if (changes.homingCorner !== undefined) {
         updated.homingCorner = changes.homingCorner
       }
+      if (changes.autoSwitchToMonitorEnabled !== undefined) {
+        updated.autoSwitchToMonitorEnabled = changes.autoSwitchToMonitorEnabled
+      }
       if (changes.toolSpinupDelayEnabled !== undefined) {
         updated.toolSpinupDelayEnabled = changes.toolSpinupDelayEnabled
       }
@@ -851,11 +860,14 @@ export default function Settings() {
     
     // Save to backend
     const saveData: PartialSettings = {}
-    if (changes.name !== undefined || changes.limits || changes.homingCorner !== undefined) {
-      saveData.machine = {}
+    if (changes.name !== undefined || changes.limits || changes.homingCorner !== undefined || changes.autoSwitchToMonitorEnabled !== undefined) {
+      saveData.machine = saveData.machine || {}
       if (changes.name !== undefined) saveData.machine.name = changes.name
       if (changes.limits) saveData.machine.limits = changes.limits
       if (changes.homingCorner !== undefined) saveData.machine.homingCorner = changes.homingCorner
+      if (changes.autoSwitchToMonitorEnabled !== undefined) {
+        saveData.machine.autoSwitchToMonitor = changes.autoSwitchToMonitorEnabled
+      }
     }
     if (changes.toolSpinupDelayEnabled !== undefined || changes.toolSpinupDelaySeconds !== undefined) {
       saveData.machine = saveData.machine || {}

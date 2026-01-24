@@ -1,4 +1,5 @@
 import { useCallback, useState, useMemo } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Play, Square, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +42,8 @@ export function JobStatusBar({
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const { data: settings } = useGetSettingsQuery()
+  const navigate = useNavigate()
+  const location = useLocation()
   
   // Get completion state from Redux
   const completion = useSelector((state: RootState) => state.job.completion)
@@ -86,6 +89,25 @@ export function JobStatusBar({
   const isReadyState = machineStatus === 'connected_pre_home' || machineStatus === 'connected_post_home'
   const needsHomingConfirmation = machineStatus === 'connected_pre_home'
 
+  // Helper to start job with optional navigation to Monitor
+  const startJobWithNavigation = useCallback(() => {
+    // Check if we're in Setup and setting is enabled
+    const isInSetup = location.pathname === '/' || location.pathname === '/setup'
+    const shouldSwitch = settings?.machine?.autoSwitchToMonitor ?? true // Default to true
+    
+    if (isInSetup && shouldSwitch) {
+      // Navigate to Monitor first, then start job after a brief delay
+      navigate('/monitor')
+      // Small delay to ensure navigation completes before starting job
+      setTimeout(() => {
+        sendCommand('gcode:start')
+      }, 100)
+    } else {
+      // Start job directly
+      sendCommand('gcode:start')
+    }
+  }, [location.pathname, settings, navigate, sendCommand])
+
   // Internal handlers for job control buttons
   const handleStartClick = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -104,8 +126,8 @@ export function JobStatusBar({
     const methods = settings?.zeroingMethods?.methods ?? []
     
     if (strategy === 'skip') {
-      // Skip zeroing - start directly
-      sendCommand('gcode:start')
+      // Skip zeroing - start directly (with navigation check)
+      startJobWithNavigation()
     } else if (strategy === 'ask' && onStartWizard) {
       // Show method selection dialog
       onStartWizard('ask')
@@ -115,14 +137,14 @@ export function JobStatusBar({
       if (method && method.enabled) {
         onStartWizard(method)
       } else {
-        // Method not found or disabled - start anyway (fallback)
-        sendCommand('gcode:start')
+        // Method not found or disabled - start anyway (fallback, with navigation check)
+        startJobWithNavigation()
       }
     } else {
-      // No wizard handler or strategy not set - start directly
-      sendCommand('gcode:start')
+      // No wizard handler or strategy not set - start directly (with navigation check)
+      startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard])
+  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard, startJobWithNavigation])
 
   const handleStartConfirmed = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -134,8 +156,8 @@ export function JobStatusBar({
     const methods = settings?.zeroingMethods?.methods ?? []
     
     if (strategy === 'skip') {
-      // Skip zeroing - start directly
-      sendCommand('gcode:start')
+      // Skip zeroing - start directly (with navigation check)
+      startJobWithNavigation()
     } else if (strategy === 'ask' && onStartWizard) {
       // Show method selection dialog
       onStartWizard('ask')
@@ -145,14 +167,14 @@ export function JobStatusBar({
       if (method && method.enabled) {
         onStartWizard(method)
       } else {
-        // Method not found or disabled - start anyway (fallback)
-        sendCommand('gcode:start')
+        // Method not found or disabled - start anyway (fallback, with navigation check)
+        startJobWithNavigation()
       }
     } else {
-      // No wizard handler or strategy not set - start directly
-      sendCommand('gcode:start')
+      // No wizard handler or strategy not set - start directly (with navigation check)
+      startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard])
+  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard, startJobWithNavigation])
 
   const handlePause = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -220,7 +242,7 @@ export function JobStatusBar({
         )
       case 'paused':
         return (
-          <Badge variant="default" className="bg-yellow-600 hover:bg-yellow-700">
+          <Badge variant="default" className="bg-yellow-600 hover:bg-yellow-700 animate-slow-pulse">
             Paused
           </Badge>
         )
