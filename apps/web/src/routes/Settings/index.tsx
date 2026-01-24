@@ -21,7 +21,6 @@ import {
   useCreateWatchFolderMutation,
   useDeleteWatchFolderMutation,
   useGetCurrentVersionQuery,
-  useGetVersionQuery,
   useGetExtensionsQuery,
   useSetExtensionsMutation,
   // useGetGamepadsQuery - not currently used but may be needed in future
@@ -308,7 +307,6 @@ export default function Settings() {
   
   // Version API
   const { data: currentVersionData } = useGetCurrentVersionQuery()
-  const { data: latestVersionData } = useGetVersionQuery()
   
   // Extensions API for advanced config
   const { data: extensionsData } = useGetExtensionsQuery({ key: 'advanced' })
@@ -1877,7 +1875,6 @@ export default function Settings() {
 
             <AboutSection
               version={currentVersionData?.version ?? 'Unknown'}
-              latestVersion={latestVersionData?.latest}
               checkForUpdates={checkForUpdates}
               allowAnalytics={allowAnalytics}
               onCheckForUpdatesChange={handleCheckForUpdatesChange}

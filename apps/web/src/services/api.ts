@@ -96,11 +96,6 @@ export type PartialSettings = Partial<SystemSettings> & {
 // Extensions are schemaless - can store any JSON
 export type Extensions = Record<string, unknown>
 
-export interface VersionInfo {
-  current: string
-  latest?: string
-  lastUpdate?: string
-}
 
 // =============================================================================
 // CRUD Resource Types (Users, Commands, Events, Macros)
@@ -543,12 +538,6 @@ export const api = createApi({
     // Get current version
     getCurrentVersion: builder.query<{ version: string }, void>({
       query: () => '/version/current',
-      providesTags: ['Version'],
-    }),
-
-    // Get latest version from npm
-    getVersion: builder.query<VersionInfo, void>({
-      query: () => '/version/latest',
       providesTags: ['Version'],
     }),
 
@@ -1095,6 +1084,5 @@ export const {
   useGetGcodeQuery,
   // Other
   useGetCurrentVersionQuery,
-  useGetVersionQuery,
   useSignInMutation,
 } = api

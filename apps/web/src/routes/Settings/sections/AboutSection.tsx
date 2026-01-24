@@ -8,7 +8,6 @@ import { useGitHubVersion, compareVersions } from '@/hooks/useGitHubVersion'
 
 interface AboutSectionProps {
   version: string
-  latestVersion?: string
   checkForUpdates: boolean
   allowAnalytics: boolean
   onCheckForUpdatesChange: (value: boolean) => void
@@ -19,7 +18,6 @@ interface AboutSectionProps {
 
 export function AboutSection({ 
   version, 
-  latestVersion, 
   checkForUpdates,
   allowAnalytics,
   onCheckForUpdatesChange,
@@ -30,8 +28,8 @@ export function AboutSection({
   // Fetch latest version from GitHub if automatic updates are enabled
   const { latestVersion: gitHubLatestVersion, isLoading: isLoadingVersion, releaseUrl } = useGitHubVersion()
   
-  // Use GitHub version if available, otherwise fall back to prop
-  const availableVersion = gitHubLatestVersion || latestVersion || null
+  // Use GitHub version if available
+  const availableVersion = gitHubLatestVersion || null
   const isUpdateAvailable = availableVersion && compareVersions(version, availableVersion) < 0
   
   // Build release page URL
@@ -82,7 +80,7 @@ export function AboutSection({
           </div>
           {isUpdateAvailable && (
             <Badge className="bg-primary text-primary-foreground">
-              Update available: {latestVersion}
+              Update available: {availableVersion}
             </Badge>
           )}
         </div>
