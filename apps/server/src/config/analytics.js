@@ -14,8 +14,8 @@ if (process.env.APTABASE_KEY) {
   // Fall back to generated config file (for CI builds)
   try {
     // Use require for dynamic loading (file may not exist)
-    // eslint-disable-next-line import/no-unresolved, global-require
-    const keyModule = require('./aptabase-key.js');
+    // eslint-disable-next-line import/no-unresolved, global-require, import/extensions
+    const keyModule = require('./aptabase-key');
     aptabaseKey = keyModule.APTABASE_KEY || '';
   } catch (err) {
     // File doesn't exist (user building from source without key) - that's OK
