@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -50,6 +50,18 @@ export function DebugPanel({
 
   // Debug flag for forcing bitsetter to appear as subsequent tool change
   const { forceSubsequentToolChange, setForceSubsequentToolChange } = useToolChange()
+
+  // Debug flag for showing outline in visualizer
+  const [showOutline, setShowOutline] = useState(() => {
+    const stored = localStorage.getItem('debug.showOutline')
+    return stored === 'true'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('debug.showOutline', String(showOutline))
+    // Dispatch custom event so VisualizerPanel can react immediately
+    window.dispatchEvent(new CustomEvent('debug.showOutline.changed', { detail: showOutline }))
+  }, [showOutline])
 
   // Get tool reference for G54
   const toolReferenceKey = 'bitsetter.toolReference.G54'
@@ -297,6 +309,24 @@ export function DebugPanel({
           </div>
           <p className="text-xs text-muted-foreground">
             When enabled, bitsetter tool changes will always use the subsequent wizard (skips "Install First Tool" step), regardless of tool reference status.
+          </p>
+        </div>
+
+        {/* Debug: Show Outline in Visualizer */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">Visualizer Debug</h4>
+          <div className="flex items-center justify-between px-2 py-1 rounded bg-muted/50">
+            <Label htmlFor="show-outline" className="text-xs cursor-pointer">
+              Show Outline in Visualizer
+            </Label>
+            <Switch
+              id="show-outline"
+              checked={showOutline}
+              onCheckedChange={setShowOutline}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When enabled, displays the pink outline path in the 3D visualizer showing the toolpath boundary.
           </p>
         </div>
       </div>

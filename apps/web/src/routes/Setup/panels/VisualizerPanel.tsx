@@ -244,6 +244,35 @@ export function VisualizerPanel({
   const [modelOffset, setModelOffset] = useState<{ x: number; y: number; z: number } | null>(null)
   const [outlinePoints, setOutlinePoints] = useState<Point2D[] | null>(null)
   
+  // Read showOutline toggle from localStorage (managed by DebugPanel)
+  const [showOutline, setShowOutline] = useState(() => {
+    const stored = localStorage.getItem('debug.showOutline')
+    return stored === 'true'
+  })
+  
+  // Listen for changes to the showOutline toggle (when DebugPanel toggles it)
+  useEffect(() => {
+    const handleOutlineToggleChange = (event: CustomEvent<boolean>) => {
+      setShowOutline(event.detail)
+    }
+    
+    const handleStorageChange = () => {
+      const stored = localStorage.getItem('debug.showOutline')
+      setShowOutline(stored === 'true')
+    }
+    
+    // Listen for custom event (same-tab changes)
+    window.addEventListener('debug.showOutline.changed', handleOutlineToggleChange as EventListener)
+    
+    // Listen for storage events (when changed in another tab/window)
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('debug.showOutline.changed', handleOutlineToggleChange as EventListener)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
+  
   // Memoize Vector3 to prevent unnecessary geometry recreation
   const modelOffsetVector3 = useMemo(() => {
     return modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined
@@ -652,7 +681,7 @@ export function VisualizerPanel({
           machinePosition={machinePosition}
           processedLines={senderState?.received}
           modelOffset={modelOffsetVector3}
-          outlinePoints={outlinePoints || undefined}
+          outlinePoints={showOutline ? (outlinePoints || undefined) : undefined}
         />
         
         {/* View controls overlay */}

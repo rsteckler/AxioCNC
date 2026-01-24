@@ -8,6 +8,7 @@ import { socketService } from '@/services/socket'
 import { useGcodeCommand } from '@/hooks'
 import { calculateOutline } from '@/lib/gcodeOutline'
 import { useNotifications } from '@/hooks/useNotifications'
+import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { PanelProps } from '../types'
 
 export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition, machineStatus }: PanelProps) {
@@ -20,6 +21,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
   const [loadedFileName, setLoadedFileName] = useState<string | null>(null)
   const [isOutlining, setIsOutlining] = useState(false)
   const [outlineError, setOutlineError] = useState<string | null>(null)
+  const [showOutlineConfirm, setShowOutlineConfirm] = useState(false)
   const outliningStartedRef = useRef(false) // Track if we've started outlining
   const previousMachineStatusRef = useRef<string | undefined>(undefined) // Track previous machine status
   const outlineFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Fallback timeout for completion
@@ -198,8 +200,8 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
     }
   }, [connectedPort, loadedFileName])
 
-  // Handle outline button click
-  const handleOutline = useCallback(async () => {
+  // Perform the actual outline (called after confirmation)
+  const performOutline = useCallback(async () => {
     if (!isConnected || !connectedPort || !loadedFileName || !machinePosition) {
       if (!isConnected || !connectedPort) {
         onFlashStatus()
@@ -347,7 +349,25 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         outlineFallbackTimeoutRef.current = null
       }
     }
-  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, getWorkfileContent, sendGcode, onFlashStatus, showErrorNotification, showInfoNotification])
+  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, machineStatus, getWorkfileContent, sendGcode, onFlashStatus, showErrorNotification, showInfoNotification])
+
+  // Handle outline button click - show confirmation dialog
+  const handleOutline = useCallback(() => {
+    if (!isConnected || !connectedPort || !loadedFileName || !machinePosition) {
+      if (!isConnected || !connectedPort) {
+        onFlashStatus()
+      } else {
+        showErrorNotification('Outline Error', 'Machine position not available')
+      }
+      return
+    }
+
+    if (isOutlining) {
+      return // Already running
+    }
+
+    setShowOutlineConfirm(true)
+  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, onFlashStatus, showErrorNotification])
 
   // Monitor machine status to detect when outline is complete
   // Primary: Detect running -> idle transition
@@ -597,6 +617,26 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
           </div>
         </OverlayScrollbarsComponent>
       </div>
+
+      {/* Outline confirmation dialog */}
+      <ConfirmationDialog
+        open={showOutlineConfirm}
+        onOpenChange={setShowOutlineConfirm}
+        title="Confirm Outline Tracing"
+        description={
+          <>
+            <p className="mb-2">
+              The tool will trace the outline of the loaded G-code at Z=-5 (machine coordinates).
+            </p>
+            <p className="font-medium">
+              Please ensure nothing is in the way of the tool path. The spindle will remain off during the outline.
+            </p>
+          </>
+        }
+        confirmLabel="Start Outline"
+        cancelLabel="Cancel"
+        onConfirm={performOutline}
+      />
     </div>
   )
 }
