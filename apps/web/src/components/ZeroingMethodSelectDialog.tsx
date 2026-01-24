@@ -63,7 +63,7 @@ interface ZeroingMethodSelectDialogProps {
   methods: ZeroingMethod[]
   title?: string
   description?: string
-  onSelect: (method: ZeroingMethod) => void
+  onSelect: (method: ZeroingMethod | 'skip') => void
 }
 
 /**
@@ -82,6 +82,11 @@ export function ZeroingMethodSelectDialog({
 
   const handleSelect = (method: ZeroingMethod) => {
     onSelect(method)
+    onOpenChange(false)
+  }
+
+  const handleSkip = () => {
+    onSelect('skip')
     onOpenChange(false)
   }
 
@@ -121,6 +126,16 @@ export function ZeroingMethodSelectDialog({
               </Button>
             ))
           )}
+        </div>
+        
+        <div className="mt-4 pt-4 border-t">
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={handleSkip}
+          >
+            Skip
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

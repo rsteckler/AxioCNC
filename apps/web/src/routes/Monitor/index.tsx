@@ -1133,7 +1133,12 @@ export default function Monitor() {
   }, [])
 
   // Handle method selection from dialog
-  const handleMethodSelect = useCallback((method: ZeroingMethod) => {
+  const handleMethodSelect = useCallback((method: ZeroingMethod | 'skip') => {
+    if (method === 'skip') {
+      // Skip not applicable for initial setup - just close dialog
+      setShowMethodSelectDialog(false)
+      return
+    }
     setShowMethodSelectDialog(false)
     setWizardMethod(method)
     setTab('wizard') // Switch to wizard tab

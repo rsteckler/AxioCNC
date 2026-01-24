@@ -35,10 +35,16 @@ export function ToolChangeTab({
   const showDialog = toolChangeMethod === 'ask'
 
   // Handle method selection from dialog
-  const handleMethodSelect = (method: ZeroingMethod) => {
-    // Update the tool change method in context to the selected method
-    // Preserve isFirstToolChange state when switching to the selected method
-    triggerToolChange(method, isFirstToolChange)
+  const handleMethodSelect = (method: ZeroingMethod | 'skip') => {
+    if (method === 'skip') {
+      // Skip tool change - complete it immediately without zeroing
+      triggerToolChange('skip', isFirstToolChange)
+      completeToolChange()
+    } else {
+      // Update the tool change method in context to the selected method
+      // Preserve isFirstToolChange state when switching to the selected method
+      triggerToolChange(method, isFirstToolChange)
+    }
   }
 
   // If method is 'ask', show method selection dialog

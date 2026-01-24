@@ -455,7 +455,12 @@ export default function Setup() {
   }, [])
 
   // Handle method selection from dialog
-  const handleMethodSelect = useCallback((method: ZeroingMethod) => {
+  const handleMethodSelect = useCallback((method: ZeroingMethod | 'skip') => {
+    if (method === 'skip') {
+      // Skip not applicable for initial setup - just close dialog
+      setShowMethodSelectDialog(false)
+      return
+    }
     setShowMethodSelectDialog(false)
     setWizardMethod(method)
     // Switch to wizard tab is handled by VisualizerPanel when wizardMethod is set
