@@ -47,7 +47,7 @@ module.exports = {
   ],
   asar: true,
   publish: [],
-  artifactName: 'axiocnc_${version}_${arch}.${ext}',
+  artifactName: 'axiocnc-desktop_${version}_${arch}.${ext}',
   mac: {
     category: 'public.app-category.productivity',
     target: [

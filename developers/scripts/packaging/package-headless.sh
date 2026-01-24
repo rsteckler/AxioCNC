@@ -305,15 +305,16 @@ mkdir -p "${PROJECT_ROOT}/${OUT_DIR}"
 
 # Build .deb package
 echo "Building .deb package..."
-dpkg-deb --build "${PACKAGE_ROOT}" "${PROJECT_ROOT}/${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+OUTPUT_FILENAME="axiocnc-headless_${VERSION}_${ARCH}.deb"
+dpkg-deb --build "${PACKAGE_ROOT}" "${PROJECT_ROOT}/${OUT_DIR}/${OUTPUT_FILENAME}"
 
 # Get package size
-PACKAGE_SIZE=$(du -h "${PROJECT_ROOT}/${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" | cut -f1)
+PACKAGE_SIZE=$(du -h "${PROJECT_ROOT}/${OUT_DIR}/${OUTPUT_FILENAME}" | cut -f1)
 
 echo ""
-echo "✅ Server package built: ${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb (${PACKAGE_SIZE})"
+echo "✅ Server package built: ${OUT_DIR}/${OUTPUT_FILENAME} (${PACKAGE_SIZE})"
 echo "   Node.js ${NODE_VERSION} is bundled - no system Node.js required!"
 echo ""
 echo "Install with:"
-echo "  sudo dpkg -i ${OUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
+echo "  sudo dpkg -i ${OUT_DIR}/${OUTPUT_FILENAME}"
 echo "  sudo apt-get install -f  # if dependencies missing"
