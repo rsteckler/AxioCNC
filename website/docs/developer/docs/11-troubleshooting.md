@@ -42,16 +42,16 @@ taskkill /PID <PID> /F
 **Fix:**
 ```bash
 rm -rf node_modules apps/*/node_modules packages/*/node_modules
-yarn install
+pnpm install
 ```
 
 ### FakeTTY / GRBL Sim Not in Port List
 
-**Problem:** After `yarn dev:grblsim:setup`, fakeTTY doesn't appear in machine port dropdown.
+**Problem:** After `pnpm dev:grblsim:setup`, fakeTTY doesn't appear in machine port dropdown.
 
 **Fix:**
 ```bash
-yarn dev:grblsim:enable
+pnpm dev:grblsim:enable
 ```
 This adds fakeTTY to `~/.axiocnc/config.json`. Restart the server afterward.
 
@@ -61,16 +61,16 @@ This adds fakeTTY to `~/.axiocnc/config.json`. Restart the server afterward.
 
 **Fix:**
 ```bash
-yarn dev:grblsim:clean
-yarn dev:grblsim:setup
+pnpm dev:grblsim:clean
+pnpm dev:grblsim:setup
 ```
 
 ### Tests Fail with "Cannot find module" or Babel Errors
 
 **Fix:**
 ```bash
-yarn install
-yarn test:test
+pnpm install
+pnpm test:test
 ```
 Tests use `@babel/register`; ensure deps are installed.
 
@@ -78,14 +78,14 @@ Tests use `@babel/register`; ensure deps are installed.
 
 **Fix:**
 ```bash
-yarn test:lint
-yarn test:typecheck
+pnpm test:lint
+pnpm test:typecheck
 ```
-Address reported issues. Use `yarn test:lint:eslint-debug` if ESLint is unclear.
+Address reported issues. Use `pnpm test:lint:eslint-debug` if ESLint is unclear.
 
 ## Where Logs Live
 
-- **Server (dev):** Console output of `yarn dev:start-server`
+- **Server (dev):** Console output of `pnpm dev:start-server`
 - **Frontend:** Browser DevTools console (F12)
 - **Production:** `~/.axiocnc/logs/` (if file logging is enabled)
 - **MediaMTX:** `~/.axiocnc/mediamtx/logs/`

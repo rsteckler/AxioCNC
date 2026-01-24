@@ -30,39 +30,39 @@ graph LR
 6. **PR** - Open pull request
 7. **Review** - Address feedback, iterate
 
-## Yarn Commands Cheat Sheet
+## pnpm Commands Cheat Sheet
 
 ### Development
 
 ```bash
 # Start backend server (Terminal 1)
-yarn dev:start-server
+pnpm dev:start-server
 
 # Start frontend dev server (Terminal 2)
-yarn dev:start-app
+pnpm dev:start-app
 
 # Start Electron app
-yarn dev:start-electron
+pnpm dev:start-electron
 
 # GRBL simulator
-yarn dev:grblsim:setup    # One-time setup
-yarn dev:grblsim:run      # Run simulator
+pnpm dev:grblsim:setup    # One-time setup
+pnpm dev:grblsim:run      # Run simulator
 ```
 
 ### Testing
 
 ```bash
 # Run all server tests
-yarn test:test
+pnpm test:test
 
 # Run tests with coverage
-yarn test:coverage
+pnpm test:coverage
 
 # Run linting (all checks)
-yarn test:lint
+pnpm test:lint
 
 # TypeScript type checking (frontend)
-yarn test:typecheck
+pnpm test:typecheck
 ```
 
 ## Development Flow
@@ -70,7 +70,7 @@ yarn test:typecheck
 ### 1. Install Dependencies
 
 ```bash
-yarn install
+pnpm install
 ```
 
 Installs dependencies for all workspaces.
@@ -80,8 +80,8 @@ Installs dependencies for all workspaces.
 For testing without hardware:
 
 ```bash
-yarn dev:grblsim:setup    # One-time setup (clones grblsim repo)
-yarn dev:grblsim:run       # Run simulator
+pnpm dev:grblsim:setup    # One-time setup (clones grblsim repo)
+pnpm dev:grblsim:run       # Run simulator
 ```
 
 Creates virtual serial port at `/dev/ttyFAKE` (Linux) that you can connect to.
@@ -89,7 +89,7 @@ Creates virtual serial port at `/dev/ttyFAKE` (Linux) that you can connect to.
 ### 3. Start Server
 
 ```bash
-yarn dev:start-server
+pnpm dev:start-server
 ```
 
 - Runs on `http://localhost:8000`
@@ -99,7 +99,7 @@ yarn dev:start-server
 ### 4. Start Frontend
 
 ```bash
-yarn dev:start-app
+pnpm dev:start-app
 ```
 
 - Runs on `http://localhost:5173`
@@ -112,10 +112,10 @@ yarn dev:start-app
 
 ```bash
 # Server tests (tap framework)
-yarn test:test
+pnpm test:test
 
 # With coverage report
-yarn test:coverage
+pnpm test:coverage
 ```
 
 **Test framework:** [tap](https://node-tap.org/)
@@ -137,19 +137,19 @@ test('test description', (t) => {
 
 ```bash
 # Run all lint checks
-yarn test:lint
+pnpm test:lint
 
 # Individual checks
-yarn test:lint:eslint    # JavaScript/TypeScript
-yarn test:lint:web       # Frontend ESLint
-yarn test:lint:i18n      # i18n JSON files
+pnpm test:lint:eslint    # JavaScript/TypeScript
+pnpm test:lint:web       # Frontend ESLint
+pnpm test:lint:i18n      # i18n JSON files
 ```
 
 **ESLint config:** `.eslintrc.js` (root), workspace-specific configs
 
 **Type checking:**
 ```bash
-yarn test:typecheck  # TypeScript (frontend only)
+pnpm test:typecheck  # TypeScript (frontend only)
 ```
 
 ## Build Flow (Reference)
@@ -158,13 +158,13 @@ Builds happen on CI runners, but you can test locally:
 
 ```bash
 # Build all
-yarn build:all
+pnpm build:all
 
 # Individual builds
-yarn build:server   # Babel compile
-yarn build:web      # Vite build
-yarn build:shared   # TypeScript compile
-yarn build:desktop  # Electron packaging
+pnpm build:server   # Babel compile
+pnpm build:web      # Vite build
+pnpm build:shared   # TypeScript compile
+pnpm build:desktop  # Electron packaging
 ```
 
 **Output locations:**

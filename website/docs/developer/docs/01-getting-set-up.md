@@ -13,7 +13,7 @@ Fast path to running AxioCNC locally for development.
 ### Runtime Versions
 
 - **Node.js:** 18 or higher ([download](https://nodejs.org/en/download/))
-- **Yarn:** Install with `npm install -g yarn`
+- **pnpm:** Install with `npm install -g pnpm`
 - **Git:** For version control
 
 ## Fast Path: Run Locally
@@ -23,7 +23,7 @@ Fast path to running AxioCNC locally for development.
 ```bash
 git clone https://github.com/rsteckler/AxioCNC.git
 cd AxioCNC
-yarn install
+pnpm install
 ```
 
 This installs dependencies for all workspaces: `apps/web`, `apps/server`, `apps/desktop`, `apps/shared`.
@@ -32,14 +32,14 @@ This installs dependencies for all workspaces: `apps/web`, `apps/server`, `apps/
 
 **Terminal 1 - Backend:**
 ```bash
-yarn dev:start-server
+pnpm dev:start-server
 ```
 
 Server runs on `http://localhost:8000` with hot reload via nodemon.
 
 **Terminal 2 - Frontend:**
 ```bash
-yarn dev:start-app
+pnpm dev:start-app
 ```
 
 Frontend runs on `http://localhost:5173` with Vite HMR.
@@ -87,7 +87,7 @@ taskkill /PID <PID> /F
 **Solution:**
 ```bash
 rm -rf node_modules apps/*/node_modules
-yarn install
+pnpm install
 ```
 
 ### Configuration
@@ -100,10 +100,10 @@ Use the GRBL simulator for testing without a physical CNC machine:
 
 ```bash
 # One-time setup
-yarn dev:grblsim:setup
+pnpm dev:grblsim:setup
 
 # Run simulator
-yarn dev:grblsim:run
+pnpm dev:grblsim:run
 ```
 
 The simulator creates a virtual serial port (`/dev/ttyFAKE` on Linux) that you can connect to in the AxioCNC interface.

@@ -13,7 +13,7 @@ AxioCNC is a web-based interface for CNC controllers (Grbl, Marlin, Smoothie, Ti
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Redux Toolkit
 - **Desktop:** Electron (bundles server + web frontend)
 - **Testing:** tap (Test Anything Protocol) for server tests
-- **Build:** Yarn workspaces monorepo, Babel (server), Vite (web)
+- **Build:** pnpm workspaces monorepo, Babel (server), Vite (web)
 
 ## Who This Is For
 

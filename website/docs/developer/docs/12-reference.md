@@ -68,26 +68,26 @@ axiocnc --port 8000 --config ~/.axiocnc/config.json
 axiocnc --help
 ```
 
-### Yarn Commands (Development)
+### pnpm Commands (Development)
 
 | Command | Purpose |
 |--------|---------|
-| `yarn dev:start-server` | Start backend dev server |
-| `yarn dev:start-app` | Start frontend dev server |
-| `yarn dev:start-electron` | Start Electron app |
-| `yarn dev:grblsim:setup` | One-time GRBL sim setup |
-| `yarn dev:grblsim:run` | Run GRBL simulator |
-| `yarn test:test` | Run server tests |
-| `yarn test:coverage` | Run tests with coverage |
-| `yarn test:lint` | Run all lint checks |
-| `yarn test:typecheck` | TypeScript check (frontend) |
-| `yarn build:all` | Build all apps |
-| `yarn build:server` | Build server |
-| `yarn build:web` | Build web app |
-| `yarn release:tag` | Create release tag |
-| `yarn release:tag:push` | Push release tag |
+| `pnpm dev:start-server` | Start backend dev server |
+| `pnpm dev:start-app` | Start frontend dev server |
+| `pnpm dev:start-electron` | Start Electron app |
+| `pnpm dev:grblsim:setup` | One-time GRBL sim setup |
+| `pnpm dev:grblsim:run` | Run GRBL simulator |
+| `pnpm test:test` | Run server tests |
+| `pnpm test:coverage` | Run tests with coverage |
+| `pnpm test:lint` | Run all lint checks |
+| `pnpm test:typecheck` | TypeScript check (frontend) |
+| `pnpm build:all` | Build all apps |
+| `pnpm build:server` | Build server |
+| `pnpm build:web` | Build web app |
+| `pnpm release:tag` | Create release tag |
+| `pnpm release:tag:push` | Push release tag |
 
-See [Day-1 Workflow](./03-day-1-workflow.md#yarn-commands-cheat-sheet) for more.
+See [Day-1 Workflow](./03-day-1-workflow.md#pnpm-commands-cheat-sheet) for more.
 
 ## License and Contributor Policy
 

@@ -39,10 +39,10 @@ test('parseStatus handles valid input', (t) => {
 
 ```bash
 # Run all tests
-yarn test:test
+pnpm test:test
 
 # Run with coverage
-yarn test:coverage
+pnpm test:coverage
 
 # Run specific test file
 node --require @babel/register apps/server/test/sender.js
@@ -112,7 +112,7 @@ import request from 'supertest';
 
 ### Checking Coverage
 
-After running `yarn test:coverage`, review the output to identify:
+After running `pnpm test:coverage`, review the output to identify:
 1. Files with low coverage (< 80%)
 2. Untested branches (if/else paths)
 3. Untested functions

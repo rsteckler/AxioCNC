@@ -90,8 +90,8 @@ chore(deps): add zod to frontend and backend packages
 
 Before submitting your PR, ensure:
 
-- [ ] **Tests updated** — New code has tests; existing tests pass (`yarn test:test`)
-- [ ] **Lint passes** — `yarn test:lint` and `yarn test:typecheck` (if applicable)
+- [ ] **Tests updated** — New code has tests; existing tests pass (`pnpm test:test`)
+- [ ] **Lint passes** — `pnpm test:lint` and `pnpm test:typecheck` (if applicable)
 - [ ] **Docs updated** — Dev docs and/or user docs if behavior or setup changes
 - [ ] **Changelog entry added** — Add a bullet under "Unreleased" in `CHANGELOG.md`
 

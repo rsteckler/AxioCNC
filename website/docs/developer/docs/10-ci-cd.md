@@ -40,14 +40,14 @@ What runs where, required checks, and secrets management.
 
 **Before merge, PRs typically need:**
 - **packages** — All matrix jobs passing (desktop + server-deb)
-- **Lint** — Run locally via `yarn test:lint`; CI may run it too if configured
+- **Lint** — Run locally via `pnpm test:lint`; CI may run it too if configured
 
 **Release workflow:** No separate "required checks" for tag push — it runs automatically. Failures in desktop or server-deb will prevent the publish job from running.
 
 ## Caching / Build Artifacts
 
 **Node:**
-- **setup-node** uses `cache: 'yarn'` for Yarn cache
+- **setup-node** uses `cache: 'pnpm'` for pnpm cache
 - Reduces install time across jobs
 
 **Build artifacts:**

@@ -14,14 +14,14 @@ This directory contains the Docusaurus instance for AxioCNC developer documentat
 
 ```bash
 # Install dependencies (from repo root)
-yarn install
+pnpm install
 
 # Start dev server
 cd website/devdocs
-yarn start
+pnpm start
 
 # Build for production
-yarn build
+pnpm build
 ```
 
 ## Content Migration

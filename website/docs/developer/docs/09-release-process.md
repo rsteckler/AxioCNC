@@ -24,10 +24,10 @@ For **maintainers**: how we version, cut releases, and publish artifacts.
 
 ```bash
 # Create tag, update version in package.json
-yarn release:tag
+pnpm release:tag
 
 # Push tag to remote (triggers release workflow)
-yarn release:tag:push
+pnpm release:tag:push
 ```
 
 **Tag format:** `v` + SemVer (e.g. `v1.10.113`).
@@ -43,8 +43,8 @@ On push to a `v*` tag, the **release** workflow runs (see [CI/CD](./10-ci-cd.md)
 1. Checkout code
 2. Extract version from tag
 3. (Optional) Run `update-version.js` to stamp version
-4. `yarn install --immutable`
-5. `yarn build:all`
+4. `pnpm install --frozen-lockfile`
+5. `pnpm build:all`
 6. Package desktop app (per platform)
 7. Package server .deb (per arch)
 8. Upload artifacts

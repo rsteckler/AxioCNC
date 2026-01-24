@@ -157,11 +157,11 @@ Browser console (F12) is also available for standard debugging.
 ```bash
 # Add to web app
 cd apps/web
-yarn add new-package
+pnpm add new-package
 
 # Add to server
 cd apps/server
-yarn add new-package
+pnpm add new-package
 ```
 
 ## Code Style
