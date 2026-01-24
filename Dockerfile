@@ -87,9 +87,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD /opt/axiocnc/nodejs/bin/node -e "require('http').get('http://localhost:8000/api', (r) => process.exit(r.statusCode === 401 ? 0 : 1))"
 
 LABEL org.opencontainers.image.title="AxioCNC"
-LABEL org.opencontainers.image.description="Web-based interface for CNC controllers (Grbl, Marlin, Smoothieware, TinyG)"
+LABEL org.opencontainers.image.description="AxioCNC - Stability-focused G-code sender built around real CNC workflows. Control your machine from any device on your network. Version: $VERSION. Homepage: https://axiocnc.com"
 LABEL org.opencontainers.image.vendor="AxioCNC"
 LABEL org.opencontainers.image.version="$VERSION"
+LABEL org.opencontainers.image.url="https://axiocnc.com"
 
 ENTRYPOINT ["/opt/axiocnc/nodejs/bin/node", "server-cli.js"]
 CMD ["--port", "8000", "--host", "0.0.0.0", "--allow-remote-access"]
