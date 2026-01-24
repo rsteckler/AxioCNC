@@ -1,6 +1,6 @@
 {
   "name": "@axiocnc/server",
-  "version": "1.10.112",
+  "version": "0.0.50",
   "description": "AxioCNC Server - Express API + Socket.IO backend",
   "private": true,
   "main": "src/cli.js",

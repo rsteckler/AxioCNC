@@ -1,6 +1,6 @@
 {
   "name": "@axiocnc/desktop",
-  "version": "1.10.112",
+  "version": "0.0.50",
   "description": "AxioCNC Desktop - Electron wrapper for the CNC control server",
   "author": "Ryan Steckler <axiocnc@ryansinbox.com>",
   "homepage": "https://github.com/rsteckler/axiocnc",
