@@ -43,13 +43,26 @@ const loadTranslations = async (lng: string, ns: string): Promise<object> => {
   }
 
   // Lazy load from server for other languages
+  const url = `/i18n/${lng}/${ns}.json`
   try {
-    const response = await fetch(`/i18n/${lng}/${ns}.json`)
+    const response = await fetch(url)
     if (!response.ok) {
       console.warn(`Failed to load translations for ${lng}/${ns}`)
       return {}
     }
-    return response.json()
+    let text = await response.text()
+    // Strip BOM so we don't reject or fail to parse JSON (e.g. zh-cn/zh-tw files)
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1)
+    // Vite/SPA may return index.html (200) for missing paths; treat as failed load
+    const trimmed = text.trimStart()
+    if (trimmed.startsWith('<') || !trimmed.startsWith('{')) {
+      return {}
+    }
+    try {
+      return JSON.parse(text) as object
+    } catch {
+      return {}
+    }
   } catch (error) {
     console.warn(`Error loading translations for ${lng}/${ns}:`, error)
     return {}
@@ -65,6 +78,23 @@ const lazyBackend = {
       .then(data => callback(null, data))
       .catch(err => callback(err, null))
   },
+}
+
+const NAMESPACES = ['resource', 'controller', 'gcode'] as const
+
+/**
+ * Explicitly load all namespaces for a language and add them to i18n.
+ * Use this when changing language so translations load even when the lazy
+ * backend's read() is not called (e.g. in Electron).
+ */
+export async function loadLanguageResources(lng: string): Promise<void> {
+  if (lng === 'en') return
+  for (const ns of NAMESPACES) {
+    const data = await loadTranslations(lng, ns)
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      i18n.addResourceBundle(lng, ns, data, true, true)
+    }
+  }
 }
 
 /** Promise that resolves when i18n has finished initializing. */

@@ -5,7 +5,7 @@ import { SettingsField } from '../SettingsField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import i18n from '@/i18n'
+import i18n, { loadLanguageResources, supportedLanguages } from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -46,8 +46,8 @@ export interface WatchFolder {
   mtime?: number
 }
 
-// Supported languages - same as legacy app
-const SUPPORTED_LANGUAGES = [
+// Supported languages - only show those we have translation files for (public/i18n/<lng>/)
+const SUPPORTED_LANGUAGES_ALL = [
   { value: 'en', label: 'English' },
   { value: 'cs', label: 'Čeština' },
   { value: 'de', label: 'Deutsch' },
@@ -58,15 +58,17 @@ const SUPPORTED_LANGUAGES = [
   { value: 'ja', label: '日本語' },
   { value: 'nb', label: 'Norsk' },
   { value: 'nl', label: 'Nederlands' },
-  { value: 'pl', label: 'Polski' },
+  { value: 'pt', label: 'Português' },
   { value: 'pt-br', label: 'Português (Brasil)' },
-  { value: 'pt-pt', label: 'Português (Portugal)' },
   { value: 'ru', label: 'Русский' },
   { value: 'tr', label: 'Türkçe' },
   { value: 'uk', label: 'Українська' },
   { value: 'zh-cn', label: '中文 (简体)' },
   { value: 'zh-tw', label: '中文 (繁體)' },
-]
+] as const
+const SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES_ALL.filter((item) =>
+  (supportedLanguages as readonly string[]).includes(item.value)
+)
 
 export interface GoogleDriveStatus {
   isConnected: boolean
@@ -115,16 +117,15 @@ export function GeneralSection({
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
 
-  const handleLanguageChange = (value: string) => {
-    // Change language and reload resources to ensure translations are loaded
+  const handleLanguageChange = async (value: string) => {
+    // Explicitly load translations for non-English so they load in Electron
+    // (lazy backend read() is not always called on changeLanguage there)
+    await loadLanguageResources(value)
     i18n.changeLanguage(value).then(() => {
-      // Force reload resources for the new language
       return i18n.reloadResources(value, ['resource', 'controller', 'gcode'])
     }).catch((error) => {
       console.error('Error changing language:', error)
     })
-    
-    // Also call parent handler to save to settings
     onLanguageChange(value)
   }
 

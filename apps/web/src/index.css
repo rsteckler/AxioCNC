@@ -104,6 +104,10 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* CJK fallbacks so Japanese/Chinese render instead of tofu (unicode boxes) */
+    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Microsoft YaHei", "PingFang SC", "PingFang TC", "Hiragino Sans", "Yu Gothic", "Meiryo",
+      "Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK TC", "Noto Sans SC", "Noto Sans JP", "Noto Sans TC";
   }
   
   /* Smooth scrolling for the settings page */
