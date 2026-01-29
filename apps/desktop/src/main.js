@@ -190,7 +190,11 @@ function showMainWindowDev() {
   try {
     const u = new URL(viteUrl);
     address = u.hostname;
-    port = u.port ? Number(u.port, 10) : (u.protocol === 'https:' ? 443 : 80);
+    if (u.port) {
+      port = Number(u.port, 10);
+    } else {
+      port = u.protocol === 'https:' ? 443 : 80;
+    }
   } catch (_) {
     // use defaults above
   }
