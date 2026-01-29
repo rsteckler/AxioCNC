@@ -1,12 +1,13 @@
 {
   "watch": [
     "apps/desktop/src",
+    "apps/desktop/electron-dev-main.js",
     "apps/server/src",
     "apps/shared/src"
   ],
   "ext": "js,json",
   "ignore": ["node_modules", "output", "dist"],
-  "exec": "bash developers/scripts/build-electron-dev.sh && npx cross-env NODE_ENV=development npx electron ./apps/desktop/dist/main",
+  "exec": "pnpm --filter @axiocnc/shared run build && concurrently -k -n server,vite,electron \"node --require @babel/register apps/server/src/cli.js --port 8000 -m /widget:https://cncjs.github.io/cncjs-widget-boilerplate/v1/\" \"pnpm --filter @axiocnc/web dev\" \"cross-env AXIOCNC_DEV=1 AXIOCNC_VITE_URL=http://localhost:5173 pnpm --filter @axiocnc/desktop exec electron electron-dev-main.js\"",
   "env": {
     "NODE_ENV": "development"
   }

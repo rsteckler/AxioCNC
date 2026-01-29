@@ -41,7 +41,7 @@ pnpm dev:start-server
 # Start frontend dev server (Terminal 2)
 pnpm dev:start-app
 
-# Start Electron app
+# Start Electron app (server + Vite + Electron from source; single command)
 pnpm dev:start-electron
 
 # GRBL simulator

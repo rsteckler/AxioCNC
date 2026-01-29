@@ -195,7 +195,13 @@ const appMain = () => {
   const faviconPath = path.join(appPath, 'favicon.ico');
   fetch('http://127.0.0.1:7243/ingest/6655c974-5ed1-4fc1-8a00-d8f53fc1c6bd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:193',message:'favicon path construction',data:{appPath,faviconPath,settingsAssetsPath:settings?.assets?.app?.path},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
   // #endregion
-  app.use(favicon(faviconPath));
+  // In dev, appPath may be apps/web/dist which doesn't exist; use public fallback so server starts
+  const faviconResolved = fs.existsSync(faviconPath)
+    ? faviconPath
+    : path.join(path.resolve(__dirname, '..', '..'), 'web', 'public', 'favicon.ico');
+  if (fs.existsSync(faviconResolved)) {
+    app.use(favicon(faviconResolved));
+  }
   app.use(cookieParser());
 
   // Connect's body parsing middleware. This only handles urlencoded and json bodies.

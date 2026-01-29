@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Quick rebuild of Electron main process and server for dev
-# Faster than full build-dev.sh
+# DEPRECATED for dev:start-electron. Electron dev now uses source-first flow
+# (server + Vite + Electron from source via dev:start-electron; no bundle dir).
+# This script is kept for reference or for a "built bundle" dev path if needed.
+# Quick rebuild of Electron main process and server for dev (legacy).
 
 set -e
 

@@ -13,9 +13,15 @@ import Store from 'electron-store';
 import chalk from 'chalk';
 import mkdirp from 'mkdirp';
 
+// Source-first dev: server and Vite run separately; we just open the Vite URL.
+// Set AXIOCNC_DEV=1 and AXIOCNC_VITE_URL (default http://localhost:5173).
+function isDevMode() {
+  return !app.isPackaged && process.env.AXIOCNC_DEV === '1';
+}
+
 // Resolve bundle root that contains server + web assets
 // Packaged: <resources>/axiocnc
-// Dev:      <repo>/build/<platform>-<arch>/axiocnc
+// Dev (bundled): <repo>/build/<platform>-<arch>/axiocnc
 function getBundleRoot() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'axiocnc');
@@ -41,13 +47,14 @@ function getDesktopPackageJson() {
     // eslint-disable-next-line import/no-dynamic-require, global-require
     return require(path.join(app.getAppPath(), 'package.json'));
   }
-  const desktopRoot = path.resolve(__dirname, '..'); // apps/desktop (from apps/desktop/dist)
+  // From source: __dirname is apps/desktop/src; from dist: __dirname is apps/desktop/dist
+  const desktopRoot = path.resolve(__dirname, '..');
   // eslint-disable-next-line import/no-dynamic-require, global-require
   return require(path.join(desktopRoot, 'package.json'));
 }
 
 // Load menu templates:
-// Dev:      apps/desktop/dist/menu-template
+// Dev (source or dist): __dirname/menu-template
 // Packaged: <appPath>/dist/menu-template
 function getMenuTemplates() {
   if (app.isPackaged) {
@@ -175,7 +182,84 @@ function getBrowserWindowOptions() {
   return Object.assign({}, defaultOptions, windowOptions);
 }
 
+// Dev mode: server and Vite run separately; open Vite URL and use env for menu.
+function showMainWindowDev() {
+  const viteUrl = process.env.AXIOCNC_VITE_URL || 'http://localhost:5173';
+  let address = '127.0.0.1';
+  let port = 5173;
+  try {
+    const u = new URL(viteUrl);
+    address = u.hostname;
+    port = u.port ? Number(u.port, 10) : (u.protocol === 'https:' ? 443 : 80);
+  } catch (_) {
+    // use defaults above
+  }
+
+  const browserWindowOptions = getBrowserWindowOptions();
+  const browserWindow = new BrowserWindow(browserWindowOptions);
+  mainWindow = browserWindow;
+  powerId = powerSaveBlocker.start('prevent-display-sleep');
+
+  const applicationMenu = Menu.buildFromTemplate(createApplicationMenuTemplate({ address, port, mountPoints: [] }));
+  const inputMenu = Menu.buildFromTemplate(inputMenuTemplate);
+  const selectionMenu = Menu.buildFromTemplate(selectionMenuTemplate);
+  Menu.setApplicationMenu(applicationMenu);
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[main] render-process-gone', details);
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('[main] renderer unresponsive');
+  });
+
+  mainWindow.webContents.on('context-menu', (event, props) => {
+    const { selectionText, isEditable } = props;
+    if (isEditable) {
+      inputMenu.popup(mainWindow);
+    } else if (selectionText && String(selectionText).trim() !== '') {
+      selectionMenu.popup(mainWindow);
+    }
+  });
+
+  mainWindow.webContents.session.setProxy({ proxyRules: 'direct://' })
+    .then(() => mainWindow.loadURL(viteUrl))
+    .catch(err => console.error('loadURL', err.message));
+
+  if (process.platform === 'win32') {
+    mainWindow.show();
+  } else {
+    mainWindow.on('ready-to-show', () => mainWindow.show());
+  }
+
+  mainWindow.on('close', () => {
+    const bounds = mainWindow.getBounds();
+    const display = screen.getDisplayMatching(bounds);
+    store.set('bounds', { id: display.id, ...bounds });
+    mainWindow.webContents.send('save-and-close');
+    mainWindow = null;
+  });
+
+  ipcMain.handle('read-user-config', () => {
+    const configPath = path.join(userDataPath, 'cnc.json');
+    return fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '{}';
+  });
+  ipcMain.handle('write-user-config', (event, content) => {
+    fs.writeFileSync(path.join(userDataPath, 'cnc.json'), content ?? '{}');
+  });
+}
+
 const showMainWindow = async () => {
+  if (isDevMode()) {
+    showMainWindowDev();
+    return;
+  }
+
   const bundleRoot = getBundleRoot();
 
   // Validate expected bundle structure with helpful errors

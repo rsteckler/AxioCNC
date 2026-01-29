@@ -19,14 +19,16 @@ module.exports = (api) => {
     ],
     plugins,
     overrides: [
-      // Server and shared code must use CommonJS for Node.js compatibility
+      // Server, shared, and desktop code must use CommonJS for Node.js compatibility
       {
         test: (filename) => {
           if (!filename) return false;
           return filename.includes('apps/server/') ||
                  filename.includes('apps/shared/') ||
+                 filename.includes('apps/desktop/') ||
                  filename.includes('/server/') ||
-                 filename.includes('/shared/');
+                 filename.includes('/shared/') ||
+                 filename.includes('/desktop/');
         },
         presets: [
           ['@babel/preset-env', {
