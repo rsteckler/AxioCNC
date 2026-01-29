@@ -7,6 +7,7 @@ import {
 import { setJobState, clearJobState, setJobCompletion, clearJobCompletion } from '@/store/jobSlice'
 import { socketService } from './socket'
 import { track } from '@/services/analytics'
+import i18n from '@/i18n'
 // useLazyGetMachineStatusQuery not currently used but may be needed in future
 // import { useLazyGetMachineStatusQuery } from '@/services/api'
 import type { MachineStatus as ApiMachineStatus } from '@/services/api'
@@ -214,7 +215,7 @@ class MachineStateSyncService {
    */
   private handleSocketDisconnect(...args: unknown[]) {
     const reason = args[0] as string | undefined
-    const reasonStr = reason || 'Connection lost'
+    const reasonStr = reason || i18n.t('Connection lost')
     
     // Check if we were connected before disconnect
     const currentStatus = store.getState().machine.backendStatus
@@ -233,8 +234,8 @@ class MachineStateSyncService {
       const notificationEvent = new CustomEvent('machineStateSync:notification', {
         detail: {
           type: 'error',
-          title: 'Server Disconnected',
-          message: `Connection lost: ${reasonStr}. The server may have crashed or restarted.`,
+          title: i18n.t('Server Disconnected'),
+          message: i18n.t('Connection lost: {{reason}}. The server may have crashed or restarted.', { reason: reasonStr }),
         },
       })
       window.dispatchEvent(notificationEvent)

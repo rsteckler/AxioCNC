@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'
 import { useGetSettingsQuery } from '@/services/api'
@@ -11,6 +12,7 @@ export function RapidPanel({
   machineStatus,
   onFlashStatus,
 }: PanelProps) {
+  const { t } = useTranslation()
   const { data: settings } = useGetSettingsQuery()
   
   // G-code command hook
@@ -124,7 +126,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Upper Left (X${positions.upperLeft.x.toFixed(0)} Y${positions.upperLeft.y.toFixed(0)})`}
+          title={t('Upper Left (X{{x}} Y{{y}})', { x: positions.upperLeft.x.toFixed(0), y: positions.upperLeft.y.toFixed(0) })}
         >
           <ArrowUL />
         </MachineActionButton>
@@ -138,7 +140,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Upper Center (X${positions.upperCenter.x.toFixed(0)} Y${positions.upperCenter.y.toFixed(0)})`}
+          title={t('Upper Center (X{{x}} Y{{y}})', { x: positions.upperCenter.x.toFixed(0), y: positions.upperCenter.y.toFixed(0) })}
         >
           <ArrowU />
         </MachineActionButton>
@@ -152,7 +154,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Upper Right (X${positions.upperRight.x.toFixed(0)} Y${positions.upperRight.y.toFixed(0)})`}
+          title={t('Upper Right (X{{x}} Y{{y}})', { x: positions.upperRight.x.toFixed(0), y: positions.upperRight.y.toFixed(0) })}
         >
           <ArrowUR />
         </MachineActionButton>
@@ -168,7 +170,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Middle Left (X${positions.middleLeft.x.toFixed(0)} Y${positions.middleLeft.y.toFixed(0)})`}
+          title={t('Middle Left (X{{x}} Y{{y}})', { x: positions.middleLeft.x.toFixed(0), y: positions.middleLeft.y.toFixed(0) })}
         >
           <ArrowL />
         </MachineActionButton>
@@ -182,7 +184,7 @@ export function RapidPanel({
           variant="secondary"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Center (X${positions.center.x.toFixed(0)} Y${positions.center.y.toFixed(0)})`}
+          title={t('Center (X{{x}} Y{{y}})', { x: positions.center.x.toFixed(0), y: positions.center.y.toFixed(0) })}
         >
           <CenterIcon />
         </MachineActionButton>
@@ -196,7 +198,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Middle Right (X${positions.middleRight.x.toFixed(0)} Y${positions.middleRight.y.toFixed(0)})`}
+          title={t('Middle Right (X{{x}} Y{{y}})', { x: positions.middleRight.x.toFixed(0), y: positions.middleRight.y.toFixed(0) })}
         >
           <ArrowR />
         </MachineActionButton>
@@ -212,7 +214,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Lower Left (X${positions.lowerLeft.x.toFixed(0)} Y${positions.lowerLeft.y.toFixed(0)})`}
+          title={t('Lower Left (X{{x}} Y{{y}})', { x: positions.lowerLeft.x.toFixed(0), y: positions.lowerLeft.y.toFixed(0) })}
         >
           <ArrowLL />
         </MachineActionButton>
@@ -226,7 +228,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Lower Center (X${positions.lowerCenter.x.toFixed(0)} Y${positions.lowerCenter.y.toFixed(0)})`}
+          title={t('Lower Center (X{{x}} Y{{y}})', { x: positions.lowerCenter.x.toFixed(0), y: positions.lowerCenter.y.toFixed(0) })}
         >
           <ArrowD />
         </MachineActionButton>
@@ -240,7 +242,7 @@ export function RapidPanel({
           variant="outline"
           size="sm"
           className="h-10 w-full p-0"
-          title={`Lower Right (X${positions.lowerRight.x.toFixed(0)} Y${positions.lowerRight.y.toFixed(0)})`}
+          title={t('Lower Right (X{{x}} Y{{y}})', { x: positions.lowerRight.x.toFixed(0), y: positions.lowerRight.y.toFixed(0) })}
         >
           <ArrowLR />
         </MachineActionButton>

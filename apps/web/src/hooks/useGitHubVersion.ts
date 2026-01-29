@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import i18n from '@/i18n'
 
 interface GitHubRelease {
   tag_name: string
@@ -48,7 +49,7 @@ export function useGitHubVersion(
         )
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch release: ${response.statusText}`)
+          throw new Error(i18n.t('Failed to fetch release: {{status}}', { status: response.statusText }))
         }
 
         const data: GitHubRelease = await response.json()

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Target } from 'lucide-react'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'
@@ -9,20 +10,20 @@ import { trackFeatureUsed } from '@/services/analytics'
 import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import type { ProbePanelProps } from '../types'
 
-function getMethodDescription(method: ZeroingMethod): string {
+function getMethodDescription(method: ZeroingMethod, t: (key: string, options?: Record<string, string>) => string): string {
   switch (method.type) {
     case 'bitsetter':
-      return 'Automatic tool length sensor for Z-axis zeroing'
+      return t('Automatic tool length sensor for Z-axis zeroing')
     case 'bitzero':
-      return `Corner/edge/center probe for ${method.axes.toUpperCase()} zeroing`
+      return t('Corner/edge/center probe for {{axes}} zeroing', { axes: method.axes.toUpperCase() })
     case 'touchplate':
-      return 'Touch plate for Z-axis zeroing'
+      return t('Touch plate for Z-axis zeroing')
     case 'manual':
-      return `Manually jog to position and set ${method.axes.toUpperCase()} zero`
+      return t('Manually jog to position and set {{axes}} zero', { axes: method.axes.toUpperCase() })
     case 'custom':
-      return 'Custom G-code sequence for zeroing'
+      return t('Custom G-code sequence for zeroing')
     default:
-      return 'Zeroing method'
+      return t('Zeroing method')
   }
 }
 
@@ -39,6 +40,7 @@ export function ProbePanel({
   workPosition: _workPosition = { x: 0, y: 0, z: 0 }, 
   onStartWizard 
 }: ProbePanelProps) {
+  const { t } = useTranslation()
   const { data: settings, isLoading } = useGetSettingsQuery()
   
   // Get enabled zeroing methods from settings
@@ -52,11 +54,11 @@ export function ProbePanel({
   }, [onStartWizard])
   
   if (isLoading) {
-    return <LoadingState message="Loading zeroing methods..." />
+    return <LoadingState message={t('Loading zeroing methods...')} />
   }
   
   if (methods.length === 0) {
-    return <EmptyState message="No zeroing methods configured. Add methods in Settings." />
+    return <EmptyState message={t('No zeroing methods configured. Add methods in Settings.')} />
   }
   
   return (
@@ -70,7 +72,7 @@ export function ProbePanel({
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium">{method.name}</div>
             <div className="text-xs text-muted-foreground truncate">
-              {getMethodDescription(method)} • {getAxesLabel(method.axes)}
+              {getMethodDescription(method, t)} • {getAxesLabel(method.axes)}
             </div>
           </div>
           <MachineActionButton
@@ -84,7 +86,7 @@ export function ProbePanel({
             size="sm"
             className="h-7 text-xs flex-shrink-0"
           >
-            Run
+            {t('Run')}
           </MachineActionButton>
         </div>
       ))}

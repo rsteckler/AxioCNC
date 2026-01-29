@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Home, Play, Square, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineStatusBadge } from './MachineStatusBadge'
@@ -23,6 +24,7 @@ interface MachineStatusBarProps {
 }
 
 export function MachineStatusBar({ onError }: MachineStatusBarProps) {
+  const { t } = useTranslation()
   const dispatch = useAppDispatch()
   
   // Use selectors for computed values
@@ -68,13 +70,13 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
     
     // Check if settings are loaded
     if (!settings) {
-      showError('Settings Not Loaded', 'Please wait for settings to load, or check your connection to the server')
+      showError(t('Settings Not Loaded'), t('Please wait for settings to load, or check your connection to the server'))
       return
     }
     
     // Check if port is configured
     if (!settings.connection?.port) {
-      showError('No Port Configured', 'Please configure a serial port in Settings before connecting')
+      showError(t('No Port Configured'), t('Please configure a serial port in Settings before connecting'))
       return
     }
     
@@ -82,12 +84,12 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
     const { port, baudRate, controllerType } = settings.connection
     
     if (!port || port.trim() === '') {
-      showError('Invalid Port', 'Serial port is empty. Please configure a valid port in Settings')
+      showError(t('Invalid Port'), t('Serial port is empty. Please configure a valid port in Settings'))
       return
     }
     
     if (!baudRate || baudRate <= 0) {
-      showError('Invalid Baud Rate', `Baud rate must be greater than 0. Current: ${baudRate}`)
+      showError(t('Invalid Baud Rate'), t('Baud rate must be greater than 0. Current: {{baudRate}}', { baudRate }))
       return
     }
     
@@ -104,11 +106,11 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
           console.error('Disconnect error:', err)
           // If already disconnected, that's fine - UI is already updated
           // Only show error if it's a real error (not "already disconnected")
-          const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to disconnect from machine')
+          const errorMessage = err.message || (typeof err === 'string' ? err : t('Failed to disconnect from machine'))
           if (!errorMessage.toLowerCase().includes('not connected') && 
               !errorMessage.toLowerCase().includes('already') &&
               !errorMessage.toLowerCase().includes('not found')) {
-            showError('Disconnect Failed', errorMessage)
+            showError(t('Disconnect Failed'), errorMessage)
           }
         }
       })
@@ -119,7 +121,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
       // Set a timeout for connection attempts (10 seconds)
       const connectionTimeout = setTimeout(() => {
         dispatch(setConnecting(false))
-        showError('Connection Timeout', 'Connection attempt timed out. Please check that the port is available and the machine is powered on.')
+        showError(t('Connection Timeout'), t('Connection attempt timed out. Please check that the port is available and the machine is powered on.'))
       }, 10000)
       
       
@@ -134,8 +136,8 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
           dispatch(setConnecting(false))
           if (err) {
             console.error('Connection error:', err)
-            const errorMessage = err.message || (typeof err === 'string' ? err : 'Failed to connect to machine')
-            showError('Connection Failed', errorMessage)
+            const errorMessage = err.message || (typeof err === 'string' ? err : t('Failed to connect to machine'))
+            showError(t('Connection Failed'), errorMessage)
           } else {
             // Connection state will be updated by machine:status event from backend
             // Just clear connecting flag here
@@ -196,7 +198,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
 
   return (
     <>
-      <span className="text-sm text-muted-foreground mr-2">Machine:</span>
+      <span className="text-sm text-muted-foreground mr-2">{t('Machine:')}</span>
       <MachineStatusBadge machineStatus={machineStatus} isFlashing={isFlashing} />
       
       {/* Action buttons - context-aware based on machine status */}
@@ -210,15 +212,15 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
                 onClick={handleConnect}
                 disabled={isConnecting}
               >
-                Disconnect
+                {t('Disconnect')}
               </Button>
             </div>
           )}
           <Button variant="default" size="sm" onClick={handleResume}>
-            <Play className="w-4 h-4 mr-1" /> Resume
+            <Play className="w-4 h-4 mr-1" /> {t('Resume')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleStop}>
-            <Square className="w-4 h-4 mr-1" /> Stop
+            <Square className="w-4 h-4 mr-1" /> {t('Stop')}
           </Button>
         </>
       )}
@@ -231,7 +233,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
             onClick={handleConnect}
             disabled={isConnecting}
           >
-            {isConnecting ? 'Connecting...' : 'Connect'}
+            {isConnecting ? t('Connecting...') : t('Connect')}
           </Button>
         </div>
       )}
@@ -246,7 +248,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
               onClick={handleConnect}
               disabled={isConnecting}
             >
-              Disconnect
+              {t('Disconnect')}
             </Button>
           </div>
           <Button 
@@ -255,7 +257,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
             onClick={handleHome}
             className="ml-3"
           >
-            <Home className="w-4 h-4 mr-1" /> Run Home
+            <Home className="w-4 h-4 mr-1" /> {t('Run Home')}
           </Button>
         </>
       )}
@@ -270,11 +272,11 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
               onClick={handleConnect}
               disabled={isConnecting}
             >
-              Disconnect
+              {t('Disconnect')}
             </Button>
           </div>
           <Button variant="outline" size="sm" onClick={handleHome} className="ml-3">
-            <Home className="w-4 h-4 mr-1" /> Home
+            <Home className="w-4 h-4 mr-1" /> {t('Home')}
           </Button>
         </>
       )}
@@ -289,11 +291,11 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
               onClick={handleConnect}
               disabled={isConnecting}
             >
-              Disconnect
+              {t('Disconnect')}
             </Button>
           </div>
           <Button variant="outline" size="sm" onClick={handleHome} disabled className="ml-3">
-            <Home className="w-4 h-4 mr-1" /> Home
+            <Home className="w-4 h-4 mr-1" /> {t('Home')}
           </Button>
         </>
       )}
@@ -308,14 +310,14 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
               onClick={handleConnect}
               disabled={isConnecting}
             >
-              Disconnect
+              {t('Disconnect')}
             </Button>
           </div>
           <Button variant="outline" size="sm" onClick={handleUnlock} className="ml-3">
-            <Unlock className="w-4 h-4 mr-1" /> Unlock
+            <Unlock className="w-4 h-4 mr-1" /> {t('Unlock')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleHome} className="ml-3">
-            <Home className="w-4 h-4 mr-1" /> Home
+            <Home className="w-4 h-4 mr-1" /> {t('Home')}
           </Button>
         </>
       )}
@@ -330,11 +332,11 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
               onClick={handleConnect}
               disabled={isConnecting}
             >
-              Disconnect
+              {t('Disconnect')}
             </Button>
           </div>
           <Button variant="outline" size="sm" onClick={handleHome} className="ml-3">
-            <Home className="w-4 h-4 mr-1" /> Home
+            <Home className="w-4 h-4 mr-1" /> {t('Home')}
           </Button>
         </>
       )}

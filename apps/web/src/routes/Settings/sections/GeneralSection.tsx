@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import i18n from '@/i18n'
 import {
   Select,
   SelectContent,
@@ -104,6 +106,7 @@ export function GeneralSection({
   isExporting = false,
   isImporting = false,
 }: GeneralSectionProps) {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false)
   const [newFolderType, setNewFolderType] = useState<WatchFolderType>('local')
@@ -111,6 +114,19 @@ export function GeneralSection({
   const [newFolderName, setNewFolderName] = useState('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
+
+  const handleLanguageChange = (value: string) => {
+    // Change language and reload resources to ensure translations are loaded
+    i18n.changeLanguage(value).then(() => {
+      // Force reload resources for the new language
+      return i18n.reloadResources(value, ['resource', 'controller', 'gcode'])
+    }).catch((error) => {
+      console.error('Error changing language:', error)
+    })
+    
+    // Also call parent handler to save to settings
+    onLanguageChange(value)
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -167,7 +183,7 @@ export function GeneralSection({
     onAddWatchFolder({
       type: newFolderType,
       path: newFolderPath.trim(),
-      name: newFolderName.trim() || newFolderPath.split('/').pop() || 'Watch Folder',
+      name: newFolderName.trim() || newFolderPath.split('/').pop() || t('Watch Folders'),
     })
     
     // Reset and close
@@ -180,16 +196,16 @@ export function GeneralSection({
   return (
     <SettingsSection 
       id="general" 
-      title="General"
-      description="Basic application settings and preferences"
+      title={t('General')}
+      description={t('Basic application settings and preferences')}
     >
       <SettingsField
-        label="Language"
-        description="Choose your preferred display language"
+        label={t('Language')}
+        description={t('Choose your preferred display language')}
       >
-        <Select value={language} onValueChange={onLanguageChange}>
+        <Select value={language} onValueChange={handleLanguageChange}>
           <SelectTrigger className="w-[240px]">
-            <SelectValue placeholder="Select a language" />
+            <SelectValue placeholder={t('Select a language')} />
           </SelectTrigger>
           <SelectContent>
             {SUPPORTED_LANGUAGES.map((lang) => (
@@ -205,10 +221,10 @@ export function GeneralSection({
       <div className="pt-6 space-y-4">
         <div className="flex items-center gap-2">
           <FolderOpen className="w-5 h-5 text-muted-foreground" />
-          <h4 className="font-medium text-sm">Watch Folders</h4>
+          <h4 className="font-medium text-sm">{t('Watch Folders')}</h4>
         </div>
         <p className="text-sm text-muted-foreground">
-          Monitor folders for G-code files. Files added to these folders will appear in your file browser.
+          {t('Monitor folders for G-code files. Files added to these folders will appear in your file browser.')}
         </p>
 
         {/* Folder List */}
@@ -216,8 +232,8 @@ export function GeneralSection({
           {watchFolders.length === 0 ? (
             <div className="p-4 rounded-lg border border-dashed text-center text-muted-foreground">
               <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No watch folders configured</p>
-              <p className="text-xs mt-1">Add a folder to monitor for G-code files</p>
+              <p className="text-sm">{t('No watch folders configured')}</p>
+              <p className="text-xs mt-1">{t('Add a folder to monitor for G-code files')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -236,7 +252,7 @@ export function GeneralSection({
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm truncate">{folder.name}</span>
                         <Badge variant="secondary" className="text-xs flex-shrink-0">
-                          {folder.type === 'local' ? 'Local' : 'Google Drive'}
+                          {folder.type === 'local' ? t('Local') : t('Google Drive')}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate font-mono">
@@ -256,16 +272,15 @@ export function GeneralSection({
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove Watch Folder?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('Remove Watch Folder?')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to remove "{folder.name}" from your watch folders?
-                          This won't delete any files, just stop monitoring the folder.
+                          {t('Are you sure you want to remove "{{name}}" from your watch folders? This won\'t delete any files, just stop monitoring the folder.', { name: folder.name })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => onRemoveWatchFolder(folder.id)}>
-                          Remove
+                          {t('Remove')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -283,7 +298,7 @@ export function GeneralSection({
             className="gap-2 mt-2"
           >
             <Plus className="w-4 h-4" />
-            Add Watch Folder
+            {t('Add Watch Folder')}
           </Button>
         </div>
 
@@ -291,16 +306,16 @@ export function GeneralSection({
         <Dialog open={addFolderDialogOpen} onOpenChange={setAddFolderDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Watch Folder</DialogTitle>
+              <DialogTitle>{t('Add Watch Folder')}</DialogTitle>
               <DialogDescription>
-                Add a folder to monitor for G-code files. Choose between a local folder or Google Drive.
+                {t('Add a folder to monitor for G-code files. Choose between a local folder or Google Drive.')}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               {/* Folder Type */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Folder Type</label>
+                <label className="text-sm font-medium">{t('Folder Type')}</label>
                 <Select value={newFolderType} onValueChange={(v) => setNewFolderType(v as WatchFolderType)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -309,13 +324,13 @@ export function GeneralSection({
                     <SelectItem value="local">
                       <div className="flex items-center gap-2">
                         <HardDrive className="w-4 h-4" />
-                        Local Folder
+                        {t('Local Folder')}
                       </div>
                     </SelectItem>
                     <SelectItem value="google-drive">
                       <div className="flex items-center gap-2">
                         <Cloud className="w-4 h-4 text-blue-500" />
-                        Google Drive
+                        {t('Google Drive')}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -325,7 +340,7 @@ export function GeneralSection({
                 {newFolderType === 'google-drive' && (
                   <div className="p-3 rounded-lg bg-muted/50 border border-muted">
                     <p className="text-sm text-muted-foreground mb-2">
-                      This feature is not yet implemented. Upvote it to be included in a future release.
+                      {t('This feature is not yet implemented. Upvote it to be included in a future release.')}
                     </p>
                     <a
                       href="https://github.com/rsteckler/AxioCNC/issues/1"
@@ -334,7 +349,7 @@ export function GeneralSection({
                       className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      Upvote Google Drive support
+                      {t('Upvote Google Drive support')}
                     </a>
                   </div>
                 )}
@@ -353,17 +368,17 @@ export function GeneralSection({
                     {googleDriveStatus.isConnecting ? (
                       <Badge variant="secondary" className="gap-1.5">
                         <Loader2 className="w-3 h-3 animate-spin" />
-                        Connecting...
+                        {t('Connecting...')}
                       </Badge>
                     ) : googleDriveStatus.isConnected ? (
                       <Badge variant="secondary" className="gap-1.5 bg-green-500/10 text-green-600 border-green-500/20">
                         <CheckCircle2 className="w-3 h-3" />
-                        Connected
+                        {t('Connected')}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="gap-1.5 bg-red-500/10 text-red-600 border-red-500/20">
                         <XCircle className="w-3 h-3" />
-                        Not Connected
+                        {t('Not Connected')}
                       </Badge>
                     )}
                   </div>
@@ -371,7 +386,7 @@ export function GeneralSection({
                   {/* User Email (when connected) */}
                   {googleDriveStatus.isConnected && googleDriveStatus.userEmail && (
                     <p className="text-sm text-muted-foreground">
-                      Signed in as <span className="font-medium">{googleDriveStatus.userEmail}</span>
+                      {t('Signed in as {{email}}', { email: googleDriveStatus.userEmail })}
                     </p>
                   )}
 
@@ -393,7 +408,7 @@ export function GeneralSection({
                         disabled={true}
                       >
                         <LogOut className="w-4 h-4" />
-                        Disconnect
+                        {t('Disconnect')}
                       </Button>
                     ) : (
                       <Button
@@ -408,14 +423,14 @@ export function GeneralSection({
                         ) : (
                           <LogIn className="w-4 h-4" />
                         )}
-                        {googleDriveStatus.isConnecting ? 'Connecting...' : 'Connect to Google Drive'}
+                        {googleDriveStatus.isConnecting ? t('Connecting...') : t('Connect to Google Drive')}
                       </Button>
                     )}
                   </div>
 
                   {!googleDriveStatus.isConnected && !googleDriveStatus.isConnecting && (
                     <p className="text-xs text-muted-foreground">
-                      Connect your Google account to access files from Google Drive
+                      {t('Connect your Google account to access files from Google Drive')}
                     </p>
                   )}
                 </div>
@@ -424,7 +439,7 @@ export function GeneralSection({
               {/* Folder Path */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {newFolderType === 'local' ? 'Folder Path' : 'Google Drive Folder Path'}
+                  {newFolderType === 'local' ? t('Folder Path') : t('Google Drive Folder Path')}
                 </label>
                 <Input
                   value={newFolderPath}
@@ -438,15 +453,15 @@ export function GeneralSection({
                 />
                 <p className="text-xs text-muted-foreground">
                   {newFolderType === 'local' 
-                    ? 'Enter the full path to the folder on your local machine'
-                    : 'Feature not yet implemented'
+                    ? t('Enter the full path to the folder on your local machine')
+                    : t('Feature not yet implemented')
                   }
                 </p>
               </div>
 
               {/* Display Name */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Display Name (optional)</label>
+                <label className="text-sm font-medium">{t('Display Name (optional)')}</label>
                 <Input
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
@@ -454,14 +469,14 @@ export function GeneralSection({
                   disabled={newFolderType === 'google-drive'}
                 />
                 <p className="text-xs text-muted-foreground">
-                  A friendly name to identify this folder
+                  {t('A friendly name to identify this folder')}
                 </p>
               </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddFolderDialogOpen(false)}>
-                Cancel
+                {t('Cancel')}
               </Button>
               <Button 
                 onClick={handleAddFolder} 
@@ -470,7 +485,7 @@ export function GeneralSection({
                   newFolderType === 'google-drive'
                 }
               >
-                Add Folder
+                {t('Add Folder')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -480,8 +495,8 @@ export function GeneralSection({
       {/* Settings Management */}
       <div className="pt-6 space-y-3">
         <SettingsField
-          label="Settings Backup"
-          description="Import, export, or reset all application settings"
+          label={t('Settings Backup')}
+          description={t('Import, export, or reset all application settings')}
         >
           <div className="flex flex-wrap gap-2">
             {/* Import */}
@@ -503,12 +518,12 @@ export function GeneralSection({
               {isImporting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Importing...
+                  {t('Importing...')}
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  Import
+                  {t('Import')}
                 </>
               )}
             </Button>
@@ -524,12 +539,12 @@ export function GeneralSection({
               {isExporting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Exporting...
+                  {t('Exporting...')}
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  Export
+                  {t('Export')}
                 </>
               )}
             </Button>
@@ -542,34 +557,32 @@ export function GeneralSection({
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive">
                   <RotateCcw className="w-4 h-4" />
-                  Reset to Defaults
+                  {t('Reset to Defaults')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Reset All Settings?</AlertDialogTitle>
+                  <AlertDialogTitle>{t('Reset All Settings?')}</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-3">
-                      <p>
-                        This will reset <strong>all</strong> application settings to their default values, including:
-                      </p>
+                      <p dangerouslySetInnerHTML={{ __html: t('This will reset <strong>all</strong> application settings to their default values, including:') }} />
                       <ul className="list-disc list-inside text-sm space-y-1 ml-2">
-                        <li>Machine configuration and connection settings</li>
-                        <li>All macros</li>
-                        <li>All event handlers</li>
-                        <li>Watch folders</li>
-                        <li>Theme and appearance settings</li>
-                        <li>Zeroing methods and strategies</li>
+                        <li>{t('Machine configuration and connection settings')}</li>
+                        <li>{t('All macros')}</li>
+                        <li>{t('All event handlers')}</li>
+                        <li>{t('Watch folders')}</li>
+                        <li>{t('Theme and appearance settings')}</li>
+                        <li>{t('Zeroing methods and strategies')}</li>
                       </ul>
                       <p className="text-destructive font-medium">
-                        This action cannot be undone. Consider exporting your current settings first.
+                        {t('This action cannot be undone. Consider exporting your current settings first.')}
                       </p>
                       <div className="pt-2">
-                        <p className="text-sm mb-2">Type <strong>reset</strong> to confirm:</p>
+                        <p className="text-sm mb-2" dangerouslySetInnerHTML={{ __html: t('Type <strong>reset</strong> to confirm:') }} />
                         <Input 
                           value={resetConfirmText}
                           onChange={(e) => setResetConfirmText(e.target.value)}
-                          placeholder="Type 'reset' to confirm"
+                          placeholder={t('Type \'reset\' to confirm')}
                           className="font-mono"
                         />
                       </div>
@@ -577,7 +590,7 @@ export function GeneralSection({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={() => {
                       onRestoreDefaults()
@@ -587,7 +600,7 @@ export function GeneralSection({
                     disabled={resetConfirmText.toLowerCase() !== 'reset'}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
                   >
-                    Reset All Settings
+                    {t('Reset All Settings')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

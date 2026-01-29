@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -32,6 +33,7 @@ export function DebugPanel({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   machineStatus: _machineStatus,
 }: PanelProps) {
+  const { t } = useTranslation()
   const machineState = useMachineState()
   const isConnectedComputed = useIsConnected()
   const connectedPortComputed = useConnectedPort()
@@ -171,10 +173,10 @@ export function DebugPanel({
         <div className="space-y-2">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Bug className="w-4 h-4" />
-            Debug Tools
+            {t('Debug Tools')}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Development tools for debugging machine state and behavior.
+            {t('Development tools for debugging machine state and behavior.')}
           </p>
         </div>
 
@@ -185,16 +187,16 @@ export function DebugPanel({
             className="w-full"
             size="sm"
           >
-            Log Machine Status
+            {t('Log Machine Status')}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Outputs the current machine status object to the browser console in JSON format.
+            {t('Outputs the current machine status object to the browser console in JSON format.')}
           </p>
         </div>
 
         {/* Pin State Indicators */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Pin State (XYZPDHRS)</h4>
+          <h4 className="text-xs font-semibold">{t('Pin State (XYZPDHRS)')}</h4>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(pinLabels).map(([pin, label]) => {
               const isActive = pinState.includes(pin)
@@ -215,16 +217,16 @@ export function DebugPanel({
           </div>
           {pinState ? (
             <p className="text-xs text-muted-foreground font-mono">
-              Active: {pinState.split('').join(', ')}
+              {t('Active:')} {pinState.split('').join(', ')}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">No pins active</p>
+            <p className="text-xs text-muted-foreground">{t('No pins active')}</p>
           )}
         </div>
 
         {/* Accessory State Designators */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Accessories (A:SCFM)</h4>
+          <h4 className="text-xs font-semibold">{t('Accessories (A:SCFM)')}</h4>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(accessoryLabels).map(([acc, label]) => {
               const isActive = accessoryState.includes(acc)
@@ -245,47 +247,47 @@ export function DebugPanel({
           </div>
           {accessoryState ? (
             <p className="text-xs text-muted-foreground font-mono">
-              Active: {accessoryState.split('').join(', ')}
+              {t('Active:')} {accessoryState.split('').join(', ')}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">No accessories active</p>
+            <p className="text-xs text-muted-foreground">{t('No accessories active')}</p>
           )}
         </div>
 
         {/* Tool Offset (G54) */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Tool Offset (G54)</h4>
+          <h4 className="text-xs font-semibold">{t('Tool Offset (G54)')}</h4>
           {toolOffset !== null ? (
             <div className="px-2 py-1 rounded bg-muted/50 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Offset:</span>
-                <span className="font-mono font-medium">{toolOffset.toFixed(3)}mm</span>
+                <span className="text-muted-foreground">{t('Offset:')}</span>
+                <span className="font-mono font-medium">{toolOffset.toFixed(3)}{t('mm')}</span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No tool offset stored for G54</p>
+            <p className="text-xs text-muted-foreground">{t('No tool offset stored for G54')}</p>
           )}
         </div>
 
         {/* Job Info */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Job Info</h4>
+          <h4 className="text-xs font-semibold">{t('Job Info')}</h4>
           {jobState?.jobId ? (
             <div className="px-2 py-1 rounded bg-muted/50 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Job ID:</span>
+                <span className="text-muted-foreground">{t('Job ID:')}</span>
                 <span className="font-mono font-medium text-[10px] break-all text-right ml-2">
                   {jobState.jobId}
                 </span>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No job loaded</p>
+            <p className="text-xs text-muted-foreground">{t('No job loaded')}</p>
           )}
           {jobState?.name && (
             <div className="px-2 py-1 rounded bg-muted/50 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">File:</span>
+                <span className="text-muted-foreground">{t('File:')}</span>
                 <span className="font-mono font-medium text-[10px] break-all text-right ml-2">
                   {jobState.name}
                 </span>
@@ -296,10 +298,10 @@ export function DebugPanel({
 
         {/* Debug: Force Subsequent Tool Change */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Tool Change Debug</h4>
+          <h4 className="text-xs font-semibold">{t('Tool Change Debug')}</h4>
           <div className="flex items-center justify-between px-2 py-1 rounded bg-muted/50">
             <Label htmlFor="force-subsequent" className="text-xs cursor-pointer">
-              Force Bitsetter as Subsequent Tool Change
+              {t('Force Bitsetter as Subsequent Tool Change')}
             </Label>
             <Switch
               id="force-subsequent"
@@ -308,16 +310,16 @@ export function DebugPanel({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            When enabled, bitsetter tool changes will always use the subsequent wizard (skips "Install First Tool" step), regardless of tool reference status.
+            {t('When enabled, bitsetter tool changes will always use the subsequent wizard (skips "Install First Tool" step), regardless of tool reference status.')}
           </p>
         </div>
 
         {/* Debug: Show Outline in Visualizer */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">Visualizer Debug</h4>
+          <h4 className="text-xs font-semibold">{t('Visualizer Debug')}</h4>
           <div className="flex items-center justify-between px-2 py-1 rounded bg-muted/50">
             <Label htmlFor="show-outline" className="text-xs cursor-pointer">
-              Show Outline in Visualizer
+              {t('Show Outline in Visualizer')}
             </Label>
             <Switch
               id="show-outline"
@@ -326,7 +328,7 @@ export function DebugPanel({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            When enabled, displays the pink outline path in the 3D visualizer showing the toolpath boundary.
+            {t('When enabled, displays the pink outline path in the 3D visualizer showing the toolpath boundary.')}
           </p>
         </div>
       </div>

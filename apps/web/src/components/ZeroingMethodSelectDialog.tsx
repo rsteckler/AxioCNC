@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -24,20 +25,20 @@ const METHOD_ICONS: Record<ZeroingMethodType, React.ReactNode> = {
   'custom': <Settings2 className="w-5 h-5" />,
 }
 
-function getMethodDescription(method: ZeroingMethod): string {
+function getMethodDescription(method: ZeroingMethod, t: (key: string, options?: Record<string, string>) => string): string {
   switch (method.type) {
     case 'bitsetter':
-      return 'Automatic tool length sensor for Z-axis zeroing'
+      return t('Automatic tool length sensor for Z-axis zeroing')
     case 'bitzero':
-      return `Corner/edge/center probe for ${method.axes.toUpperCase()} zeroing`
+      return t('Corner/edge/center probe for {{axes}} zeroing', { axes: method.axes.toUpperCase() })
     case 'touchplate':
-      return 'Touch plate for Z-axis zeroing'
+      return t('Touch plate for Z-axis zeroing')
     case 'manual':
-      return `Manually jog to position and set ${method.axes.toUpperCase()} zero`
+      return t('Manually jog to position and set {{axes}} zero', { axes: method.axes.toUpperCase() })
     case 'custom':
-      return 'Custom G-code sequence for zeroing'
+      return t('Custom G-code sequence for zeroing')
     default:
-      return 'Zeroing method'
+      return t('Zeroing method')
   }
 }
 
@@ -77,6 +78,7 @@ export function ZeroingMethodSelectDialog({
   description = 'Choose a zeroing method to use:',
   onSelect,
 }: ZeroingMethodSelectDialogProps) {
+  const { t } = useTranslation()
   // Filter to only enabled methods
   const enabledMethods = methods.filter(m => m.enabled)
 
@@ -101,7 +103,7 @@ export function ZeroingMethodSelectDialog({
         <div className="space-y-2 mt-4">
           {enabledMethods.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              No zeroing methods available. Please configure methods in Settings.
+              {t('No zeroing methods available. Please configure methods in Settings.')}
             </div>
           ) : (
             enabledMethods.map((method) => (
@@ -118,7 +120,7 @@ export function ZeroingMethodSelectDialog({
                   <div className="flex-1 text-left min-w-0">
                     <div className="font-medium">{method.name}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {getMethodDescription(method)}
+                      {getMethodDescription(method, t)}
                     </div>
                   </div>
                   <AxesBadge axes={method.axes} />
@@ -134,7 +136,7 @@ export function ZeroingMethodSelectDialog({
             className="w-full"
             onClick={handleSkip}
           >
-            Skip
+            {t('Skip')}
           </Button>
         </div>
       </DialogContent>

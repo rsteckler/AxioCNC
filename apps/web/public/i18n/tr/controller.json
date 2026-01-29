@@ -1,43 +1,43 @@
 {
   "TinyG": {
     "machineState": {
-      "initializing": "Başlatılıyor",
-      "ready": "Hazır",
-      "alarm": "Alarm",
-      "stop": "Program Durdur",
-      "end": "Program Son",
-      "run": "Çalıştır",
-      "hold": "Beklet",
-      "probe": "Problama",
-      "cycle": "Döngü",
-      "homing": "Sıfırlama",
-      "jog": "Jog",
-      "interlock": "Kilitleme",
-      "shutdown": "Kapat",
-      "panic": "Acelesi"
+      "initializing": "",
+      "ready": "",
+      "alarm": "",
+      "stop": "",
+      "end": "",
+      "run": "",
+      "hold": "",
+      "probe": "",
+      "cycle": "",
+      "homing": "",
+      "jog": "",
+      "interlock": "",
+      "shutdown": "",
+      "panic": ""
     }
   },
   "Grbl": {
     "activeState": {
-      "idle": "Boşta",
-      "run": "Çalıştır",
-      "hold": "Beklet",
-      "door": "Kapı",
-      "home": "Ana",
-      "sleep": "Uyku",
-      "alarm": "Alarm",
-      "check": "Kontrol"
+      "idle": "",
+      "run": "",
+      "hold": "",
+      "door": "",
+      "home": "",
+      "sleep": "",
+      "alarm": "",
+      "check": ""
     }
   },
   "Smoothie": {
     "activeState": {
-      "idle": "Boşta",
-      "run": "Çalıştır",
-      "hold": "Beklet",
-      "door": "Kapı",
-      "home": "Ana",
-      "alarm": "Alarm",
-      "check": "Kontrol"
+      "idle": "",
+      "run": "",
+      "hold": "",
+      "door": "",
+      "home": "",
+      "alarm": "",
+      "check": ""
     }
   }
 }

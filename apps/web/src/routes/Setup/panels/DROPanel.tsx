@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Home, RotateCcw, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -34,6 +35,7 @@ export function DROPanel({
   workPosition = { x: 0, y: 0, z: 0 }, 
   currentWCS = 'G54' 
 }: PanelProps) {
+  const { t } = useTranslation()
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   
   // Load workspace names from extensions API
@@ -134,7 +136,7 @@ export function DROPanel({
     <div className="p-3 space-y-2">
         {/* Workspace selector dropdown */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs text-muted-foreground">Workspace:</span>
+          <span className="text-xs text-muted-foreground">{t('Workspace:')}</span>
           <Select value={workspace} onValueChange={() => {}} disabled>
             <SelectTrigger className="h-8 flex-1">
               <SelectValue>
@@ -160,20 +162,20 @@ export function DROPanel({
         <EditNameDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          title={`Rename Workspace ${workspace}`}
-          label="Workspace name"
+          title={t('Rename Workspace {{workspace}}', { workspace })}
+          label={t('Workspace name')}
           initialValue={currentWorkspace?.name || ''}
           onSave={handleSaveName}
-          placeholder="Workspace name"
+          placeholder={t('Workspace name')}
         />
         
         {/* Column headers */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <div className="w-5" /> {/* Axis label spacer */}
-          <div className="w-8 text-center">Zero</div>
-          <div className="flex-1 text-center">Workspace</div>
-          <div className="w-20 text-center">Machine</div>
-          <div className="w-8 text-center">Go</div>
+          <div className="w-8 text-center">{t('Zero')}</div>
+          <div className="flex-1 text-center">{t('Workspace')}</div>
+          <div className="w-20 text-center">{t('Machine')}</div>
+          <div className="w-8 text-center">{t('Go')}</div>
         </div>
         
         {/* Axis readouts - 4 column layout */}
@@ -237,7 +239,7 @@ export function DROPanel({
             size="sm"
             className="flex-1 w-full h-8"
           >
-            <RotateCcw className="w-3 h-3 mr-1" /> Zero All
+            <RotateCcw className="w-3 h-3 mr-1" /> {t('Zero All')}
           </MachineActionButton>
           <MachineActionButton
             isConnected={isConnected}
@@ -250,7 +252,7 @@ export function DROPanel({
             size="sm"
             className="flex-1 w-full h-8"
           >
-            <Home className="w-3 h-3 mr-1" /> Go to Zero
+            <Home className="w-3 h-3 mr-1" /> {t('Go to Zero')}
           </MachineActionButton>
         </div>
     </div>

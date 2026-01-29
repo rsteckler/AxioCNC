@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Upload, FileCode, Circle, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
@@ -12,6 +13,7 @@ import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { PanelProps } from '../types'
 
 export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition, machineStatus }: PanelProps) {
+  const { t } = useTranslation()
   // Get connected port from controllers (may be null if not connected)
   const { data: controllers } = useGetControllersQuery()
   const connectedPort = connectedPortProp || controllers?.[0]?.port || null
@@ -68,7 +70,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         try {
           const result = event.target?.result as string
           if (!result) {
-            throw new Error('Failed to read file')
+            throw new Error(t('Failed to read file'))
           }
 
           await uploadWorkfile({ name: file.name, gcode: result }).unwrap()
@@ -172,7 +174,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.msg || 'Failed to load file')
+        throw new Error(error.msg || t('Failed to load file'))
       }
 
       console.log('[FilePanel] File sent to backend successfully, waiting for gcode:load event')
@@ -207,7 +209,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       if (!isConnected || !connectedPort) {
         onFlashStatus()
       } else {
-        showErrorNotification('Outline Error', 'Machine position not available')
+        showErrorNotification(t('Outline Error'), t('Machine position not available'))
       }
       return
     }
@@ -224,7 +226,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       const result = await getWorkfileContent(loadedFileName).unwrap()
       
       if (!result.gcode) {
-        throw new Error('G-code content is empty')
+        throw new Error(t('G-code content is empty'))
       }
 
       // Calculate outline
@@ -245,11 +247,11 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       )
 
       if (!outlineResult) {
-        throw new Error('Failed to calculate outline. Need at least 3 XY points in toolpath.')
+        throw new Error(t('Failed to calculate outline. Need at least 3 XY points in toolpath.'))
       }
 
       if (outlineResult.commands.length === 0) {
-        throw new Error('No outline commands generated')
+        throw new Error(t('No outline commands generated'))
       }
 
       console.log('[FilePanel] Outline calculated:', {
@@ -278,7 +280,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       sendGcode(outlineGcode)
 
       // Show start notification immediately
-      showInfoNotification('Outline Started', `Tracing outline with ${outlineResult.hullPoints.length} points`)
+      showInfoNotification(t('Outline Started'), t('Tracing outline with {{count}} points', { count: outlineResult.hullPoints.length }))
       
       // Set a long fallback timeout as last resort safety net only
       // This should NOT fire if detection methods are working properly
@@ -310,7 +312,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         if (outliningStartedRef.current) {
           setIsOutlining(false)
           outliningStartedRef.current = false
-          showInfoNotification('Outline Complete', 'Outline tracing finished (timeout)')
+          showInfoNotification(t('Outline Complete'), t('Outline tracing finished (timeout)'))
         }
         outlineFallbackTimeoutRef.current = null
       }, fallbackTimeout)
@@ -319,9 +321,9 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
 
     } catch (error) {
       console.error('[FilePanel] Outline error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate outline'
+      const errorMessage = error instanceof Error ? error.message : t('Failed to generate outline')
       setOutlineError(errorMessage)
-      showErrorNotification('Outline Error', errorMessage)
+      showErrorNotification(t('Outline Error'), errorMessage)
       setIsOutlining(false)
       outliningStartedRef.current = false
       // Clear fallback timeout on error
@@ -338,7 +340,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       if (!isConnected || !connectedPort) {
         onFlashStatus()
       } else {
-        showErrorNotification('Outline Error', 'Machine position not available')
+        showErrorNotification(t('Outline Error'), t('Machine position not available'))
       }
       return
     }
@@ -392,7 +394,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       if (outliningStartedRef.current) {
         setIsOutlining(false)
         outliningStartedRef.current = false
-        showInfoNotification('Outline Complete', 'Outline tracing finished')
+        showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
       }
       
       previousMachineStatusRef.current = currentStatus
@@ -417,7 +419,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       if (outliningStartedRef.current) {
         setIsOutlining(false)
         outliningStartedRef.current = false
-        showInfoNotification('Outline Complete', 'Outline tracing finished')
+        showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
       }
       
       previousMachineStatusRef.current = currentStatus
@@ -463,7 +465,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
           
           setIsOutlining(false)
           outliningStartedRef.current = false
-          showInfoNotification('Outline Complete', 'Outline tracing finished')
+          showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
         }
       }
     }
@@ -543,13 +545,13 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         {isUploading ? (
           <>
             <Loader2 className="w-8 h-8 mx-auto text-primary mb-2 animate-spin" />
-            <div className="text-sm text-muted-foreground">Uploading...</div>
+            <div className="text-sm text-muted-foreground">{t('Uploading...')}</div>
           </>
         ) : (
           <>
             <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
             <div className="text-sm text-muted-foreground">
-              Drop G-code file or click to browse
+              {t('Drop G-code file or click to browse')}
             </div>
           </>
         )}
@@ -558,7 +560,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       {/* Loaded file card */}
       <div className="bg-muted/30 rounded border border-border p-3 space-y-2">
         <div className="text-xs font-medium text-muted-foreground mb-1">
-          Loaded File
+          {t('Loaded File')}
         </div>
         {loadedFileName ? (
           <>
@@ -591,11 +593,11 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
                 >
                   {isOutlining ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" /> Tracing...
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" /> {t('Tracing...')}
                     </>
                   ) : (
                     <>
-                      <Circle className="w-4 h-4 mr-1" /> Outline
+                      <Circle className="w-4 h-4 mr-1" /> {t('Outline')}
                     </>
                   )}
                 </Button>
@@ -610,7 +612,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
           </>
         ) : (
           <div className="text-sm text-muted-foreground text-center py-1">
-            No file loaded
+            {t('No file loaded')}
           </div>
         )}
       </div>
@@ -618,7 +620,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       {/* File list */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
-          Files ({files.length})
+          {t('Files ({{count}})', { count: files.length })}
         </div>
         <OverlayScrollbarsComponent 
           className="max-h-[400px]"
@@ -631,11 +633,11 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
             {isLoadingFiles ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
                 <Loader2 className="w-5 h-5 mx-auto mb-2 animate-spin" />
-                Loading files...
+                {t('Loading files...')}
               </div>
             ) : files.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                No files uploaded yet
+                {t('No files uploaded yet')}
               </div>
             ) : (
               files.map((file) => {
@@ -658,14 +660,14 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
                           <FileCode className="w-4 h-4 text-primary flex-shrink-0" />
                           <span className="font-medium truncate">{file.filename}</span>
                           {isLoaded && (
-                            <span className="text-xs text-primary font-medium">Loaded</span>
+                            <span className="text-xs text-primary font-medium">{t('Loaded')}</span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground space-y-0.5">
                           <div>
-                            {file.lines.toLocaleString()} lines
+                            {t('{{count}} lines', { count: file.lines })}
                             {file.tools.length > 0 && (
-                              <> • Tools: T{file.tools.join(', T')}</>
+                              <> • {t('Tools:')} T{file.tools.join(', T')}</>
                             )}
                           </div>
                           <div className="flex items-center justify-between">
@@ -687,19 +689,19 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       <ConfirmationDialog
         open={showOutlineConfirm}
         onOpenChange={setShowOutlineConfirm}
-        title="Confirm Outline Tracing"
+        title={t('Confirm Outline Tracing')}
         description={
           <>
             <p className="mb-2">
-              The tool will trace the outline of the loaded G-code at Z=-5 (machine coordinates).
+              {t('The tool will trace the outline of the loaded G-code at Z=-5 (machine coordinates).')}
             </p>
             <p className="font-medium">
-              Please ensure nothing is in the way of the tool path. The spindle will remain off during the outline.
+              {t('Please ensure nothing is in the way of the tool path. The spindle will remain off during the outline.')}
             </p>
           </>
         }
-        confirmLabel="Start Outline"
-        cancelLabel="Cancel"
+        confirmLabel={t('Start Outline')}
+        cancelLabel={t('Cancel')}
         onConfirm={performOutline}
       />
     </div>

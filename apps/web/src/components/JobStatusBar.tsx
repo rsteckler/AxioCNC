@@ -1,4 +1,5 @@
 import { useCallback, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Play, Square, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,7 @@ export function JobStatusBar({
   hasFile = false,
   onStartWizard,
 }: JobStatusBarProps) {
+  const { t } = useTranslation()
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const { data: settings } = useGetSettingsQuery()
@@ -234,28 +236,28 @@ export function JobStatusBar({
   // Determine why play button is disabled
   const getPlayDisabledReason = (): string | null => {
     if (jobStatus === 'running') {
-      return 'Job is already running'
+      return t('Job is already running')
     }
     if (!hasFile) {
-      return 'No file loaded'
+      return t('No file loaded')
     }
     if (!isConnected) {
-      return 'Machine not connected'
+      return t('Machine not connected')
     }
     if (machineStatus === 'alarm') {
-      return 'Machine is in alarm state'
+      return t('Machine is in alarm state')
     }
     if (machineStatus === 'hold') {
-      return 'Machine is in hold state'
+      return t('Machine is in hold state')
     }
     if (machineStatus === 'not_connected') {
-      return 'Machine not connected'
+      return t('Machine not connected')
     }
     if (!isReadyState) {
-      return 'Machine is not ready'
+      return t('Machine is not ready')
     }
     if (disabled) {
-      return 'Action disabled'
+      return t('Action disabled')
     }
     return null
   }
@@ -268,26 +270,26 @@ export function JobStatusBar({
       case 'running':
         return (
           <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-            Running
+            {t('Running')}
           </Badge>
         )
       case 'paused':
         return (
           <Badge variant="default" className="bg-yellow-600 hover:bg-yellow-700 animate-slow-pulse">
-            Paused
+            {t('Paused')}
           </Badge>
         )
       case 'complete': {
         const completionReason = completion?.reason || 'completed'
         const badgeText = completionReason === 'completed' 
-          ? 'Complete' 
+          ? t('Complete')
           : completionReason === 'stopped'
-          ? 'Stopped'
+          ? t('Stopped')
           : completionReason === 'reset'
-          ? 'Reset'
+          ? t('Reset')
           : completionReason === 'error'
-          ? 'Error'
-          : 'Complete'
+          ? t('Error')
+          : t('Complete')
         
         const badgeColor = completionReason === 'completed'
           ? 'bg-blue-600 hover:bg-blue-700'
@@ -312,12 +314,12 @@ export function JobStatusBar({
                   <p className="font-medium">{badgeText}</p>
                   {completionTime && (
                     <p className="text-xs text-muted-foreground">
-                      Completed at {completionTime}
+                      {t('Completed at {{time}}', { time: completionTime })}
                     </p>
                   )}
                   {completion?.senderState && (
                     <p className="text-xs text-muted-foreground">
-                      {completion.senderState.received} / {completion.senderState.total} lines
+                      {completion.senderState.received} / {completion.senderState.total} {t('lines')}
                     </p>
                   )}
                 </div>
@@ -330,7 +332,7 @@ export function JobStatusBar({
       default:
         return (
           <Badge variant="secondary">
-            Not Started
+            {t('Not Started')}
           </Badge>
         )
     }
@@ -341,16 +343,16 @@ export function JobStatusBar({
       <ConfirmationDialog
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
-        title="Start Job Without Homing?"
+        title={t('Start Job Without Homing?')}
         description={
           <>
-            The machine has not been homed. Machine coordinates may not be accurate, which could cause the tool to move to unexpected positions.
+            {t('The machine has not been homed. Machine coordinates may not be accurate, which could cause the tool to move to unexpected positions.')}
             <br /><br />
-            Are you sure you want to start the job?
+            {t('Are you sure you want to start the job?')}
           </>
         }
-        confirmLabel="Start Anyway"
-        cancelLabel="Cancel"
+        confirmLabel={t('Start Anyway')}
+        cancelLabel={t('Cancel')}
         onConfirm={handleStartConfirmed}
         variant="destructive"
       />
@@ -360,7 +362,7 @@ export function JobStatusBar({
       <div className="w-px h-6 bg-border mx-2" />
       
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground mr-2">Job:</span>
+        <span className="text-sm text-muted-foreground mr-2">{t('Job:')}</span>
         {getStatusBadge()}
         
         <TooltipProvider>
@@ -377,7 +379,7 @@ export function JobStatusBar({
                       disabled={isPlayDisabled}
                       className="h-7"
                     >
-                      <Play className="w-4 h-4 mr-1" /> Play
+                      <Play className="w-4 h-4 mr-1" /> {t('Play')}
                     </Button>
                   </span>
                 </TooltipTrigger>
@@ -393,7 +395,7 @@ export function JobStatusBar({
                 disabled={isPlayDisabled}
                 className="h-7"
               >
-                <Play className="w-4 h-4 mr-1" /> Play
+                <Play className="w-4 h-4 mr-1" /> {t('Play')}
               </Button>
             )}
           
@@ -405,7 +407,7 @@ export function JobStatusBar({
             disabled={disabled || jobStatus !== 'running'}
             className="h-7"
           >
-            <Pause className="w-4 h-4 mr-1" /> Pause
+            <Pause className="w-4 h-4 mr-1" /> {t('Pause')}
           </Button>
           
             {/* Stop button - enabled when running or paused */}
@@ -416,7 +418,7 @@ export function JobStatusBar({
               disabled={disabled || (jobStatus !== 'running' && jobStatus !== 'paused')}
               className="h-7"
             >
-              <Square className="w-4 h-4 mr-1" /> Stop
+              <Square className="w-4 h-4 mr-1" /> {t('Stop')}
             </Button>
           </div>
         </TooltipProvider>

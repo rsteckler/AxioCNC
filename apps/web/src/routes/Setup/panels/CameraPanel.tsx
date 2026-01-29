@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGetCamerasQuery, useGetStreamMetadataQuery, useGetSettingsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
 import type { CameraConfig } from '../../Settings/sections/CameraSection'
@@ -6,6 +7,7 @@ import Hls from 'hls.js'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function CameraPanel(_props: PanelProps) {
+  const { t } = useTranslation()
   const { data: camerasData, isLoading: isLoadingCameras } = useGetCamerasQuery(undefined, {
     // Refetch every 5 seconds to catch new cameras
     pollingInterval: 5000,
@@ -99,7 +101,7 @@ export function CameraPanel(_props: PanelProps) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Loading cameras...
+          {t('Loading cameras...')}
         </div>
       </div>
     )
@@ -109,7 +111,7 @@ export function CameraPanel(_props: PanelProps) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          No enabled camera found. Configure a camera in Settings.
+          {t('No enabled camera found. Configure a camera in Settings.')}
         </div>
       </div>
     )
@@ -119,7 +121,7 @@ export function CameraPanel(_props: PanelProps) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Loading stream...
+          {t('Loading stream...')}
         </div>
       </div>
     )
@@ -129,7 +131,7 @@ export function CameraPanel(_props: PanelProps) {
     return (
       <div className="p-3">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Stream not available. Check camera configuration.
+          {t('Stream not available. Check camera configuration.')}
         </div>
       </div>
     )
@@ -150,7 +152,7 @@ export function CameraPanel(_props: PanelProps) {
         ) : (
           <img
             src={streamMetadata.src}
-            alt={`${enabledCamera.name} Feed`}
+            alt={t('{{name}} Feed', { name: enabledCamera.name })}
             className="w-full h-full object-contain"
             style={{ transform: transformStyle }}
           />

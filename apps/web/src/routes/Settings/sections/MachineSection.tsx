@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Input } from '@/components/ui/input'
@@ -41,6 +42,7 @@ export function MachineSection({
   config,
   onConfigChange,
 }: MachineSectionProps) {
+  const { t } = useTranslation()
   // Convert limits to dimensions + corner for UI display
   const { dimensions, corner: inferredCorner } = useMemo(() => {
     if (!config.limits) {
@@ -150,27 +152,27 @@ export function MachineSection({
   return (
     <SettingsSection
       id="machine"
-      title="Machine"
-      description="Configure your CNC machine's work area and limits"
+      title={t('Machine')}
+      description={t('Configure your CNC machine\'s work area and limits')}
     >
       {/* Machine Preset Selector */}
       <SettingsField
-        label="Machine Preset"
-        description="Select your machine to auto-fill recommended settings, or choose Custom to enter values manually"
+        label={t('Machine Preset')}
+        description={t('Select your machine to auto-fill recommended settings, or choose Custom to enter values manually')}
       >
         {presetsLoading ? (
-          <div className="text-sm text-muted-foreground">Loading presets...</div>
+          <div className="text-sm text-muted-foreground">{t('Loading presets...')}</div>
         ) : (
           <Select 
             value={matchingPreset?.id || 'custom'} 
             onValueChange={handlePresetSelect}
           >
             <SelectTrigger className="max-w-sm">
-              <SelectValue placeholder="Select a machine..." />
+              <SelectValue placeholder={t('Select a machine...')} />
             </SelectTrigger>
             <SelectContent className="max-h-80">
               <SelectItem value="custom">
-                <span className="text-muted-foreground">Custom / Manual Entry</span>
+                <span className="text-muted-foreground">{t('Custom / Manual Entry')}</span>
               </SelectItem>
               {Object.entries(PRESETS_BY_MANUFACTURER).map(([manufacturer, manufacturerPresets]) => (
                 <div key={manufacturer}>
@@ -197,7 +199,7 @@ export function MachineSection({
       {/* Machine Presets Tip */}
       <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
         <p className="text-sm text-blue-900 dark:text-blue-100 mb-2">
-          Don't see your machine listed? Help us build out the machine presets by sharing your machine specs.
+          {t('Don\'t see your machine listed? Help us build out the machine presets by sharing your machine specs.')}
         </p>
         <a
           href="https://github.com/rsteckler/AxioCNC/issues/2"
@@ -206,19 +208,19 @@ export function MachineSection({
           className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          Share your machine specs
+          {t('Share your machine specs')}
         </a>
       </div>
 
       {/* Machine Name */}
       <SettingsField
-        label="Machine Name"
-        description="A friendly name for your CNC machine"
+        label={t('Machine Name')}
+        description={t('A friendly name for your CNC machine')}
       >
         <Input
           value={config.name ?? ''}
           onChange={(e) => onConfigChange({ name: e.target.value })}
-          placeholder="My CNC Machine"
+          placeholder={t('My CNC Machine')}
           className="max-w-sm"
         />
       </SettingsField>
@@ -226,9 +228,9 @@ export function MachineSection({
       {/* Work Area Dimensions */}
       <div className="space-y-4 pt-2">
         <div>
-          <h4 className="font-medium text-sm mb-1">Work Area Dimensions</h4>
+          <h4 className="font-medium text-sm mb-1">{t('Work Area Dimensions')}</h4>
           <p className="text-sm text-muted-foreground">
-            Define the physical dimensions of your machine's work area in millimeters
+            {t('Define the physical dimensions of your machine\'s work area in millimeters')}
           </p>
         </div>
 
@@ -239,11 +241,11 @@ export function MachineSection({
               <div className="w-7 h-7 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center font-bold text-sm">
                 X
               </div>
-              <span className="font-medium text-sm">Width (X)</span>
+              <span className="font-medium text-sm">{t('Width (X)')}</span>
             </div>
             <div className="space-y-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Width (mm)</Label>
+                <Label className="text-xs text-muted-foreground">{t('Width (mm)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -262,11 +264,11 @@ export function MachineSection({
               <div className="w-7 h-7 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center font-bold text-sm">
                 Y
               </div>
-              <span className="font-medium text-sm">Depth (Y)</span>
+              <span className="font-medium text-sm">{t('Depth (Y)')}</span>
             </div>
             <div className="space-y-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Depth (mm)</Label>
+                <Label className="text-xs text-muted-foreground">{t('Depth (mm)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -285,11 +287,11 @@ export function MachineSection({
               <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm">
                 Z
               </div>
-              <span className="font-medium text-sm">Height (Z)</span>
+              <span className="font-medium text-sm">{t('Height (Z)')}</span>
             </div>
             <div className="space-y-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Height (mm)</Label>
+                <Label className="text-xs text-muted-foreground">{t('Height (mm)')}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -306,9 +308,9 @@ export function MachineSection({
         {/* Homing Corner Selector */}
         <div className="space-y-3 pt-2">
           <div>
-            <h4 className="font-medium text-sm mb-1">Homing Position</h4>
+            <h4 className="font-medium text-sm mb-1">{t('Homing Position')}</h4>
             <p className="text-sm text-muted-foreground mb-3">
-              Select which corner the machine moves to when homed. The machine will be at this corner when X=0, Y=0 (and Z at maximum height).
+              {t('Select which corner the machine moves to when homed. The machine will be at this corner when X=0, Y=0 (and Z at maximum height).')}
             </p>
           </div>
           
@@ -324,7 +326,7 @@ export function MachineSection({
                   onClick={() => handleCornerChange('back-left')}
                   className="h-20 flex items-center justify-center"
                 >
-                  <div className="text-sm font-medium">Back Left</div>
+                  <div className="text-sm font-medium">{t('Back Left')}</div>
                 </Button>
                 
                 {/* Back Right */}
@@ -335,7 +337,7 @@ export function MachineSection({
                   onClick={() => handleCornerChange('back-right')}
                   className="h-20 flex items-center justify-center"
                 >
-                  <div className="text-sm font-medium">Back Right</div>
+                  <div className="text-sm font-medium">{t('Back Right')}</div>
                 </Button>
                 
                 {/* Front Left */}
@@ -346,7 +348,7 @@ export function MachineSection({
                   onClick={() => handleCornerChange('front-left')}
                   className="h-20 flex items-center justify-center"
                 >
-                  <div className="text-sm font-medium">Front Left</div>
+                  <div className="text-sm font-medium">{t('Front Left')}</div>
                 </Button>
                 
                 {/* Front Right */}
@@ -357,7 +359,7 @@ export function MachineSection({
                   onClick={() => handleCornerChange('front-right')}
                   className="h-20 flex items-center justify-center"
                 >
-                  <div className="text-sm font-medium">Front Right</div>
+                  <div className="text-sm font-medium">{t('Front Right')}</div>
                 </Button>
               </div>
             </div>
@@ -368,9 +370,9 @@ export function MachineSection({
       {/* Controller Behavior */}
       <div className="space-y-3 pt-4">
         <SettingsField
-          label="Auto-switch to Monitor when jobs start"
-          description="Automatically navigate to the Monitor tab when starting a job from Setup"
-          tooltip="When enabled and you're in Setup, starting a job will automatically switch to the Monitor tab before the job begins running."
+          label={t('Auto-switch to Monitor when jobs start')}
+          description={t('Automatically navigate to the Monitor tab when starting a job from Setup')}
+          tooltip={t('When enabled and you\'re in Setup, starting a job will automatically switch to the Monitor tab before the job begins running.')}
           horizontal
         >
           <Switch
@@ -380,9 +382,9 @@ export function MachineSection({
         </SettingsField>
 
         <SettingsField
-          label="Tool Spinup Delay"
-          description="Delay motion to allow the tool to spin up when running or resuming a program"
-          tooltip="When enabled, the controller will wait for the specified number of seconds before starting motion after a program starts or resumes. This allows the spindle/router to reach full speed before cutting begins."
+          label={t('Tool Spinup Delay')}
+          description={t('Delay motion to allow the tool to spin up when running or resuming a program')}
+          tooltip={t('When enabled, the controller will wait for the specified number of seconds before starting motion after a program starts or resumes. This allows the spindle/router to reach full speed before cutting begins.')}
           horizontal
         >
           <Switch
@@ -393,9 +395,9 @@ export function MachineSection({
 
         {config.toolSpinupDelayEnabled && (
           <SettingsField
-            label="Delay Time"
-            description="Time in seconds to wait before starting motion"
-            tooltip="The number of seconds to delay motion after starting or resuming a program. Typical values are 1-5 seconds depending on your spindle/router startup time."
+            label={t('Delay Time')}
+            description={t('Time in seconds to wait before starting motion')}
+            tooltip={t('The number of seconds to delay motion after starting or resuming a program. Typical values are 1-5 seconds depending on your spindle/router startup time.')}
           >
             <div className="flex items-center gap-2 max-w-xs">
               <Input
@@ -410,7 +412,7 @@ export function MachineSection({
                 }}
                 className="h-9"
               />
-              <span className="text-sm text-muted-foreground whitespace-nowrap">seconds</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">{t('seconds')}</span>
             </div>
           </SettingsField>
         )}

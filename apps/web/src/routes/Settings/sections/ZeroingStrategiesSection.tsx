@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import {
@@ -47,26 +48,26 @@ const METHOD_ICONS: Record<ZeroingMethodType, React.ReactNode> = {
   'custom': <Settings2 className="w-4 h-4" />,
 }
 
-// Scenario metadata
-const SCENARIOS: Record<ZeroingScenario, {
+// Scenario metadata - will be created with translations
+const createScenarios = (t: (key: string) => string): Record<ZeroingScenario, {
   label: string
   description: string
   icon: React.ReactNode
   tooltip: string
-}> = {
+}> => ({
   'initial-setup': {
-    label: 'Initial Job Setup',
-    description: 'When starting a new job',
+    label: t('Initial Job Setup'),
+    description: t('When starting a new job'),
     icon: <Play className="w-5 h-5" />,
-    tooltip: 'The zeroing method used when you first set up a job before running. This typically includes X, Y, and Z zeroing.',
+    tooltip: t('The zeroing method used when you first set up a job before running. This typically includes X, Y, and Z zeroing.'),
   },
   'tool-change': {
-    label: 'Mid-job Tool Change',
-    description: 'When M6 is encountered',
+    label: t('Mid-job Tool Change'),
+    description: t('When M6 is encountered'),
     icon: <RefreshCw className="w-5 h-5" />,
-    tooltip: 'The zeroing method used when a tool change (M6) command is encountered during a job. Usually only Z needs to be re-zeroed.',
+    tooltip: t('The zeroing method used when a tool change (M6) command is encountered during a job. Usually only Z needs to be re-zeroed.'),
   },
-}
+})
 
 // Axes badge
 function AxesBadge({ axes }: { axes: string }) {
@@ -90,11 +91,13 @@ function StrategySelect({
   value,
   methods,
   onChange,
+  t,
 }: {
   value: StrategyOption
   methods: ZeroingMethod[]
   onChange: (value: StrategyOption) => void
   scenario: ZeroingScenario
+  t: (key: string) => string
 }) {
   // Filter to only enabled methods
   const enabledMethods = methods.filter(m => m.enabled)
@@ -109,12 +112,12 @@ function StrategySelect({
           {value === 'ask' && (
             <span className="flex items-center gap-2">
               <HelpCircle className="w-4 h-4 text-muted-foreground" />
-              Ask Each Time
+              {t('Ask Each Time')}
             </span>
           )}
           {value === 'skip' && (
             <span className="flex items-center gap-2 text-muted-foreground">
-              Skip (No Zeroing)
+              {t('Skip (No Zeroing)')}
             </span>
           )}
           {selectedMethod && (
@@ -125,7 +128,7 @@ function StrategySelect({
             </span>
           )}
           {!value && (
-            <span className="text-muted-foreground">Select a method...</span>
+            <span className="text-muted-foreground">{t('Select a method...')}</span>
           )}
         </SelectValue>
       </SelectTrigger>
@@ -134,14 +137,14 @@ function StrategySelect({
         <SelectItem value="ask">
           <span className="flex items-center gap-2">
             <HelpCircle className="w-4 h-4 text-muted-foreground" />
-            Ask Each Time
+            {t('Ask Each Time')}
           </span>
         </SelectItem>
         
         {/* Skip option - most relevant for after-pause */}
         <SelectItem value="skip">
           <span className="flex items-center gap-2 text-muted-foreground">
-            Skip (No Zeroing)
+            {t('Skip (No Zeroing)')}
           </span>
         </SelectItem>
         
@@ -164,9 +167,9 @@ function StrategySelect({
         {/* Empty state */}
         {enabledMethods.length === 0 && (
           <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-            No zeroing methods configured.
+            {t('No zeroing methods configured.')}
             <br />
-            Add methods in the section above.
+            {t('Add methods in the section above.')}
           </div>
         )}
       </SelectContent>
@@ -179,11 +182,14 @@ export function ZeroingStrategiesSection({
   availableMethods,
   onConfigChange,
 }: ZeroingStrategiesSectionProps) {
+  const { t } = useTranslation()
+  const SCENARIOS = createScenarios(t)
+
   return (
     <SettingsSection
       id="zeroing-strategies"
-      title="Zeroing Strategies"
-      description="Choose which zeroing method to use for different scenarios"
+      title={t('Zeroing Strategies')}
+      description={t('Choose which zeroing method to use for different scenarios')}
     >
       {/* Initial Setup */}
       <SettingsField
@@ -196,6 +202,7 @@ export function ZeroingStrategiesSection({
           methods={availableMethods}
           onChange={(value) => onConfigChange({ initialSetup: value })}
           scenario="initial-setup"
+          t={t}
         />
       </SettingsField>
 
@@ -211,12 +218,13 @@ export function ZeroingStrategiesSection({
             methods={availableMethods}
             onChange={(value) => onConfigChange({ toolChange: value })}
             scenario="tool-change"
+            t={t}
           />
           {config.toolChange === 'skip' && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-red-900 dark:text-red-100">
-                <strong>Warning:</strong> AxioCNC will not pause when a tool change is requested. The tool change command (M6) will be passed directly to the machine instead. This is not recommended unless the machine has a fully automated tool change system.
+                <strong>{t('Warning:')}</strong> {t('AxioCNC will not pause when a tool change is requested. The tool change command (M6) will be passed directly to the machine instead. This is not recommended unless the machine has a fully automated tool change system.')}
               </p>
             </div>
           )}
@@ -226,8 +234,7 @@ export function ZeroingStrategiesSection({
       {/* Helper text */}
       <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
         <p>
-          <strong>Tip:</strong> For most setups, use a full XYZ probe (like BitZero) for initial setup, 
-          and a Z-only probe (like BitSetter or touch plate) for tool changes.
+          <strong>{t('Tip:')}</strong> {t('For most setups, use a full XYZ probe (like BitZero) for initial setup, and a Z-only probe (like BitSetter or touch plate) for tool changes.')}
         </p>
       </div>
     </SettingsSection>

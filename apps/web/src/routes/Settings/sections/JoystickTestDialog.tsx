@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -54,18 +55,19 @@ interface GamepadState {
 }
 
 // Get the label for a CNC action
-function getActionLabel(action: CncAction): string {
-  return CNC_ACTIONS.find((a: { value: CncAction; label: string }) => a.value === action)?.label || 'None'
+function getActionLabel(action: CncAction, t: (key: string) => string): string {
+  const label = CNC_ACTIONS.find((a: { value: CncAction; label: string }) => a.value === action)?.label
+  return label ? t(label) : t('None')
 }
 
 // Get the label for an analog mapping
-function getAnalogLabel(mapping: AnalogMapping): string {
+function getAnalogLabel(mapping: AnalogMapping, t: (key: string) => string): string {
   switch (mapping) {
-    case 'jog_x': return 'Jog X'
-    case 'jog_y': return 'Jog Y'
-    case 'jog_z': return 'Jog Z'
-    case 'feed_rate': return 'Feed Rate'
-    default: return 'None'
+    case 'jog_x': return t('Jog X')
+    case 'jog_y': return t('Jog Y')
+    case 'jog_z': return t('Jog Z')
+    case 'feed_rate': return t('Feed Rate')
+    default: return t('None')
   }
 }
 
@@ -73,7 +75,8 @@ function getAnalogLabel(mapping: AnalogMapping): string {
 function generateCommand(
   config: JoystickConfig,
   axes: number[],
-  buttons: boolean[]
+  buttons: boolean[],
+  t: (key: string) => string
 ): string[] {
   const commands: string[] = []
   
@@ -82,7 +85,7 @@ function generateCommand(
     if (pressed) {
       const action = config.buttonMappings[index]
       if (action && action !== 'none') {
-        commands.push(getActionLabel(action))
+        commands.push(getActionLabel(action, t))
       }
     }
   })
@@ -94,28 +97,28 @@ function generateCommand(
     if (axes[7] < -0.5) {
       const action = config.buttonMappings[12]
       if (action && action !== 'none') {
-        commands.push(`D-Pad Up: ${getActionLabel(action)}`)
+        commands.push(`${t('D-Pad Up')}: ${getActionLabel(action, t)}`)
       }
     }
     // D-pad Down (button 16) = axis 7 > 0.5
     if (axes[7] > 0.5) {
       const action = config.buttonMappings[16]
       if (action && action !== 'none') {
-        commands.push(`D-Pad Down: ${getActionLabel(action)}`)
+        commands.push(`${t('D-Pad Down')}: ${getActionLabel(action, t)}`)
       }
     }
     // D-pad Left (button 17) = axis 6 < -0.5
     if (axes[6] < -0.5) {
       const action = config.buttonMappings[17]
       if (action && action !== 'none') {
-        commands.push(`D-Pad Left: ${getActionLabel(action)}`)
+        commands.push(`${t('D-Pad Left')}: ${getActionLabel(action, t)}`)
       }
     }
     // D-pad Right (button 15) = axis 6 > 0.5
     if (axes[6] > 0.5) {
       const action = config.buttonMappings[15]
       if (action && action !== 'none') {
-        commands.push(`D-Pad Right: ${getActionLabel(action)}`)
+        commands.push(`${t('D-Pad Right')}: ${getActionLabel(action, t)}`)
       }
     }
   }
@@ -147,7 +150,7 @@ function generateCommand(
         }
         
         if (speed > 0) {
-          commands.push(`${getAnalogLabel(mapping)} ${direction} @ ${speed} mm/min`)
+          commands.push(`${getAnalogLabel(mapping, t)} ${direction} @ ${speed} ${t('mm/min')}`)
         }
       }
     }
@@ -162,6 +165,7 @@ export function JoystickTestDialog({
   config,
   gamepadId,
 }: JoystickTestDialogProps) {
+  const { t } = useTranslation()
   const [gamepadState, setGamepadState] = useState<GamepadState>({
     connected: false,
     axes: [0, 0, 0, 0, 0, 0, 0, 0], // All axes start at 0 (LT/RT are axes 4 and 5)
@@ -461,7 +465,7 @@ export function JoystickTestDialog({
   const leftXY = circleToSquare(leftXYClamped.x, leftXYClamped.y)
   const rightXY = circleToSquare(rightXYClamped.x, rightXYClamped.y)
 
-  const commands = generateCommand(config, gamepadState.axes, gamepadState.buttons)
+  const commands = generateCommand(config, gamepadState.axes, gamepadState.buttons, t)
   
   // Note: Visual indicator positions are now updated directly in pollGamepad and handleGamepadState
   // to avoid lag from useEffect dependencies. This useEffect is kept as a fallback for initial render.
@@ -483,10 +487,10 @@ export function JoystickTestDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gamepad2 className="w-5 h-5" />
-            Gamepad Test Mode
+            {t('Gamepad Test Mode')}
           </DialogTitle>
           <DialogDescription>
-            Press buttons and move sticks to see real-time input
+            {t('Press buttons and move sticks to see real-time input')}
           </DialogDescription>
         </DialogHeader>
 
@@ -497,7 +501,7 @@ export function JoystickTestDialog({
             gamepadState.connected ? 'bg-green-500' : 'bg-red-500'
           )} />
           <span className="text-sm">
-            {gamepadState.connected ? 'Connected' : 'Disconnected - Press any button'}
+            {gamepadState.connected ? t('Connected') : t('Disconnected - Press any button')}
           </span>
           {gamepadState.connected && (
             <Badge variant="secondary" className="ml-auto">
@@ -512,7 +516,7 @@ export function JoystickTestDialog({
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-4">
               <CircleDot className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">Left Stick</span>
+              <span className="font-medium">{t('Left Stick')}</span>
             </div>
             
             {/* Visual stick representation */}
@@ -550,7 +554,7 @@ export function JoystickTestDialog({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Maps to: {getAnalogLabel(config.analogMappings.left_x)} / {getAnalogLabel(config.analogMappings.left_y)}
+                {t('Maps to')}: {getAnalogLabel(config.analogMappings.left_x, t)} / {getAnalogLabel(config.analogMappings.left_y, t)}
               </div>
             </div>
           </div>
@@ -559,7 +563,7 @@ export function JoystickTestDialog({
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-4">
               <CircleDot className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">Right Stick</span>
+              <span className="font-medium">{t('Right Stick')}</span>
             </div>
             
             {/* Visual stick representation */}
@@ -597,7 +601,7 @@ export function JoystickTestDialog({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Maps to: {getAnalogLabel(config.analogMappings.right_x)} / {getAnalogLabel(config.analogMappings.right_y)}
+                {t('Maps to')}: {getAnalogLabel(config.analogMappings.right_x, t)} / {getAnalogLabel(config.analogMappings.right_y, t)}
               </div>
             </div>
           </div>
@@ -633,7 +637,7 @@ export function JoystickTestDialog({
 
         {/* Buttons Grid */}
         <div className="mb-6">
-          <h4 className="text-sm font-medium mb-3">Buttons</h4>
+          <h4 className="text-sm font-medium mb-3">{t('Buttons')}</h4>
           <div className="grid grid-cols-4 gap-2">
             {gamepadButtons.filter((b: { isDpad?: boolean; index: number; name: string; icon: React.ReactNode }) => !('isDpad' in b) || !b.isDpad).map((button: { index: number; name: string; icon: React.ReactNode }) => {
               const isPressed = gamepadState.buttons[button.index]
@@ -660,7 +664,7 @@ export function JoystickTestDialog({
                       'text-[9px] mt-1 truncate',
                       isPressed ? 'text-primary-foreground/80' : 'text-muted-foreground'
                     )}>
-                      {getActionLabel(action)}
+                      {getActionLabel(action, t)}
                     </div>
                   )}
                 </div>
@@ -670,7 +674,7 @@ export function JoystickTestDialog({
           
           {/* D-pad buttons on a single row */}
           <div className="mt-4">
-            <h5 className="text-xs font-medium text-muted-foreground mb-2">D-Pad</h5>
+            <h5 className="text-xs font-medium text-muted-foreground mb-2">{t('D-Pad')}</h5>
             <div className="grid grid-cols-4 gap-2">
               {gamepadButtons.filter((b: { isDpad?: boolean; index: number; name: string; icon: React.ReactNode }) => 'isDpad' in b && b.isDpad).map((button: { index: number; name: string; icon: React.ReactNode }) => {
                 // D-pad button detection depends on connection location
@@ -719,7 +723,7 @@ export function JoystickTestDialog({
                         'text-[9px] mt-1 truncate',
                         isPressed ? 'text-primary-foreground/80' : 'text-muted-foreground'
                       )}>
-                        {getActionLabel(action)}
+                        {getActionLabel(action, t)}
                       </div>
                     )}
                   </div>
@@ -731,7 +735,7 @@ export function JoystickTestDialog({
 
         {/* Active Commands */}
         <div className="p-4 rounded-lg border bg-muted/30">
-          <h4 className="text-sm font-medium mb-2">Active Commands</h4>
+          <h4 className="text-sm font-medium mb-2">{t('Active Commands')}</h4>
           {commands.length > 0 ? (
             <div className="space-y-1">
               {commands.map((cmd, i) => (
@@ -742,7 +746,7 @@ export function JoystickTestDialog({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No input detected. Press buttons or move sticks...
+              {t('No input detected. Press buttons or move sticks...')}
             </p>
           )}
         </div>

@@ -1,5 +1,6 @@
 import concaveman from 'concaveman'
 import { processGCode } from './gcodeVisualizer'
+import i18n from '@/i18n'
 
 /**
  * 2D point interface
@@ -132,7 +133,7 @@ export function calculateConcaveHull(
   options: { concavity?: number; minPointDistance?: number } = {}
 ): Point2D[] {
   if (points.length < 3) {
-    throw new Error('Need at least 3 points to calculate a hull')
+    throw new Error(i18n.t('Need at least 3 points to calculate a hull'))
   }
 
   const concavity = options.concavity ?? 5

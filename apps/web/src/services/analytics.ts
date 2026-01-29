@@ -125,7 +125,7 @@ export const track = (eventName: string, properties?: Record<string, unknown>): 
     
     // Filter out null values (Aptabase doesn't accept null)
     const filtered = sanitized ? Object.fromEntries(
-      Object.entries(sanitized).filter(([_, value]) => value !== null)
+      Object.entries(sanitized).filter(([, value]) => value !== null)
     ) as Record<string, string | number> : undefined
     
     // Track event (non-blocking)

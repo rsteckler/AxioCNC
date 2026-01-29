@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { useDebouncedCallback } from '@/hooks/useDebounce'
@@ -39,7 +40,7 @@ import { useTheme } from '@/components/theme-provider'
 import { store } from '@/store'
 import { api } from '@/services/api'
 import { SettingsNav } from './SettingsNav'
-import { settingsSections } from './settingsSections'
+import { useSettingsSections } from './settingsSections'
 import { 
   GeneralSection, 
   AppearanceSection,
@@ -273,6 +274,7 @@ const DEFAULT_JOYSTICK_CONFIG: JoystickConfig = {
 }
 
 export default function Settings() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { theme, accentColor, customThemeId, setTheme, setAccentColor, setCustomTheme } = useTheme()
   
@@ -380,6 +382,7 @@ export default function Settings() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
   // Scroll spy for navigation - filter out advanced if not enabled
+  const settingsSections = useSettingsSections()
   const sectionIds = settingsSections
     .filter((s: { id: string }) => s.id !== 'advanced' || advancedConfig.showAdvancedSettings)
     .map((s: { id: string }) => s.id)
@@ -399,11 +402,9 @@ export default function Settings() {
 
   // Initialize local state from API data (only on first load or after import)
   useEffect(() => {
-    console.log('[Init Effect] Running - settings:', settings, 'hasInitialized:', hasInitialized.current, 'forceReinit:', forceReinit)
     // Only initialize once - after that, local state is the source of truth
     // But allow re-initialization if forceReinit changes (after import)
     if (settings && (!hasInitialized.current || forceReinit > 0)) {
-      console.log('[Init Effect] Initializing state from settings...')
       hasInitialized.current = true
       
       setLanguage(settings.lang ?? 'en')
@@ -688,10 +689,10 @@ export default function Settings() {
       URL.revokeObjectURL(url)
 
       // Show success notification
-      showInfoNotification('Settings Exported', 'Your settings have been exported successfully.')
+      showInfoNotification(t('Settings Exported'), t('Your settings have been exported successfully.'))
     } catch (error) {
       console.error('Export failed:', error)
-      showErrorNotification('Export Failed', 'Failed to export settings. Please try again.')
+      showErrorNotification(t('Export Failed'), t('Failed to export settings. Please try again.'))
     } finally {
       setIsExporting(false)
     }
@@ -712,7 +713,7 @@ export default function Settings() {
   const handleImportSettings = useCallback((data: unknown) => {
     // Validate structure
     if (!data || typeof data !== 'object') {
-      showErrorNotification('Import Failed', 'Invalid file format. Please select a valid settings file.')
+      showErrorNotification(t('Import Failed'), t('Invalid file format. Please select a valid settings file.'))
       return
     }
 
@@ -731,7 +732,7 @@ export default function Settings() {
     if (!importData.settings && !importData.macros && !importData.events && 
         !importData.tools && !importData.cameras && !importData.watchFolders && 
         !importData.extensions) {
-      showErrorNotification('Import Failed', 'The file does not contain any settings data.')
+      showErrorNotification(t('Import Failed'), t('The file does not contain any settings data.'))
       return
     }
 
@@ -983,10 +984,10 @@ export default function Settings() {
       // Also refetch to ensure cache is updated for future operations
       await refetchSettings()
 
-      showInfoNotification('Settings Imported', 'Your settings have been imported successfully. You may need to re-enter camera passwords.')
+      showInfoNotification(t('Settings Imported'), t('Your settings have been imported successfully. You may need to re-enter camera passwords.'))
     } catch (error) {
       console.error('Import failed:', error)
-      showErrorNotification('Import Failed', 'Failed to import some settings. Please check the console for details.')
+      showErrorNotification(t('Import Failed'), t('Failed to import some settings. Please check the console for details.'))
     } finally {
       setIsImporting(false)
       setPendingImportData(null)
@@ -1223,7 +1224,11 @@ export default function Settings() {
           socketService.close(port, () => {
             resolve({ 
               success: true, 
-              message: `Successfully connected to ${port} at ${baudRate} baud (${controllerType || 'Grbl'})` 
+              message: t('Successfully connected to {{port}} at {{baudRate}} baud ({{controllerType}})', {
+                port,
+                baudRate,
+                controllerType: controllerType || 'Grbl',
+              }),
             })
           })
         }
@@ -1242,7 +1247,9 @@ export default function Settings() {
           const errorMessage = err.message || (typeof err === 'string' ? err : 'Connection failed')
           resolve({ 
             success: false, 
-            message: `Connection failed: ${errorMessage}. Check that the port is available and the machine is powered on.` 
+            message: t('Connection failed: {{error}}. Check that the port is available and the machine is powered on.', {
+              error: errorMessage,
+            }),
           })
         }
         // If no error in callback, the port might already be open or will open soon
@@ -1770,7 +1777,7 @@ export default function Settings() {
               Back
             </Button>
             <div className="h-6 w-px bg-border" />
-            <h1 className="text-xl font-semibold">Settings</h1>
+            <h1 className="text-xl font-semibold">{t('Settings')}</h1>
           </div>
 
           <div className="flex items-center gap-3">

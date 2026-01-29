@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Input } from '@/components/ui/input'
@@ -41,18 +42,19 @@ export function CameraSection({
   config,
   onConfigChange,
 }: CameraSectionProps) {
+  const { t } = useTranslation()
   const [showPassword, setShowPassword] = React.useState(false)
 
   return (
     <SettingsSection
       id="camera"
-      title="Camera"
-      description="Configure IP camera for monitoring your CNC machine"
+      title={t('Camera')}
+      description={t('Configure IP camera for monitoring your CNC machine')}
     >
       {/* Enable Camera */}
       <SettingsField
-        label="Enable Camera Feed"
-        description="Show a live camera feed in the workspace"
+        label={t('Enable Camera Feed')}
+        description={t('Show a live camera feed in the workspace')}
         horizontal
       >
         <Switch
@@ -66,38 +68,38 @@ export function CameraSection({
           {/* IP Camera Configuration */}
           <div className="space-y-3">
             <SettingsField
-              label="Camera URL"
-              description="RTSP or HTTP(S) URL for your IP camera"
+              label={t('Camera URL')}
+              description={t('RTSP or HTTP(S) URL for your IP camera')}
             >
               <Input
                 value={config.ipCameraUrl}
                 onChange={(e) => onConfigChange({ ipCameraUrl: e.target.value })}
-                placeholder="rtsp://192.168.1.100:554/stream or http://192.168.1.100:8080/?action=stream"
+                placeholder={t('rtsp://192.168.1.100:554/stream or http://192.168.1.100:8080/?action=stream')}
                 className="font-mono text-sm"
               />
             </SettingsField>
             
             <SettingsField
-              label="Authentication (Optional)"
-              description="Username and password if your camera requires authentication"
+              label={t('Authentication (Optional)')}
+              description={t('Username and password if your camera requires authentication')}
             >
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="camera-username" className="text-xs text-muted-foreground">
-                    Username
+                    {t('Username')}
                   </Label>
                   <Input
                     id="camera-username"
                     type="text"
                     value={config.username || ''}
                     onChange={(e) => onConfigChange({ username: e.target.value || undefined })}
-                    placeholder="admin"
+                    placeholder={t('admin')}
                     className="font-mono text-sm"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="camera-password" className="text-xs text-muted-foreground">
-                    Password
+                    {t('Password')}
                   </Label>
                   <div className="relative">
                     <Input
@@ -114,7 +116,7 @@ export function CameraSection({
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? t('Hide password') : t('Show password')}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -128,16 +130,16 @@ export function CameraSection({
             </SettingsField>
             
             <div className="text-xs text-muted-foreground">
-              Supported formats:{' '}
+              {t('Supported formats:')}{' '}
               <Badge variant="secondary" className="text-xs mx-0.5">RTSP</Badge>
-              <Badge variant="secondary" className="text-xs mx-0.5">Motion JPEG (MJPEG)</Badge>
+              <Badge variant="secondary" className="text-xs mx-0.5">{t('Motion JPEG (MJPEG)')}</Badge>
               <Badge variant="secondary" className="text-xs mx-0.5">HLS</Badge>
             </div>
           </div>
 
           {/* Display Options */}
           <div className="space-y-4 pt-4">
-            <h4 className="font-medium text-sm">Display Options</h4>
+            <h4 className="font-medium text-sm">{t('Display Options')}</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Flip & Rotation */}
@@ -151,7 +153,7 @@ export function CameraSection({
                     />
                     <Label htmlFor="flip-h" className="text-sm flex items-center gap-1.5">
                       <FlipHorizontal className="w-4 h-4" />
-                      Flip Horizontal
+                      {t('Flip Horizontal')}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -162,14 +164,14 @@ export function CameraSection({
                     />
                     <Label htmlFor="flip-v" className="text-sm flex items-center gap-1.5">
                       <FlipVertical className="w-4 h-4" />
-                      Flip Vertical
+                      {t('Flip Vertical')}
                     </Label>
                   </div>
                 </div>
 
                 <SettingsField
-                  label="Rotation"
-                  description="Rotate the camera feed"
+                  label={t('Rotation')}
+                  description={t('Rotate the camera feed')}
                 >
                   <Select
                     value={String(config.rotation)}
@@ -197,13 +199,13 @@ export function CameraSection({
                     onCheckedChange={(crosshair) => onConfigChange({ crosshair })}
                   />
                   <Label htmlFor="crosshair" className="text-sm">
-                    Show crosshair overlay
+                    {t('Show crosshair overlay')}
                   </Label>
                 </div>
 
                 {config.crosshair && (
                   <SettingsField
-                    label="Crosshair Color"
+                    label={t('Crosshair Color')}
                   >
                     <div className="flex items-center gap-2">
                       <input

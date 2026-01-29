@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ZeroingWizardTab } from './ZeroingWizardTab'
 import { ZeroingMethodSelectDialog } from './ZeroingMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
@@ -25,6 +26,7 @@ export function ToolChangeTab({
   probeContact = false,
   currentWCS = 'G54',
 }: ToolChangeTabProps) {
+  const { t } = useTranslation()
   const { toolChangeMethod, completeToolChange, triggerToolChange, isFirstToolChange } = useToolChange()
   const { data: settings } = useGetSettingsQuery()
 
@@ -53,15 +55,15 @@ export function ToolChangeTab({
       <>
         <div className="flex-1 flex items-center justify-center bg-muted/30">
           <div className="text-sm text-muted-foreground text-center py-8">
-            Please select a zeroing method
+            {t('Please select a zeroing method')}
           </div>
         </div>
         <ZeroingMethodSelectDialog
           open={showDialog}
           onOpenChange={() => {}} // Prevent closing - user must select a method
           methods={availableMethods}
-          title="Select Zeroing Method"
-          description="Choose a zeroing method to use for this tool change:"
+          title={t('Select Zeroing Method')}
+          description={t('Choose a zeroing method to use for this tool change:')}
           onSelect={handleMethodSelect}
         />
       </>
@@ -73,7 +75,7 @@ export function ToolChangeTab({
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          No tool change method configured
+          {t('No tool change method configured')}
         </div>
       </div>
     )

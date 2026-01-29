@@ -87,15 +87,27 @@ const finalOutputDir = path.join(repoRoot, 'out');
 const appStagingDir = path.join(repoRoot, 'build', 'electron-app');
 
 const getMediamtxPlatform = (plat, a) => {
-  if (plat === 'win') return 'windows-amd64';
+  if (plat === 'win') {
+    return 'windows-amd64';
+  }
   if (plat === 'linux') {
-    if (a === 'amd64' || a === 'x64') return 'linux-amd64';
-    if (a === 'arm64') return 'linux-arm64';
-    if (a === 'armv7l') return 'linux-armv7';
+    if (a === 'amd64' || a === 'x64') {
+      return 'linux-amd64';
+    }
+    if (a === 'arm64') {
+      return 'linux-arm64';
+    }
+    if (a === 'armv7l') {
+      return 'linux-armv7';
+    }
   }
   if (plat === 'mac') {
-    if (a === 'amd64' || a === 'x64') return 'darwin-amd64';
-    if (a === 'arm64') return 'darwin-arm64';
+    if (a === 'amd64' || a === 'x64') {
+      return 'darwin-amd64';
+    }
+    if (a === 'arm64') {
+      return 'darwin-arm64';
+    }
   }
   return null;
 };
@@ -152,6 +164,8 @@ if (fs.existsSync(vendorMediamtxPath) && mediamtxPlatform) {
 
 // Rebuild native modules for Electron (bundle only; app has no native deps)
 console.log('🔧 Rebuilding native modules for Electron...');
+// Path must be dynamic so it works from repo root regardless of cwd
+// eslint-disable-next-line import/no-dynamic-require
 const desktopPkg = require(path.join(repoRoot, 'apps', 'desktop', 'package.json'));
 const electronVersion = desktopPkg.devDependencies?.electron;
 if (!electronVersion) {

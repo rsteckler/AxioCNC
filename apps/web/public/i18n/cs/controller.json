@@ -2,41 +2,41 @@
   "TinyG": {
     "machineState": {
       "initializing": "Inicializace",
-      "ready": "Připraveno",
-      "alarm": "Alarm",
+      "ready": "Připraven",
+      "alarm": "Poplach",
       "stop": "Zastavení programu",
       "end": "Konec programu",
       "run": "Běh",
-      "hold": "Zastavit",
+      "hold": "Pozastaveno",
       "probe": "Sonda",
       "cycle": "Cyklus",
-      "homing": "Návrat do výchozí pozice",
-      "jog": "Ruční ovládání",
-      "interlock": "Zamykání",
+      "homing": "Nulování",
+      "jog": "Ruční posun",
+      "interlock": "Blokování",
       "shutdown": "Vypnutí",
       "panic": "Panika"
     }
   },
   "Grbl": {
     "activeState": {
-      "idle": "Nečinnost",
+      "idle": "Nečinný",
       "run": "Běh",
-      "hold": "Zastavit",
+      "hold": "Pozastaveno",
       "door": "Dveře",
-      "home": "Výchozí pozice",
+      "home": "Domů",
       "sleep": "Spánek",
-      "alarm": "Alarm",
+      "alarm": "Poplach",
       "check": "Kontrola"
     }
   },
   "Smoothie": {
     "activeState": {
-      "idle": "Nečinnost",
+      "idle": "Nečinný",
       "run": "Běh",
-      "hold": "Zastavit",
+      "hold": "Pozastaveno",
       "door": "Dveře",
-      "home": "Výchozí pozice",
-      "alarm": "Alarm",
+      "home": "Domů",
+      "alarm": "Poplach",
       "check": "Kontrola"
     }
   }

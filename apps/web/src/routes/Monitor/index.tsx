@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList, Target } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
@@ -73,6 +74,7 @@ import { formatTime } from '@/utils/formatTime'
 // ============================================================================
 
 function CameraView() {
+  const { t } = useTranslation()
   const { data: camerasData, isLoading: isLoadingCameras } = useGetCamerasQuery(undefined, {
     pollingInterval: 5000,
   })
@@ -152,7 +154,7 @@ function CameraView() {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Loading cameras...
+          {t('Loading cameras...')}
         </div>
       </div>
     )
@@ -162,7 +164,7 @@ function CameraView() {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          No enabled camera found. Configure a camera in Settings.
+          {t('No enabled camera found. Configure a camera in Settings.')}
         </div>
       </div>
     )
@@ -172,7 +174,7 @@ function CameraView() {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          Loading stream...
+          {t('Loading stream...')}
         </div>
       </div>
     )
@@ -182,7 +184,7 @@ function CameraView() {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          {streamError ? 'Error loading stream' : 'Stream not available. Check camera configuration.'}
+          {streamError ? t('Error loading stream') : t('Stream not available. Check camera configuration.')}
         </div>
       </div>
     )
@@ -202,7 +204,7 @@ function CameraView() {
       ) : (
         <img
           src={streamMetadata.src}
-          alt={`${enabledCamera.name} Feed`}
+          alt={t('{{name}} Feed', { name: enabledCamera.name })}
           className="max-w-full max-h-full object-contain"
           style={{ transform: transformStyle }}
         />
@@ -249,6 +251,7 @@ interface VisualizerCameraViewProps {
 }
 
 function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCameraViewProps) {
+  const { t } = useTranslation()
   const [viewMode, setViewMode] = useState<ViewMode>('side-by-side')
   const { data: settings } = useGetSettingsQuery()
   const dispatch = useAppDispatch()
@@ -479,7 +482,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
             {viewMode === 'pip-visual' && (
               <div className="absolute bottom-4 right-4 w-80 h-60 border-2 border-primary rounded-lg overflow-hidden shadow-lg bg-card z-10">
                 <div className="absolute top-1 right-1 z-20 bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded">
-                  Camera
+                  {t('Camera')}
                 </div>
                 <div className="w-full h-full">
                   <CameraView />
@@ -500,7 +503,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
             {viewMode === 'pip-camera' && (
               <div className="absolute bottom-4 right-4 w-80 h-60 border-2 border-primary rounded-lg overflow-hidden shadow-lg bg-card z-10">
                 <div className="absolute top-1 right-1 z-20 bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded">
-                  3D View
+                  {t('3D View')}
                 </div>
                 <div className="w-full h-full">
                   <VisualizerScene 
@@ -528,7 +531,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
           onClick={() => setViewMode('side-by-side')}
         >
           <Columns3 className="w-3 h-3 mr-1.5" />
-          Side-by-Side
+          {t('Side-by-Side')}
         </Button>
         <Button
           variant={viewMode === 'visual-only' ? 'default' : 'ghost'}
@@ -537,7 +540,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
           onClick={() => setViewMode('visual-only')}
         >
           <Maximize2 className="w-3 h-3 mr-1.5" />
-          3D View Only
+          {t('3D View Only')}
         </Button>
         <Button
           variant={viewMode === 'camera-only' ? 'default' : 'ghost'}
@@ -546,7 +549,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
           onClick={() => setViewMode('camera-only')}
         >
           <Camera className="w-3 h-3 mr-1.5" />
-          Camera Only
+          {t('Camera Only')}
         </Button>
         <div className="w-full h-px bg-border my-0.5" />
         <Button
@@ -556,7 +559,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
           onClick={() => setViewMode(viewMode === 'pip-visual' || viewMode === 'pip-camera' ? 'side-by-side' : 'pip-visual')}
         >
           <PictureInPicture className="w-3 h-3 mr-1.5" />
-          PiP
+          {t('PiP')}
         </Button>
         {(viewMode === 'pip-visual' || viewMode === 'pip-camera') && (
           <Button
@@ -566,7 +569,7 @@ function VisualizerCameraView({ machinePosition, processedLines }: VisualizerCam
             onClick={handleSwapPiP}
           >
             <ArrowLeftRight className="w-3 h-3 mr-1.5" />
-            Swap
+            {t('Swap')}
           </Button>
         )}
       </div>
@@ -586,6 +589,7 @@ function ProgressPanel({
   plannerQueueMax?: number
   maxSpindleSpeed?: number
 }) {
+  const { t } = useTranslation()
   const {
     machinePosition = { x: 0, y: 0, z: 0 },
     workPosition = { x: 0, y: 0, z: 0 },
@@ -655,7 +659,7 @@ function ProgressPanel({
             {/* Machine Status header */}
             <div className="flex items-center gap-2 px-3 py-2 pl-10 border-b border-border bg-muted/30">
               <ActivitySquare className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium flex-1">Machine Status</span>
+              <span className="text-sm font-medium flex-1">{t('Machine Status')}</span>
             </div>
             <div className="p-4 flex flex-col gap-4">
             {/* Position readouts and Spindle info - side by side */}
@@ -665,8 +669,8 @@ function ProgressPanel({
                 {/* Column headers */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="w-5" /> {/* Axis label spacer */}
-                  <div className="w-24 text-center">WCS</div>
-                  <div className="w-20 text-center">Machine</div>
+                  <div className="w-24 text-center">{t('WCS')}</div>
+                  <div className="w-20 text-center">{t('Machine')}</div>
                 </div>
                 
                 {/* Axis readouts */}
@@ -703,20 +707,20 @@ function ProgressPanel({
                   ) : (
                     <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground" />
                   )}
-                  <span>Spindle</span>
+                  <span>{t('Spindle')}</span>
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Direction:</span>
+                    <span className="text-muted-foreground">{t('Direction:')}</span>
                     <span className={`font-medium ${isOn ? 'text-green-500' : 'text-muted-foreground'}`}>
-                      {isOn ? direction : 'Off'}
+                      {isOn ? (direction === 'CW' ? t('CW') : t('CCW')) : t('Off')}
                     </span>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Speed:</span>
+                      <span className="text-muted-foreground">{t('Speed:')}</span>
                       <span className={`font-mono font-medium ${isOn ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {spindleSpeed.toLocaleString()} RPM
+                        {spindleSpeed.toLocaleString()} {t('RPM')}
                       </span>
                     </div>
                     <Progress 
@@ -736,7 +740,7 @@ function ProgressPanel({
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <Gauge className="w-3.5 h-3.5" />
-                <span>Feed Rate</span>
+                <span>{t('Feed Rate')}</span>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -757,7 +761,7 @@ function ProgressPanel({
             {/* Job Status header */}
             <div className="flex items-center gap-2 px-3 py-2 pl-10 border-b border-border bg-muted/30">
               <ClipboardList className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium flex-1">Job Status</span>
+              <span className="text-sm font-medium flex-1">{t('Job Status')}</span>
             </div>
             <div className="p-4 flex flex-col gap-4">
             {/* Job filename */}
@@ -772,11 +776,11 @@ function ProgressPanel({
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Time</span>
+                  <span>{t('Time')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="w-3.5 h-3.5" />
-                  <span>File Progress</span>
+                  <span>{t('File Progress')}</span>
                 </div>
               </div>
               
@@ -784,13 +788,13 @@ function ProgressPanel({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Elapsed</span>
+                    <span className="text-muted-foreground">{t('Elapsed')}</span>
                     <span className="font-mono font-medium">
                       {elapsedMs > 0 ? formatTime(elapsedMs) : '--:--'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Remaining</span>
+                    <span className="text-muted-foreground">{t('Remaining')}</span>
                     {remainingMs > 0 ? (
                       <span className="font-mono font-medium text-orange-500">
                         {formatTime(remainingMs)}
@@ -800,7 +804,7 @@ function ProgressPanel({
                     )}
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Total</span>
+                    <span className="text-muted-foreground">{t('Total')}</span>
                     <span className="font-mono font-medium">{totalMs > 0 ? formatTime(totalMs) : '--:--'}</span>
                   </div>
                   <Progress 
@@ -811,11 +815,11 @@ function ProgressPanel({
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Lines</span>
+                    <span className="text-muted-foreground">{t('Lines')}</span>
                     <span className="font-medium">{linesSent.toLocaleString()} / {linesTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Size</span>
+                    <span className="text-muted-foreground">{t('Size')}</span>
                     <span className="font-medium">{formatBytes(fileSize)}</span>
                   </div>
                   <Progress value={fileProgressPercent} className="h-1.5" />
@@ -827,7 +831,7 @@ function ProgressPanel({
             <div className="space-y-2">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Planner Queue</span>
+                  <span className="text-muted-foreground">{t('Planner Queue')}</span>
                   <span className="font-medium">{plannerQueueDepth} / {plannerQueueMax}</span>
                 </div>
                 <div className="flex gap-0.5">
@@ -848,7 +852,7 @@ function ProgressPanel({
                 </div>
                 {/* RX Buffer */}
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-muted-foreground">RX Buffer</span>
+                  <span className="text-muted-foreground">{t('RX Buffer')}</span>
                   <span className="font-medium">{rxBufferSize}</span>
                 </div>
               </div>
@@ -863,14 +867,17 @@ function ProgressPanel({
 // PANEL CONFIGURATION
 // ============================================================================
 
-// Panel configuration with metadata
-const panelConfig: Record<string, { 
+type PanelConfigRecord = Record<string, { 
   title: string
   icon: React.ElementType
   component: React.FC<PanelProps>
-}> = {
-  currentStats: { title: 'Current Stats', icon: BarChart3, component: CurrentStatsPanel },
-  toolsUsed: { title: 'Tools Used', icon: Wrench, component: ToolsUsedPanel },
+}>
+
+function createPanelConfig(t: (key: string) => string): PanelConfigRecord {
+  return {
+    currentStats: { title: t('Current Stats'), icon: BarChart3, component: CurrentStatsPanel },
+    toolsUsed: { title: t('Tools Used'), icon: Wrench, component: ToolsUsedPanel },
+  }
 }
 
 // Sortable Panel Component
@@ -879,11 +886,13 @@ function SortablePanel({
   isCollapsed, 
   onToggle,
   panelProps,
+  panelConfig,
 }: { 
   id: string
   isCollapsed: boolean
   onToggle: () => void
   panelProps: PanelProps
+  panelConfig: PanelConfigRecord
 }) {
   const {
     attributes,
@@ -937,7 +946,7 @@ function SortablePanel({
 }
 
 // Drag overlay panel (shown while dragging)
-function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isCollapsed: boolean; panelProps: PanelProps }) {
+function DragOverlayPanel({ id, isCollapsed, panelProps, panelConfig }: { id: string; isCollapsed: boolean; panelProps: PanelProps; panelConfig: PanelConfigRecord }) {
   const config = panelConfig[id]
   if (!config) return null
   const Icon = config.icon
@@ -965,7 +974,9 @@ function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isColla
 // ============================================================================
 
 export default function Monitor() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
+  const panelConfig = useMemo(() => createPanelConfig(t), [t])
   
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
@@ -1296,13 +1307,13 @@ export default function Monitor() {
         
         {/* Mode tabs */}
         <div className="flex gap-1 ml-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>Setup</Button>
-          <Button variant="default" size="sm">Monitor</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>Stats</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>{t('Setup')}</Button>
+          <Button variant="default" size="sm">{t('Monitor')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>{t('Stats')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>{t('Settings')}</Button>
           <Button variant="ghost" size="sm" asChild>
             <a href="https://axiocnc.com/docs" target="_blank" rel="noopener noreferrer">
-              Docs
+              {t('Docs')}
             </a>
           </Button>
         </div>
@@ -1327,7 +1338,7 @@ export default function Monitor() {
             className="h-9 px-4"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            {t('Reset')}
           </MachineActionButton>
           <MachineActionButton
             isConnected={isConnected}
@@ -1341,7 +1352,7 @@ export default function Monitor() {
             className="h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
           >
             <Square className="w-5 h-5 mr-2" />
-            E-Stop
+            {t('E-Stop')}
           </MachineActionButton>
         </div>
       </header>
@@ -1381,6 +1392,7 @@ export default function Monitor() {
                     isCollapsed={collapsedPanels[panelId] ?? false}
                     onToggle={() => togglePanel(panelId)}
                     panelProps={panelProps}
+                    panelConfig={panelConfig}
                   />
                 ))}
               </div>
@@ -1391,6 +1403,7 @@ export default function Monitor() {
                   id={activeId} 
                   isCollapsed={collapsedPanels[activeId] ?? false}
                   panelProps={panelProps}
+                  panelConfig={panelConfig}
                 />
               ) : null}
             </DragOverlay>
@@ -1412,7 +1425,7 @@ export default function Monitor() {
                 }`}
               >
                 <Maximize2 className="w-4 h-4 inline mr-1.5" />
-                3D View
+                {t('3D View')}
               </button>
               <div className="w-px h-4 bg-border" />
               <button
@@ -1424,7 +1437,7 @@ export default function Monitor() {
                 }`}
               >
                 <Terminal className="w-4 h-4 inline mr-1.5" />
-                Console
+                {t('Console')}
               </button>
               {isToolChangePending && (
                 <>
@@ -1438,7 +1451,7 @@ export default function Monitor() {
                     }`}
                   >
                     <Wrench className="w-4 h-4 inline mr-1.5" />
-                    Tool Change
+                    {t('Tool Change')}
                   </button>
                 </>
               )}
@@ -1506,8 +1519,8 @@ export default function Monitor() {
         open={showMethodSelectDialog}
         onOpenChange={setShowMethodSelectDialog}
         methods={settings?.zeroingMethods?.methods ?? []}
-        title="Select Zeroing Method"
-        description="Choose a zeroing method to use before starting the job:"
+        title={t('Select Zeroing Method')}
+        description={t('Choose a zeroing method to use before starting the job:')}
         onSelect={handleMethodSelect}
       />
     </div>

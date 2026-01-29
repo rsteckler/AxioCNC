@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ export function EditNameDialog({
   onSave,
   placeholder = '',
 }: EditNameDialogProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState(initialValue)
 
   // Reset value when dialog opens or initialValue changes
@@ -76,10 +78,10 @@ export function EditNameDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button onClick={handleSave}>
-            Save
+            {t('Save')}
           </Button>
         </DialogFooter>
       </DialogContent>

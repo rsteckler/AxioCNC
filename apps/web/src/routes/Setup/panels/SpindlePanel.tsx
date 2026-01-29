@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RotateCw, RotateCcw, Circle } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { MachineActionButton } from '@/components/MachineActionButton'
@@ -17,6 +18,7 @@ export function SpindlePanel({
   spindleState = 'M5', 
   spindleSpeed = 0 
 }: PanelProps) {
+  const { t } = useTranslation()
   // Generate speeds array from 8000 to 24000 in 100 RPM increments
   const speeds = Array.from({ length: 161 }, (_, i) => 8000 + i * 100)
   
@@ -127,7 +129,7 @@ export function SpindlePanel({
       {/* Notice when spindle is running */}
       {isOn && (
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-md p-2 text-xs text-blue-700 dark:text-blue-400">
-          Direction and speed cannot be changed while the spindle is running.
+          {t('Direction and speed cannot be changed while the spindle is running.')}
         </div>
       )}
       
@@ -135,10 +137,10 @@ export function SpindlePanel({
       <div className="space-y-1">
         <div className="flex gap-2 w-full">
           <div className="flex-1 text-center">
-            <span className="text-[10px] text-muted-foreground">Most common</span>
+            <span className="text-[10px] text-muted-foreground">{t('Most common')}</span>
           </div>
           <div className="flex-1 text-center">
-            <span className="text-[10px] text-muted-foreground">Not common</span>
+            <span className="text-[10px] text-muted-foreground">{t('Not common')}</span>
           </div>
         </div>
         <div className="flex gap-2 w-full">
@@ -160,7 +162,7 @@ export function SpindlePanel({
             className="flex-1"
           >
             <RotateCw className="w-4 h-4 mr-1" />
-            CW
+            {t('CW')}
           </MachineActionButton>
           <MachineActionButton
             isConnected={isConnected}
@@ -180,7 +182,7 @@ export function SpindlePanel({
             className="flex-1"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            CCW
+            {t('CCW')}
           </MachineActionButton>
         </div>
       </div>
@@ -188,8 +190,8 @@ export function SpindlePanel({
       {/* Speed control */}
       <div className="space-y-2">
         <div className="text-xs text-muted-foreground flex justify-between">
-          <span>Speed (RPM)</span>
-          <span className="font-mono font-medium">{speed} RPM</span>
+          <span>{t('Speed (RPM)')}</span>
+          <span className="font-mono font-medium">{speed} {t('RPM')}</span>
         </div>
         <MachineActionWrapper
           isDisabled={isDisabled || isOn}
@@ -238,7 +240,7 @@ export function SpindlePanel({
         variant={isOn ? 'default' : 'outline'}
       >
         <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
-        {isOn ? 'Stop Spindle' : 'Start Spindle'}
+        {isOn ? t('Stop Spindle') : t('Start Spindle')}
       </MachineActionButton>
     </div>
   )

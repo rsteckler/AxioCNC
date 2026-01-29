@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { settingsSections } from './settingsSections'
+import { useSettingsSections } from './settingsSections'
 export type { SettingsSection } from './settingsSections'
 
 interface SettingsNavProps {
@@ -9,6 +9,7 @@ interface SettingsNavProps {
 }
 
 export function SettingsNav({ activeId, onNavigate, showAdvanced = false }: SettingsNavProps) {
+  const settingsSections = useSettingsSections()
   const visibleSections = settingsSections.filter(
     section => section.id !== 'advanced' || showAdvanced
   )

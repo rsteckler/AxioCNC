@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
@@ -41,6 +42,7 @@ export function ZeroingWizardTab({
   currentWCS = 'G54',
   isToolChange = false
 }: ZeroingWizardTabProps) {
+  const { t } = useTranslation()
   // Get isFirstToolChange from context for bitsetter tool changes
   // Also check forceSubsequentToolChange debug flag
   const { isFirstToolChange: contextIsFirstToolChange, forceSubsequentToolChange } = useToolChange()
@@ -328,7 +330,7 @@ export function ZeroingWizardTab({
           
           // Include the failing line in the error message if found
           const errorMsg = failingLine
-            ? `${line.message}\n\nFailing line: ${failingLine}`
+            ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
             : line.message
           
           setProbeError(errorMsg)
@@ -343,7 +345,7 @@ export function ZeroingWizardTab({
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const handleDisconnect = (..._args: unknown[]) => {
         if (isCleanedUp) return
-        setProbeError('Socket disconnected during probe sequence')
+        setProbeError(t('Socket disconnected during probe sequence'))
         setProbeStatus('error')
         probeStartedRef.current = false
         cleanup()
@@ -391,7 +393,7 @@ export function ZeroingWizardTab({
         // Set timeout as safety net (5 minutes max)
         timeoutId = setTimeout(() => {
           if (probeStatus === 'probing' && !isCleanedUp) {
-            setProbeError('Probe sequence timed out. Please check the machine and try again.')
+            setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
             setProbeStatus('error')
             probeStartedRef.current = false
             cleanup()
@@ -399,7 +401,7 @@ export function ZeroingWizardTab({
         }, 5 * 60 * 1000) // 5 minutes
       } catch (error) {
         console.error('BitSetter probe error:', error)
-        setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+        setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
         setProbeStatus('error')
         probeStartedRef.current = false
         cleanup()
@@ -407,7 +409,7 @@ export function ZeroingWizardTab({
     } else {
       // Subsequent tool change: use macro approach
       if (!initialToolReference) {
-        setProbeError('Initial tool reference not found. Please run first tool change before subsequent tool changes.')
+        setProbeError(t('Initial tool reference not found. Please run first tool change before subsequent tool changes.'))
         setProbeStatus('error')
         return
       }
@@ -492,7 +494,7 @@ export function ZeroingWizardTab({
           
           // Include the failing line in the error message if found
           const errorMsg = failingLine
-            ? `${line.message}\n\nFailing line: ${failingLine}`
+            ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
             : line.message
           
           setProbeError(errorMsg)
@@ -507,7 +509,7 @@ export function ZeroingWizardTab({
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const handleDisconnect = (..._args: unknown[]) => {
         if (isCleanedUp) return
-        setProbeError('Socket disconnected during probe sequence')
+        setProbeError(t('Socket disconnected during probe sequence'))
         setProbeStatus('error')
         probeStartedRef.current = false
         cleanup()
@@ -555,7 +557,7 @@ export function ZeroingWizardTab({
         // Set timeout as safety net (5 minutes max)
         timeoutId = setTimeout(() => {
           if (probeStatus === 'probing' && !isCleanedUp) {
-            setProbeError('Probe sequence timed out. Please check the machine and try again.')
+            setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
             setProbeStatus('error')
             probeStartedRef.current = false
             cleanup()
@@ -563,7 +565,7 @@ export function ZeroingWizardTab({
         }, 5 * 60 * 1000) // 5 minutes
       } catch (error) {
         console.error('BitSetter probe error:', error)
-        setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+        setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
         setProbeStatus('error')
         probeStartedRef.current = false
         cleanup()
@@ -702,7 +704,7 @@ export function ZeroingWizardTab({
         
         // Include the failing line in the error message if found
         const errorMsg = failingLine
-          ? `${line.message}\n\nFailing line: ${failingLine}`
+          ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
           : line.message
         
         setProbeError(errorMsg)
@@ -717,7 +719,7 @@ export function ZeroingWizardTab({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleDisconnect = (..._args: unknown[]) => {
       if (isCleanedUp) return
-      setProbeError('Socket disconnected during probe sequence')
+      setProbeError(t('Socket disconnected during probe sequence'))
       setProbeStatus('error')
       probeStartedRef.current = false
       cleanup()
@@ -765,7 +767,7 @@ export function ZeroingWizardTab({
       // Set timeout as safety net (5 minutes max)
       timeoutId = setTimeout(() => {
         if (probeStatus === 'probing' && !isCleanedUp) {
-          setProbeError('Probe sequence timed out. Please check the machine and try again.')
+          setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
           setProbeStatus('error')
           probeStartedRef.current = false
           cleanup()
@@ -773,7 +775,7 @@ export function ZeroingWizardTab({
       }, 5 * 60 * 1000) // 5 minutes
     } catch (error) {
       console.error('BitZero probe error:', error)
-      setProbeError(error instanceof Error ? error.message : 'An error occurred during the probe sequence')
+      setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
       setProbeStatus('error')
       probeStartedRef.current = false
       cleanup()
@@ -797,7 +799,7 @@ export function ZeroingWizardTab({
     const gcodeString = customMethod.gcode.trim()
     
     if (!gcodeString) {
-      setProbeError('No G-code found. Please configure the custom G-code in settings.')
+      setProbeError(t('No G-code found. Please configure the custom G-code in settings.'))
       setProbeStatus('error')
       probeStartedRef.current = false
       return
@@ -825,7 +827,7 @@ export function ZeroingWizardTab({
         const failingLine = recentMessages.find(msg => msg.startsWith('> '))
         
         const errorMsg = failingLine
-          ? `${line.message}\n\nFailing line: ${failingLine}`
+          ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
           : line.message
         
         setProbeError(errorMsg)
@@ -839,7 +841,7 @@ export function ZeroingWizardTab({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleDisconnect = (..._args: unknown[]) => {
       if (isCleanedUp) return
-      setProbeError('Socket disconnected during G-code execution')
+      setProbeError(t('Socket disconnected during G-code execution'))
       setProbeStatus('error')
       probeStartedRef.current = false
       cleanup()
@@ -881,7 +883,7 @@ export function ZeroingWizardTab({
       
       timeoutId = setTimeout(() => {
         if (probeStatus === 'probing' && !isCleanedUp) {
-          setProbeError('G-code execution timed out. Please check the machine and verify completion manually.')
+          setProbeError(t('G-code execution timed out. Please check the machine and verify completion manually.'))
           setProbeStatus('error')
           probeStartedRef.current = false
           cleanup()
@@ -890,7 +892,7 @@ export function ZeroingWizardTab({
       
     } catch (error) {
       cleanup()
-      setProbeError(`Error sending G-code: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setProbeError(t('Error sending G-code: {{message}}', { message: error instanceof Error ? error.message : t('Unknown error') }))
       setProbeStatus('error')
       probeStartedRef.current = false
     }
@@ -973,7 +975,7 @@ export function ZeroingWizardTab({
             .catch((err) => {
               console.error('Failed to store bitsetter reference:', err)
               setProbeStatus('error')
-              setProbeError('Failed to store tool reference. Please try again.')
+              setProbeError(t('Failed to store tool reference. Please try again.'))
               capturingPositionRef.current = false
             })
         } else {
@@ -1168,12 +1170,12 @@ export function ZeroingWizardTab({
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="text-center space-y-2">
           <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
-          <h3 className="text-lg font-semibold">Not Connected</h3>
+          <h3 className="text-lg font-semibold">{t('Not Connected')}</h3>
           <p className="text-sm text-muted-foreground">
-            Please connect to a machine before running this zeroing method.
+            {t('Please connect to a machine before running this zeroing method.')}
           </p>
           <Button variant="outline" onClick={onClose} className="mt-4">
-            Close
+            {t('Close')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -71,29 +72,24 @@ export interface EventHandler {
   mtime?: number
 }
 
-const EVENT_LABELS: Record<EventType, string> = {
-  'startup': 'Startup',
-  'port:open': 'Port Open',
-  'port:close': 'Port Close',
-  'controller:ready': 'Ready to Start',
-  'gcode:load': 'G-code: Load',
-  'gcode:unload': 'G-code: Unload',
-  'gcode:start': 'G-code: Start',
-  'gcode:stop': 'G-code: Stop',
-  'gcode:pause': 'G-code: Pause',
-  'gcode:resume': 'G-code: Resume',
-  'feedhold': 'Feed Hold',
-  'cyclestart': 'Cycle Start',
-  'homing': 'Homing',
-  'sleep': 'Sleep',
-  'macro:run': 'Run Macro',
-  'macro:load': 'Load Macro',
-}
-
-const EVENT_OPTIONS = Object.entries(EVENT_LABELS).map(([value, label]) => ({
-  value: value as EventType,
-  label,
-}))
+const createEventLabels = (t: (key: string) => string): Record<EventType, string> => ({
+  'startup': t('Startup'),
+  'port:open': t('Port Open'),
+  'port:close': t('Port Close'),
+  'controller:ready': t('Ready to Start'),
+  'gcode:load': t('G-code: Load'),
+  'gcode:unload': t('G-code: Unload'),
+  'gcode:start': t('G-code: Start'),
+  'gcode:stop': t('G-code: Stop'),
+  'gcode:pause': t('G-code: Pause'),
+  'gcode:resume': t('G-code: Resume'),
+  'feedhold': t('Feed Hold'),
+  'cyclestart': t('Cycle Start'),
+  'homing': t('Homing'),
+  'sleep': t('Sleep'),
+  'macro:run': t('Run Macro'),
+  'macro:load': t('Load Macro'),
+})
 
 interface EventsSectionProps {
   events: EventHandler[]
@@ -110,6 +106,12 @@ export function EventsSection({
   onDelete,
   onToggleEnabled,
 }: EventsSectionProps) {
+  const { t } = useTranslation()
+  const EVENT_LABELS = createEventLabels(t)
+  const EVENT_OPTIONS = Object.entries(EVENT_LABELS).map(([value, label]) => ({
+    value: value as EventType,
+    label,
+  }))
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventHandler | null>(null)
   
@@ -179,8 +181,8 @@ export function EventsSection({
   return (
     <SettingsSection
       id="events"
-      title="Events"
-      description="Trigger actions when specific events occur during operation"
+      title={t('Events')}
+      description={t('Trigger actions when specific events occur during operation')}
     >
       <div className="space-y-4">
         {/* Add Button */}
@@ -192,19 +194,19 @@ export function EventsSection({
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                Add Event Handler
+                {t('Add Event Handler')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Event Handler</DialogTitle>
+                <DialogTitle>{t('Add Event Handler')}</DialogTitle>
                 <DialogDescription>
-                  Create a handler that runs commands when a specific event occurs.
+                  {t('Create a handler that runs commands when a specific event occurs.')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="event-type">Event</Label>
+                  <Label htmlFor="event-type">{t('Event')}</Label>
                   <Select value={formEvent} onValueChange={(v) => setFormEvent(v as EventType)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -219,7 +221,7 @@ export function EventsSection({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Trigger Type</Label>
+                  <Label>{t('Trigger Type')}</Label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -229,7 +231,7 @@ export function EventsSection({
                         onChange={() => setFormTrigger('gcode')}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">G-code Commands</span>
+                      <span className="text-sm">{t('G-code Commands')}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -239,23 +241,23 @@ export function EventsSection({
                         onChange={() => setFormTrigger('system')}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">System Command</span>
+                      <span className="text-sm">{t('System Command')}</span>
                     </label>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formTrigger === 'gcode' 
-                      ? 'Commands will be sent to the CNC controller'
-                      : 'Commands will be executed as shell commands on the server'
+                      ? t('Commands will be sent to the CNC controller')
+                      : t('Commands will be executed as shell commands on the server')
                     }
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="event-commands">Commands</Label>
+                  <Label htmlFor="event-commands">{t('Commands')}</Label>
                   <Textarea
                     id="event-commands"
                     value={formCommands}
                     onChange={(e) => setFormCommands(e.target.value)}
-                    placeholder={formTrigger === 'gcode' ? 'M3 S1000' : '/path/to/script.sh'}
+                    placeholder={formTrigger === 'gcode' ? t('M3 S1000') : t('/path/to/script.sh')}
                     rows={4}
                     className="font-mono text-sm"
                   />
@@ -266,15 +268,15 @@ export function EventsSection({
                     checked={formEnabled}
                     onCheckedChange={setFormEnabled}
                   />
-                  <Label htmlFor="event-enabled">Enabled</Label>
+                  <Label htmlFor="event-enabled">{t('Enabled')}</Label>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button onClick={handleAdd} disabled={!formCommands.trim()}>
-                  Add Handler
+                  {t('Add Handler')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -286,12 +288,12 @@ export function EventsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">Enabled</TableHead>
-                <TableHead className="w-36">Event</TableHead>
-                <TableHead className="w-24">Trigger</TableHead>
-                <TableHead>Commands</TableHead>
-                <TableHead className="w-28">Modified</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-20">{t('Enabled')}</TableHead>
+                <TableHead className="w-36">{t('Event')}</TableHead>
+                <TableHead className="w-24">{t('Trigger')}</TableHead>
+                <TableHead>{t('Commands')}</TableHead>
+                <TableHead className="w-28">{t('Modified')}</TableHead>
+                <TableHead className="w-24 text-right">{t('Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -299,8 +301,8 @@ export function EventsSection({
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     <Zap className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No event handlers configured</p>
-                    <p className="text-xs mt-1">Add handlers to trigger actions on specific events</p>
+                    <p>{t('No event handlers configured')}</p>
+                    <p className="text-xs mt-1">{t('Add handlers to trigger actions on specific events')}</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -317,7 +319,7 @@ export function EventsSection({
                     </TableCell>
                     <TableCell>
                       <Badge variant={event.trigger === 'system' ? 'secondary' : 'outline'}>
-                        {event.trigger === 'system' ? 'System' : 'G-code'}
+                        {event.trigger === 'system' ? t('System') : t('G-code')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -349,14 +351,14 @@ export function EventsSection({
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Edit Event Handler</DialogTitle>
+                              <DialogTitle>{t('Edit Event Handler')}</DialogTitle>
                               <DialogDescription>
-                                Modify the event handler settings.
+                                {t('Modify the event handler settings.')}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="space-y-2">
-                                <Label htmlFor="edit-event-type">Event</Label>
+                                <Label htmlFor="edit-event-type">{t('Event')}</Label>
                                 <Select value={formEvent} onValueChange={(v) => setFormEvent(v as EventType)}>
                                   <SelectTrigger>
                                     <SelectValue />
@@ -371,7 +373,7 @@ export function EventsSection({
                                 </Select>
                               </div>
                               <div className="space-y-2">
-                                <Label>Trigger Type</Label>
+                                <Label>{t('Trigger Type')}</Label>
                                 <div className="flex gap-4">
                                   <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -381,7 +383,7 @@ export function EventsSection({
                                       onChange={() => setFormTrigger('gcode')}
                                       className="w-4 h-4"
                                     />
-                                    <span className="text-sm">G-code Commands</span>
+                                    <span className="text-sm">{t('G-code Commands')}</span>
                                   </label>
                                   <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -391,12 +393,12 @@ export function EventsSection({
                                       onChange={() => setFormTrigger('system')}
                                       className="w-4 h-4"
                                     />
-                                    <span className="text-sm">System Command</span>
+                                    <span className="text-sm">{t('System Command')}</span>
                                   </label>
                                 </div>
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="edit-event-commands">Commands</Label>
+                                <Label htmlFor="edit-event-commands">{t('Commands')}</Label>
                                 <Textarea
                                   id="edit-event-commands"
                                   value={formCommands}
@@ -411,15 +413,15 @@ export function EventsSection({
                                   checked={formEnabled}
                                   onCheckedChange={setFormEnabled}
                                 />
-                                <Label htmlFor="edit-event-enabled">Enabled</Label>
+                                <Label htmlFor="edit-event-enabled">{t('Enabled')}</Label>
                               </div>
                             </div>
                             <DialogFooter>
                               <Button variant="outline" onClick={() => setEditingEvent(null)}>
-                                Cancel
+                                {t('Cancel')}
                               </Button>
                               <Button onClick={handleEdit} disabled={!formCommands.trim()}>
-                                Save Changes
+                                {t('Save Changes')}
                               </Button>
                             </DialogFooter>
                           </DialogContent>
@@ -433,18 +435,18 @@ export function EventsSection({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Event Handler?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('Delete Event Handler?')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete this "{EVENT_LABELS[event.event]}" handler? This action cannot be undone.
+                                {t('Are you sure you want to delete this "{{eventName}}" handler? This action cannot be undone.', { eventName: EVENT_LABELS[event.event] })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={() => onDelete(event.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete
+                                {t('Delete')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

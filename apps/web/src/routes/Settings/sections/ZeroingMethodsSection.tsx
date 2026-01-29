@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Input } from '@/components/ui/input'
@@ -123,54 +124,55 @@ interface ZeroingMethodsSectionProps {
   onConfigChange: (config: Partial<ZeroingMethodsConfig>) => void
 }
 
-// Method type metadata
-const METHOD_TYPES: Record<ZeroingMethodType, { 
+// Method type metadata - will be created with translations
+const createMethodTypes = (t: (key: string) => string): Record<ZeroingMethodType, { 
   icon: React.ReactNode
   title: string 
   description: string 
   defaultAxes: ZeroingAxes
   canChangeAxes: boolean
-}> = {
+}> => ({
   'bitsetter': {
     icon: <Target className="w-5 h-5" />,
-    title: 'BitSetter',
-    description: 'Automatic tool length sensor mounted at a fixed position',
+    title: t('BitSetter'),
+    description: t('Automatic tool length sensor mounted at a fixed position'),
     defaultAxes: 'z',
     canChangeAxes: false,
   },
   'bitzero': {
     icon: <Crosshair className="w-5 h-5" />,
-    title: 'BitZero',
-    description: 'Corner, edge, or center probe for X, Y, and Z zeroing',
+    title: t('BitZero'),
+    description: t('Corner, edge, or center probe for X, Y, and Z zeroing'),
     defaultAxes: 'xyz',
     canChangeAxes: false,
   },
   'touchplate': {
     icon: <SquareDashedBottom className="w-5 h-5" />,
-    title: 'Touch Plate',
-    description: 'Simple touch plate for Z-axis zeroing',
+    title: t('Touch Plate'),
+    description: t('Simple touch plate for Z-axis zeroing'),
     defaultAxes: 'z',
     canChangeAxes: false,
   },
   'manual': {
     icon: <Hand className="w-5 h-5" />,
-    title: 'Manual',
-    description: 'Manually jog to position and set zero',
+    title: t('Manual'),
+    description: t('Manually jog to position and set zero'),
     defaultAxes: 'xyz',
     canChangeAxes: true,
   },
   'custom': {
     icon: <Settings2 className="w-5 h-5" />,
-    title: 'Custom',
-    description: 'Custom G-code sequence for zeroing',
+    title: t('Custom'),
+    description: t('Custom G-code sequence for zeroing'),
     defaultAxes: 'xyz',
     canChangeAxes: true,
   },
-}
+})
 
 // Default configurations for each method type
-function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMethod[]): ZeroingMethod {
+function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMethod[], t: (key: string) => string): ZeroingMethod {
   const baseId = `${type}-${Date.now()}`
+  const METHOD_TYPES = createMethodTypes(t)
   const typeInfo = METHOD_TYPES[type]
   
   // Count existing methods of this type for naming
@@ -227,7 +229,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         ...base,
         type: 'custom',
         axes: 'xyz',
-        gcode: '; Enter your custom zeroing G-code here\n',
+        gcode: t('; Enter your custom zeroing G-code here\n'),
       }
   }
 }
@@ -256,13 +258,16 @@ function MethodCard({
   onDelete, 
   onToggle,
   isManual,
+  t,
 }: { 
   method: ZeroingMethod
   onEdit: () => void
   onDelete: () => void
   onToggle: (enabled: boolean) => void
   isManual: boolean
+  t: (key: string) => string
 }) {
+  const METHOD_TYPES = createMethodTypes(t)
   const typeInfo = METHOD_TYPES[method.type]
   
   return (
@@ -299,7 +304,7 @@ function MethodCard({
       <CardContent className="pt-0">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground line-clamp-1">
-            {getMethodSummary(method)}
+            {getMethodSummary(method, t)}
           </p>
           {!isManual && (
             <div className="flex gap-1">
@@ -318,23 +323,23 @@ function MethodCard({
 }
 
 // Get a summary string for a method
-function getMethodSummary(method: ZeroingMethod): string {
+function getMethodSummary(method: ZeroingMethod, t: (key: string, options?: Record<string, string | number>) => string): string {
   switch (method.type) {
     case 'bitsetter':
-      return `Position: (${method.position.x}, ${method.position.y}, ${method.position.z})`
+      return t('Position: ({{x}}, {{y}}, {{z}})', { x: method.position.x, y: method.position.y, z: method.position.z })
     case 'bitzero':
-      return `Probe thickness: ${method.probeThickness}mm`
+      return t('Probe thickness: {{thickness}}mm', { thickness: method.probeThickness })
     case 'touchplate':
-      return `Plate thickness: ${method.plateThickness}mm`
+      return t('Plate thickness: {{thickness}}mm', { thickness: method.plateThickness })
     case 'manual':
-      return 'Jog to position and set zero manually'
+      return t('Jog to position and set zero manually')
     case 'custom':
-      return method.gcode.split('\n')[0] || 'Custom G-code sequence'
+      return method.gcode.split('\n')[0] || t('Custom G-code sequence')
   }
 }
 
 // Add method button card
-function AddMethodCard({ onClick }: { onClick: () => void }) {
+function AddMethodCard({ onClick, t }: { onClick: () => void; t: (key: string, options?: Record<string, string | number>) => string }) {
   return (
     <Card 
       className="border-dashed cursor-pointer hover:border-primary hover:bg-accent/50 transition-colors"
@@ -342,7 +347,7 @@ function AddMethodCard({ onClick }: { onClick: () => void }) {
     >
       <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Plus className="w-8 h-8 mb-2" />
-        <span className="text-sm font-medium">Add Zeroing Method</span>
+        <span className="text-sm font-medium">{t('Add Zeroing Method')}</span>
       </CardContent>
     </Card>
   )
@@ -352,6 +357,7 @@ export function ZeroingMethodsSection({
   config,
   onConfigChange,
 }: ZeroingMethodsSectionProps) {
+  const { t } = useTranslation()
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editingMethod, setEditingMethod] = useState<ZeroingMethod | null>(null)
   const [isNewMethod, setIsNewMethod] = useState(false) // Track if we're adding vs editing
@@ -363,7 +369,7 @@ export function ZeroingMethodsSection({
   
   // Handle selecting a method type to add (doesn't save yet)
   const handleSelectMethodType = (type: ZeroingMethodType) => {
-    const newMethod = createDefaultMethod(type, methods)
+    const newMethod = createDefaultMethod(type, methods, t)
     setAddDialogOpen(false)
     setIsNewMethod(true)
     setEditingMethod(newMethod)
@@ -407,11 +413,13 @@ export function ZeroingMethodsSection({
     })
   }
 
+  const METHOD_TYPES = createMethodTypes(t)
+
   return (
     <SettingsSection
       id="zeroing-methods"
-      title="Zeroing Methods"
-      description="Configure the zeroing tools and methods available on your machine"
+      title={t('Zeroing Methods')}
+      description={t('Configure the zeroing tools and methods available on your machine')}
     >
       {/* Method cards grid */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -424,6 +432,7 @@ export function ZeroingMethodsSection({
             onDelete={() => {}} // Manual can't be deleted
             onToggle={() => {}} // Manual can't be disabled
             isManual={true}
+            t={t}
           />
         ))}
         
@@ -436,20 +445,21 @@ export function ZeroingMethodsSection({
             onDelete={() => setDeleteConfirm(method.id)}
             onToggle={(enabled) => handleToggleMethod(method.id, enabled)}
             isManual={false}
+            t={t}
           />
         ))}
         
         {/* Add button */}
-        <AddMethodCard onClick={() => setAddDialogOpen(true)} />
+        <AddMethodCard onClick={() => setAddDialogOpen(true)} t={t} />
       </div>
 
       {/* Add Method Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Zeroing Method</DialogTitle>
+            <DialogTitle>{t('Add Zeroing Method')}</DialogTitle>
             <DialogDescription>
-              Choose a type of zeroing method to add to your machine
+              {t('Choose a type of zeroing method to add to your machine')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-4">
@@ -490,18 +500,18 @@ export function ZeroingMethodsSection({
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Zeroing Method</AlertDialogTitle>
+            <AlertDialogTitle>{t('Delete Zeroing Method')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this zeroing method? Any strategies using this method will need to be reconfigured.
+              {t('Are you sure you want to delete this zeroing method? Any strategies using this method will need to be reconfigured.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => deleteConfirm && handleDeleteMethod(deleteConfirm)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('Delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -520,6 +530,7 @@ function MethodEditDialog({
   onSave: (method: ZeroingMethod) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [editedMethod, setEditedMethod] = useState<ZeroingMethod | null>(null)
 
   // Update local state when method changes
@@ -551,6 +562,7 @@ function MethodEditDialog({
 
   if (!method || !editedMethod) return null
 
+  const METHOD_TYPES = createMethodTypes(t)
   const typeInfo = METHOD_TYPES[editedMethod.type]
 
   return (
@@ -559,7 +571,7 @@ function MethodEditDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {typeInfo.icon}
-            Configure {typeInfo.title}
+            {t('Configure {{title}}', { title: typeInfo.title })}
           </DialogTitle>
           <DialogDescription>
             {typeInfo.description}
@@ -568,7 +580,7 @@ function MethodEditDialog({
 
         <div className="space-y-4 py-4">
           {/* Name */}
-          <SettingsField label="Name" description="A friendly name for this method">
+          <SettingsField label={t('Name')} description={t('A friendly name for this method')}>
             <Input
               value={editedMethod.name}
               onChange={(e) => setEditedMethod({ ...editedMethod, name: e.target.value })}
@@ -578,7 +590,7 @@ function MethodEditDialog({
 
           {/* Axes selection (if changeable) */}
           {typeInfo.canChangeAxes && editedMethod.type !== 'manual' && (
-            <SettingsField label="Axes" description="Which axes this method zeros">
+            <SettingsField label={t('Axes')} description={t('Which axes this method zeros')}>
               <Select
                 value={editedMethod.axes}
                 onValueChange={(value: ZeroingAxes) => setEditedMethod({ ...editedMethod, axes: value } as ZeroingMethod)}
@@ -587,9 +599,9 @@ function MethodEditDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="z">Z only</SelectItem>
-                  <SelectItem value="xy">X and Y</SelectItem>
-                  <SelectItem value="xyz">X, Y, and Z</SelectItem>
+                  <SelectItem value="z">{t('Z only')}</SelectItem>
+                  <SelectItem value="xy">{t('X and Y')}</SelectItem>
+                  <SelectItem value="xyz">{t('X, Y, and Z')}</SelectItem>
                 </SelectContent>
               </Select>
             </SettingsField>
@@ -623,21 +635,21 @@ function MethodEditDialog({
           )}
           {editedMethod.type === 'manual' && (
             <p className="text-sm text-muted-foreground">
-              Manual zeroing requires no configuration. Use the jog controls and zero buttons in the main interface.
+              {t('Manual zeroing requires no configuration. Use the jog controls and zero buttons in the main interface.')}
             </p>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button 
             onClick={handleSave}
             disabled={editedMethod.type === 'bitsetter' && editedMethod.position.x === 0 && editedMethod.position.y === 0 && editedMethod.position.z === -30}
           >
             <Check className="w-4 h-4 mr-2" />
-            Save
+            {t('Save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -654,6 +666,7 @@ function BitSetterSettings({
   onChange: (changes: Partial<BitSetterConfig>) => void
   onSetFromCurrentPosition?: () => void
 }) {
+  const { t } = useTranslation()
   const [jogDialogOpen, setJogDialogOpen] = useState(false)
   const machineState = useMachineState()
   const isConnected = useIsConnected()
@@ -672,22 +685,22 @@ function BitSetterSettings({
     <div className="space-y-4">
       <div className="space-y-2">
         <div>
-          <Label className="text-sm font-medium">BitSetter Position (Machine Coordinates)</Label>
+          <Label className="text-sm font-medium">{t('BitSetter Position (Machine Coordinates)')}</Label>
           <p className="text-xs text-muted-foreground">
-            The fixed position of the BitSetter on your machine bed
+            {t('The fixed position of the BitSetter on your machine bed')}
           </p>
         </div>
         <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
           <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-900 dark:text-blue-100">
-            Open Jog Controls and move the tool to the BitSetter location. Once positioned, press "Set from Current" to capture the machine coordinates.
+            {t('Open Jog Controls and move the tool to the BitSetter location. Once positioned, press "Set from Current" to capture the machine coordinates.')}
           </p>
         </div>
         {!isConnectedAndHomed && (
           <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-red-900 dark:text-red-100">
-              <strong>Critical:</strong> The machine must be connected and homed before setting the BitSetter location. This ensures accurate machine coordinates.
+              <strong>{t('Critical:')}</strong> {t('The machine must be connected and homed before setting the BitSetter location. This ensures accurate machine coordinates.')}
             </p>
           </div>
         )}
@@ -700,7 +713,7 @@ function BitSetterSettings({
             disabled={!isConnectedAndHomed}
           >
             <Move className="w-4 h-4" />
-            Jog Controls
+            {t('Jog Controls')}
           </Button>
           <Button 
             variant="outline" 
@@ -712,11 +725,11 @@ function BitSetterSettings({
             disabled={!isConnectedAndHomed}
           >
             <MapPin className="w-3.5 h-3.5" />
-            Set from Current
+            {t('Set from Current')}
           </Button>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Stored BitSetter Position:</div>
+          <div className="text-xs font-medium text-muted-foreground">{t('Stored BitSetter Position:')}</div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-muted-foreground">X: </span>
@@ -737,7 +750,7 @@ function BitSetterSettings({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <SettingsField label="Probe Distance" tooltip="Maximum distance to probe before failing">
+        <SettingsField label={t('Probe Distance')} tooltip={t('Maximum distance to probe before failing')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -745,11 +758,11 @@ function BitSetterSettings({
               onChange={(e) => onChange({ probeDistance: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm</span>
+            <span className="text-xs text-muted-foreground">{t('mm')}</span>
           </div>
         </SettingsField>
 
-        <SettingsField label="Probe Feedrate" tooltip="Speed during probing">
+        <SettingsField label={t('Probe Feedrate')} tooltip={t('Speed during probing')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -757,7 +770,7 @@ function BitSetterSettings({
               onChange={(e) => onChange({ probeFeedrate: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm/min</span>
+            <span className="text-xs text-muted-foreground">{t('mm/min')}</span>
           </div>
         </SettingsField>
       </div>
@@ -773,11 +786,10 @@ function BitSetterSettings({
           <div className="space-y-1">
             <Label className="text-sm font-medium flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-              Require Check Before Running
+              {t('Require Check Before Running')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Before probing, you'll be asked to touch the probe to verify the circuit is working. 
-              This prevents crashes if the probe wire is disconnected or the sensor has failed.
+              {t('Before probing, you\'ll be asked to touch the probe to verify the circuit is working. This prevents crashes if the probe wire is disconnected or the sensor has failed.')}
             </p>
           </div>
         </div>
@@ -787,7 +799,7 @@ function BitSetterSettings({
       <Dialog open={jogDialogOpen} onOpenChange={setJogDialogOpen}>
         <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Jog Controls</DialogTitle>
+            <DialogTitle>{t('Jog Controls')}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden">
             <JogPanel
@@ -802,7 +814,7 @@ function BitSetterSettings({
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mt-4">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              Jog your machine to the location of the BitSetter, then close this dialog and click "Set from Current".
+              {t('Jog your machine to the location of the BitSetter, then close this dialog and click "Set from Current".')}
             </p>
           </div>
         </DialogContent>
@@ -819,12 +831,13 @@ function BitZeroSettings({
   config: BitZeroConfig
   onChange: (changes: Partial<BitZeroConfig>) => void 
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <SettingsField 
-        label="Probe Body Thickness" 
-        description="The thickness of the BitZero probe body"
-        tooltip="This is subtracted from probe results to account for the probe's physical size"
+        label={t('Probe Body Thickness')} 
+        description={t('The thickness of the BitZero probe body')}
+        tooltip={t('This is subtracted from probe results to account for the probe\'s physical size')}
       >
         <div className="flex items-center gap-2">
           <Input
@@ -834,12 +847,12 @@ function BitZeroSettings({
             onChange={(e) => onChange({ probeThickness: parseFloat(e.target.value) || 0 })}
             className="w-24"
           />
-          <span className="text-xs text-muted-foreground">mm</span>
+          <span className="text-xs text-muted-foreground">{t('mm')}</span>
         </div>
       </SettingsField>
 
       <div className="grid grid-cols-2 gap-4">
-        <SettingsField label="Probe Distance" tooltip="Maximum distance to probe">
+        <SettingsField label={t('Probe Distance')} tooltip={t('Maximum distance to probe')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -847,11 +860,11 @@ function BitZeroSettings({
               onChange={(e) => onChange({ probeDistance: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm</span>
+            <span className="text-xs text-muted-foreground">{t('mm')}</span>
           </div>
         </SettingsField>
 
-        <SettingsField label="Probe Feedrate" tooltip="Speed during probing">
+        <SettingsField label={t('Probe Feedrate')} tooltip={t('Speed during probing')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -859,7 +872,7 @@ function BitZeroSettings({
               onChange={(e) => onChange({ probeFeedrate: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm/min</span>
+            <span className="text-xs text-muted-foreground">{t('mm/min')}</span>
           </div>
         </SettingsField>
       </div>
@@ -875,11 +888,10 @@ function BitZeroSettings({
           <div className="space-y-1">
             <Label className="text-sm font-medium flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-              Require Check Before Running
+              {t('Require Check Before Running')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Before probing, you'll be asked to touch the probe to verify the circuit is working. 
-              This prevents crashes if the probe wire is disconnected or the sensor has failed.
+              {t('Before probing, you\'ll be asked to touch the probe to verify the circuit is working. This prevents crashes if the probe wire is disconnected or the sensor has failed.')}
             </p>
           </div>
         </div>
@@ -896,12 +908,13 @@ function TouchPlateSettings({
   config: TouchPlateConfig
   onChange: (changes: Partial<TouchPlateConfig>) => void 
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <SettingsField 
-        label="Plate Thickness" 
-        description="The thickness of your touch plate"
-        tooltip="This is subtracted from the Z probe result"
+        label={t('Plate Thickness')} 
+        description={t('The thickness of your touch plate')}
+        tooltip={t('This is subtracted from the Z probe result')}
       >
         <div className="flex items-center gap-2">
           <Input
@@ -911,12 +924,12 @@ function TouchPlateSettings({
             onChange={(e) => onChange({ plateThickness: parseFloat(e.target.value) || 0 })}
             className="w-24"
           />
-          <span className="text-xs text-muted-foreground">mm</span>
+          <span className="text-xs text-muted-foreground">{t('mm')}</span>
         </div>
       </SettingsField>
 
       <div className="grid grid-cols-2 gap-4">
-        <SettingsField label="Probe Distance" tooltip="Maximum distance to probe">
+        <SettingsField label={t('Probe Distance')} tooltip={t('Maximum distance to probe')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -924,11 +937,11 @@ function TouchPlateSettings({
               onChange={(e) => onChange({ probeDistance: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm</span>
+            <span className="text-xs text-muted-foreground">{t('mm')}</span>
           </div>
         </SettingsField>
 
-        <SettingsField label="Probe Feedrate" tooltip="Speed during probing">
+        <SettingsField label={t('Probe Feedrate')} tooltip={t('Speed during probing')}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -936,7 +949,7 @@ function TouchPlateSettings({
               onChange={(e) => onChange({ probeFeedrate: parseFloat(e.target.value) || 0 })}
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">mm/min</span>
+            <span className="text-xs text-muted-foreground">{t('mm/min')}</span>
           </div>
         </SettingsField>
       </div>
@@ -952,11 +965,10 @@ function TouchPlateSettings({
           <div className="space-y-1">
             <Label className="text-sm font-medium flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-              Require Check Before Running
+              {t('Require Check Before Running')}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Before probing, you'll be asked to touch the probe to verify the circuit is working. 
-              This prevents crashes if the probe wire is disconnected or the sensor has failed.
+              {t('Before probing, you\'ll be asked to touch the probe to verify the circuit is working. This prevents crashes if the probe wire is disconnected or the sensor has failed.')}
             </p>
           </div>
         </div>
@@ -973,18 +985,19 @@ function CustomMethodSettings({
   config: CustomMethodConfig
   onChange: (changes: Partial<CustomMethodConfig>) => void 
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <SettingsField 
-        label="G-code Sequence" 
-        description="Custom G-code to execute for zeroing"
-        tooltip="This G-code will be executed when this zeroing method is used"
+        label={t('G-code Sequence')} 
+        description={t('Custom G-code to execute for zeroing')}
+        tooltip={t('This G-code will be executed when this zeroing method is used')}
       >
         <textarea
           value={config.gcode}
           onChange={(e) => onChange({ gcode: e.target.value })}
           className="w-full h-32 px-3 py-2 text-sm font-mono border rounded-md bg-background resize-none"
-          placeholder="; Enter your custom zeroing G-code"
+          placeholder={t('; Enter your custom zeroing G-code')}
         />
       </SettingsField>
     </div>

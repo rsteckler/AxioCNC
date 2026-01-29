@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Bell, AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +16,7 @@ export type { Notification } from '@/hooks/useNotifications'
  * Includes the bell icon button and the notifications dialog
  */
 export function NotificationSystem() {
+  const { t } = useTranslation()
   const {
     notifications,
     notificationsOpen,
@@ -51,12 +53,12 @@ export function NotificationSystem() {
       <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Notifications & Errors</DialogTitle>
+            <DialogTitle>{t('Notifications & Errors')}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto min-h-0 space-y-2 mt-4">
             {notifications.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No notifications
+                {t('No notifications')}
               </div>
             ) : (
               notifications.map((notification) => (
@@ -106,14 +108,14 @@ export function NotificationSystem() {
               size="sm"
               onClick={clearNotifications}
             >
-              Clear All
+              {t('Clear All')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={markAllNotificationsRead}
             >
-              Mark All Read
+              {t('Mark All Read')}
             </Button>
           </DialogFooter>
         </DialogContent>

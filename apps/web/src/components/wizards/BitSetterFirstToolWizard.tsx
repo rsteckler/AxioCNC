@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Target, AlertCircle, HelpCircle, Navigation, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +42,7 @@ export function BitSetterFirstToolWizard({
   onProbe,
   isJobPaused = false,
 }: BitSetterFirstToolWizardProps) {
+  const { t } = useTranslation()
   // Map step numbers based on requireCheck setting
   // If requireCheck is false, skip step 1 (verification), so step 1->navigate, step 2->tool change, step 3->probe
   const skipVerification = method.requireCheck === false
@@ -64,13 +66,13 @@ export function BitSetterFirstToolWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step 1: Verify BitSetter Circuit</h3>
+            <h3 className="text-base font-semibold">{t('Step 1: Verify BitSetter Circuit')}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Verify that the BitSetter circuit is working by manually pressing the sensor down. The BitSetter should trigger when the sensor is pressed.
+                {t('Verify that the BitSetter circuit is working by manually pressing the sensor down. The BitSetter should trigger when the sensor is pressed.')}
               </p>
               <p>
-                This ensures the probe circuit is functioning correctly before starting the zeroing process.
+                {t('This ensures the probe circuit is functioning correctly before starting the zeroing process.')}
               </p>
             </div>
           </div>
@@ -78,7 +80,7 @@ export function BitSetterFirstToolWizard({
             <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                Press the BitSetter sensor down manually with your finger or a tool. If the probe triggers correctly, you're ready to proceed. If not, check your wiring and probe settings.
+                {t('Press the BitSetter sensor down manually with your finger or a tool. If the probe triggers correctly, you\'re ready to proceed. If not, check your wiring and probe settings.')}
               </p>
             </div>
             <div className={`p-3 rounded-lg border ${
@@ -91,12 +93,12 @@ export function BitSetterFirstToolWizard({
                   probeContact ? 'bg-green-500' : 'bg-muted'
                 }`} />
                 <span className="text-sm font-medium">
-                  Probe Status: {probeContact ? 'Contact Detected' : 'No Contact'}
+                  {t('Probe Status')}: {probeContact ? t('Contact Detected') : t('No Contact')}
                 </span>
               </div>
               {probeContact && (
                 <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
-                  The probe circuit is working correctly. You can proceed to the next step.
+                  {t('The probe circuit is working correctly. You can proceed to the next step.')}
                 </p>
               )}
             </div>
@@ -108,17 +110,17 @@ export function BitSetterFirstToolWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 1 : 2}: Navigate to BitSetter</h3>
+            <h3 className="text-base font-semibold">{t('Step {{step}}: Navigate to BitSetter', { step: skipVerification ? 1 : 2 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                The tool will automatically navigate to the BitSetter location configured in settings. The machine will move to the BitSetter position safely.
+                {t('The tool will automatically navigate to the BitSetter location configured in settings. The machine will move to the BitSetter position safely.')}
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-yellow-900 dark:text-yellow-100">
-              <strong>Warning:</strong> Make sure there is a clear path to the BitSetter location and that no obstacles will interfere with the tool movement.
+              <strong>{t('Warning')}:</strong> {t('Make sure there is a clear path to the BitSetter location and that no obstacles will interfere with the tool movement.')}
             </p>
           </div>
           <div className="flex items-center justify-center py-4">
@@ -130,12 +132,12 @@ export function BitSetterFirstToolWizard({
               disabled={!isConnected || !connectedPort}
             >
               <Navigation className="w-5 h-5" />
-              Navigate to BitSetter
+              {t('Navigate to BitSetter')}
             </Button>
           </div>
           <div className="bg-muted/50 rounded-lg p-4 space-y-4">
             <div className="space-y-2">
-              <div className="text-sm font-medium">BitSetter Location:</div>
+              <div className="text-sm font-medium">{t('BitSetter Location')}:</div>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">X: </span>
@@ -152,7 +154,7 @@ export function BitSetterFirstToolWizard({
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-medium">Machine Position:</div>
+              <div className="text-sm font-medium">{t('Machine Position')}:</div>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">X: </span>
@@ -176,10 +178,10 @@ export function BitSetterFirstToolWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 2 : 3}: Install First Tool</h3>
+            <h3 className="text-base font-semibold">{t('Step {{step}}: Install First Tool', { step: skipVerification ? 2 : 3 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Install the first tool before probing. We will measure the length of this tool so tool changes during the job are easier and you will only need to re-measure on the bitsetter instead of setting Z again on the material.
+                {t('Install the first tool before probing. We will measure the length of this tool so tool changes during the job are easier and you will only need to re-measure on the bitsetter instead of setting Z again on the material.')}
               </p>
             </div>
           </div>
@@ -193,14 +195,14 @@ export function BitSetterFirstToolWizard({
                 {toolData ? (
                   <span className="text-sm font-medium">{toolData.name}</span>
                 ) : (
-                  <span className="text-sm text-muted-foreground">Tool T{firstToolNumber}</span>
+                  <span className="text-sm text-muted-foreground">{t('Tool T{{toolId}}', { toolId: firstToolNumber })}</span>
                 )}
               </div>
               {toolData && (
                 <div className="space-y-1 text-xs text-muted-foreground">
                   {toolData.diameter != null ? (
                     <div>
-                      Diameter: Ø{toolData.diameter.toFixed(3)}{toolData.diameterUnit || 'mm'}
+                      {t('Diameter')}: Ø{toolData.diameter.toFixed(3)}{toolData.diameterUnit || t('mm')}
                       {toolData.diameterUnit === 'in' && (
                         <> • {(toolData.diameter * 25.4).toFixed(3)}mm</>
                       )}
@@ -210,7 +212,7 @@ export function BitSetterFirstToolWizard({
                     </div>
                   ) : null}
                   {toolData.type && (
-                    <div>Type: {toolData.type}</div>
+                    <div>{t('Type')}: {toolData.type}</div>
                   )}
                   {toolData.description && (
                     <div className="mt-1 pt-1 border-t border-primary/20">
@@ -224,7 +226,7 @@ export function BitSetterFirstToolWizard({
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              Once the first tool is installed, press Next to proceed to the probing step.
+              {t('Once the first tool is installed, press Next to proceed to the probing step.')}
             </p>
           </div>
         </div>
@@ -245,13 +247,13 @@ export function BitSetterFirstToolWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 3 : 4}: Run Probe</h3>
+            <h3 className="text-base font-semibold">{t('Step {{step}}: Run Probe', { step: skipVerification ? 3 : 4 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Press the probe button below to start the automatic BitSetter probe sequence. The tool will perform a multi-stage probe sequence to accurately measure the tool length.
+                {t('Press the probe button below to start the automatic BitSetter probe sequence. The tool will perform a multi-stage probe sequence to accurately measure the tool length.')}
               </p>
               <p>
-                After probing, the tool reference will be stored. The tool will automatically retract to a safe height above the BitSetter.
+                {t('After probing, the tool reference will be stored. The tool will automatically retract to a safe height above the BitSetter.')}
               </p>
             </div>
           </div>
@@ -271,14 +273,14 @@ export function BitSetterFirstToolWizard({
                 }`} />
                 <div className="flex-1">
                   <p className="text-sm font-medium">
-                    {probeStatus === 'probing' && 'Running probe sequence...'}
-                    {probeStatus === 'capturing' && 'Capturing position...'}
-                    {probeStatus === 'storing' && 'Storing tool reference...'}
+                    {probeStatus === 'probing' && t('Running probe sequence...')}
+                    {probeStatus === 'capturing' && t('Capturing position...')}
+                    {probeStatus === 'storing' && t('Storing tool reference...')}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {probeStatus === 'probing' && 'The tool is probing down to contact the BitSetter sensor.'}
-                    {probeStatus === 'capturing' && 'Reading work position after probe contact...'}
-                    {probeStatus === 'storing' && 'Saving tool reference to Extensions API...'}
+                    {probeStatus === 'probing' && t('The tool is probing down to contact the BitSetter sensor.')}
+                    {probeStatus === 'capturing' && t('Reading work position after probe contact...')}
+                    {probeStatus === 'storing' && t('Saving tool reference to Extensions API...')}
                   </p>
                 </div>
               </div>
@@ -291,10 +293,10 @@ export function BitSetterFirstToolWizard({
                 <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Probe complete! Tool reference stored.
+                    {t('Probe complete! Tool reference stored.')}
                   </p>
                   <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                    The tool reference has been saved for {currentWCS}. You can now use this reference for tool changes.
+                    {t('The tool reference has been saved for {{wcs}}. You can now use this reference for tool changes.', { wcs: currentWCS })}
                   </p>
                 </div>
               </div>
@@ -307,10 +309,10 @@ export function BitSetterFirstToolWizard({
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-900 dark:text-red-100">
-                    Probe error
+                    {t('Probe error')}
                   </p>
                   <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                    {probeError || 'An error occurred during the probe sequence. Please try again.'}
+                    {probeError || t('An error occurred during the probe sequence. Please try again.')}
                   </p>
                 </div>
               </div>
@@ -323,10 +325,10 @@ export function BitSetterFirstToolWizard({
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-900 dark:text-red-100">
-                    Machine not at BitSetter location
+                    {t('Machine not at BitSetter location')}
                   </p>
                   <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                    The machine is not positioned at the BitSetter location. Please go back to the previous step and navigate to the BitSetter location before probing.
+                    {t('The machine is not positioned at the BitSetter location. Please go back to the previous step and navigate to the BitSetter location before probing.')}
                   </p>
                 </div>
               </div>
@@ -337,7 +339,7 @@ export function BitSetterFirstToolWizard({
             <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>Warning:</strong> Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({method.probeDistance}mm) before starting. The tool should already be at the BitSetter location from the previous step.
+                <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned above the BitSetter and there is enough clearance for the probe distance ({{distance}}mm) before starting. The tool should already be at the BitSetter location from the previous step.', { distance: method.probeDistance })}
               </p>
             </div>
           )}
@@ -353,14 +355,14 @@ export function BitSetterFirstToolWizard({
               {isProbing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  {probeStatus === 'probing' && 'Probing...'}
-                  {probeStatus === 'capturing' && 'Capturing...'}
-                  {probeStatus === 'storing' && 'Storing...'}
+                  {probeStatus === 'probing' && t('Probing...')}
+                  {probeStatus === 'capturing' && t('Capturing...')}
+                  {probeStatus === 'storing' && t('Storing...')}
                 </>
               ) : (
                 <>
                   <Target className="w-5 h-5" />
-                  {isProbeComplete ? 'Probe Complete' : 'Start BitSetter Probe'}
+                  {isProbeComplete ? t('Probe Complete') : t('Start BitSetter Probe')}
                 </>
               )}
             </Button>
@@ -370,9 +372,9 @@ export function BitSetterFirstToolWizard({
             <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
-                <p className="font-medium">Tool reference stored</p>
+                <p className="font-medium">{t('Tool reference stored')}</p>
                 <p>
-                  The tool reference for {currentWCS} has been saved. When you change tools during a job, you can use this reference to automatically adjust the Z offset.
+                  {t('The tool reference for {{wcs}} has been saved. When you change tools during a job, you can use this reference to automatically adjust the Z offset.', { wcs: currentWCS })}
                 </p>
               </div>
             </div>
@@ -389,26 +391,26 @@ export function BitSetterFirstToolWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step {skipVerification ? 4 : 5}: Complete Tool Change</h3>
+            <h3 className="text-base font-semibold">{t('Step {{step}}: Complete Tool Change', { step: skipVerification ? 4 : 5 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                The tool change wizard is complete! The tool length has been measured and stored, and the Z zero has been adjusted automatically.
+                {t('The tool change wizard is complete! The tool length has been measured and stored, and the Z zero has been adjusted automatically.')}
               </p>
               <p className="font-medium text-foreground mt-3">
-                Next steps:
+                {t('Next steps')}:
               </p>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
-                <li>Press <strong>Resume</strong> on the job status indicator to continue the job with the new tool</li>
+                <li>{t('Press the Complete button below to close this wizard')}</li>
+                <li>{t('Press Resume on the job status indicator to continue the job with the new tool')}</li>
               </ol>
             </div>
           </div>
           <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
             <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
-              <p className="font-medium">Tool change complete</p>
+              <p className="font-medium">{t('Tool change complete')}</p>
               <p>
-                The tool reference for {currentWCS} has been saved and Z zero has been adjusted. You can now resume the job.
+                {t('The tool reference for {{wcs}} has been saved and Z zero has been adjusted. You can now resume the job.', { wcs: currentWCS })}
               </p>
             </div>
           </div>

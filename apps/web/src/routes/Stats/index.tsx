@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
@@ -95,6 +96,7 @@ interface JobStats {
 }
 
 export default function Stats() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   
@@ -595,7 +597,7 @@ export default function Stats() {
             </svg>
           </div>
           <div className="flex-1">
-            <div className="text-xs text-muted-foreground">No operation data</div>
+            <div className="text-xs text-muted-foreground">{t('No operation data')}</div>
           </div>
         </div>
       )
@@ -635,7 +637,7 @@ export default function Stats() {
           {operationTypes.map(({ type, percent, bgColor }) => (
             <div key={type} className="flex items-center gap-2 text-xs">
               <div className={`w-2.5 h-2.5 rounded ${bgColor}`} />
-              <span className="text-muted-foreground truncate">{type}</span>
+              <span className="text-muted-foreground truncate">{t(type)}</span>
               <span className="font-medium text-foreground">{percent}%</span>
             </div>
           ))}
@@ -654,13 +656,13 @@ export default function Stats() {
         
         {/* Mode tabs */}
         <div className="flex gap-1 ml-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>Setup</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
-          <Button variant="default" size="sm">Stats</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>{t('Setup')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>{t('Monitor')}</Button>
+          <Button variant="default" size="sm">{t('Stats')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>{t('Settings')}</Button>
           <Button variant="ghost" size="sm" asChild>
             <a href="https://axiocnc.com/docs" target="_blank" rel="noopener noreferrer">
-              Docs
+              {t('Docs')}
             </a>
           </Button>
         </div>
@@ -682,7 +684,7 @@ export default function Stats() {
             className="h-9 px-4"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            {t('Reset')}
           </MachineActionButton>
           <MachineActionButton
             isConnected={isConnected}
@@ -696,7 +698,7 @@ export default function Stats() {
             className="h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
           >
             <Square className="w-5 h-5 mr-2" />
-            E-Stop
+            {t('E-Stop')}
           </MachineActionButton>
         </div>
       </header>
@@ -706,7 +708,7 @@ export default function Stats() {
         {(isLoadingStats || isLoadingToolStats || isLoadingJobs) ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-muted-foreground">
-              <div className="text-lg mb-2">Loading statistics...</div>
+              <div className="text-lg mb-2">{t('Loading statistics...')}</div>
             </div>
           </div>
         ) : (
@@ -722,7 +724,7 @@ export default function Stats() {
                   <div className="space-y-4">
                     <Card key="total-jobs">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Jobs</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t('Total Jobs')}</CardTitle>
                       </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -732,21 +734,21 @@ export default function Stats() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                          <span className="text-xs text-muted-foreground">Successful</span>
+                          <span className="text-xs text-muted-foreground">{t('Successful')}</span>
                         </div>
                         <span className="text-lg font-bold text-green-500">{cumulativeStats.successfulJobs}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
                           <XCircle className="w-3.5 h-3.5 text-red-500" />
-                          <span className="text-xs text-muted-foreground">Failed</span>
+                          <span className="text-xs text-muted-foreground">{t('Failed')}</span>
                         </div>
                         <span className="text-lg font-bold text-red-500">{cumulativeStats.failedJobs}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
                           <AlertCircle className="w-3.5 h-3.5 text-yellow-500" />
-                          <span className="text-xs text-muted-foreground">Cancelled</span>
+                          <span className="text-xs text-muted-foreground">{t('Cancelled')}</span>
                         </div>
                         <span className="text-lg font-bold text-yellow-500">{cumulativeStats.cancelledJobs}</span>
                       </div>
@@ -755,15 +757,15 @@ export default function Stats() {
                     </Card>
                     <Card key="runtime-distance">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Runtime & Distance</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t('Runtime & Distance')}</CardTitle>
                       </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Total Runtime</div>
+                      <div className="text-xs text-muted-foreground mb-1">{t('Total Runtime')}</div>
                       <div className="text-xl font-bold">{formatTime(cumulativeStats.totalRuntime)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Total Distance</div>
+                      <div className="text-xs text-muted-foreground mb-1">{t('Total Distance')}</div>
                       <div className="text-xl font-bold mb-2">{formatDistance(cumulativeStats.totalDistance)}</div>
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center justify-between gap-2">
@@ -784,7 +786,7 @@ export default function Stats() {
                     </Card>
                     <Card key="operation-types">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Operation Types</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">{t('Operation Types')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <PieChart operationTypes={cumulativeStats.operationTypes} size={12} />
@@ -797,7 +799,7 @@ export default function Stats() {
                 <CardHeader className="border-b border-border">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Wrench className="w-4 h-4" />
-                    Tool Stats
+                    {t('Tool Stats')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
@@ -823,15 +825,15 @@ export default function Stats() {
                         </div>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Usage:</span>
-                            <span className="font-medium">{tool.usageCount} jobs</span>
+                            <span className="text-muted-foreground">{t('Usage:')}</span>
+                            <span className="font-medium">{tool.usageCount} {t('jobs')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Runtime:</span>
+                            <span className="text-muted-foreground">{t('Runtime:')}</span>
                             <span className="font-medium">{formatTime(tool.totalRuntime)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Distance:</span>
+                            <span className="text-muted-foreground">{t('Distance:')}</span>
                             <span className="font-medium">{formatDistance(tool.totalDistance)}</span>
                           </div>
                         </div>
@@ -851,7 +853,7 @@ export default function Stats() {
               <CardHeader className="border-b border-border">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileText className="w-4 h-4" />
-                  Job History
+                  {t('Job History')}
                 </CardTitle>
               </CardHeader>
               <OverlayScrollbarsComponent 
@@ -896,7 +898,7 @@ export default function Stats() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Wrench className="w-3 h-3" />
-                          {job.toolsUsed.length} tool{job.toolsUsed.length !== 1 ? 's' : ''}
+                          {job.toolsUsed.length} {job.toolsUsed.length !== 1 ? t('tools') : t('tool')}
                         </span>
                       </div>
                     </button>
@@ -910,7 +912,7 @@ export default function Stats() {
               <CardHeader className="border-b border-border">
                 <CardTitle className="text-base flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
-                  Job Details
+                  {t('Job Details')}
                 </CardTitle>
               </CardHeader>
               {selectedJob ? (
@@ -926,11 +928,11 @@ export default function Stats() {
                         <h3 className="text-lg font-bold mb-1">{selectedJob.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="w-4 h-4" />
-                          <span>Started: {formatDate(selectedJob.startTime)}</span>
+                          <span>{t('Started:')} {formatDate(selectedJob.startTime)}</span>
                           {selectedJob.endTime && (
                             <>
                               <span>•</span>
-                              <span>Ended: {formatDate(selectedJob.endTime)}</span>
+                              <span>{t('Ended:')} {formatDate(selectedJob.endTime)}</span>
                             </>
                           )}
                         </div>
@@ -938,19 +940,19 @@ export default function Stats() {
                           {selectedJob.status === 'completed' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-500/10 text-green-500">
                               <CheckCircle2 className="w-3 h-3" />
-                              Completed
+                              {t('Completed')}
                             </span>
                           )}
                           {selectedJob.status === 'failed' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-500/10 text-red-500">
                               <XCircle className="w-3 h-3" />
-                              Failed
+                              {t('Failed')}
                             </span>
                           )}
                           {selectedJob.status === 'cancelled' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500">
                               <AlertCircle className="w-3 h-3" />
-                              Cancelled
+                              {t('Cancelled')}
                             </span>
                           )}
                         </div>
@@ -959,10 +961,10 @@ export default function Stats() {
                       {/* Stats Grid */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-lg border border-border bg-muted/30">
-                          <div className="text-sm text-muted-foreground mb-1">Runtime</div>
+                          <div className="text-sm text-muted-foreground mb-1">{t('Runtime')}</div>
                           <div className="text-xl font-bold mb-3">{formatTime(selectedJob.runtime)}</div>
                           <div className="pt-3 border-t border-border">
-                            <div className="text-sm text-muted-foreground mb-1">Lines Processed</div>
+                            <div className="text-sm text-muted-foreground mb-1">{t('Lines Processed')}</div>
                             <div className="text-xl font-bold mb-2">
                               {selectedJob.linesProcessed.toLocaleString()} / {selectedJob.totalLines.toLocaleString()}
                             </div>
@@ -975,7 +977,7 @@ export default function Stats() {
                           </div>
                         </div>
                         <div className="p-4 rounded-lg border border-border bg-muted/30">
-                          <div className="text-sm text-muted-foreground mb-2">Distance</div>
+                          <div className="text-sm text-muted-foreground mb-2">{t('Distance')}</div>
                           <div className="text-xl font-bold mb-2">{formatDistance(selectedJob.distance)}</div>
                           <div className="space-y-1 text-xs">
                             <div className="flex items-center justify-between gap-2">
@@ -1034,11 +1036,11 @@ export default function Stats() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 text-xs">
                                   <div>
-                                    <div className="text-muted-foreground mb-0.5">Runtime</div>
+                                    <div className="text-muted-foreground mb-0.5">{t('Runtime')}</div>
                                     <div className="font-medium">{formatTime(toolUsageData.time)}</div>
                                   </div>
                                   <div>
-                                    <div className="text-muted-foreground mb-0.5">Distance</div>
+                                    <div className="text-muted-foreground mb-0.5">{t('Distance')}</div>
                                     <div className="font-medium">{formatDistance(toolUsageData.distance)}</div>
                                   </div>
                                 </div>
@@ -1054,7 +1056,7 @@ export default function Stats() {
                   {selectedJob.gcode && (
                     <div className="border-t border-border">
                       <div className="px-4 py-2 bg-muted/30 border-b border-border">
-                        <h4 className="text-sm font-medium">G-code Visualization</h4>
+                        <h4 className="text-sm font-medium">{t('G-code Visualization')}</h4>
                       </div>
                       <div className="h-64 relative">
                         <VisualizerScene 
@@ -1073,7 +1075,7 @@ export default function Stats() {
                 <div className="flex-1 flex items-center justify-center p-8">
                   <div className="text-center text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">Select a job from the list to view details</p>
+                    <p className="text-sm">{t('Select a job from the list to view details')}</p>
                   </div>
                 </div>
               )}

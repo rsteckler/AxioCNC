@@ -3,6 +3,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react'
+import i18n from '@/i18n'
 import { track } from '@/services/analytics'
 
 interface Props {
@@ -56,14 +57,14 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex items-center justify-center min-h-screen p-4">
           <div className="text-center space-y-4 max-w-md">
-            <h1 className="text-2xl font-bold text-destructive">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-destructive">{i18n.t('Something went wrong')}</h1>
             <p className="text-muted-foreground">
-              An error occurred while rendering this page. Please refresh to try again.
+              {i18n.t('An error occurred while rendering this page. Please refresh to try again.')}
             </p>
             {this.state.error && import.meta.env.DEV && (
               <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-muted-foreground">
-                  Error details (dev only)
+                  {i18n.t('Error details (dev only)')}
                 </summary>
                 <pre className="mt-2 p-4 bg-muted rounded text-xs overflow-auto">
                   {this.state.error.toString()}
@@ -80,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
             >
-              Refresh Page
+              {i18n.t('Refresh Page')}
             </button>
           </div>
         </div>

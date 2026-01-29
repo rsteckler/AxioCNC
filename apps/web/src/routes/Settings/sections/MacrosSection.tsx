@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,6 +62,7 @@ export function MacrosSection({
   onEdit,
   onDelete,
 }: MacrosSectionProps) {
+  const { t } = useTranslation()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingMacro, setEditingMacro] = useState<Macro | null>(null)
   const [variablesDropdownOpen, setVariablesDropdownOpen] = useState(false)
@@ -273,8 +275,8 @@ export function MacrosSection({
   return (
     <SettingsSection
       id="macros"
-      title="Macros"
-      description="Create reusable G-code sequences for common operations"
+      title={t('Macros')}
+      description={t('Create reusable G-code sequences for common operations')}
     >
       <div className="space-y-4">
         {/* Add Button */}
@@ -286,34 +288,34 @@ export function MacrosSection({
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                Add Macro
+                {t('Add Macro')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col overflow-hidden">
               <DialogHeader className="flex-shrink-0">
-                <DialogTitle>Add Macro</DialogTitle>
+                <DialogTitle>{t('Add Macro')}</DialogTitle>
                 <DialogDescription>
-                  Create a new macro with G-code commands.
+                  {t('Create a new macro with G-code commands.')}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin py-4">
                 <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="macro-name">Name</Label>
+                  <Label htmlFor="macro-name">{t('Name')}</Label>
                   <Input
                     id="macro-name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g., Home All Axes"
+                    placeholder={t('e.g., Home All Axes')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="macro-description">Description</Label>
+                  <Label htmlFor="macro-description">{t('Description')}</Label>
                   <Input
                     id="macro-description"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Optional description of what this macro does"
+                    placeholder={t('Optional description of what this macro does')}
                   />
                 </div>
                 {/* Parameters Display */}
@@ -327,22 +329,22 @@ export function MacrosSection({
                     <Card className="border-muted">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm font-medium">Parameters</CardTitle>
+                          <CardTitle className="text-sm font-medium">{t('Parameters')}</CardTitle>
                           {hasWarnings && (
                             <Badge variant="destructive" className="text-xs">
                               <AlertCircle className="w-3 h-3 mr-1" />
-                              Validation
+                              {t('Validation')}
                             </Badge>
                           )}
                         </div>
                         <CardDescription className="text-xs">
-                          Parameters declared with <code className="text-xs">; @param name:type</code>
+                          {t('Parameters declared with')} <code className="text-xs">; @param name:type</code>
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {validation.declared.length > 0 && (
                           <div>
-                            <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
+                            <div className="text-xs font-medium text-muted-foreground mb-2">{t('Declared Parameters:')}</div>
                             <div className="flex flex-wrap gap-2">
                               {validation.declared.map((param, index) => (
                                 <Badge key={`${param.name}-${index}`} variant="secondary" className="font-mono text-xs">
@@ -361,7 +363,7 @@ export function MacrosSection({
                               <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-destructive mb-1">
-                                  Duplicate variable names:
+                                  {t('Duplicate variable names:')}
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {validation.duplicates.map((param) => (
@@ -371,7 +373,7 @@ export function MacrosSection({
                                   ))}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2">
-                                  Each variable name should only be declared once.
+                                  {t('Each variable name should only be declared once.')}
                                 </div>
                               </div>
                             </div>
@@ -383,7 +385,7 @@ export function MacrosSection({
                               <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-destructive mb-1">
-                                  Undeclared parameters used:
+                                  {t('Undeclared parameters used:')}
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {validation.undeclared.map((param) => (
@@ -393,7 +395,7 @@ export function MacrosSection({
                                   ))}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2">
-                                  Add parameter declarations: <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
+                                  {t('Add parameter declarations:')} <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
                                 </div>
                               </div>
                             </div>
@@ -405,7 +407,7 @@ export function MacrosSection({
                 })()}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="macro-content">G-code Commands</Label>
+                    <Label htmlFor="macro-content">{t('G-code Commands')}</Label>
                     <div className="relative">
                       <Button
                         type="button"
@@ -418,7 +420,7 @@ export function MacrosSection({
                         }}
                       >
                         <Plus className="w-4 h-4" />
-                        Macro Variables
+                        {t('Macro Variables')}
                         <ChevronDown className="w-4 h-4" />
                       </Button>
                       {variablesDropdownOpen && variablesDropdownAnchor && (
@@ -474,17 +476,17 @@ export function MacrosSection({
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Enter one command per line. Commands will be sent in sequence.
+                    {t('Enter one command per line. Commands will be sent in sequence.')}
                   </p>
                 </div>
               </div>
               </div>
               <DialogFooter className="flex-shrink-0">
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button onClick={handleAdd} disabled={!formName.trim() || !formContent.trim()}>
-                  Add Macro
+                  {t('Add Macro')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -496,10 +498,10 @@ export function MacrosSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-40">Name</TableHead>
-                <TableHead>Commands</TableHead>
-                <TableHead className="w-28">Modified</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-40">{t('Name')}</TableHead>
+                <TableHead>{t('Commands')}</TableHead>
+                <TableHead className="w-28">{t('Modified')}</TableHead>
+                <TableHead className="w-24 text-right">{t('Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -507,8 +509,8 @@ export function MacrosSection({
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     <Code className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No macros configured</p>
-                    <p className="text-xs mt-1">Add macros to quickly run common G-code sequences</p>
+                    <p>{t('No macros configured')}</p>
+                    <p className="text-xs mt-1">{t('Add macros to quickly run common G-code sequences')}</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -549,29 +551,29 @@ export function MacrosSection({
                           </DialogTrigger>
                           <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col overflow-hidden">
                             <DialogHeader className="flex-shrink-0">
-                              <DialogTitle>Edit Macro</DialogTitle>
+                              <DialogTitle>{t('Edit Macro')}</DialogTitle>
                               <DialogDescription>
-                                Modify the macro name or G-code commands.
+                                {t('Modify the macro name or G-code commands.')}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin py-4">
                               <div className="space-y-4">
                               <div className="space-y-2">
-                                <Label htmlFor="edit-macro-name">Name</Label>
+                                <Label htmlFor="edit-macro-name">{t('Name')}</Label>
                                 <Input
                                   id="edit-macro-name"
                                   value={formName}
                                   onChange={(e) => setFormName(e.target.value)}
-                                  placeholder="e.g., Home All Axes"
+                                  placeholder={t('e.g., Home All Axes')}
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="edit-macro-description">Description</Label>
+                                <Label htmlFor="edit-macro-description">{t('Description')}</Label>
                                 <Input
                                   id="edit-macro-description"
                                   value={formDescription}
                                   onChange={(e) => setFormDescription(e.target.value)}
-                                  placeholder="Optional description"
+                                  placeholder={t('Optional description')}
                                 />
                               </div>
                               {/* Parameters Display */}
@@ -585,22 +587,22 @@ export function MacrosSection({
                                   <Card className="border-muted">
                                     <CardHeader className="pb-3">
                                       <div className="flex items-center justify-between">
-                                        <CardTitle className="text-sm font-medium">Parameters</CardTitle>
+                                        <CardTitle className="text-sm font-medium">{t('Parameters')}</CardTitle>
                                         {hasWarnings && (
                                           <Badge variant="destructive" className="text-xs">
                                             <AlertCircle className="w-3 h-3 mr-1" />
-                                            Validation
+                                            {t('Validation')}
                                           </Badge>
                                         )}
                                       </div>
                                       <CardDescription className="text-xs">
-                                        Parameters declared with <code className="text-xs">; @param name:type</code>
+                                        {t('Parameters declared with')} <code className="text-xs">; @param name:type</code>
                                       </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
                                       {validation.declared.length > 0 && (
                                         <div>
-                                          <div className="text-xs font-medium text-muted-foreground mb-2">Declared Parameters:</div>
+                                          <div className="text-xs font-medium text-muted-foreground mb-2">{t('Declared Parameters:')}</div>
                                           <div className="flex flex-wrap gap-2">
                                             {validation.declared.map((param, index) => (
                                               <Badge key={`${param.name}-${index}`} variant="secondary" className="font-mono text-xs">
@@ -651,7 +653,7 @@ export function MacrosSection({
                                                 ))}
                                               </div>
                                               <div className="text-xs text-muted-foreground mt-2">
-                                                Add parameter declarations: <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
+                                                {t('Add parameter declarations:')} <code className="text-xs">; @param {validation.undeclared[0]}:number</code>
                                               </div>
                                             </div>
                                           </div>
@@ -663,7 +665,7 @@ export function MacrosSection({
                               })()}
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <Label htmlFor="edit-macro-content">G-code Commands</Label>
+                                  <Label htmlFor="edit-macro-content">{t('G-code Commands')}</Label>
                                   <div className="relative">
                                     <Button
                                       type="button"
@@ -676,7 +678,7 @@ export function MacrosSection({
                                       }}
                                     >
                                       <Plus className="w-4 h-4" />
-                                      Macro Variables
+                                      {t('Macro Variables')}
                                       <ChevronDown className="w-4 h-4" />
                                     </Button>
                                     {variablesDropdownOpen && variablesDropdownAnchor && (
@@ -735,10 +737,10 @@ export function MacrosSection({
                             </div>
                             <DialogFooter className="flex-shrink-0">
                               <Button variant="outline" onClick={() => setEditingMacro(null)}>
-                                Cancel
+                                {t('Cancel')}
                               </Button>
                               <Button onClick={handleEdit} disabled={!formName.trim() || !formContent.trim()}>
-                                Save Changes
+                                {t('Save Changes')}
                               </Button>
                             </DialogFooter>
                           </DialogContent>
@@ -757,18 +759,18 @@ export function MacrosSection({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Macro?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('Delete Macro?')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete "{macro.name}"? This action cannot be undone.
+                                {t('Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: macro.name })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => onDelete(macro.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete
+                                {t('Delete')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

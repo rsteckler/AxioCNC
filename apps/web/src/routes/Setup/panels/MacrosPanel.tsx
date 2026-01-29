@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { ActionRequirements } from '@/utils/machineState'
 import { LoadingState } from '@/components/LoadingState'
@@ -39,6 +40,7 @@ export function MacrosPanel({
   machineStatus,
   onFlashStatus,
 }: PanelProps) {
+  const { t } = useTranslation()
   const { data: macrosData, isLoading } = useGetMacrosQuery()
   const { sendCommand } = useGcodeCommand(connectedPort)
   const [confirmMacro, setConfirmMacro] = useState<Macro | null>(null)
@@ -138,11 +140,11 @@ export function MacrosPanel({
   }, [confirmMacro, connectedPort, macroParameters, parameterValues, sendCommand])
   
   if (isLoading) {
-    return <LoadingState message="Loading macros..." className="py-8" />
+    return <LoadingState message={t('Loading macros...')} className="py-8" />
   }
   
   if (macros.length === 0) {
-    return <EmptyState message="No macros found. Add macros in Settings." className="py-12" />
+    return <EmptyState message={t('No macros found. Add macros in Settings.')} className="py-12" />
   }
   
   return (
@@ -175,12 +177,12 @@ export function MacrosPanel({
       <Dialog open={confirmMacro !== null} onOpenChange={(open) => !open && setConfirmMacro(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Run Macro</DialogTitle>
+            <DialogTitle>{t('Run Macro')}</DialogTitle>
             <DialogDescription>
               {macroParameters.length > 0 ? (
-                <>Enter parameter values for <strong>{confirmMacro?.name}</strong></>
+                <>{t('Enter parameter values for')} <strong>{confirmMacro?.name}</strong></>
               ) : (
-                <>Are you sure you want to run <strong>{confirmMacro?.name}</strong>?</>
+                <>{t('Are you sure you want to run')} <strong>{confirmMacro?.name}</strong>?</>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -210,7 +212,7 @@ export function MacrosPanel({
                           onCheckedChange={(checked) => handleBooleanToggle(param.name, checked)}
                         />
                         <span className="text-sm text-muted-foreground">
-                          {state?.value === 'true' ? 'true' : 'false'}
+                          {state?.value === 'true' ? t('true') : t('false')}
                         </span>
                       </div>
                     ) : (
@@ -221,7 +223,7 @@ export function MacrosPanel({
                           inputMode={param.type === 'number' ? 'decimal' : 'text'}
                           value={state?.value ?? ''}
                           onChange={(e) => handleParameterChange(param.name, e.target.value, param.type)}
-                          placeholder={param.defaultValue ? `Default: ${param.defaultValue}` : `Enter ${param.type}`}
+                          placeholder={param.defaultValue ? t('Default: {{value}}', { value: param.defaultValue }) : t('Enter {{type}}', { type: param.type })}
                           className={hasError ? 'border-destructive' : ''}
                         />
                         {hasError && (
@@ -240,19 +242,19 @@ export function MacrosPanel({
           
           {macroParameters.length === 0 && (
             <p className="text-sm text-muted-foreground py-2">
-              Make sure the machine is in a safe state before proceeding.
+              {t('Make sure the machine is in a safe state before proceeding.')}
             </p>
           )}
           
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setConfirmMacro(null)}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button 
               onClick={handleConfirmRun}
               disabled={!allParametersValid}
             >
-              Run
+              {t('Run')}
             </Button>
           </DialogFooter>
         </DialogContent>

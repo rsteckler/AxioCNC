@@ -190,11 +190,12 @@ const appMain = () => {
     log.error(err);
   }
 
-  // Only use favicon middleware if favicon.ico exists
-  const faviconPath = path.join(_get(settings, 'assets.app.path', ''), 'favicon.ico');
-  if (fs.existsSync(faviconPath)) {
-    app.use(favicon(faviconPath));
-  }
+  // #region agent log
+  const appPath = _get(settings, 'assets.app.path', '');
+  const faviconPath = path.join(appPath, 'favicon.ico');
+  fetch('http://127.0.0.1:7243/ingest/6655c974-5ed1-4fc1-8a00-d8f53fc1c6bd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:193',message:'favicon path construction',data:{appPath,faviconPath,settingsAssetsPath:settings?.assets?.app?.path},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  app.use(favicon(faviconPath));
   app.use(cookieParser());
 
   // Connect's body parsing middleware. This only handles urlencoded and json bodies.

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Switch } from '@/components/ui/switch'
@@ -16,15 +17,16 @@ export function AdvancedSection({
   config,
   onConfigChange,
 }: AdvancedSectionProps) {
+  const { t } = useTranslation()
   return (
     <SettingsSection
       id="advanced"
-      title="Advanced"
-      description="Advanced options for debugging and development"
+      title={t('Advanced')}
+      description={t('Advanced options for debugging and development')}
     >
       <SettingsField
-        label="Show Advanced Settings"
-        description="Display the Advanced settings section with debugging and development options"
+        label={t('Show Advanced Settings')}
+        description={t('Display the Advanced settings section with debugging and development options')}
         horizontal
       >
         <Switch
@@ -34,8 +36,8 @@ export function AdvancedSection({
       </SettingsField>
 
       <SettingsField
-        label="Debug Mode"
-        description="Enable debug logging and development features"
+        label={t('Debug Mode')}
+        description={t('Enable debug logging and development features')}
         horizontal
       >
         <Switch

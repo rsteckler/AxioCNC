@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Target, AlertCircle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ZeroingMethod } from '../../../../shared/src/schemas/settings'
@@ -26,6 +27,7 @@ export function CustomZeroingWizard({
   onProbe,
   isJobPaused = false,
 }: CustomZeroingWizardProps) {
+  const { t } = useTranslation()
   const isProbing = probeStatus === 'probing'
   const isProbeComplete = probeStatus === 'complete'
   const isProbeError = probeStatus === 'error'
@@ -36,10 +38,10 @@ export function CustomZeroingWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step 1: Run Custom G-code</h3>
+            <h3 className="text-base font-semibold">{t('Step 1: Run Custom G-code')}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Review the custom G-code below and press the button to execute it. The G-code will run sequentially until complete.
+                {t('Review the custom G-code below and press the button to execute it. The G-code will run sequentially until complete.')}
               </p>
             </div>
           </div>
@@ -54,7 +56,7 @@ export function CustomZeroingWizard({
               disabled={!isConnected || !connectedPort || !method.gcode || isProbing || isProbeComplete}
             >
               <Target className="w-5 h-5" />
-              {isProbing ? 'Running...' : isProbeComplete ? 'G-code Complete' : 'Run Custom G-code'}
+              {isProbing ? t('Running...') : isProbeComplete ? t('G-code Complete') : t('Run Custom G-code')}
             </Button>
           </div>
           
@@ -73,10 +75,10 @@ export function CustomZeroingWizard({
                 }`} />
                 <span className="text-sm font-medium">
                   {isProbeComplete 
-                    ? 'G-code Execution Complete'
+                    ? t('G-code Execution Complete')
                     : isProbeError
-                    ? 'Error During Execution'
-                    : 'Executing G-code...'}
+                    ? t('Error During Execution')
+                    : t('Executing G-code...')}
                 </span>
               </div>
               {probeError && (
@@ -86,7 +88,7 @@ export function CustomZeroingWizard({
               )}
               {isProbeComplete && (
                 <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
-                  All G-code commands have been executed. Proceed to the next step to complete the zeroing process.
+                  {t('All G-code commands have been executed. Proceed to the next step to complete the zeroing process.')}
                 </p>
               )}
             </div>
@@ -96,19 +98,19 @@ export function CustomZeroingWizard({
           <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-yellow-900 dark:text-yellow-100">
-              <strong>Warning:</strong> Make sure the machine is in a safe state before running the G-code. Verify the G-code will not cause collisions or unsafe movements.
+              <strong>{t('Warning')}:</strong> {t('Make sure the machine is in a safe state before running the G-code. Verify the G-code will not cause collisions or unsafe movements.')}
             </p>
           </div>
           
           {/* Display G-code */}
           <div className="bg-muted/50 rounded-lg p-4">
-            <div className="text-sm font-medium mb-2">Custom G-code:</div>
+            <div className="text-sm font-medium mb-2">{t('Custom G-code')}:</div>
             <pre className="text-xs font-mono bg-background border rounded p-3 overflow-x-auto max-h-48 overflow-y-auto">
-              {method.gcode || '(No G-code configured)'}
+              {method.gcode || t('(No G-code configured)')}
             </pre>
             {!method.gcode && (
               <p className="text-xs text-muted-foreground mt-2">
-                Please configure the custom G-code in settings before running this probe method.
+                {t('Please configure the custom G-code in settings before running this probe method.')}
               </p>
             )}
           </div>
@@ -120,19 +122,19 @@ export function CustomZeroingWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step 2: Complete</h3>
+            <h3 className="text-base font-semibold">{t('Step 2: Complete')}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                The custom G-code has been executed. Verify that the zeroing operation completed successfully before proceeding.
+                {t('The custom G-code has been executed. Verify that the zeroing operation completed successfully before proceeding.')}
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
             <Check className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
-              <p className="font-medium">G-code Execution Complete</p>
+              <p className="font-medium">{t('G-code Execution Complete')}</p>
               <p>
-                The custom G-code probe sequence has finished. If the zeroing was successful, click Complete to finish.
+                {t('The custom G-code probe sequence has finished. If the zeroing was successful, click Complete to finish.')}
               </p>
             </div>
           </div>
@@ -146,26 +148,26 @@ export function CustomZeroingWizard({
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Step 3: Complete</h3>
+            <h3 className="text-base font-semibold">{t('Step 3: Complete')}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                The zeroing wizard is complete! The custom G-code has been executed.
+                {t('The zeroing wizard is complete! The custom G-code has been executed.')}
               </p>
               <p className="font-medium text-foreground mt-3">
-                Next steps:
+                {t('Next steps')}:
               </p>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Press the <strong>Complete</strong> button below to close this wizard</li>
-                <li>Press <strong>Resume</strong> on the job status indicator to continue the job</li>
+                <li>{t('Press the Complete button below to close this wizard')}</li>
+                <li>{t('Press Resume on the job status indicator to continue the job')}</li>
               </ol>
             </div>
           </div>
           <div className="flex items-start gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
             <Check className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
-              <p className="font-medium">Zeroing complete</p>
+              <p className="font-medium">{t('Zeroing complete')}</p>
               <p>
-                The custom G-code probe sequence has finished. You can now resume the job.
+                {t('The custom G-code probe sequence has finished. You can now resume the job.')}
               </p>
             </div>
           </div>

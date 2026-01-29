@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ComponentRef } from 'react'
 import { Color } from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
@@ -547,6 +548,7 @@ function CameraController({ xSize, ySize, zSize, view, viewKey }: { xSize: numbe
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machinePosition, modelOffset, processedLines, outlinePoints }: VisualizerSceneProps = {}) {
+  const { t } = useTranslation()
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -704,19 +706,19 @@ export function VisualizerScene({ gcode, limits: _limits, view, viewKey, machine
       {/* Position readout overlay - only show if debug mode is enabled */}
       {debugMode && (
         <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-mono rounded px-2 py-1.5 pointer-events-none">
-          <div className="text-muted-foreground mb-1">Tool Position</div>
+          <div className="text-muted-foreground mb-1">{t('Tool Position')}</div>
           <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-x-2 gap-y-0.5">
             <div className="text-muted-foreground"></div>
-            <div className="text-red-400 text-center">X</div>
-            <div className="text-green-400 text-center">Y</div>
-            <div className="text-blue-400 text-center">Z</div>
+            <div className="text-red-400 text-center">{t('X')}</div>
+            <div className="text-green-400 text-center">{t('Y')}</div>
+            <div className="text-blue-400 text-center">{t('Z')}</div>
             
-            <div className="text-muted-foreground">Machine</div>
+            <div className="text-muted-foreground">{t('Machine')}</div>
             <div className="text-right">{displayMachinePos.x.toFixed(2)}</div>
             <div className="text-right">{displayMachinePos.y.toFixed(2)}</div>
             <div className="text-right">{displayMachinePos.z.toFixed(2)}</div>
             
-            <div className="text-muted-foreground">Three.js</div>
+            <div className="text-muted-foreground">{t('Three.js')}</div>
             <div className="text-right">{toolPosition[0].toFixed(2)}</div>
             <div className="text-right">{toolPosition[1].toFixed(2)}</div>
             <div className="text-right">{toolPosition[2].toFixed(2)}</div>

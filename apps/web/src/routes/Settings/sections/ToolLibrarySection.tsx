@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,6 +80,7 @@ export function ToolLibrarySection({
   onEdit,
   onDelete,
 }: ToolLibrarySectionProps) {
+  const { t } = useTranslation()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   
@@ -196,8 +198,8 @@ export function ToolLibrarySection({
   return (
     <SettingsSection
       id="tool-library"
-      title="Tool Library"
-      description="Manage your tool library. Tool IDs (T0, T1, T2...) should match your CAM software"
+      title={t('Tool Library')}
+      description={t('Manage your tool library. Tool IDs (T0, T1, T2...) should match your CAM software')}
     >
       <div className="space-y-4">
         {/* Add Button */}
@@ -241,7 +243,7 @@ export function ToolLibrarySection({
                       id="tool-name"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g., 1/4&quot; End Mill"
+                      placeholder={t('e.g., 1/4" End Mill')}
                     />
                   </div>
                 </div>
@@ -251,7 +253,7 @@ export function ToolLibrarySection({
                     id="tool-description"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Optional description"
+                    placeholder={t('Optional description')}
                     rows={2}
                   />
                 </div>
@@ -313,7 +315,7 @@ export function ToolLibrarySection({
                         key={isAddOpen ? 'add-select' : undefined}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder={t('Select type')} />
                         </SelectTrigger>
                         <SelectContent>
                           {TOOL_TYPE_OPTIONS.map((type) => (
@@ -328,12 +330,12 @@ export function ToolLibrarySection({
                         id="tool-type"
                         value={formType}
                         onChange={(e) => setFormType(e.target.value)}
-                        placeholder="Enter tool type"
+                        placeholder={t('Enter tool type')}
                       />
                     )}
                     {!isTypeCustom && formType && (
                       <p className="text-xs text-muted-foreground">
-                        Select "Other" to enter a custom type
+                        {t('Select "Other" to enter a custom type')}
                       </p>
                     )}
                   </div>
@@ -347,7 +349,7 @@ export function ToolLibrarySection({
                   onClick={handleAdd} 
                   disabled={!formToolId.trim() || !formName.trim() || isNaN(parseInt(formToolId, 10))}
                 >
-                  Add Tool
+                  {t('Add Tool')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -359,13 +361,13 @@ export function ToolLibrarySection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">ID</TableHead>
-                <TableHead className="w-48">Name</TableHead>
-                <TableHead className="w-32">Diameter</TableHead>
-                <TableHead className="w-32">Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-28">Modified</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-20">{t('ID')}</TableHead>
+                <TableHead className="w-48">{t('Name')}</TableHead>
+                <TableHead className="w-32">{t('Diameter')}</TableHead>
+                <TableHead className="w-32">{t('Type')}</TableHead>
+                <TableHead>{t('Description')}</TableHead>
+                <TableHead className="w-28">{t('Modified')}</TableHead>
+                <TableHead className="w-24 text-right">{t('Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -373,8 +375,8 @@ export function ToolLibrarySection({
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No tools configured</p>
-                    <p className="text-xs mt-1">Add tools to build your tool library</p>
+                    <p>{t('No tools configured')}</p>
+                    <p className="text-xs mt-1">{t('Add tools to build your tool library')}</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -525,7 +527,7 @@ export function ToolLibrarySection({
                                         ? `${mmToInches(parseFloat(formDiameter))} in` 
                                         : `${inchesToMm(parseFloat(formDiameter)).toFixed(3)} mm`
                                     ) : (
-                                      `Enter diameter in ${formDiameterUnit === 'mm' ? 'millimeters' : 'inches'}`
+                                      t('Enter diameter in {{unit}}', { unit: formDiameterUnit === 'mm' ? t('millimeters') : t('inches') })
                                     )}
                                   </p>
                                 </div>
@@ -538,7 +540,7 @@ export function ToolLibrarySection({
                                       key={editingTool?.id}
                                     >
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select type" />
+                                        <SelectValue placeholder={t('Select type')} />
                                       </SelectTrigger>
                                       <SelectContent>
                                         {TOOL_TYPE_OPTIONS.map((type) => (
@@ -553,7 +555,7 @@ export function ToolLibrarySection({
                                       id="edit-tool-type"
                                       value={formType}
                                       onChange={(e) => setFormType(e.target.value)}
-                                      placeholder="Enter tool type"
+                                      placeholder={t('Enter tool type')}
                                     />
                                   )}
                                 </div>
@@ -561,13 +563,13 @@ export function ToolLibrarySection({
                             </div>
                             <DialogFooter>
                               <Button variant="outline" onClick={() => setEditingTool(null)}>
-                                Cancel
+                                {t('Cancel')}
                               </Button>
                               <Button 
                                 onClick={handleEdit} 
                                 disabled={!formToolId.trim() || !formName.trim() || isNaN(parseInt(formToolId, 10))}
                               >
-                                Save Changes
+                                {t('Save Changes')}
                               </Button>
                             </DialogFooter>
                           </DialogContent>
@@ -586,18 +588,18 @@ export function ToolLibrarySection({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Tool?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('Delete Tool?')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete tool T{tool.toolId} &quot;{tool.name}&quot;? This action cannot be undone.
+                                {t('Are you sure you want to delete tool T{{toolId}} "{{name}}"? This action cannot be undone.', { toolId: tool.toolId, name: tool.name })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => onDelete(tool.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete
+                                {t('Delete')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

@@ -1,43 +1,43 @@
 {
   "TinyG": {
     "machineState": {
-      "initializing": "Initierer",
-      "ready": "Klar",
-      "alarm": "Alarm",
-      "stop": "Program Stopp",
-      "end": "Program Slutt",
-      "run": "Kjør",
-      "hold": "Hold",
-      "probe": "Sonde",
-      "cycle": "Syklus",
-      "homing": "Hjemsetting",
-      "jog": "Jogg",
-      "interlock": "Interlock",
-      "shutdown": "Nedstengning",
-      "panic": "Panikk"
+      "initializing": "",
+      "ready": "",
+      "alarm": "",
+      "stop": "",
+      "end": "",
+      "run": "",
+      "hold": "",
+      "probe": "",
+      "cycle": "",
+      "homing": "",
+      "jog": "",
+      "interlock": "",
+      "shutdown": "",
+      "panic": ""
     }
   },
   "Grbl": {
     "activeState": {
-      "idle": "Inaktiv",
-      "run": "Kjør",
-      "hold": "Hold",
-      "door": "Dør",
-      "home": "Hjem",
-      "sleep": "Søvn",
-      "alarm": "Alarm",
-      "check": "Sjekk"
+      "idle": "",
+      "run": "",
+      "hold": "",
+      "door": "",
+      "home": "",
+      "sleep": "",
+      "alarm": "",
+      "check": ""
     }
   },
   "Smoothie": {
     "activeState": {
-      "idle": "Inaktiv",
-      "run": "Kjør",
-      "hold": "Hold",
-      "door": "Dør",
-      "home": "Hjem",
-      "alarm": "Alarm",
-      "check": "Sjekk"
+      "idle": "",
+      "run": "",
+      "hold": "",
+      "door": "",
+      "home": "",
+      "alarm": "",
+      "check": ""
     }
   }
 }

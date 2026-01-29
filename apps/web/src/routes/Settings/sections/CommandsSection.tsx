@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,7 @@ export function CommandsSection({
   onDelete,
   onToggleEnabled,
 }: CommandsSectionProps) {
+  const { t } = useTranslation()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingCommand, setEditingCommand] = useState<Command | null>(null)
   
@@ -122,8 +124,8 @@ export function CommandsSection({
   return (
     <SettingsSection
       id="commands"
-      title="Commands"
-      description="Create custom command shortcuts for quick access"
+      title={t('Commands')}
+      description={t('Create custom command shortcuts for quick access')}
     >
       <div className="space-y-4">
         {/* Add Button */}
@@ -135,28 +137,28 @@ export function CommandsSection({
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
-                Add Command
+                {t('Add Command')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Command</DialogTitle>
+                <DialogTitle>{t('Add Command')}</DialogTitle>
                 <DialogDescription>
-                  Create a custom command shortcut that will appear in the command panel.
+                  {t('Create a custom command shortcut that will appear in the command panel.')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="command-title">Title</Label>
+                  <Label htmlFor="command-title">{t('Title')}</Label>
                   <Input
                     id="command-title"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g., Zero All Axes"
+                    placeholder={t('e.g., Zero All Axes')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="command-content">G-code Commands</Label>
+                  <Label htmlFor="command-content">{t('G-code Commands')}</Label>
                   <Textarea
                     id="command-content"
                     value={formCommands}
@@ -166,7 +168,7 @@ export function CommandsSection({
                     className="font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter one command per line. Commands will be sent in sequence.
+                    {t('Enter one command per line. Commands will be sent in sequence.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -175,15 +177,15 @@ export function CommandsSection({
                     checked={formEnabled}
                     onCheckedChange={setFormEnabled}
                   />
-                  <Label htmlFor="command-enabled">Enabled</Label>
+                  <Label htmlFor="command-enabled">{t('Enabled')}</Label>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button onClick={handleAdd} disabled={!formTitle.trim() || !formCommands.trim()}>
-                  Add Command
+                  {t('Add Command')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -195,11 +197,11 @@ export function CommandsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">Enabled</TableHead>
-                <TableHead className="w-40">Title</TableHead>
-                <TableHead>Commands</TableHead>
-                <TableHead className="w-28">Modified</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-20">{t('Enabled')}</TableHead>
+                <TableHead className="w-40">{t('Title')}</TableHead>
+                <TableHead>{t('Commands')}</TableHead>
+                <TableHead className="w-28">{t('Modified')}</TableHead>
+                <TableHead className="w-24 text-right">{t('Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,8 +209,8 @@ export function CommandsSection({
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     <Terminal className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No custom commands configured</p>
-                    <p className="text-xs mt-1">Add commands to create quick shortcuts for common operations</p>
+                    <p>{t('No custom commands configured')}</p>
+                    <p className="text-xs mt-1">{t('Add commands to create quick shortcuts for common operations')}</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -250,23 +252,23 @@ export function CommandsSection({
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Edit Command</DialogTitle>
+                              <DialogTitle>{t('Edit Command')}</DialogTitle>
                               <DialogDescription>
-                                Modify the command title or G-code commands.
+                                {t('Modify the command title or G-code commands.')}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="space-y-2">
-                                <Label htmlFor="edit-command-title">Title</Label>
+                                <Label htmlFor="edit-command-title">{t('Title')}</Label>
                                 <Input
                                   id="edit-command-title"
                                   value={formTitle}
                                   onChange={(e) => setFormTitle(e.target.value)}
-                                  placeholder="e.g., Zero All Axes"
+                                  placeholder={t('e.g., Zero All Axes')}
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="edit-command-content">G-code Commands</Label>
+                                <Label htmlFor="edit-command-content">{t('G-code Commands')}</Label>
                                 <Textarea
                                   id="edit-command-content"
                                   value={formCommands}
@@ -281,15 +283,15 @@ export function CommandsSection({
                                   checked={formEnabled}
                                   onCheckedChange={setFormEnabled}
                                 />
-                                <Label htmlFor="edit-command-enabled">Enabled</Label>
+                                <Label htmlFor="edit-command-enabled">{t('Enabled')}</Label>
                               </div>
                             </div>
                             <DialogFooter>
                               <Button variant="outline" onClick={() => setEditingCommand(null)}>
-                                Cancel
+                                {t('Cancel')}
                               </Button>
                               <Button onClick={handleEdit} disabled={!formTitle.trim() || !formCommands.trim()}>
-                                Save Changes
+                                {t('Save Changes')}
                               </Button>
                             </DialogFooter>
                           </DialogContent>
@@ -303,18 +305,18 @@ export function CommandsSection({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Command?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('Delete Command?')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete "{command.title}"? This action cannot be undone.
+                                {t('Are you sure you want to delete "{{title}}"? This action cannot be undone.', { title: command.title })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={() => onDelete(command.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete
+                                {t('Delete')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

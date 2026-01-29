@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Library, ChevronDown, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,6 +70,7 @@ function PanelHeader({
 }
 
 export function ToolsPanel() {
+  const { t } = useTranslation()
   // Fetch tools from API
   const { data: toolsData } = useGetToolsQuery()
   const tools: Tool[] = useMemo(() => toolsData?.records ?? [], [toolsData?.records])
@@ -221,7 +223,7 @@ export function ToolsPanel() {
 
   return (
     <div className="h-full flex flex-col" onWheel={handleWheel}>
-      <PanelHeader title="Tool Library" icon={Library} />
+      <PanelHeader title={t('Tool Library')} icon={Library} />
       <OverlayScrollbarsComponent 
         className="flex-1 p-2"
         options={{ 
@@ -233,7 +235,7 @@ export function ToolsPanel() {
           {/* In Use Section */}
           {gcodeLoaded && (displayInUseTools.length > 0 || missingToolIds.size > 0) && (
             <div className="flex-shrink-0 flex flex-col h-full">
-              <div className="text-[10px] text-primary font-medium mb-1 px-1">In Use</div>
+              <div className="text-[10px] text-primary font-medium mb-1 px-1">{t('In Use')}</div>
               <div className="flex-1 flex gap-2 border-l-2 border-primary pl-2">
                 {/* Tools from library */}
                 {displayInUseTools.map((tool) => (
@@ -289,9 +291,9 @@ export function ToolsPanel() {
                         <Pencil className="w-3 h-3" />
                       </Button>
                     </div>
-                    <div className="text-sm font-medium mt-1 truncate text-muted-foreground">Not configured</div>
+                    <div className="text-sm font-medium mt-1 truncate text-muted-foreground">{t('Not configured')}</div>
                     <div className="text-xs text-muted-foreground italic">
-                      Click edit to add to library
+                      {t('Click edit to add to library')}
                     </div>
                   </div>
                 ))}
@@ -301,11 +303,11 @@ export function ToolsPanel() {
           
           {/* Available Section */}
           <div className="flex-shrink-0 flex flex-col h-full">
-            <div className="text-[10px] text-muted-foreground font-medium mb-1 px-1">Available</div>
+            <div className="text-[10px] text-muted-foreground font-medium mb-1 px-1">{t('Available')}</div>
             <div className="flex-1 flex gap-2 border-l-2 border-muted pl-2">
               {displayAvailableTools.length === 0 ? (
                 <div className="flex-shrink-0 w-44 p-2 rounded border border-border bg-card text-center text-xs text-muted-foreground">
-                  No tools configured
+                  {t('No tools configured')}
                 </div>
               ) : (
                 displayAvailableTools.map((tool) => (
@@ -354,38 +356,38 @@ export function ToolsPanel() {
           <DialogHeader>
             <DialogTitle>
               {editingToolId !== null && tools.find(t => t.toolId === editingToolId)
-                ? 'Edit Tool'
-                : 'Add Tool to Library'}
+                ? t('Edit Tool')
+                : t('Add Tool to Library')}
             </DialogTitle>
             <DialogDescription>
               {editingToolId !== null && (
-                <>Configure tool T{editingToolId}.</>
+                <>{t('Configure tool T{{toolId}}.', { toolId: editingToolId })}</>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="tool-name">Name *</Label>
+              <Label htmlFor="tool-name">{t('Name *')}</Label>
               <Input
                 id="tool-name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g., 1/4&quot; End Mill"
+                placeholder={t('e.g., 1/4" End Mill')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tool-description">Description</Label>
+              <Label htmlFor="tool-description">{t('Description')}</Label>
               <Textarea
                 id="tool-description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Optional description"
+                placeholder={t('Optional description')}
                 rows={2}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tool-diameter">Diameter</Label>
+                <Label htmlFor="tool-diameter">{t('Diameter')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="tool-diameter"
@@ -415,21 +417,21 @@ export function ToolsPanel() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mm">mm</SelectItem>
-                      <SelectItem value="in">in</SelectItem>
+                      <SelectItem value="mm">{t('mm')}</SelectItem>
+                      <SelectItem value="in">{t('in')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tool-type">Type</Label>
+                <Label htmlFor="tool-type">{t('Type')}</Label>
                 {!isTypeCustom ? (
                   <Select 
                     value={formType.trim() === '' ? undefined : formType} 
                     onValueChange={handleTypeChange}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder={t('Select type')} />
                     </SelectTrigger>
                     <SelectContent>
                       {TOOL_TYPE_OPTIONS.map((type) => (
@@ -444,7 +446,7 @@ export function ToolsPanel() {
                     id="tool-type"
                     value={formType}
                     onChange={(e) => setFormType(e.target.value)}
-                    placeholder="Enter tool type"
+                    placeholder={t('Enter tool type')}
                   />
                 )}
               </div>
@@ -452,13 +454,13 @@ export function ToolsPanel() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button 
               onClick={handleSaveTool} 
               disabled={!formName.trim()}
             >
-              Save
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

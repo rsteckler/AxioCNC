@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Gamepad2, CheckCircle2, XCircle, Settings, Lock, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,7 @@ import type { JoystickConfig } from '@/routes/Settings/sections/JoystickSection'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function JoystickPanel(_props: PanelProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: settings } = useGetSettingsQuery()
   const [setSettings] = useSetSettingsMutation()
@@ -56,8 +58,8 @@ export function JoystickPanel(_props: PanelProps) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         <Gamepad2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Joystick is disabled</p>
-        <p className="text-xs mt-1">Enable joystick in Settings to use this panel</p>
+        <p className="text-sm">{t('Joystick is disabled')}</p>
+        <p className="text-xs mt-1">{t('Enable joystick in Settings to use this panel')}</p>
         <Button
           variant="outline"
           size="sm"
@@ -65,39 +67,39 @@ export function JoystickPanel(_props: PanelProps) {
           onClick={() => navigate('/settings?section=joystick')}
         >
           <Settings className="w-4 h-4 mr-2" />
-          Open Settings
+          {t('Open Settings')}
         </Button>
       </div>
     )
   }
 
   const gamepadName = joystickConfig.selectedGamepad
-    ? joystickConfig.selectedGamepad.split('(')[0].trim() || 'Gamepad'
-    : 'No gamepad selected'
+    ? joystickConfig.selectedGamepad.split('(')[0].trim() || t('Gamepad')
+    : t('No gamepad selected')
 
   return (
     <div className="p-4 space-y-4">
       {/* Connection Status */}
       <div className="space-y-2">
         <div className="text-sm">
-          <span className="text-muted-foreground">Status: </span>
+          <span className="text-muted-foreground">{t('Status:')} </span>
           <div className="inline-flex items-center gap-2">
             {isGamepadConnected ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-green-600 dark:text-green-400">Connected</span>
+                <span className="text-green-600 dark:text-green-400">{t('Connected')}</span>
               </>
             ) : (
               <>
                 <XCircle className="w-4 h-4 text-red-500" />
-                <span className="text-red-600 dark:text-red-400">Disconnected</span>
+                <span className="text-red-600 dark:text-red-400">{t('Disconnected')}</span>
               </>
             )}
           </div>
         </div>
         
         <div className="text-sm">
-          <span className="text-muted-foreground">Selected: </span>
+          <span className="text-muted-foreground">{t('Selected:')} </span>
           <span className="font-medium">{gamepadName}</span>
         </div>
 
@@ -114,7 +116,7 @@ export function JoystickPanel(_props: PanelProps) {
       {joystickConfig.connectionLocation === 'client' && !isGamepadConnected && (
         <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
           <p className="text-xs text-blue-900 dark:text-blue-100">
-            Press a button on your gamepad while this webpage is focused to connect.
+            {t('Press a button on your gamepad while this webpage is focused to connect.')}
           </p>
         </div>
       )}
@@ -128,7 +130,7 @@ export function JoystickPanel(_props: PanelProps) {
             <Unlock className="w-4 h-4 text-green-500" />
           )}
           <Label htmlFor="joystick-lock" className="text-sm font-medium cursor-pointer">
-            Lock Joystick
+            {t('Lock Joystick')}
           </Label>
         </div>
         <Switch
@@ -163,7 +165,7 @@ export function JoystickPanel(_props: PanelProps) {
           disabled={!joystickConfig.selectedGamepad}
         >
           <Gamepad2 className="w-4 h-4 mr-2" />
-          Test Gamepad
+          {t('Test Gamepad')}
         </Button>
       </div>
 

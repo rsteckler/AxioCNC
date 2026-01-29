@@ -67,7 +67,8 @@ const lazyBackend = {
   },
 }
 
-i18n
+/** Promise that resolves when i18n has finished initializing. */
+export const i18nReady = i18n
   .use(lazyBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -80,17 +81,17 @@ i18n
         resource: enResource,
       },
     },
-    
+
     fallbackLng: 'en',
     supportedLngs: supportedLanguages as unknown as string[],
-    
+
     ns: ['controller', 'gcode', 'resource'],
     defaultNS: 'resource',
-    
+
     interpolation: {
       escapeValue: false, // React already escapes
     },
-    
+
     detection: {
       order: ['querystring', 'cookie', 'localStorage', 'navigator'],
       lookupQuerystring: 'lang',

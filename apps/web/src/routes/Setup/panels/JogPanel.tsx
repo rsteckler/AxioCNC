@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -14,6 +15,7 @@ import { trackFeatureUsed } from '@/services/analytics'
 import type { PanelProps } from '../types'
 
 export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashStatus }: PanelProps) {
+  const { t } = useTranslation()
   // Load mode from localStorage or use default
   const [mode, setMode] = useState<'steps' | 'analog'>(() => {
     const stored = localStorage.getItem('axiocnc-setup-jog-mode')
@@ -234,7 +236,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
             trackFeatureUsed('jog', 'JogPanel', 'mode_change', 'steps')
           }}
         >
-          Steps
+          {t('Steps')}
         </Button>
         <Button 
           variant={mode === 'analog' ? 'default' : 'ghost'} 
@@ -246,7 +248,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
             trackFeatureUsed('jog', 'JogPanel', 'mode_change', 'analog')
           }}
         >
-          Analog
+          {t('Analog')}
         </Button>
       </div>
       
@@ -314,7 +316,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
                 requirements={ActionRequirements.jog}
                 variant="outline"
                 className="aspect-square p-0 text-xs font-bold"
-                title="Go to XY zero"
+                title={t('Go to XY zero')}
               >
                 XY 0
               </MachineActionButton>
@@ -392,7 +394,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
                 requirements={ActionRequirements.jog}
                 variant="outline"
                 className="aspect-square p-0 text-xs font-bold text-blue-500"
-                title="Go to Z zero"
+                title={t('Go to Z zero')}
               >
                 Z 0
               </MachineActionButton>
@@ -414,9 +416,9 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           {/* Distance selector */}
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground flex justify-between">
-              <span>Distance</span>
+              <span>{t('Distance')}</span>
               <span className="font-mono font-medium">
-                {currentDistance} mm
+                {currentDistance} {t('mm')}
               </span>
             </div>
             <MachineActionWrapper
@@ -494,7 +496,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
           {/* Debug panel - shows normalized XYZ values when debug mode is enabled */}
           {debugMode && (
             <div className="mt-2 p-2 bg-muted/50 rounded border border-border/50">
-              <div className="text-[10px] text-muted-foreground mb-1 font-medium">Debug: Normalized Values</div>
+              <div className="text-[10px] text-muted-foreground mb-1 font-medium">{t('Debug: Normalized Values')}</div>
               <div className="flex gap-4 text-xs font-mono">
                 <div className="flex items-center gap-1">
                   <span className="text-red-500 font-bold">X:</span>

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Button } from '@/components/ui/button'
@@ -73,6 +74,7 @@ export function AppearanceSection({
   onAccentColorChange,
   onCustomThemeChange,
 }: AppearanceSectionProps) {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -97,10 +99,10 @@ export function AppearanceSection({
 
       // Basic validation
       if (!themeData.name) {
-        throw new Error('Theme must have a "name" property')
+        throw new Error(t('Theme must have a "name" property'))
       }
       if (!themeData.light || !themeData.dark) {
-        throw new Error('Theme must have "light" and "dark" color definitions')
+        throw new Error(t('Theme must have "light" and "dark" color definitions'))
       }
 
       // Create theme via API
@@ -110,11 +112,11 @@ export function AppearanceSection({
       refetchThemes()
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setUploadError('Invalid JSON file')
+        setUploadError(t('Invalid JSON file'))
       } else if (err instanceof Error) {
         setUploadError(err.message)
       } else {
-        setUploadError('Failed to upload theme')
+        setUploadError(t('Failed to upload theme'))
       }
     }
 
@@ -154,13 +156,13 @@ export function AppearanceSection({
   return (
     <SettingsSection
       id="appearance"
-      title="Appearance"
-      description="Customize the look and feel of AxioCNC"
+      title={t('Appearance')}
+      description={t('Customize the look and feel of AxioCNC')}
     >
       {/* Theme Mode Selection */}
       <SettingsField
-        label="Theme Mode"
-        description="Select your preferred color scheme"
+        label={t('Theme Mode')}
+        description={t('Select your preferred color scheme')}
       >
         <div className="flex gap-2">
           <Button
@@ -169,7 +171,7 @@ export function AppearanceSection({
             onClick={() => handleThemeChange('light')}
           >
             <Sun className="w-4 h-4" />
-            Light
+            {t('Light')}
           </Button>
           <Button
             variant={theme === 'dark' ? 'default' : 'outline'}
@@ -177,7 +179,7 @@ export function AppearanceSection({
             onClick={() => handleThemeChange('dark')}
           >
             <Moon className="w-4 h-4" />
-            Dark
+            {t('Dark')}
           </Button>
           <Button
             variant={theme === 'system' ? 'default' : 'outline'}
@@ -185,15 +187,15 @@ export function AppearanceSection({
             onClick={() => handleThemeChange('system')}
           >
             <Monitor className="w-4 h-4" />
-            System
+            {t('System')}
           </Button>
         </div>
       </SettingsField>
 
       {/* Custom Theme */}
       <SettingsField
-        label="Custom Theme"
-        description="Apply a community or user-created theme"
+        label={t('Custom Theme')}
+        description={t('Apply a community or user-created theme')}
       >
         <div className="flex gap-2">
           <Select 
@@ -201,27 +203,27 @@ export function AppearanceSection({
             onValueChange={(value) => handleCustomThemeChange(value === 'none' ? null : value)}
           >
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select a theme..." />
+              <SelectValue placeholder={t('Select a theme...')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">
                 <div className="flex items-center gap-2">
                   <Palette className="w-4 h-4 text-muted-foreground" />
-                  Default Theme
+                  {t('Default Theme')}
                 </div>
               </SelectItem>
               {customThemes.length > 0 && (
                 <>
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    Installed Themes
+                    {t('Installed Themes')}
                   </div>
-                  {customThemes.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
+                  {customThemes.map((theme) => (
+                    <SelectItem key={theme.id} value={theme.id}>
                       <div className="flex items-center gap-2">
                         <Palette className="w-4 h-4" />
-                        <span>{t.name}</span>
-                        {t.author && (
-                          <span className="text-xs text-muted-foreground">by {t.author}</span>
+                        <span>{theme.name}</span>
+                        {theme.author && (
+                          <span className="text-xs text-muted-foreground">{t('by {{author}}', { author: theme.author })}</span>
                         )}
                       </div>
                     </SelectItem>
@@ -240,19 +242,19 @@ export function AppearanceSection({
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2">
                 <Upload className="w-4 h-4" />
-                Upload
+                {t('Upload')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Upload Custom Theme</DialogTitle>
+                <DialogTitle>{t('Upload Custom Theme')}</DialogTitle>
                 <DialogDescription>
-                  Upload a theme JSON file to install it. Themes define colors for both light and dark modes.
+                  {t('Upload a theme JSON file to install it. Themes define colors for both light and dark modes.')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="theme-file">Theme File</Label>
+                  <Label htmlFor="theme-file">{t('Theme File')}</Label>
                   <Input
                     ref={fileInputRef}
                     id="theme-file"
@@ -268,10 +270,10 @@ export function AppearanceSection({
                   <div className="p-3 rounded-lg bg-muted/50 border">
                     <div className="flex items-center gap-2 text-sm font-medium mb-1">
                       <FolderOpen className="w-4 h-4" />
-                      Manual Installation
+                      {t('Manual Installation')}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      You can also drop theme files directly into:
+                      {t('You can also drop theme files directly into:')}
                     </p>
                     <code className="text-xs font-mono block mt-1 p-2 bg-background rounded">
                       {themesPathData.path}
@@ -281,7 +283,7 @@ export function AppearanceSection({
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -297,18 +299,18 @@ export function AppearanceSection({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Theme?</AlertDialogTitle>
+                  <AlertDialogTitle>{t('Delete Theme?')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{selectedTheme.name}"? This will remove the theme file from disk.
+                    {t('Are you sure you want to delete "{{name}}"? This will remove the theme file from disk.', { name: selectedTheme.name })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => handleDeleteTheme(selectedTheme.id)}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Delete
+                    {t('Delete')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -318,7 +320,7 @@ export function AppearanceSection({
 
         {customThemes.length === 0 && (
           <p className="text-xs text-muted-foreground mt-1">
-            No custom themes installed. Upload a theme file or drop one in the themes folder.
+            {t('No custom themes installed. Upload a theme file or drop one in the themes folder.')}
           </p>
         )}
       </SettingsField>
@@ -326,8 +328,8 @@ export function AppearanceSection({
       {/* Accent Color - only show when no custom theme is active */}
       {!customThemeId && (
         <SettingsField
-          label="Accent Color"
-          description="Choose the primary accent color for buttons and highlights"
+          label={t('Accent Color')}
+          description={t('Choose the primary accent color for buttons and highlights')}
         >
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {ACCENT_COLORS.map((color) => (
@@ -352,7 +354,7 @@ export function AppearanceSection({
                   )}
                 </div>
                 <Label className="text-xs font-normal cursor-pointer">
-                  {color.label}
+                  {t(color.label)}
                 </Label>
               </button>
             ))}
@@ -362,12 +364,12 @@ export function AppearanceSection({
 
       {/* Theme Preview */}
       <div className="mt-4 p-4 rounded-lg border bg-card">
-        <p className="text-sm text-muted-foreground mb-3">Preview</p>
+        <p className="text-sm text-muted-foreground mb-3">{t('Preview')}</p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm">Primary Button</Button>
-          <Button size="sm" variant="secondary">Secondary</Button>
-          <Button size="sm" variant="outline">Outline</Button>
-          <Button size="sm" variant="destructive">Destructive</Button>
+          <Button size="sm">{t('Primary Button')}</Button>
+          <Button size="sm" variant="secondary">{t('Secondary')}</Button>
+          <Button size="sm" variant="outline">{t('Outline')}</Button>
+          <Button size="sm" variant="destructive">{t('Destructive')}</Button>
         </div>
       </div>
     </SettingsSection>

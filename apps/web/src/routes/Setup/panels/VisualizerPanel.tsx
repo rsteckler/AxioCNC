@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Maximize2, Terminal, Target, Move, Camera, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { socketService } from '@/services/socket'
@@ -20,6 +21,7 @@ import Hls from 'hls.js'
 
 // Camera Tab Component
 function CameraTab() {
+  const { t } = useTranslation()
   const { data: camerasData, isLoading: isLoadingCameras } = useGetCamerasQuery(undefined, {
     pollingInterval: 5000,
   })
@@ -129,7 +131,7 @@ function CameraTab() {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
-          {streamError ? 'Error loading stream' : 'Stream not available. Check camera configuration.'}
+          {streamError ? t('Error loading stream') : t('Stream not available. Check camera configuration.')}
         </div>
       </div>
     )
@@ -211,6 +213,7 @@ export function VisualizerPanel({
   lastAlarmMessageRef,
   currentWCS = 'G54'
 }: VisualizerPanelProps) {
+  const { t } = useTranslation()
   // Get settings for connection options (needed for joining port room)
   const { data: settings } = useGetSettingsQuery()
   const { isToolChangePending } = useToolChange()
@@ -585,7 +588,7 @@ export function VisualizerPanel({
           }`}
         >
           <Maximize2 className="w-4 h-4 inline mr-1.5" />
-          3D View
+          {t('3D View')}
         </button>
         <div className="w-px h-4 bg-border" />
         <button
@@ -597,7 +600,7 @@ export function VisualizerPanel({
           }`}
         >
           <Terminal className="w-4 h-4 inline mr-1.5" />
-          Console
+          {t('Console')}
         </button>
         <div className="w-px h-4 bg-border" />
         <button
@@ -609,7 +612,7 @@ export function VisualizerPanel({
           }`}
         >
           <Camera className="w-4 h-4 inline mr-1.5" />
-          Camera
+          {t('Camera')}
         </button>
         {isToolChangePending && (
           <>
@@ -623,7 +626,7 @@ export function VisualizerPanel({
               }`}
             >
               <Wrench className="w-4 h-4 inline mr-1.5" />
-              Tool Change
+              {t('Tool Change')}
             </button>
           </>
         )}
@@ -698,10 +701,10 @@ export function VisualizerPanel({
         
         {/* View controls overlay */}
         <div className="absolute bottom-3 left-3 flex gap-1">
-          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('top'); setViewKey(k => k + 1) }}>Top</Button>
-          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('front'); setViewKey(k => k + 1) }}>Front</Button>
-          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('iso'); setViewKey(k => k + 1) }}>Iso</Button>
-          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('fit'); setViewKey(k => k + 1) }}>Fit</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('top'); setViewKey(k => k + 1) }}>{t('Top')}</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('front'); setViewKey(k => k + 1) }}>{t('Front')}</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('iso'); setViewKey(k => k + 1) }}>{t('Iso')}</Button>
+          <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => { setView('fit'); setViewKey(k => k + 1) }}>{t('Fit')}</Button>
         </div>
         
         {/* Place Model button */}
@@ -717,11 +720,11 @@ export function VisualizerPanel({
                     onClick={handlePlaceModel}
                   >
                     <Move className="w-3 h-3 mr-1" />
-                    Place Model
+                    {t('Place Model')}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Place the loaded model at the current workspace zero position</p>
+                  <p>{t('Place the loaded model at the current workspace zero position')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Switch } from '@/components/ui/switch'
@@ -47,6 +48,7 @@ export function ConnectionSection({
   onRefreshPorts,
   onTestConnection,
 }: ConnectionSectionProps) {
+  const { t } = useTranslation()
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [testMessage, setTestMessage] = useState<string>('')
   
@@ -107,11 +109,11 @@ export function ConnectionSection({
     try {
       const result = await onTestConnection()
       setTestStatus(result.success ? 'success' : 'error')
-      setTestMessage(result.message || (result.success ? 'Connection successful!' : 'Connection failed'))
+      setTestMessage(result.message || (result.success ? t('Connection successful!') : t('Connection failed')))
       // Don't auto-reset - let it persist until settings change
     } catch (err) {
       setTestStatus('error')
-      setTestMessage(err instanceof Error ? err.message : 'Connection test failed')
+      setTestMessage(err instanceof Error ? err.message : t('Connection test failed'))
       // Don't auto-reset - let it persist until settings change
     }
   }
@@ -119,13 +121,13 @@ export function ConnectionSection({
   return (
     <SettingsSection
       id="connection"
-      title="Connection"
-      description="Configure how AxioCNC connects to your machine's controller"
+      title={t('Connection')}
+      description={t('Configure how AxioCNC connects to your machine\'s controller')}
     >
       {/* Port Selection */}
       <SettingsField
-        label="Port"
-        description="Serial port for the CNC controller"
+        label={t('Port')}
+        description={t('Serial port for the CNC controller')}
       >
         <div className="flex gap-2">
           <Select
@@ -139,7 +141,7 @@ export function ConnectionSection({
             }}
           >
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select port...">
+              <SelectValue placeholder={t('Select port...')}>
                 {config.port ? (
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm">{config.port}</span>
@@ -150,20 +152,20 @@ export function ConnectionSection({
                     )}
                   </div>
                 ) : (
-                  'None selected'
+                  t('None selected')
                 )}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">
-                {detectedPorts.length === 0 ? 'No ports detected' : 'None selected'}
+                {detectedPorts.length === 0 ? t('No ports detected') : t('None selected')}
               </SelectItem>
               {/* Show saved port if not in detected list */}
               {config.port && !detectedPorts.some(p => p.path === config.port) && (
                 <SelectItem value={config.port}>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm">{config.port}</span>
-                    <span className="text-xs text-muted-foreground">(saved)</span>
+                    <span className="text-xs text-muted-foreground">{t('(saved)')}</span>
                   </div>
                 </SelectItem>
               )}
@@ -187,8 +189,8 @@ export function ConnectionSection({
 
       {/* Baud Rate */}
       <SettingsField
-        label="Baud Rate"
-        description="Communication speed with the controller"
+        label={t('Baud Rate')}
+        description={t('Communication speed with the controller')}
       >
         <Select
           value={String(config.baudRate)}
@@ -211,8 +213,8 @@ export function ConnectionSection({
 
       {/* Serial Line Controls */}
       <SettingsField
-        label="Set DTR line status upon opening"
-        tooltip="Data Terminal Ready signal. Some controllers require DTR to be set to start communication."
+        label={t('Set DTR line status upon opening')}
+        tooltip={t('Data Terminal Ready signal. Some controllers require DTR to be set to start communication.')}
         horizontal
       >
         <Switch
@@ -222,8 +224,8 @@ export function ConnectionSection({
       </SettingsField>
 
       <SettingsField
-        label="Set RTS line status upon opening"
-        tooltip="Request To Send signal. Some controllers use RTS for flow control or reset."
+        label={t('Set RTS line status upon opening')}
+        tooltip={t('Request To Send signal. Some controllers use RTS for flow control or reset.')}
         horizontal
       >
         <Switch
@@ -233,8 +235,8 @@ export function ConnectionSection({
       </SettingsField>
 
       <SettingsField
-        label="Use RTS/CTS flow control"
-        tooltip="Hardware flow control using RTS and CTS lines. Enable if your controller supports it for more reliable communication."
+        label={t('Use RTS/CTS flow control')}
+        tooltip={t('Hardware flow control using RTS and CTS lines. Enable if your controller supports it for more reliable communication.')}
         horizontal
       >
         <Switch
@@ -244,8 +246,8 @@ export function ConnectionSection({
       </SettingsField>
 
       <SettingsField
-        label="Connect automatically"
-        description="Auto-connect when the application starts"
+        label={t('Connect automatically')}
+        description={t('Auto-connect when the application starts')}
         horizontal
       >
         <Switch
@@ -266,22 +268,22 @@ export function ConnectionSection({
             {testStatus === 'testing' ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Testing...
+                {t('Testing...')}
               </>
             ) : testStatus === 'success' ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Connected!
+                {t('Connected!')}
               </>
             ) : testStatus === 'error' ? (
               <>
                 <XCircle className="w-4 h-4" />
-                Failed
+                {t('Failed')}
               </>
             ) : (
               <>
                 <Plug className="w-4 h-4" />
-                Test Connection
+                {t('Test Connection')}
               </>
             )}
           </Button>
@@ -295,7 +297,7 @@ export function ConnectionSection({
         
         {!config.port && (
           <p className="text-xs text-muted-foreground mt-2">
-            Select a port to test the connection
+            {t('Select a port to test the connection')}
           </p>
         )}
       </div>

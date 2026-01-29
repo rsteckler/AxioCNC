@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
@@ -18,6 +19,7 @@ export function Console({
   connectedPort,
   lastAlarmMessageRef 
 }: ConsoleProps) {
+  const { t } = useTranslation()
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([])
   const [commandInput, setCommandInput] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
@@ -154,8 +156,8 @@ export function Console({
           {consoleLines.length === 0 ? (
             <div className="text-zinc-500 text-center py-8">
               {isConnected 
-                ? 'Console ready. Messages will appear here...'
-                : 'Not connected. Connect to a serial port to see console messages.'}
+                ? t('Console ready. Messages will appear here...')
+                : t('Not connected. Connect to a serial port to see console messages.')}
             </div>
           ) : (
             consoleLines.map((line) => (
@@ -185,7 +187,7 @@ export function Console({
           variant={autoScroll ? "default" : "outline"}
           className="h-7 w-7 p-0"
           onClick={() => setAutoScroll(!autoScroll)}
-          title={autoScroll ? "Auto-scroll enabled" : "Auto-scroll disabled"}
+          title={autoScroll ? t("Auto-scroll enabled") : t("Auto-scroll disabled")}
         >
           <ArrowDown className={`w-4 h-4 ${autoScroll ? '' : 'opacity-50'}`} />
         </Button>
@@ -198,7 +200,7 @@ export function Console({
           value={commandInput}
           onChange={(e) => setCommandInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Enter command..."
+          placeholder={t("Enter command...")}
           disabled={!isConnected}
           className="flex-1 bg-transparent text-zinc-100 font-mono text-sm outline-none placeholder:text-zinc-600 leading-none disabled:opacity-50 disabled:cursor-not-allowed"
         />
@@ -209,7 +211,7 @@ export function Console({
           onClick={handleSendCommand}
           disabled={!commandInput.trim() || !isConnected}
         >
-          Send
+          {t('Send')}
         </Button>
       </div>
     </div>

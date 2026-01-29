@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
@@ -81,23 +82,23 @@ import type { PanelProps } from './types'
 // MAIN DASHBOARD
 // ============================================================================
 
-// Panel configuration with metadata
-const panelConfig: Record<string, { 
+// Panel configuration with metadata - will be created inside component to use i18n
+const createPanelConfig = (t: (key: string) => string): Record<string, { 
   title: string
   icon: React.ElementType
   component: React.FC<PanelProps>
-}> = {
-  dro: { title: 'Position', icon: Crosshair, component: DROPanel },
-  jog: { title: 'Jog Control', icon: Move, component: JogPanel },
-  rapid: { title: 'Rapid', icon: Navigation, component: RapidPanel },
-  probe: { title: 'Probe', icon: Target, component: ProbePanel },
-  macros: { title: 'Macros', icon: Zap, component: MacrosPanel },
-  file: { title: 'File', icon: FileCode, component: FilePanel },
-  spindle: { title: 'Spindle', icon: RotateCw, component: SpindlePanel },
-  camera: { title: 'Camera', icon: Camera, component: CameraPanel },
-  joystick: { title: 'Joystick', icon: Gamepad2, component: JoystickPanel },
-  debug: { title: 'Debug', icon: Bug, component: DebugPanel },
-}
+}> => ({
+  dro: { title: t('Position'), icon: Crosshair, component: DROPanel },
+  jog: { title: t('Jog Control'), icon: Move, component: JogPanel },
+  rapid: { title: t('Rapid'), icon: Navigation, component: RapidPanel },
+  probe: { title: t('Probe'), icon: Target, component: ProbePanel },
+  macros: { title: t('Macros'), icon: Zap, component: MacrosPanel },
+  file: { title: t('File'), icon: FileCode, component: FilePanel },
+  spindle: { title: t('Spindle'), icon: RotateCw, component: SpindlePanel },
+  camera: { title: t('Camera'), icon: Camera, component: CameraPanel },
+  joystick: { title: t('Joystick'), icon: Gamepad2, component: JoystickPanel },
+  debug: { title: t('Debug'), icon: Bug, component: DebugPanel },
+})
 
 // Sortable Panel Component
 function SortablePanel({ 
@@ -105,13 +106,15 @@ function SortablePanel({
   isCollapsed, 
   onToggle,
   panelProps,
-  onStartWizard
+  onStartWizard,
+  panelConfig
 }: { 
   id: string
   isCollapsed: boolean
   onToggle: () => void
   panelProps: PanelProps
   onStartWizard?: (method: ZeroingMethod) => void
+  panelConfig: ReturnType<typeof createPanelConfig>
 }) {
   const {
     attributes,
@@ -176,7 +179,7 @@ function SortablePanel({
 }
 
 // Drag overlay panel (shown while dragging) - full panel clone
-function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isCollapsed: boolean; panelProps: PanelProps }) {
+function DragOverlayPanel({ id, isCollapsed, panelProps, panelConfig }: { id: string; isCollapsed: boolean; panelProps: PanelProps; panelConfig: ReturnType<typeof createPanelConfig> }) {
   const config = panelConfig[id]
   if (!config) return null
   const Icon = config.icon
@@ -200,8 +203,12 @@ function DragOverlayPanel({ id, isCollapsed, panelProps }: { id: string; isColla
 }
 
 export default function Setup() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  
+  // Create panel config with translations
+  const panelConfig = createPanelConfig(t)
   
   // Get connection settings from API
   const { data: settings } = useGetSettingsQuery()
@@ -639,8 +646,8 @@ export default function Setup() {
       const error = args[0]
       console.error('Socket error:', error)
       dispatch(setConnecting(false))
-      const errorMessage = error instanceof Error ? error.message : 'Socket connection error occurred'
-      showErrorNotification('Socket Error', errorMessage)
+      const errorMessage = error instanceof Error ? error.message : t('Socket connection error occurred')
+      showErrorNotification(t('Socket Error'), errorMessage)
     }
     
     // Listen for controller state changes to detect alarm, running, and homing states
@@ -724,12 +731,12 @@ export default function Setup() {
           if (!alarmMessage) {
             // Wait up to 100ms for alarm message to arrive
             setTimeout(() => {
-              const delayedMessage = lastAlarmMessageRef.current || 'Machine alarm triggered'
-              showErrorNotification('Machine Alarm', delayedMessage)
+              const delayedMessage = lastAlarmMessageRef.current || t('Machine alarm triggered')
+              showErrorNotification(t('Machine Alarm'), delayedMessage)
             }, 100)
           } else {
             // Message found immediately, show notification right away
-            showErrorNotification('Machine Alarm', alarmMessage)
+            showErrorNotification(t('Machine Alarm'), alarmMessage)
           }
         }
       }
@@ -778,8 +785,8 @@ export default function Setup() {
       if (isConnectedRef.current) {
         // Machine state updates are handled by machineStateSync
         // Only show notification (page-specific)
-        const reasonStr = typeof reason === 'string' ? reason : 'Connection lost'
-        showErrorNotification('Connection Lost', `Socket disconnected: ${reasonStr}`)
+        const reasonStr = typeof reason === 'string' ? reason : t('Connection lost')
+        showErrorNotification(t('Connection Lost'), t('Socket disconnected: {{reason}}', { reason: reasonStr }))
       }
     }
     
@@ -964,13 +971,13 @@ export default function Setup() {
         
         {/* Mode tabs */}
         <div className="flex gap-1 ml-6">
-          <Button variant="default" size="sm">Setup</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>Monitor</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>Stats</Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>Settings</Button>
+          <Button variant="default" size="sm">{t('Setup')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/monitor')}>{t('Monitor')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/stats')}>{t('Stats')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>{t('Settings')}</Button>
           <Button variant="ghost" size="sm" asChild>
             <a href="https://axiocnc.com/docs" target="_blank" rel="noopener noreferrer">
-              Docs
+              {t('Docs')}
             </a>
           </Button>
         </div>
@@ -995,7 +1002,7 @@ export default function Setup() {
             className="h-9 px-4"
           >
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            {t('Reset')}
           </MachineActionButton>
           <MachineActionButton
             isConnected={isConnected}
@@ -1009,7 +1016,7 @@ export default function Setup() {
             className="h-10 px-6 font-bold uppercase tracking-wide bg-red-600 hover:bg-red-700"
           >
             <Square className="w-5 h-5 mr-2" />
-            E-Stop
+            {t('E-Stop')}
           </MachineActionButton>
         </div>
       </header>
@@ -1061,6 +1068,7 @@ export default function Setup() {
                       id={panelId}
                       isCollapsed={collapsedPanels[panelId] ?? false}
                       onToggle={() => togglePanel(panelId)}
+                      panelConfig={panelConfig}
                       panelProps={{
                         isConnected,
                         connectedPort,
@@ -1084,6 +1092,7 @@ export default function Setup() {
                 <DragOverlayPanel 
                   id={activeId} 
                   isCollapsed={collapsedPanels[activeId] ?? false}
+                  panelConfig={panelConfig}
                   panelProps={{
                     isConnected,
                     connectedPort,
@@ -1143,8 +1152,8 @@ export default function Setup() {
         open={showMethodSelectDialog}
         onOpenChange={setShowMethodSelectDialog}
         methods={settings?.zeroingMethods?.methods ?? []}
-        title="Select Zeroing Method"
-        description="Choose a zeroing method to use before starting the job:"
+        title={t('Select Zeroing Method')}
+        description={t('Choose a zeroing method to use before starting the job:')}
         onSelect={handleMethodSelect}
       />
     </div>

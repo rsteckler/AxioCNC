@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
 import { Button } from '@/components/ui/button'
@@ -82,6 +83,7 @@ export function JoystickSection({
   onConfigChange,
   onRefreshGamepads,
 }: JoystickSectionProps) {
+  const { t } = useTranslation()
   const [activeButtonIndex] = useState<number | null>(null)
   const [testDialogOpen, setTestDialogOpen] = useState(false)
   const [isGamepadConnected, setIsGamepadConnected] = useState(false)
@@ -156,13 +158,13 @@ export function JoystickSection({
   return (
     <SettingsSection
       id="joystick"
-      title="Joystick / Gamepad"
-      description="Configure gamepad controls for hands-on CNC operation"
+      title={t('Joystick / Gamepad')}
+      description={t('Configure gamepad controls for hands-on CNC operation')}
     >
       {/* Enable/Disable */}
       <SettingsField
-        label="Enable Gamepad Support"
-        description="Use a connected gamepad to control your CNC machine"
+        label={t('Enable Gamepad Support')}
+        description={t('Use a connected gamepad to control your CNC machine')}
         horizontal
       >
         <Switch
@@ -175,8 +177,8 @@ export function JoystickSection({
         <>
           {/* Connection Location */}
           <SettingsField
-            label="Gamepad Connection Location"
-            description="Choose which machine the joystick is connected to. If you're running this browser on the same machine that's running the AxioCNC server, choose Server for better reliability. Note: Server-side gamepads only work on Linux servers."
+            label={t('Gamepad Connection Location')}
+            description={t('Choose which machine the joystick is connected to. If you\'re running this browser on the same machine that\'s running the AxioCNC server, choose Server for better reliability. Note: Server-side gamepads only work on Linux servers.')}
           >
             <Select
               value={config.connectionLocation || 'server'}
@@ -186,24 +188,24 @@ export function JoystickSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="server">Server (Machine running AxioCNC)</SelectItem>
-                <SelectItem value="client">Client (Machine running browser)</SelectItem>
+                <SelectItem value="server">{t('Server (Machine running AxioCNC)')}</SelectItem>
+                <SelectItem value="client">{t('Client (Machine running browser)')}</SelectItem>
               </SelectContent>
             </Select>
           </SettingsField>
 
           {/* Gamepad Selection */}
           <SettingsField
-            label="Select Gamepad"
+            label={t('Select Gamepad')}
             tooltip={config.selectedGamepad 
               ? (isGamepadConnected 
-                  ? 'Connected' 
-                  : 'Disconnected' + (config.connectionLocation === 'client' ? '. Press a button on your gamepad while this webpage is focused to connect.' : ''))
+                  ? t('Connected') 
+                  : t('Disconnected') + (config.connectionLocation === 'client' ? '. ' + t('Press a button on your gamepad while this webpage is focused to connect.') : ''))
               : undefined
             }
             description={config.connectionLocation === 'server' 
-              ? 'Select a gamepad connected to the server machine'
-              : 'Select a gamepad connected to this browser\'s machine'}
+              ? t('Select a gamepad connected to the server machine')
+              : t('Select a gamepad connected to this browser\'s machine')}
           >
             <div className="flex gap-2 items-center">
               <Select
@@ -211,11 +213,11 @@ export function JoystickSection({
                 onValueChange={(value) => onConfigChange({ selectedGamepad: value === 'none' ? null : value })}
               >
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a gamepad..." />
+                  <SelectValue placeholder={t('Select a gamepad...')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">
-                    {detectedGamepads.length === 0 ? 'No gamepads detected' : 'None selected'}
+                    {detectedGamepads.length === 0 ? t('No gamepads detected') : t('None selected')}
                   </SelectItem>
                   {detectedGamepads.map((gp) => (
                     <SelectItem key={gp.id} value={gp.id}>
@@ -223,7 +225,7 @@ export function JoystickSection({
                         <Gamepad2 className="w-4 h-4" />
                         <span>{gp.name}</span>
                         <Badge variant="secondary" className="text-xs">
-                          {gp.buttons} buttons
+                          {t('{{count}} buttons', { count: gp.buttons })}
                         </Badge>
                       </div>
                     </SelectItem>
@@ -234,7 +236,7 @@ export function JoystickSection({
                       <div className="flex items-center gap-2">
                         <Gamepad2 className="w-4 h-4" />
                         <span className="text-muted-foreground">
-                          {config.selectedGamepad.split('(')[0].trim() || 'Gamepad'} (not detected)
+                          {config.selectedGamepad.split('(')[0].trim() || t('Gamepad')} {t('(not detected)')}
                         </span>
                       </div>
                     </SelectItem>
@@ -249,12 +251,12 @@ export function JoystickSection({
                   {isGamepadConnected ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
+                      <span className="text-sm text-green-600 dark:text-green-400">{t('Connected')}</span>
                     </>
                   ) : (
                     <>
                       <XCircle className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-600 dark:text-red-400">Disconnected</span>
+                      <span className="text-sm text-red-600 dark:text-red-400">{t('Disconnected')}</span>
                     </>
                   )}
                 </div>
@@ -266,13 +268,13 @@ export function JoystickSection({
                 disabled={!config.selectedGamepad}
               >
                 <Play className="w-4 h-4" />
-                Test
+                {t('Test')}
               </Button>
             </div>
             {config.connectionLocation === 'client' && (
               <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  For browser-connected gamepads, you must press a button on your gamepad while this webpage is focused to connect.
+                  {t('For browser-connected gamepads, you must press a button on your gamepad while this webpage is focused to connect.')}
                 </p>
               </div>
             )}
@@ -280,18 +282,18 @@ export function JoystickSection({
 
           {/* Analog Stick Settings */}
           <div className="space-y-4 pt-4">
-            <h4 className="font-medium text-sm">Analog Stick Configuration</h4>
+            <h4 className="font-medium text-sm">{t('Analog Stick Configuration')}</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left Stick */}
               <div className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-2 mb-3">
                   <CircleDot className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-medium">Left Stick</span>
+                  <span className="font-medium">{t('Left Stick')}</span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">Horizontal (X)</Label>
+                    <Label className="text-sm text-muted-foreground">{t('Horizontal (X)')}</Label>
                     <Select
                       value={config.analogMappings.left_x}
                       onValueChange={(v) => handleAnalogMappingChange('left_x', v as AnalogMapping)}
@@ -300,16 +302,16 @@ export function JoystickSection({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="jog_x">Jog X Axis</SelectItem>
-                        <SelectItem value="jog_y">Jog Y Axis</SelectItem>
-                        <SelectItem value="jog_z">Jog Z Axis</SelectItem>
-                        <SelectItem value="feed_rate">Feed Rate</SelectItem>
+                        <SelectItem value="none">{t('None')}</SelectItem>
+                        <SelectItem value="jog_x">{t('Jog X Axis')}</SelectItem>
+                        <SelectItem value="jog_y">{t('Jog Y Axis')}</SelectItem>
+                        <SelectItem value="jog_z">{t('Jog Z Axis')}</SelectItem>
+                        <SelectItem value="feed_rate">{t('Feed Rate')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">Vertical (Y)</Label>
+                    <Label className="text-sm text-muted-foreground">{t('Vertical (Y)')}</Label>
                     <Select
                       value={config.analogMappings.left_y}
                       onValueChange={(v) => handleAnalogMappingChange('left_y', v as AnalogMapping)}
@@ -318,11 +320,11 @@ export function JoystickSection({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="jog_x">Jog X Axis</SelectItem>
-                        <SelectItem value="jog_y">Jog Y Axis</SelectItem>
-                        <SelectItem value="jog_z">Jog Z Axis</SelectItem>
-                        <SelectItem value="feed_rate">Feed Rate</SelectItem>
+                        <SelectItem value="none">{t('None')}</SelectItem>
+                        <SelectItem value="jog_x">{t('Jog X Axis')}</SelectItem>
+                        <SelectItem value="jog_y">{t('Jog Y Axis')}</SelectItem>
+                        <SelectItem value="jog_z">{t('Jog Z Axis')}</SelectItem>
+                        <SelectItem value="feed_rate">{t('Feed Rate')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -333,11 +335,11 @@ export function JoystickSection({
               <div className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-2 mb-3">
                   <CircleDot className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-medium">Right Stick</span>
+                  <span className="font-medium">{t('Right Stick')}</span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">Horizontal (X)</Label>
+                    <Label className="text-sm text-muted-foreground">{t('Horizontal (X)')}</Label>
                     <Select
                       value={config.analogMappings.right_x}
                       onValueChange={(v) => handleAnalogMappingChange('right_x', v as AnalogMapping)}
@@ -346,16 +348,16 @@ export function JoystickSection({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="jog_x">Jog X Axis</SelectItem>
-                        <SelectItem value="jog_y">Jog Y Axis</SelectItem>
-                        <SelectItem value="jog_z">Jog Z Axis</SelectItem>
-                        <SelectItem value="feed_rate">Feed Rate</SelectItem>
+                        <SelectItem value="none">{t('None')}</SelectItem>
+                        <SelectItem value="jog_x">{t('Jog X Axis')}</SelectItem>
+                        <SelectItem value="jog_y">{t('Jog Y Axis')}</SelectItem>
+                        <SelectItem value="jog_z">{t('Jog Z Axis')}</SelectItem>
+                        <SelectItem value="feed_rate">{t('Feed Rate')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">Vertical (Y)</Label>
+                    <Label className="text-sm text-muted-foreground">{t('Vertical (Y)')}</Label>
                     <Select
                       value={config.analogMappings.right_y}
                       onValueChange={(v) => handleAnalogMappingChange('right_y', v as AnalogMapping)}
@@ -364,11 +366,11 @@ export function JoystickSection({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="jog_x">Jog X Axis</SelectItem>
-                        <SelectItem value="jog_y">Jog Y Axis</SelectItem>
-                        <SelectItem value="jog_z">Jog Z Axis</SelectItem>
-                        <SelectItem value="feed_rate">Feed Rate</SelectItem>
+                        <SelectItem value="none">{t('None')}</SelectItem>
+                        <SelectItem value="jog_x">{t('Jog X Axis')}</SelectItem>
+                        <SelectItem value="jog_y">{t('Jog Y Axis')}</SelectItem>
+                        <SelectItem value="jog_z">{t('Jog Z Axis')}</SelectItem>
+                        <SelectItem value="feed_rate">{t('Feed Rate')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -379,9 +381,9 @@ export function JoystickSection({
             {/* Analog Settings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
               <SettingsField
-                label="Deadzone"
-                description="Ignore small stick movements"
-                tooltip="Values below this threshold are ignored to prevent drift"
+                label={t('Deadzone')}
+                description={t('Ignore small stick movements')}
+                tooltip={t('Values below this threshold are ignored to prevent drift')}
               >
                 <div className="flex items-center gap-4">
                   <Slider
@@ -399,8 +401,8 @@ export function JoystickSection({
               </SettingsField>
 
               <SettingsField
-                label="Sensitivity"
-                description="Response curve for analog input"
+                label={t('Sensitivity')}
+                description={t('Response curve for analog input')}
               >
                 <div className="flex items-center gap-4">
                   <Slider
@@ -418,9 +420,9 @@ export function JoystickSection({
               </SettingsField>
 
               <SettingsField
-                label="Max XY Jog Speed"
-                description="Maximum speed for X/Y axis jogging"
-                tooltip="The speed at full stick deflection for X and Y axes in mm/min"
+                label={t('Max XY Jog Speed')}
+                description={t('Maximum speed for X/Y axis jogging')}
+                tooltip={t('The speed at full stick deflection for X and Y axes in mm/min')}
               >
                 <div className="flex items-center gap-4">
                   <Slider
@@ -432,15 +434,15 @@ export function JoystickSection({
                     className="flex-1"
                   />
                   <span className="text-sm text-muted-foreground w-24 text-right">
-                    {config.analogJogSpeedXY} mm/min
+                    {config.analogJogSpeedXY} {t('mm/min')}
                   </span>
                 </div>
               </SettingsField>
 
               <SettingsField
-                label="Max Z Jog Speed"
-                description="Maximum speed for Z axis jogging"
-                tooltip="The speed at full stick deflection for Z axis in mm/min. Often set lower than XY for safety."
+                label={t('Max Z Jog Speed')}
+                description={t('Maximum speed for Z axis jogging')}
+                tooltip={t('The speed at full stick deflection for Z axis in mm/min. Often set lower than XY for safety.')}
               >
                 <div className="flex items-center gap-4">
                   <Slider
@@ -452,7 +454,7 @@ export function JoystickSection({
                     className="flex-1"
                   />
                   <span className="text-sm text-muted-foreground w-24 text-right">
-                    {config.analogJogSpeedZ} mm/min
+                    {config.analogJogSpeedZ} {t('mm/min')}
                   </span>
                 </div>
               </SettingsField>
@@ -466,7 +468,7 @@ export function JoystickSection({
                   checked={config.invertX}
                   onCheckedChange={(invertX) => onConfigChange({ invertX })}
                 />
-                <Label htmlFor="invert-x" className="text-sm">Invert X</Label>
+                <Label htmlFor="invert-x" className="text-sm">{t('Invert X')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -474,7 +476,7 @@ export function JoystickSection({
                   checked={config.invertY}
                   onCheckedChange={(invertY) => onConfigChange({ invertY })}
                 />
-                <Label htmlFor="invert-y" className="text-sm">Invert Y</Label>
+                <Label htmlFor="invert-y" className="text-sm">{t('Invert Y')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -482,21 +484,21 @@ export function JoystickSection({
                   checked={config.invertZ}
                   onCheckedChange={(invertZ) => onConfigChange({ invertZ })}
                 />
-                <Label htmlFor="invert-z" className="text-sm">Invert Z</Label>
+                <Label htmlFor="invert-z" className="text-sm">{t('Invert Z')}</Label>
               </div>
             </div>
           </div>
 
           {/* Button Mappings */}
           <div className="space-y-4 pt-6">
-            <h4 className="font-medium text-sm">Button Mappings</h4>
+            <h4 className="font-medium text-sm">{t('Button Mappings')}</h4>
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
-                    <TableHead>Button</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>{t('Button')}</TableHead>
+                    <TableHead>{t('Action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -543,7 +545,7 @@ export function JoystickSection({
                   <TableRow>
                     <TableCell colSpan={3} className="pt-4">
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium text-muted-foreground w-20">D-Pad:</span>
+                        <span className="text-sm font-medium text-muted-foreground w-20">{t('D-Pad:')}</span>
                         {GAMEPAD_BUTTONS.filter(b => 'isDpad' in b && (b as { isDpad: boolean }).isDpad).map((button) => (
                           <div key={button.index} className="flex-1">
                             <div className="flex items-center gap-2 mb-2">

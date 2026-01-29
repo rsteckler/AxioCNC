@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import type { PanelProps } from '../../Setup/types'
@@ -7,6 +8,7 @@ import { useMachineState } from '@/store/hooks'
 import { useMemo } from 'react'
 
 export function ToolsUsedPanel(props: PanelProps) {
+  const { t } = useTranslation()
   const { senderState } = props
   const { data: toolsData } = useGetToolsQuery()
   const machineState = useMachineState()
@@ -87,7 +89,7 @@ export function ToolsUsedPanel(props: PanelProps) {
 
   return (
     <div className="p-4 flex flex-col" style={{ minHeight: 0, maxHeight: '100%' }}>
-      <div className="text-xs text-muted-foreground mb-2">Tools</div>
+      <div className="text-xs text-muted-foreground mb-2">{t('Tools')}</div>
       {/* Scrollable tool list */}
       <div className="flex-1 min-h-0">
         <OverlayScrollbarsComponent 
@@ -97,11 +99,11 @@ export function ToolsUsedPanel(props: PanelProps) {
           <div className="space-y-1.5 pr-2">
             {!isFileLoaded ? (
               <div className="px-3 py-2 rounded border bg-background border-border text-muted-foreground text-xs">
-                No file loaded
+                {t('No file loaded')}
               </div>
             ) : toolsInJob.length === 0 ? (
               <div className="px-3 py-2 rounded border bg-background border-border text-muted-foreground text-xs">
-                No tools in job
+                {t('No tools in job')}
               </div>
             ) : (
               toolsInJob.map((toolStat) => {
@@ -135,9 +137,9 @@ export function ToolsUsedPanel(props: PanelProps) {
                             T{toolStat.toolNumber}
                           </span>
                           {toolData ? (
-                            <span className="text-xs font-medium">{toolData.name || 'Tool ' + toolStat.toolNumber}</span>
+                            <span className="text-xs font-medium">{toolData.name || t('Tool {{num}}', { num: toolStat.toolNumber })}</span>
                           ) : !hasStats ? (
-                            <span className="text-xs text-muted-foreground italic">Scheduled</span>
+                            <span className="text-xs text-muted-foreground italic">{t('Scheduled')}</span>
                           ) : null}
                         </div>
                         {toolData?.diameter && (
@@ -149,11 +151,11 @@ export function ToolsUsedPanel(props: PanelProps) {
                       {isCurrentTool && (
                         <div className="flex items-center justify-between mt-1 mb-1.5">
                           <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                            Current Tool
+                            {t('Current Tool')}
                           </div>
                           {toolOffset !== null && (
                             <div className="text-xs text-muted-foreground">
-                              Offset: <span className="font-mono">{toolOffset.toFixed(3)}mm</span>
+                              {t('Offset:')} <span className="font-mono">{toolOffset.toFixed(3)}{t('mm')}</span>
                             </div>
                           )}
                         </div>
@@ -181,7 +183,7 @@ export function ToolsUsedPanel(props: PanelProps) {
                       <div className="px-2 py-1.5 rounded border bg-primary/10 border-primary/30 text-primary mt-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <div className="text-xs font-medium">
-                            Next: T{nextToolInJob.toolNumber}
+                            {t('Next:')} T{nextToolInJob.toolNumber}
                           </div>
                           {remainingTimeToNextM6 > 0 && (
                             <div className="text-xs font-mono">
