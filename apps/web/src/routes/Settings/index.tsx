@@ -117,6 +117,11 @@ const DEFAULT_MACHINE_CONFIG: MachineConfig = {
   autoSwitchToMonitorEnabled: true,   // Enabled by default
   toolSpinupDelayEnabled: true,   // Enabled by default
   toolSpinupDelaySeconds: 5,      // 5 seconds default delay
+  spindleWarmupEnabled: false,
+  spindleWarmupTimeSeconds: 45,
+  spindleWarmupMinRpm: 8000,
+  spindleWarmupMaxRpm: 24000,
+  spindleWarmupStepRpm: 2000,
 }
 
 // Default camera configuration
@@ -430,6 +435,21 @@ export default function Settings() {
       }
       if (settings.machine?.toolSpinup?.delaySeconds !== undefined) {
         setMachineConfig(prev => ({ ...prev, toolSpinupDelaySeconds: settings.machine!.toolSpinup!.delaySeconds! }))
+      }
+      if (settings.machine?.spindleWarmup?.enabled !== undefined) {
+        setMachineConfig(prev => ({ ...prev, spindleWarmupEnabled: settings.machine!.spindleWarmup!.enabled! }))
+      }
+      if (settings.machine?.spindleWarmup?.timeSeconds !== undefined) {
+        setMachineConfig(prev => ({ ...prev, spindleWarmupTimeSeconds: settings.machine!.spindleWarmup!.timeSeconds! }))
+      }
+      if (settings.machine?.spindleWarmup?.minRpm !== undefined) {
+        setMachineConfig(prev => ({ ...prev, spindleWarmupMinRpm: settings.machine!.spindleWarmup!.minRpm! }))
+      }
+      if (settings.machine?.spindleWarmup?.maxRpm !== undefined) {
+        setMachineConfig(prev => ({ ...prev, spindleWarmupMaxRpm: settings.machine!.spindleWarmup!.maxRpm! }))
+      }
+      if (settings.machine?.spindleWarmup?.stepRpm !== undefined) {
+        setMachineConfig(prev => ({ ...prev, spindleWarmupStepRpm: settings.machine!.spindleWarmup!.stepRpm! }))
       }
       
       // Connection config
@@ -922,6 +942,11 @@ export default function Settings() {
             autoSwitchToMonitorEnabled: importedSettings.machine?.autoSwitchToMonitor ?? prev.autoSwitchToMonitorEnabled,
             toolSpinupDelayEnabled: importedSettings.machine?.toolSpinup?.enabled ?? prev.toolSpinupDelayEnabled,
             toolSpinupDelaySeconds: importedSettings.machine?.toolSpinup?.delaySeconds ?? prev.toolSpinupDelaySeconds,
+            spindleWarmupEnabled: importedSettings.machine?.spindleWarmup?.enabled ?? prev.spindleWarmupEnabled,
+            spindleWarmupTimeSeconds: importedSettings.machine?.spindleWarmup?.timeSeconds ?? prev.spindleWarmupTimeSeconds,
+            spindleWarmupMinRpm: importedSettings.machine?.spindleWarmup?.minRpm ?? prev.spindleWarmupMinRpm,
+            spindleWarmupMaxRpm: importedSettings.machine?.spindleWarmup?.maxRpm ?? prev.spindleWarmupMaxRpm,
+            spindleWarmupStepRpm: importedSettings.machine?.spindleWarmup?.stepRpm ?? prev.spindleWarmupStepRpm,
           }))
         }
         
@@ -1096,6 +1121,13 @@ export default function Settings() {
         toolSpinup: {
           enabled: DEFAULT_MACHINE_CONFIG.toolSpinupDelayEnabled,
           delaySeconds: DEFAULT_MACHINE_CONFIG.toolSpinupDelaySeconds,
+        },
+        spindleWarmup: {
+          enabled: DEFAULT_MACHINE_CONFIG.spindleWarmupEnabled,
+          timeSeconds: DEFAULT_MACHINE_CONFIG.spindleWarmupTimeSeconds,
+          minRpm: DEFAULT_MACHINE_CONFIG.spindleWarmupMinRpm,
+          maxRpm: DEFAULT_MACHINE_CONFIG.spindleWarmupMaxRpm,
+          stepRpm: DEFAULT_MACHINE_CONFIG.spindleWarmupStepRpm,
         },
       },
       camera: DEFAULT_CAMERA_CONFIG,
@@ -1279,6 +1311,21 @@ export default function Settings() {
       if (changes.toolSpinupDelaySeconds !== undefined) {
         updated.toolSpinupDelaySeconds = changes.toolSpinupDelaySeconds
       }
+      if (changes.spindleWarmupEnabled !== undefined) {
+        updated.spindleWarmupEnabled = changes.spindleWarmupEnabled
+      }
+      if (changes.spindleWarmupTimeSeconds !== undefined) {
+        updated.spindleWarmupTimeSeconds = changes.spindleWarmupTimeSeconds
+      }
+      if (changes.spindleWarmupMinRpm !== undefined) {
+        updated.spindleWarmupMinRpm = changes.spindleWarmupMinRpm
+      }
+      if (changes.spindleWarmupMaxRpm !== undefined) {
+        updated.spindleWarmupMaxRpm = changes.spindleWarmupMaxRpm
+      }
+      if (changes.spindleWarmupStepRpm !== undefined) {
+        updated.spindleWarmupStepRpm = changes.spindleWarmupStepRpm
+      }
       return updated
     })
     
@@ -1301,6 +1348,31 @@ export default function Settings() {
       }
       if (changes.toolSpinupDelaySeconds !== undefined) {
         saveData.machine.toolSpinup.delaySeconds = changes.toolSpinupDelaySeconds
+      }
+    }
+    if (
+      changes.spindleWarmupEnabled !== undefined ||
+      changes.spindleWarmupTimeSeconds !== undefined ||
+      changes.spindleWarmupMinRpm !== undefined ||
+      changes.spindleWarmupMaxRpm !== undefined ||
+      changes.spindleWarmupStepRpm !== undefined
+    ) {
+      saveData.machine = saveData.machine || {}
+      saveData.machine.spindleWarmup = {}
+      if (changes.spindleWarmupEnabled !== undefined) {
+        saveData.machine.spindleWarmup.enabled = changes.spindleWarmupEnabled
+      }
+      if (changes.spindleWarmupTimeSeconds !== undefined) {
+        saveData.machine.spindleWarmup.timeSeconds = changes.spindleWarmupTimeSeconds
+      }
+      if (changes.spindleWarmupMinRpm !== undefined) {
+        saveData.machine.spindleWarmup.minRpm = changes.spindleWarmupMinRpm
+      }
+      if (changes.spindleWarmupMaxRpm !== undefined) {
+        saveData.machine.spindleWarmup.maxRpm = changes.spindleWarmupMaxRpm
+      }
+      if (changes.spindleWarmupStepRpm !== undefined) {
+        saveData.machine.spindleWarmup.stepRpm = changes.spindleWarmupStepRpm
       }
     }
     if (Object.keys(saveData).length > 0) {

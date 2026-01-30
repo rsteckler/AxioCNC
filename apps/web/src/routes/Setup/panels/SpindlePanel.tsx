@@ -1,13 +1,30 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RotateCw, RotateCcw, Circle } from 'lucide-react'
+import { RotateCw, RotateCcw, Circle, ThermometerSun, Square } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { MachineActionButton } from '@/components/MachineActionButton'
 import { MachineActionWrapper } from '@/components/MachineActionWrapper'
 import { ActionRequirements } from '@/utils/machineState'
 import { useGcodeCommand } from '@/hooks'
 import { trackFeatureUsed } from '@/services/analytics'
+import { useGetSettingsQuery } from '@/services/api'
 import type { PanelProps } from '../types'
+
+function getWarmupSpeeds(minRpm: number, maxRpm: number, stepRpm: number): number[] {
+  if (minRpm >= maxRpm || stepRpm <= 0) return [minRpm]
+  const speeds: number[] = []
+  for (let s = minRpm; s < maxRpm; s += stepRpm) {
+    speeds.push(s)
+  }
+  speeds.push(maxRpm)
+  return speeds
+}
+
+function formatCountdown(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`
+}
 
 export function SpindlePanel({ 
   isConnected, 
@@ -19,6 +36,7 @@ export function SpindlePanel({
   spindleSpeed = 0 
 }: PanelProps) {
   const { t } = useTranslation()
+  const { data: settings } = useGetSettingsQuery()
   // Generate speeds array from 8000 to 24000 in 100 RPM increments
   const speeds = Array.from({ length: 161 }, (_, i) => 8000 + i * 100)
   
@@ -27,6 +45,94 @@ export function SpindlePanel({
   
   // G-code command hook
   const { sendGcode } = useGcodeCommand(connectedPort)
+
+  // Spindle warmup (VFD) from machine settings
+  const warmupConfig = settings?.machine?.spindleWarmup
+  const warmupEnabled = warmupConfig?.enabled ?? false
+  const warmupTimeSeconds = Math.max(1, Math.min(300, warmupConfig?.timeSeconds ?? 45))
+  const warmupMinRpm = warmupConfig?.minRpm ?? 8000
+  const warmupMaxRpm = warmupConfig?.maxRpm ?? 24000
+  const warmupStepRpm = Math.max(100, warmupConfig?.stepRpm ?? 2000)
+
+  const [isWarmupRunning, setIsWarmupRunning] = useState(false)
+  const [warmupRemainingSeconds, setWarmupRemainingSeconds] = useState(0)
+  const warmupTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const warmupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const warmupCancelledRef = useRef(false)
+  const prevSpindleStateRef = useRef<string>(spindleState)
+
+  const clearWarmupTimers = useCallback(() => {
+    warmupTimeoutsRef.current.forEach(clearTimeout)
+    warmupTimeoutsRef.current = []
+    if (warmupIntervalRef.current) {
+      clearInterval(warmupIntervalRef.current)
+      warmupIntervalRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearWarmupTimers()
+    }
+  }, [clearWarmupTimers])
+
+  // If spindle stops while warmup is running (e.g. e-stop), end warmup.
+  // Only react to transition from M3/M4 → M5, not M5 at start (machine needs time to report M3).
+  useEffect(() => {
+    const wasOn = prevSpindleStateRef.current === 'M3' || prevSpindleStateRef.current === 'M4'
+    prevSpindleStateRef.current = spindleState
+    if (isWarmupRunning && wasOn && spindleState === 'M5') {
+      warmupCancelledRef.current = true
+      clearWarmupTimers()
+      setIsWarmupRunning(false)
+      setWarmupRemainingSeconds(0)
+    }
+  }, [isWarmupRunning, spindleState, clearWarmupTimers])
+
+  const handleStopWarmup = useCallback(() => {
+    warmupCancelledRef.current = true
+    clearWarmupTimers()
+    sendGcode('M5')
+    setIsWarmupRunning(false)
+    setWarmupRemainingSeconds(0)
+    trackFeatureUsed('spindle', 'SpindlePanel', 'warmup_stop', '')
+  }, [clearWarmupTimers, sendGcode])
+
+  const handleStartWarmup = useCallback(() => {
+    if (!connectedPort || isWarmupRunning) return
+    warmupCancelledRef.current = false
+    const warmupSpeeds = getWarmupSpeeds(warmupMinRpm, warmupMaxRpm, warmupStepRpm)
+    const totalSeconds = warmupSpeeds.length * warmupTimeSeconds
+    setIsWarmupRunning(true)
+    setWarmupRemainingSeconds(totalSeconds)
+
+    const intervalId = setInterval(() => {
+      setWarmupRemainingSeconds(prev => Math.max(0, prev - 1))
+    }, 1000)
+    warmupIntervalRef.current = intervalId
+
+    warmupSpeeds.forEach((rpm, i) => {
+      const timeoutId = setTimeout(() => {
+        if (warmupCancelledRef.current) return
+        sendGcode(`M3 S${rpm}`)
+      }, i * warmupTimeSeconds * 1000)
+      warmupTimeoutsRef.current.push(timeoutId)
+    })
+    const stopTimeoutId = setTimeout(() => {
+      if (warmupCancelledRef.current) return
+      sendGcode('M5')
+      clearWarmupTimers()
+      if (warmupIntervalRef.current) {
+        clearInterval(warmupIntervalRef.current)
+        warmupIntervalRef.current = null
+      }
+      setIsWarmupRunning(false)
+      setWarmupRemainingSeconds(0)
+      trackFeatureUsed('spindle', 'SpindlePanel', 'warmup_complete', '')
+    }, warmupSpeeds.length * warmupTimeSeconds * 1000)
+    warmupTimeoutsRef.current.push(stopTimeoutId)
+    trackFeatureUsed('spindle', 'SpindlePanel', 'warmup_start', `${warmupSpeeds.length}_${warmupTimeSeconds}s`)
+  }, [connectedPort, isWarmupRunning, warmupMinRpm, warmupMaxRpm, warmupStepRpm, warmupTimeSeconds, sendGcode, clearWarmupTimers])
   
   // Derive state from backend
   const isOn = spindleState === 'M3' || spindleState === 'M4'
@@ -65,12 +171,12 @@ export function SpindlePanel({
   
   const [speedIndex, setSpeedIndex] = useState(() => getSpeedIndex(spindleSpeed))
   
-  // Update speed index when backend speed changes (only if spindle is off)
+  // Sync slider to backend speed whenever it changes (e.g. during warmup or after start/stop)
   useEffect(() => {
-    if (!isOn && spindleSpeed !== undefined) {
+    if (spindleSpeed !== undefined) {
       setSpeedIndex(getSpeedIndex(spindleSpeed))
     }
-  }, [spindleSpeed, isOn, getSpeedIndex])
+  }, [spindleSpeed, getSpeedIndex])
   
   const speed = speeds[speedIndex]
   
@@ -220,28 +326,78 @@ export function SpindlePanel({
         </div>
       </div>
       
-      {/* On/Off toggle */}
+      {/* Spindle warmup (VFD) - when enabled in Machine settings */}
+      {warmupEnabled && (
+        <div className="space-y-1">
+          {isWarmupRunning ? (
+            <>
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={handleStopWarmup}
+                requirements={ActionRequirements.allowHold}
+                className="w-full h-12 bg-red-600 hover:bg-red-700"
+                variant="default"
+              >
+                <Square className="w-4 h-4 mr-2 fill-white" />
+                {t('Stop Warmup')}
+              </MachineActionButton>
+              <p className="text-center text-sm font-mono text-muted-foreground">
+                {t('Time remaining')}: {formatCountdown(warmupRemainingSeconds)}
+              </p>
+            </>
+          ) : (
+            <MachineActionButton
+              isConnected={isConnected}
+              connectedPort={connectedPort}
+              machineStatus={machineStatus}
+              onFlashStatus={onFlashStatus}
+              onAction={handleStartWarmup}
+              requirements={{
+                requiresConnected: true,
+                requiresPort: true,
+                disallowAlarm: true,
+                disallowRunning: true,
+                disallowHold: true,
+                disallowNotConnected: true,
+              }}
+              customDisabled={isJobRunning}
+              className="w-full h-12"
+              variant="outline"
+            >
+              <ThermometerSun className="w-4 h-4 mr-2" />
+              {t('Warmup Spindle')}
+            </MachineActionButton>
+          )}
+        </div>
+      )}
+
+      {/* On/Off toggle - hidden while warmup is running */}
+      {!isWarmupRunning && (
         <MachineActionButton
-        isConnected={isConnected}
-        connectedPort={connectedPort}
-        machineStatus={machineStatus}
-        onFlashStatus={onFlashStatus}
-        onAction={handleToggleSpindle}
-        requirements={isOn ? ActionRequirements.allowHold : {
-          requiresConnected: true,
-          requiresPort: true,
-          disallowAlarm: true,
-          disallowRunning: false, // Allow spindle start during jobs (but not during hold)
-          disallowHold: true, // Don't allow starting spindle during hold
-          disallowNotConnected: true,
-        }}
-        customDisabled={!isOn && (isJobRunning && machineStatus !== 'hold')} // Allow stop during hold, disable start during other running states
-        className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
-        variant={isOn ? 'default' : 'outline'}
-      >
-        <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
-        {isOn ? t('Stop Spindle') : t('Start Spindle')}
-      </MachineActionButton>
+          isConnected={isConnected}
+          connectedPort={connectedPort}
+          machineStatus={machineStatus}
+          onFlashStatus={onFlashStatus}
+          onAction={handleToggleSpindle}
+          requirements={isOn ? ActionRequirements.allowHold : {
+            requiresConnected: true,
+            requiresPort: true,
+            disallowAlarm: true,
+            disallowRunning: false, // Allow spindle start during jobs (but not during hold)
+            disallowHold: true, // Don't allow starting spindle during hold
+            disallowNotConnected: true,
+          }}
+          customDisabled={!isOn && (isJobRunning && machineStatus !== 'hold')} // Allow stop during hold, disable start during other running states
+          className={`w-full h-12 ${isOn ? 'bg-green-600 hover:bg-green-700' : ''}`}
+          variant={isOn ? 'default' : 'outline'}
+        >
+          <Circle className={`w-4 h-4 mr-2 ${isOn ? 'fill-white' : ''}`} />
+          {isOn ? t('Stop Spindle') : t('Start Spindle')}
+        </MachineActionButton>
+      )}
     </div>
   )
 }

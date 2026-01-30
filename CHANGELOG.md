@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- VFD spindle warmup (fixes [#33](https://github.com/rsteckler/AxioCNC/issues/33)): optional warmup sequence for VFD spindles to redistribute grease before use. When enabled in Settings → Machine, the Spindle panel shows a Warmup button that steps through configurable min/max/step RPM with configurable dwell time at each speed. Warmup can be stopped via Stop Warmup or by the spindle stopping (e.g. e-stop); Start/Stop Spindle is hidden during warmup.
+
 - Added localization for:
 -- English
 -- Spanish

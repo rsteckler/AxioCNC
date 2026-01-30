@@ -30,6 +30,15 @@ const ToolSpinupSchema = z.object({
   delaySeconds: z.number().min(0).max(60).default(5),
 });
 
+// Spindle warmup (VFD): time at each speed, min/max/step RPM
+const SpindleWarmupSchema = z.object({
+  enabled: z.boolean().default(false),
+  timeSeconds: z.number().min(1).max(300).default(45),
+  minRpm: z.number().min(0).max(100000).default(8000),
+  maxRpm: z.number().min(0).max(100000).default(24000),
+  stepRpm: z.number().min(100).max(10000).default(2000),
+});
+
 export const MachineLimitsSchema = z.object({
   xmin: z.number().default(0),
   xmax: z.number().default(300),
@@ -44,6 +53,7 @@ export const MachineSettingsSchema = z.object({
   limits: MachineLimitsSchema.optional(),
   homingCorner: z.enum(['back-left', 'back-right', 'front-left', 'front-right']).optional(),
   toolSpinup: ToolSpinupSchema.optional(),
+  spindleWarmup: SpindleWarmupSchema.optional(),
   autoSwitchToMonitor: z.boolean().default(true),
 });
 
@@ -260,6 +270,7 @@ export const getDefaultSettings = () => {
     machine: MachineSettingsSchema.parse({
       limits: MachineLimitsSchema.parse({}),
       toolSpinup: ToolSpinupSchema.parse({}),
+      spindleWarmup: SpindleWarmupSchema.parse({}),
     }),
     connection: ConnectionSettingsSchema.parse({}),
     camera: CameraSettingsSchema.parse({}),

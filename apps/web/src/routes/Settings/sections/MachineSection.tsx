@@ -17,6 +17,55 @@ import { useMemo, useState, useEffect } from 'react'
 import { dimensionsToLimits, limitsToDimensions, type HomingCorner, type MachineDimensions } from '@/lib/machineLimits'
 import { useGetMachinePresetsQuery, type MachinePreset } from '@/services/api'
 
+/** Build warmup speeds from min to max by step, with max as final step */
+function getWarmupSpeeds(minRpm: number, maxRpm: number, stepRpm: number): number[] {
+  if (minRpm >= maxRpm || stepRpm <= 0) return [minRpm]
+  const speeds: number[] = []
+  for (let s = minRpm; s < maxRpm; s += stepRpm) {
+    speeds.push(s)
+  }
+  speeds.push(maxRpm)
+  return speeds
+}
+
+function WarmupPreview({
+  minRpm,
+  maxRpm,
+  stepRpm,
+  timeSeconds,
+}: {
+  minRpm: number
+  maxRpm: number
+  stepRpm: number
+  timeSeconds: number
+}) {
+  const { t } = useTranslation()
+  const speeds = useMemo(() => getWarmupSpeeds(minRpm, maxRpm, stepRpm), [minRpm, maxRpm, stepRpm])
+  const totalSeconds = speeds.length * timeSeconds
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const durationText =
+    minutes > 0
+      ? t('Warmup will take {{minutes}} minutes, {{seconds}} seconds.', { minutes, seconds: Math.round(seconds) })
+      : t('Warmup will take {{seconds}} seconds.', { seconds: Math.round(seconds) })
+  const speedsText = speeds.join(' > ')
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-1 text-sm">
+      <p className="text-muted-foreground font-medium">{t('Speeds (RPM)')}</p>
+      <p className="font-mono text-xs break-all">{speedsText}</p>
+      <p className="text-muted-foreground">{durationText}</p>
+    </div>
+  )
+}
+
+export interface SpindleWarmupConfig {
+  enabled: boolean
+  timeSeconds: number
+  minRpm: number
+  maxRpm: number
+  stepRpm: number
+}
+
 export interface MachineConfig {
   name: string
   limits: {
@@ -31,6 +80,11 @@ export interface MachineConfig {
   autoSwitchToMonitorEnabled: boolean
   toolSpinupDelayEnabled: boolean
   toolSpinupDelaySeconds: number
+  spindleWarmupEnabled: boolean
+  spindleWarmupTimeSeconds: number
+  spindleWarmupMinRpm: number
+  spindleWarmupMaxRpm: number
+  spindleWarmupStepRpm: number
 }
 
 interface MachineSectionProps {
@@ -415,6 +469,106 @@ export function MachineSection({
               <span className="text-sm text-muted-foreground whitespace-nowrap">{t('seconds')}</span>
             </div>
           </SettingsField>
+        )}
+
+        <SettingsField
+          label={t('Spindle Warmup (VFD)')}
+          description={t('Run a warmup sequence before use to redistribute grease in VFD spindles')}
+          tooltip={t('When enabled, a Warmup button appears on the Spindle panel. Warmup steps through speeds from minimum to maximum, dwelling at each for the configured time.')}
+          horizontal
+        >
+          <Switch
+            checked={config.spindleWarmupEnabled}
+            onCheckedChange={(checked) => onConfigChange({ spindleWarmupEnabled: checked })}
+          />
+        </SettingsField>
+
+        {config.spindleWarmupEnabled && (
+          <>
+            <SettingsField
+              label={t('Time at each speed')}
+              description={t('Seconds to run at each speed step')}
+            >
+              <div className="flex items-center gap-2 max-w-xs">
+                <Input
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="300"
+                  value={config.spindleWarmupTimeSeconds}
+                  onChange={(e) => {
+                    const value = Math.max(1, Math.min(300, parseInt(e.target.value, 10) || 45))
+                    onConfigChange({ spindleWarmupTimeSeconds: value })
+                  }}
+                  className="h-9"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">{t('seconds')}</span>
+              </div>
+            </SettingsField>
+            <SettingsField
+              label={t('Minimum speed')}
+              description={t('Starting RPM for warmup')}
+            >
+              <div className="flex items-center gap-2 max-w-xs">
+                <Input
+                  type="number"
+                  step="100"
+                  min="0"
+                  value={config.spindleWarmupMinRpm}
+                  onChange={(e) => {
+                    const value = Math.max(0, parseInt(e.target.value, 10) || 8000)
+                    onConfigChange({ spindleWarmupMinRpm: value })
+                  }}
+                  className="h-9"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">{t('RPM')}</span>
+              </div>
+            </SettingsField>
+            <SettingsField
+              label={t('Maximum speed')}
+              description={t('Ending RPM for warmup')}
+            >
+              <div className="flex items-center gap-2 max-w-xs">
+                <Input
+                  type="number"
+                  step="100"
+                  min="0"
+                  value={config.spindleWarmupMaxRpm}
+                  onChange={(e) => {
+                    const value = Math.max(0, parseInt(e.target.value, 10) || 24000)
+                    onConfigChange({ spindleWarmupMaxRpm: value })
+                  }}
+                  className="h-9"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">{t('RPM')}</span>
+              </div>
+            </SettingsField>
+            <SettingsField
+              label={t('Step change')}
+              description={t('RPM increase between each speed step')}
+            >
+              <div className="flex items-center gap-2 max-w-xs">
+                <Input
+                  type="number"
+                  step="100"
+                  min="100"
+                  value={config.spindleWarmupStepRpm}
+                  onChange={(e) => {
+                    const value = Math.max(100, parseInt(e.target.value, 10) || 2000)
+                    onConfigChange({ spindleWarmupStepRpm: value })
+                  }}
+                  className="h-9"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">{t('RPM')}</span>
+              </div>
+            </SettingsField>
+            <WarmupPreview
+              minRpm={config.spindleWarmupMinRpm}
+              maxRpm={config.spindleWarmupMaxRpm}
+              stepRpm={config.spindleWarmupStepRpm}
+              timeSeconds={config.spindleWarmupTimeSeconds}
+            />
+          </>
         )}
       </div>
     </SettingsSection>
