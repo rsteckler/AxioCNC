@@ -12,13 +12,13 @@ AxioCNC supports several ways to set work zero: manual, touch plate, edge finder
 | Method | Typical use | Axes |
 |--------|-------------|------|
 | **Manual** | Jog to a reference, then Set Zero | X, Y, Z |
-| **Touch plate** | Electrical touch plate; Z (sometimes XYZ) | Z (or XYZ) |
+| **Touch plate** | Electrical touch plate; one axis per method | X, Y, or Z |
 | **Edge finder** | Mechanical edge finder | X, Y |
 | **BitZero** | Contact-based probe for XYZ | X, Y, Z |
 | **BitSetter** | Tool-length / Z probe; often used at **tool change** | Z |
 | **Custom** | User-defined procedure | Configurable |
 
-**BitSetter** is aimed at **tool changes**: you touch off each tool to set its length. You configure it under **Settings → Zeroing Strategies → Mid-job tool change**, not only as “initial” zeroing.
+**BitSetter** is aimed at **tool changes**: you touch off each tool to set its length. Configure it under **Settings → Zeroing and Tool Changes** (**Tool changes during job**) in the **Tool changes during job** dropdown.
 
 ## Manual zeroing
 
@@ -30,7 +30,7 @@ AxioCNC supports several ways to set work zero: manual, touch plate, edge finder
 
 1. Attach a conductive touch plate to the workpiece or table. Connect it to the controller’s probe input.
 2. In **Settings → Zeroing Methods**, add or edit a **Touch Plate** method. Set **Plate thickness** (e.g. mm).
-3. In Setup, choose the touch-plate zeroing workflow. Follow the prompts: the tool moves down until it touches the plate, then Z (and optionally X/Y) zero is set using the plate thickness.
+3. In Setup, use **Set up job** or the Probe panel’s quick action for your touch plate (X, Y, or Z). Follow the prompts: the tool moves until it touches the plate, then that axis’s zero is set using the plate thickness.
 
 :::warning
 Spindle must be **off** when probing. Ensure the touch plate is wired correctly and the probe input is configured in firmware.
@@ -47,7 +47,7 @@ BitZero-style probes provide a known reference (e.g. corner block). Use the BitZ
 
 ## BitSetter (tool change)
 
-BitSetter is used when you **change tools**: you touch off each new tool to set its length (Z). Configure it under **Settings → Zeroing Strategies → Mid-job tool change**. When the job hits an M6, you’re prompted to change the tool and run the BitSetter procedure before resuming.
+BitSetter is used when you **change tools**: you touch off each new tool to set its length (Z). Configure it under **Settings → Zeroing and Tool Changes** (**Tool changes during job**). When the job hits an M6, you’re prompted to change the tool and run the BitSetter procedure before resuming.
 
 ## Choosing a method
 
@@ -60,5 +60,5 @@ BitSetter is used when you **change tools**: you touch off each new tool to set 
 ## Next steps
 
 - [Zeroing the workpiece](./zeroing-workpiece)
-- [Settings → Zeroing Methods](../settings/zeroing-methods) and [Zeroing Strategies](../settings/zeroing-strategies)
+- [Settings → Zeroing and Tool Changes](../settings/zeroing-and-tool-changes)
 - [Jogging](./jogging)

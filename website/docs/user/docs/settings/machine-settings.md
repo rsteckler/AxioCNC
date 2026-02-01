@@ -37,5 +37,5 @@ These define the workpiece envelope in the visualizer and help with bounds check
 ## Next steps
 
 - [Connection](./connection-settings)
-- [Zeroing Methods](./zeroing-methods)
+- [Zeroing and Tool Changes](./zeroing-and-tool-changes)
 - [Setting home](../machine-control/setting-home)

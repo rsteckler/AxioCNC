@@ -15,7 +15,7 @@ isProject: false
 | 4 Plan derivation + Set up job wizard | ✅ Done | See Phase 4 implementation notes below. |
 | 5 Setup page entry point | ✅ Done | New "Job setup" panel above Probe; "Set up job" opens JobSetupWizard. Run (Play) opens wizard with pending job start; on completion, job starts. ProbePanel has Quick actions line. |
 | 6 Mid-job tool change policy | ✅ Done | useToolChangeDetection uses toolChangePolicy; ToolChangeTab uses blocks + ToolChangeMethodSelectDialog (cards) for "ask". |
-| 7 Docs and i18n | Not started | |
+| 7 Docs and i18n | ✅ Done | See Phase 7 implementation notes below. |
 
 # Zeroing Strategy Simplification Plan
 
@@ -228,6 +228,14 @@ isProject: false
   Ensure tooltips in Settings and the wizard use the new terminology (work zero, tool reference, etc.).
 
 **Deliverable**: Documentation and all user-facing strings aligned with the new model.
+
+### Phase 7 implementation notes
+
+- **Docs**: Merged [zeroing-methods.md](website/docs/user/docs/settings/zeroing-methods.md) and [zeroing-strategies.md](website/docs/user/docs/settings/zeroing-strategies.md) into a single doc [zeroing-and-tool-changes.md](website/docs/user/docs/settings/zeroing-and-tool-changes.md). Describes hardware (zeroing methods), default setup behavior (three dropdowns: Work XY zero, Work Z zero, Tool changes during job), and the Set up job flow (plan summary, BitSetter step). Sidebar and all internal links updated to the new doc; old docs removed.
+- **Machine-control doc**: [machine-control/zeroing-methods.md](website/docs/user/docs/machine-control/zeroing-methods.md) updated to reference **Settings → Zeroing and Tool Changes** and **Tool changes during job** (no "Mid-job tool change" or "Zeroing Strategies"). Touch plate row updated to "one axis per method (X, Y, or Z)".
+- **i18n**: New keys added to [apps/web/src/i18n/en/resource.json](apps/web/src/i18n/en/resource.json) and all [apps/web/public/i18n/*/resource.json](apps/web/public/i18n/) for: Default setup behavior, Work XY zero, Work Z zero, Tool changes during job, Plan for this job, Set up job, BitSetter Required/Why lines, Set XY zero:/Set Z zero:/Tool changes:, Ask Each Time, Select.../Select…, option labels (BitZero (XY), BitZero (Z), Touchplate X then Y, Touchplate (Z), Manual re-zero Z), and tooltip for Set up job button. Other locales use English values as fallback until translated.
+- **Settings nav**: [settingsSections.tsx](apps/web/src/routes/Settings/settingsSections.tsx) zeroing-strategies nav label changed from "Zeroing Strategies" to "Default setup behavior" to match section title.
+- **Tooltips**: Tooltips already present on the three Default setup behavior dropdowns (work zero, tool reference terminology). Added one tooltip on the **Set up job** button (Job setup panel): "Opens the setup wizard to set work XY zero, work Z zero, and optionally establish tool reference."
 
 ---
 

@@ -47,4 +47,4 @@ Incorrect work zero causes wrong placement of the toolpath: scrap parts, tool da
 
 - [Zeroing methods](./zeroing-methods) — Touch plate, edge finder, etc.
 - [Jogging](./jogging)
-- [Settings → Zeroing Methods](../settings/zeroing-methods) and [Zeroing Strategies](../settings/zeroing-strategies)
+- [Settings → Zeroing and Tool Changes](../settings/zeroing-and-tool-changes)

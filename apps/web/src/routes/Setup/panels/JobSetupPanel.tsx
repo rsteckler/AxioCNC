@@ -1,6 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import { MachineActionButton } from '@/components/MachineActionButton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ActionRequirements } from '@/utils/machineState'
 import type { PanelProps } from '../types'
 
@@ -26,20 +32,31 @@ export function JobSetupPanel({
       <p className="text-xs text-muted-foreground">
         {t('Run XY and Z zeroing, then establish tool reference if needed.')}
       </p>
-      <MachineActionButton
-        isConnected={isConnected}
-        connectedPort={connectedPort}
-        machineStatus={machineStatus}
-        onFlashStatus={onFlashStatus}
-        onAction={onSetUpJob ?? (() => {})}
-        requirements={ActionRequirements.standard}
-        variant="default"
-        size="sm"
-        className="w-full"
-      >
-        <ClipboardList className="w-4 h-4 mr-2" />
-        {t('Set up job')}
-      </MachineActionButton>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-block w-full">
+              <MachineActionButton
+                isConnected={isConnected}
+                connectedPort={connectedPort}
+                machineStatus={machineStatus}
+                onFlashStatus={onFlashStatus}
+                onAction={onSetUpJob ?? (() => {})}
+                requirements={ActionRequirements.standard}
+                variant="default"
+                size="sm"
+                className="w-full"
+              >
+                <ClipboardList className="w-4 h-4 mr-2" />
+                {t('Set up job')}
+              </MachineActionButton>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            {t('Opens the setup wizard to set work XY zero, work Z zero, and optionally establish tool reference.')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   )
 }

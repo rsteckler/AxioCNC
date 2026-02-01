@@ -38,5 +38,5 @@ The tool library is shown as a list or table. Use it in **Setup** and during **t
 
 ## Next steps
 
-- [Zeroing Strategies](./zeroing-strategies) (tool change zeroing)
+- [Zeroing and Tool Changes](./zeroing-and-tool-changes) (tool change zeroing)
 - [Setup screen](../workflow/setup-screen) and [Monitor screen](../workflow/monitor-screen)
