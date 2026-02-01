@@ -41,38 +41,25 @@ export function useToolChangeDetection(connectedPort: string | null) {
     if (holdReason?.data === 'M6') {
       // This is an M6 tool change pause
       hasTriggeredRef.current = true
-      const strategy = settings?.zeroingStrategies?.toolChange ?? 'ask'
-      
-      if (strategy === 'skip') {
-        // Auto-resume - no zeroing needed
-        sendCommand('gcode:resume')
-        hasTriggeredRef.current = false // Reset after resume
+      const policy = settings?.zeroingStrategies?.toolChangePolicy ?? 'ask'
+      const availableMethods = settings?.zeroingMethods?.methods || []
+      const method = policy !== 'ask'
+        ? availableMethods.find((m: ZeroingMethod) => m.id === policy)
+        : null
+
+      // Determine if this is first or subsequent tool change (for bitsetter only)
+      let isFirstToolChange = true
+      if (method?.type === 'bitsetter' && firstToolChangeFlag) {
+        isFirstToolChange = false
+      }
+
+      if (policy === 'ask') {
+        triggerToolChange('ask', isFirstToolChange)
+      } else if (method?.enabled) {
+        triggerToolChange(method, isFirstToolChange)
       } else {
-        // Look up the method (if strategy is not 'ask')
-        const availableMethods = settings?.zeroingMethods?.methods || []
-        const method = strategy !== 'ask' 
-          ? availableMethods.find((m: ZeroingMethod) => m.id === strategy)
-          : null
-        
-        // Determine if this is first or subsequent tool change (for bitsetter only)
-        // Check if first tool change flag exists for current jobId
-        let isFirstToolChange = true
-        if (method?.type === 'bitsetter' && firstToolChangeFlag) {
-          // Flag exists - this is a subsequent tool change
-          isFirstToolChange = false
-        }
-        
-        if (strategy === 'ask') {
-          // User will choose method - trigger with 'ask'
-          triggerToolChange('ask', isFirstToolChange)
-        } else if (method) {
-          // Found the method - trigger with method object and first/subsequent flag
-          triggerToolChange(method, isFirstToolChange)
-        } else {
-          // Method not found - fall back to 'ask'
-          console.warn(`Tool change method with ID "${strategy}" not found. Falling back to "ask".`)
-          triggerToolChange('ask', isFirstToolChange)
-        }
+        console.warn(`Tool change method with ID "${policy}" not found or disabled. Falling back to "ask".`)
+        triggerToolChange('ask', isFirstToolChange)
       }
     }
   }, [connectedPort, workflowState, isToolChangePending, settings, sendCommand, triggerToolChange, firstToolChangeFlag])

@@ -14,7 +14,7 @@ isProject: false
 | 3 Settings UI — Default setup behavior | ✅ Done | See Phase 3 implementation notes below. |
 | 4 Plan derivation + Set up job wizard | ✅ Done | See Phase 4 implementation notes below. |
 | 5 Setup page entry point | ✅ Done | New "Job setup" panel above Probe; "Set up job" opens JobSetupWizard. Run (Play) opens wizard with pending job start; on completion, job starts. ProbePanel has Quick actions line. |
-| 6 Mid-job tool change policy | Not started | |
+| 6 Mid-job tool change policy | ✅ Done | useToolChangeDetection uses toolChangePolicy; ToolChangeTab uses blocks + ToolChangeMethodSelectDialog (cards) for "ask". |
 | 7 Docs and i18n | Not started | |
 
 # Zeroing Strategy Simplification Plan
@@ -195,7 +195,7 @@ isProject: false
 
 ---
 
-## Phase 6: Mid-job tool change policy
+## Phase 6: Mid-job tool change policy ✅
 
 - **Tool-change policy values**
   Ensure `toolChangePolicy` supports: a BitSetter method ID, a **Touchplate (Z)** method ID, a Manual method ID (fallback for "Manual re-zero Z each tool change"), and `ask`. No "no tool changes" option; Manual is the fallback when user does not have BitSetter or touchplate.
@@ -207,6 +207,14 @@ isProject: false
   Add "Why" style copy where helpful (e.g. when probing on BitSetter: "We need a reference measurement for the tool currently in the spindle.").
 
 **Deliverable**: Mid-job tool change uses BitSetter, Touchplate (Z), or Manual (fallback); same blocks as pre-job.
+
+### Phase 6 implementation notes (for Phase 7)
+
+- **useToolChangeDetection**: Reads `settings?.zeroingStrategies?.toolChangePolicy` (no `toolChange`). No "skip" path: policy is method ID or `'ask'`. Triggers `triggerToolChange(method, isFirstToolChange)` with the method object when policy is a method ID, or `triggerToolChange('ask', isFirstToolChange)` when policy is `'ask'`. Fallback to `'ask'` if method not found or disabled.
+- **ToolChangeContext**: `toolChangeMethod` is `ZeroingMethod | 'ask' | null` (removed `'skip'`). `triggerToolChange(method: ZeroingMethod | 'ask', isFirstToolChange?: boolean)`.
+- **ToolChangeTab**: Builds `BlockRunContext` (connectedPort, currentWCS, sendGcode, clearBitsetterReference, machinePosition, workPosition, storeBitsetterReference) and reuses [JobSetupWizard blocks](apps/web/src/components/JobSetupWizard/blocks/) via `RenderSetupBlock`. When policy is `'ask'`, shows [ToolChangeMethodSelectDialog](apps/web/src/components/ToolChangeMethodSelectDialog.tsx) (card-based); on select, calls `triggerToolChange(selectedMethod)` and then renders that method's block. When policy is a method, resolves block with `methodToToolChangeBlock(method)` from [setupPlan.ts](apps/web/src/utils/setupPlan.ts) and renders it. No ZeroingWizardTab; no "skip" handling.
+- **ToolChangeMethodSelectDialog**: New dialog showing **method cards** for tool-change options only (BitSetter, Touchplate Z, Manual re-zero Z). Uses `getToolChangePolicyOptions` filtered to exclude `'ask'`. Each card shows icon, name, description; BitSetter cards include "Why: We need a reference measurement for the tool currently in the spindle." `onSelect(method: ZeroingMethod)`.
+- **setupPlan**: `methodToToolChangeBlock(method)` returns a single `SetupBlock` for bitsetter, touchplate (z), or manual (manual_z). Used by ToolChangeTab to map selected method to block.
 
 ---
 

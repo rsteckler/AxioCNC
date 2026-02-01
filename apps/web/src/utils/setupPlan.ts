@@ -191,3 +191,24 @@ export function slotToBlocks(
 
   return blocks
 }
+
+/**
+ * Map a single method to one SetupBlock for mid-job tool change.
+ * Only valid for: BitSetter, Touchplate (Z), Manual (re-zero Z).
+ * Used by ToolChangeTab to render the same blocks as the pre-job wizard.
+ */
+export function methodToToolChangeBlock(
+  method: ZeroingMethod
+): SetupBlock | null {
+  if (!method.enabled) return null
+  if (method.type === 'bitsetter') {
+    return { kind: 'bitsetter', methods: [method] }
+  }
+  if (method.type === 'touchplate' && method.axes === 'z') {
+    return { kind: 'touchplate_z', methods: [method] }
+  }
+  if (method.type === 'manual') {
+    return { kind: 'manual_z', methods: [method] }
+  }
+  return null
+}

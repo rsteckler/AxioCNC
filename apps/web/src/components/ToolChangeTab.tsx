@@ -1,9 +1,13 @@
 import { useTranslation } from 'react-i18next'
-import { ZeroingWizardTab } from './ZeroingWizardTab'
-import { ZeroingMethodSelectDialog } from './ZeroingMethodSelectDialog'
+import { useCallback, useMemo } from 'react'
+import { ToolChangeMethodSelectDialog } from './ToolChangeMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
-import { useGetSettingsQuery } from '@/services/api'
-import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
+import { useGetSettingsQuery, useSetExtensionsMutation } from '@/services/api'
+import { useGcodeCommand, useBitsetterReference } from '@/hooks'
+import { methodToToolChangeBlock } from '@/utils/setupPlan'
+import { RenderSetupBlock } from './JobSetupWizard/blocks'
+import type { BlockRunContext } from './JobSetupWizard/blocks'
+import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
 interface ToolChangeTabProps {
   isConnected: boolean
@@ -15,41 +19,64 @@ interface ToolChangeTabProps {
 }
 
 /**
- * Tool Change tab component
- * Displays the zeroing wizard for the configured tool change method
+ * Tool Change tab: uses toolChangePolicy (BitSetter, Touchplate Z, Manual, or ask).
+ * When policy is a method, shows the corresponding block; when "ask", shows a dialog
+ * with method cards, then runs the chosen block. Reuses JobSetupWizard blocks.
  */
 export function ToolChangeTab({
-  isConnected,
   connectedPort,
   machinePosition,
   workPosition,
-  probeContact = false,
   currentWCS = 'G54',
 }: ToolChangeTabProps) {
   const { t } = useTranslation()
-  const { toolChangeMethod, completeToolChange, triggerToolChange, isFirstToolChange } = useToolChange()
+  const { toolChangeMethod, completeToolChange, triggerToolChange } = useToolChange()
   const { data: settings } = useGetSettingsQuery()
+  const { sendGcode } = useGcodeCommand(connectedPort)
+  const { clearBitsetterReference } = useBitsetterReference()
+  const [setExtensions] = useSetExtensionsMutation()
 
-  // Get available methods from settings
-  const availableMethods: ZeroingMethod[] = settings?.zeroingMethods?.methods?.filter((m: ZeroingMethod) => m.enabled) ?? []
+  const methods: ZeroingMethod[] = settings?.zeroingMethods?.methods?.filter((m: ZeroingMethod) => m.enabled) ?? []
 
-  // When method is 'ask', show dialog (automatically open when toolChangeMethod === 'ask')
+  const storeBitsetterReference = useCallback(
+    async (wcs: string, value: number) => {
+      const key = `bitsetter.toolReference.${wcs}`
+      await setExtensions({
+        key,
+        data: { value, wcs, timestamp: new Date().toISOString() },
+      }).unwrap()
+    },
+    [setExtensions]
+  )
+
+  const context: BlockRunContext = useMemo(
+    () => ({
+      connectedPort,
+      currentWCS,
+      sendGcode,
+      clearBitsetterReference,
+      machinePosition: machinePosition ?? { x: 0, y: 0, z: 0 },
+      workPosition: workPosition ?? { x: 0, y: 0, z: 0 },
+      storeBitsetterReference,
+    }),
+    [
+      connectedPort,
+      currentWCS,
+      sendGcode,
+      clearBitsetterReference,
+      machinePosition,
+      workPosition,
+      storeBitsetterReference,
+    ]
+  )
+
   const showDialog = toolChangeMethod === 'ask'
 
-  // Handle method selection from dialog
-  const handleMethodSelect = (method: ZeroingMethod | 'skip') => {
-    if (method === 'skip') {
-      // Skip tool change - complete it immediately without zeroing
-      triggerToolChange('skip', isFirstToolChange)
-      completeToolChange()
-    } else {
-      // Update the tool change method in context to the selected method
-      // Preserve isFirstToolChange state when switching to the selected method
-      triggerToolChange(method, isFirstToolChange)
-    }
+  const handleMethodSelect = (method: ZeroingMethod) => {
+    triggerToolChange(method)
   }
 
-  // If method is 'ask', show method selection dialog
+  // Policy is "ask": show placeholder and card dialog
   if (toolChangeMethod === 'ask') {
     return (
       <>
@@ -58,20 +85,18 @@ export function ToolChangeTab({
             {t('Please select a zeroing method')}
           </div>
         </div>
-        <ZeroingMethodSelectDialog
+        <ToolChangeMethodSelectDialog
           open={showDialog}
-          onOpenChange={() => {}} // Prevent closing - user must select a method
-          methods={availableMethods}
-          title={t('Select Zeroing Method')}
-          description={t('Choose a zeroing method to use for this tool change:')}
+          onOpenChange={() => {}}
+          methods={methods}
           onSelect={handleMethodSelect}
         />
       </>
     )
   }
 
-  // If method is 'skip' or null, shouldn't reach here, but handle gracefully
-  if (!toolChangeMethod || toolChangeMethod === 'skip') {
+  // No method (shouldn't happen when pending)
+  if (!toolChangeMethod) {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/30">
         <div className="text-sm text-muted-foreground text-center py-8">
@@ -81,19 +106,30 @@ export function ToolChangeTab({
     )
   }
 
-  // Render the zeroing wizard with the configured method
-  // Mark as tool change so bitsetter uses the tool change wizard (skips "Install First Tool" step)
+  // Policy is a method: run the corresponding block
+  const block = methodToToolChangeBlock(toolChangeMethod)
+  if (!block) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-muted/30">
+        <div className="text-sm text-muted-foreground text-center py-8">
+          {t('This method is not available for tool change.')}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <ZeroingWizardTab
-      method={toolChangeMethod}
-      onClose={completeToolChange}
-      isConnected={isConnected}
-      connectedPort={connectedPort}
-      machinePosition={machinePosition}
-      workPosition={workPosition}
-      probeContact={probeContact}
-      currentWCS={currentWCS}
-      isToolChange={true}
-    />
+    <div className="flex-1 flex flex-col min-h-0 p-4">
+      <h2 className="text-lg font-semibold mb-4">
+        {toolChangeMethod.type === 'bitsetter'
+          ? t('Establish tool reference')
+          : t('Re-zero Z for tool change')}
+      </h2>
+      {RenderSetupBlock(block, {
+        context,
+        onComplete: completeToolChange,
+        onError: (msg) => console.error(msg),
+      })}
+    </div>
   )
 }
