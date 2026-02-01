@@ -11,7 +11,7 @@ isProject: false
 | ----- | ------ | ----- |
 | 1 Schema and defaults | ✅ Done | See Phase 1 implementation notes below. |
 | 2 Touch plate per-axis + BitZero composable | ✅ Done | See Phase 2 implementation notes below. |
-| 3 Settings UI — Default setup behavior | Not started | Must fix UI that still reads old keys. |
+| 3 Settings UI — Default setup behavior | ✅ Done | See Phase 3 implementation notes below. |
 | 4 Plan derivation + Set up job wizard | Not started | |
 | 5 Setup page entry point | Not started | |
 | 6 Mid-job tool change policy | Not started | |
@@ -22,7 +22,7 @@ isProject: false
 ## Current state (brief)
 
 - **Schema (Phase 1 done)**: [apps/shared/src/schemas/settings.js](apps/shared/src/schemas/settings.js) uses the new **zeroing strategies** shape: `workXYZero`, `workZZero` (arrays of method IDs; `['ask']` = ask each time), `toolChangePolicy` (method ID or `'ask'`). Old keys (`initialSetup`, `toolChange`, `afterPause`) are removed from the schema.
-- **Settings UI (not yet updated)**: [ZeroingMethodsSection](apps/web/src/routes/Settings/sections/ZeroingMethodsSection.tsx) lists methods; [ZeroingStrategiesSection](apps/web/src/routes/Settings/sections/ZeroingStrategiesSection.tsx) still references **initialSetup**, **toolChange**, **afterPause** — will break until Phase 3.
+- **Settings UI (Phase 3 done)**: [ZeroingMethodsSection](apps/web/src/routes/Settings/sections/ZeroingMethodsSection.tsx) lists methods; [ZeroingStrategiesSection](apps/web/src/routes/Settings/sections/ZeroingStrategiesSection.tsx) is now **"Default setup behavior"** with three dropdowns (work XY zero, work Z zero, tool changes) using derived options; no old keys.
 - **Pre-job**: [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) "Run" uses `initialSetup` to either open [ZeroingMethodSelectDialog](apps/web/src/components/ZeroingMethodSelectDialog.tsx) (`ask`) or open [ZeroingWizardTab](apps/web/src/components/ZeroingWizardTab.tsx) with one method. No plan summary; no split of XY vs Z; no explicit "establish tool reference" step.
 - **Mid-job**: [useToolChangeDetection](apps/web/src/hooks/useToolChangeDetection.ts) on M6 uses `toolChange`; [ToolChangeTab](apps/web/src/components/ToolChangeTab.tsx) runs [ZeroingWizardTab](apps/web/src/components/ZeroingWizardTab.tsx) for the chosen method. BitSetter first vs subsequent is already handled via context and extensions.
 - **Touch plate**: Schema and types assume **Z only** (`axes: 'z'`). No single-axis X/Y touchplate support.
@@ -122,6 +122,17 @@ isProject: false
   Drop any UI and state for "after pause".
 
 **Deliverable**: Settings page shows hardware + three dropdowns; options are driven by enabled hardware; BitSetter rule is visible when selected for tool changes.
+
+### Phase 3 implementation notes (for Phases 4–7)
+
+- **Scope**: Phase 3 updated **Settings page only**. [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) and [useToolChangeDetection](apps/web/src/hooks/useToolChangeDetection.ts) still read `settings?.zeroingStrategies?.initialSetup` and `settings?.zeroingStrategies?.toolChange`. The API returns only `workXYZero`, `workZZero`, `toolChangePolicy`, so those consumers get `undefined` and Run / mid-job tool change are effectively broken until Phase 4 (pre-job) and Phase 6 (mid-job) update them to read the new keys and use the orchestrator/blocks.
+- **Options derivation**: [apps/web/src/utils/zeroingStrategyOptions.ts](apps/web/src/utils/zeroingStrategyOptions.ts) — `getWorkXYZeroOptions(methods, t)`, `getWorkZZeroOptions(methods, t)`, `getToolChangePolicyOptions(methods, t)` return options with `value` (array for XY/Z, string for tool change) and `label`. `serializeWorkZeroValue(value)` / `parseWorkZeroValue(serialized)` convert `string[]` to/from a string for use as Select `value`. `isBitSetterMethodId(methods, methodId)` is used to show the BitSetter "Required" rule. **Phase 4** should reuse these helpers when building the setup plan and wizard options so Settings and wizard stay in sync.
+- **Work XY options**: Ask each time → `['ask']`; BitZero (XY) → method with `type === 'bitzero'` and `axes === 'xy'` → `[id]`; "Touchplate X then Y" → only when both enabled touchplate with `axes === 'x'` and touchplate with `axes === 'y'` exist → `[idX, idY]` (X then Y order); Manual → first enabled `type === 'manual'` → `[id]`.
+- **Work Z options**: Ask; BitZero (Z) → `axes === 'z'`; Touchplate (Z) → touchplate `axes === 'z'`; Manual.
+- **Tool change options**: Ask; BitSetter (if enabled); Touchplate (Z); Manual re-zero Z. No "skip" / "no tool changes" option.
+- **ZeroingStrategiesSection**: Section title is "Default setup behavior"; config type `ZeroingStrategiesConfig` is `{ workXYZero: string[]; workZZero: string[]; toolChangePolicy: string }`. Removed `ZeroingScenario`, `StrategyOption`, and all `afterPause` / `skip` UI. When the stored value is not in the derived options (e.g. method disabled), the dropdown falls back to the first option (Ask) for display; the stored value is not auto-normalized.
+- **Settings/index.tsx**: `DEFAULT_ZEROING_STRATEGIES_CONFIG` is `{ workXYZero: ['ask'], workZZero: ['ask'], toolChangePolicy: 'ask' }`. Load/save merge `settings.zeroingStrategies` into local state; handler passes partial config to `debouncedSave({ zeroingStrategies: changes })`.
+- **Exports**: [sections/index.ts](apps/web/src/routes/Settings/sections/index.ts) exports only `ZeroingStrategiesConfig` from ZeroingStrategiesSection (removed `ZeroingScenario`, `StrategyOption`).
 
 ---
 

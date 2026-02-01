@@ -160,11 +160,11 @@ const DEFAULT_ZEROING_METHODS_CONFIG: ZeroingMethodsConfig = {
   ],
 }
 
-// Default zeroing strategies configuration
+// Default zeroing strategies (matches ZeroingStrategiesSettingsSchema)
 const DEFAULT_ZEROING_STRATEGIES_CONFIG: ZeroingStrategiesConfig = {
-  initialSetup: 'manual-default',   // Manual zeroing for initial setup
-  toolChange: 'touchplate-default', // Use touch plate for tool changes
-  afterPause: 'skip',               // Usually not needed after pause
+  workXYZero: ['ask'],
+  workZZero: ['ask'],
+  toolChangePolicy: 'ask',
 }
 
 // Default general settings

@@ -21,7 +21,7 @@ export type {
   CustomMethodConfig,
 } from './ZeroingMethodsSection'
 export { ZeroingStrategiesSection } from './ZeroingStrategiesSection'
-export type { ZeroingStrategiesConfig, ZeroingScenario, StrategyOption } from './ZeroingStrategiesSection'
+export type { ZeroingStrategiesConfig } from './ZeroingStrategiesSection'
 export { JoystickSection } from './JoystickSection'
 export type { JoystickConfig, CncAction, AnalogAxis, AnalogMapping } from './JoystickSection'
 export { MacrosSection } from './MacrosSection'
