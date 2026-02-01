@@ -18,6 +18,9 @@ test('Settings Schema Functions', (t) => {
     subt.ok(defaults.camera, 'should have camera settings');
     subt.ok(defaults.zeroingMethods, 'should have zeroing methods');
     subt.ok(defaults.zeroingStrategies, 'should have zeroing strategies');
+    subt.same(defaults.zeroingStrategies.workXYZero, ['ask'], 'zeroingStrategies.workXYZero default');
+    subt.same(defaults.zeroingStrategies.workZZero, ['ask'], 'zeroingStrategies.workZZero default');
+    subt.equal(defaults.zeroingStrategies.toolChangePolicy, 'ask', 'zeroingStrategies.toolChangePolicy default');
     subt.ok(defaults.joystick, 'should have joystick settings');
     subt.ok(defaults.appearance, 'should have appearance settings');
 

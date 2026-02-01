@@ -165,16 +165,16 @@ export const ZeroingMethodsSettingsSchema = z.object({
 });
 
 // =============================================================================
-// Zeroing Strategies Settings
+// Zeroing Strategies Settings (composite: work XY, work Z, tool-change policy)
 // =============================================================================
-
-// Strategy option: method ID, 'ask', or 'skip'
-const StrategyOptionSchema = z.string().default('ask');
+// workXYZero / workZZero: array of method IDs; ['ask'] means "ask each time".
+// toolChangePolicy: single method ID; 'ask' means "ask each time".
+// No old keys (initialSetup, toolChange, afterPause). No migration.
 
 export const ZeroingStrategiesSettingsSchema = z.object({
-  initialSetup: StrategyOptionSchema,
-  toolChange: StrategyOptionSchema,
-  afterPause: z.string().default('skip'),
+  workXYZero: z.array(z.string()).default(['ask']),
+  workZZero: z.array(z.string()).default(['ask']),
+  toolChangePolicy: z.string().default('ask'),
 });
 
 // =============================================================================
