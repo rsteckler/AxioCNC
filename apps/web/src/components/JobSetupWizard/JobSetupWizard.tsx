@@ -18,6 +18,8 @@ import type { BlockRunContext } from './blocks'
 export interface JobSetupWizardProps {
   open: boolean
   onClose: () => void
+  /** Called when user completes all setup steps (last block done). Use e.g. to close and start job when opened from Run. */
+  onSetupComplete?: () => void
 }
 
 const DEFAULT_STRATEGIES = {
@@ -30,7 +32,7 @@ const DEFAULT_STRATEGIES = {
  * Job Setup Wizard (Phase 4): Plan summary + execution with composable blocks.
  * Entry point is not wired here — Phase 5 adds the "Set up job" button and optional Run flow.
  */
-export function JobSetupWizard({ open, onClose }: JobSetupWizardProps) {
+export function JobSetupWizard({ open, onClose, onSetupComplete }: JobSetupWizardProps) {
   const { t } = useTranslation()
   const [screen, setScreen] = useState<1 | 2>(1)
   const { data: settings } = useGetSettingsQuery(undefined, { skip: !open })
@@ -151,7 +153,7 @@ export function JobSetupWizard({ open, onClose }: JobSetupWizardProps) {
             plan={plan}
             methods={methods}
             context={context}
-            onComplete={() => {}}
+            onComplete={() => onSetupComplete?.()}
             onClose={onClose}
           />
         )}

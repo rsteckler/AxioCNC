@@ -5,7 +5,7 @@ import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 interface PageStatusBarProps {
   // MachineStatusBar props
   onError?: (title: string, message: string) => void
-  
+
   // JobStatusBar props
   workflowState?: 'idle' | 'running' | 'paused' | null
   isJobRunning?: boolean
@@ -16,6 +16,8 @@ interface PageStatusBarProps {
   disabled?: boolean
   hasFile?: boolean
   onStartWizard?: (method: ZeroingMethod | 'ask' | null) => void
+  /** Open Job Setup Wizard (e.g. when Run is clicked). When user completes setup, caller starts job. */
+  onOpenJobSetupWizard?: (options: { pendingJobStart: boolean }) => void
 }
 
 export function PageStatusBar({
@@ -29,11 +31,12 @@ export function PageStatusBar({
   disabled,
   hasFile,
   onStartWizard,
+  onOpenJobSetupWizard,
 }: PageStatusBarProps) {
   return (
     <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
       <MachineStatusBar onError={onError} />
-      
+
       <JobStatusBar
         workflowState={workflowState}
         isJobRunning={isJobRunning}
@@ -44,6 +47,7 @@ export function PageStatusBar({
         disabled={disabled}
         hasFile={hasFile}
         onStartWizard={onStartWizard}
+        onOpenJobSetupWizard={onOpenJobSetupWizard}
       />
     </div>
   )

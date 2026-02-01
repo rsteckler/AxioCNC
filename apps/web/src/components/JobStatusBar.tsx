@@ -28,6 +28,8 @@ interface JobStatusBarProps {
   disabled?: boolean
   hasFile?: boolean
   onStartWizard?: (method: ZeroingMethod | 'ask' | null) => void
+  /** Open Job Setup Wizard when Run is clicked; when user completes setup, caller starts job. */
+  onOpenJobSetupWizard?: (options: { pendingJobStart: boolean }) => void
 }
 
 export function JobStatusBar({
@@ -40,7 +42,7 @@ export function JobStatusBar({
   onFlashStatus,
   disabled = false,
   hasFile = false,
-  onStartWizard,
+  onOpenJobSetupWizard,
 }: JobStatusBarProps) {
   const { t } = useTranslation()
   const { sendCommand } = useGcodeCommand(connectedPort)
@@ -142,30 +144,13 @@ export function JobStatusBar({
       return
     }
     
-    // Check zeroing strategy before starting
-    const strategy = settings?.zeroingStrategies?.initialSetup
-    const methods = settings?.zeroingMethods?.methods ?? []
-    
-    if (strategy === 'skip') {
-      // Skip zeroing - start directly (with navigation check)
-      startJobWithNavigation()
-    } else if (strategy === 'ask' && onStartWizard) {
-      // Show method selection dialog
-      onStartWizard('ask')
-    } else if (strategy && strategy !== 'ask' && strategy !== 'skip' && onStartWizard) {
-      // Find method by ID and open wizard
-      const method = methods.find((m: ZeroingMethod) => m.id === strategy)
-      if (method && method.enabled) {
-        onStartWizard(method)
-      } else {
-        // Method not found or disabled - start anyway (fallback, with navigation check)
-        startJobWithNavigation()
-      }
+    // Pre-job setup: always open Job Setup Wizard when Run is clicked (new strategy model)
+    if (onOpenJobSetupWizard) {
+      onOpenJobSetupWizard({ pendingJobStart: true })
     } else {
-      // No wizard handler or strategy not set - start directly (with navigation check)
       startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, sendCommand, settings, onStartWizard, startJobWithNavigation, jobStatus, dispatch])
+  }, [isConnected, connectedPort, needsHomingConfirmation, onFlashStatus, onOpenJobSetupWizard, startJobWithNavigation, jobStatus, dispatch])
 
   const handleStartConfirmed = useCallback(() => {
     if (!isConnected || !connectedPort) {
@@ -178,30 +163,13 @@ export function JobStatusBar({
       dispatch(clearJobCompletion())
     }
     
-    // Check zeroing strategy before starting (same logic as handleStartClick)
-    const strategy = settings?.zeroingStrategies?.initialSetup
-    const methods = settings?.zeroingMethods?.methods ?? []
-    
-    if (strategy === 'skip') {
-      // Skip zeroing - start directly (with navigation check)
-      startJobWithNavigation()
-    } else if (strategy === 'ask' && onStartWizard) {
-      // Show method selection dialog
-      onStartWizard('ask')
-    } else if (strategy && strategy !== 'ask' && strategy !== 'skip' && onStartWizard) {
-      // Find method by ID and open wizard
-      const method = methods.find((m: ZeroingMethod) => m.id === strategy)
-      if (method && method.enabled) {
-        onStartWizard(method)
-      } else {
-        // Method not found or disabled - start anyway (fallback, with navigation check)
-        startJobWithNavigation()
-      }
+    // Pre-job setup: open Job Setup Wizard (same as handleStartClick)
+    if (onOpenJobSetupWizard) {
+      onOpenJobSetupWizard({ pendingJobStart: true })
     } else {
-      // No wizard handler or strategy not set - start directly (with navigation check)
       startJobWithNavigation()
     }
-  }, [isConnected, connectedPort, sendCommand, settings, onStartWizard, startJobWithNavigation, jobStatus, dispatch])
+  }, [isConnected, connectedPort, onOpenJobSetupWizard, startJobWithNavigation, jobStatus, dispatch])
 
   const handlePause = useCallback(() => {
     if (!isConnected || !connectedPort) {

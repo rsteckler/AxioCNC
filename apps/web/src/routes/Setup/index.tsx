@@ -49,7 +49,7 @@ import {
   ChevronDown,
   Square, 
   Crosshair, RotateCcw, RotateCw, GripVertical,
-  Zap, Target, FileCode,
+  Zap, Target, FileCode, ClipboardList,
   Move, Navigation,
   Camera, Gamepad2, Bug,
 } from 'lucide-react'
@@ -61,9 +61,11 @@ import { ActionRequirements } from '@/utils/machineState'
 // Import extracted panels - explicit imports for Vite compatibility
 import { DROPanel } from './panels/DROPanel'
 import { JogPanel } from './panels/JogPanel'
+import { JobSetupPanel } from './panels/JobSetupPanel'
 import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
+import { JobSetupWizard } from '@/components/JobSetupWizard'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { UpdateNotificationDialog } from '@/components/UpdateNotificationDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
@@ -91,6 +93,7 @@ const createPanelConfig = (t: (key: string) => string): Record<string, {
   dro: { title: t('Position'), icon: Crosshair, component: DROPanel },
   jog: { title: t('Jog Control'), icon: Move, component: JogPanel },
   rapid: { title: t('Rapid'), icon: Navigation, component: RapidPanel },
+  jobSetup: { title: t('Job setup'), icon: ClipboardList, component: JobSetupPanel },
   probe: { title: t('Probe'), icon: Target, component: ProbePanel },
   macros: { title: t('Macros'), icon: Zap, component: MacrosPanel },
   file: { title: t('File'), icon: FileCode, component: FilePanel },
@@ -107,6 +110,7 @@ function SortablePanel({
   onToggle,
   panelProps,
   onStartWizard,
+  onOpenJobSetupPanel,
   panelConfig
 }: { 
   id: string
@@ -114,6 +118,7 @@ function SortablePanel({
   onToggle: () => void
   panelProps: PanelProps
   onStartWizard?: (method: ZeroingMethod) => void
+  onOpenJobSetupPanel?: () => void
   panelConfig: ReturnType<typeof createPanelConfig>
 }) {
   const {
@@ -167,7 +172,9 @@ function SortablePanel({
         </div>
         {/* Panel content */}
         {!isCollapsed && (
-          id === 'probe' && onStartWizard ? (
+          id === 'jobSetup' && onOpenJobSetupPanel ? (
+            <JobSetupPanel {...panelProps} onSetUpJob={onOpenJobSetupPanel} />
+          ) : id === 'probe' && onStartWizard ? (
             <ProbePanel {...panelProps} onStartWizard={onStartWizard} />
           ) : (
             <PanelContent {...panelProps} />
@@ -324,16 +331,21 @@ export default function Setup() {
 
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem('axiocnc-setup-panel-order')
+    const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick', 'debug', 'jobSetup']
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        // Validate it's an array with valid panel IDs
-        const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick', 'debug']
-        if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
+        if (Array.isArray(parsed) && parsed.every((id: string) => validPanels.includes(id))) {
           // Store joystick position if it exists in the saved order
           const joystickIndex = parsed.indexOf('joystick')
           if (joystickIndex !== -1) {
             joystickPositionRef.current = joystickIndex
+          }
+          // Ensure jobSetup is present: insert just before probe if missing (Phase 5 migration)
+          if (!parsed.includes('jobSetup')) {
+            const probeIndex = parsed.indexOf('probe')
+            const insertAt = probeIndex >= 0 ? probeIndex : parsed.length
+            return [...parsed.slice(0, insertAt), 'jobSetup', ...parsed.slice(insertAt)]
           }
           return parsed
         }
@@ -341,7 +353,7 @@ export default function Setup() {
         // Invalid JSON, use default
       }
     }
-    return ['dro', 'rapid', 'jog', 'file', 'probe', 'macros', 'spindle', 'camera']
+    return ['dro', 'rapid', 'jog', 'file', 'jobSetup', 'probe', 'macros', 'spindle', 'camera']
   })
   
   // Add/remove joystick panel to order when joystick is enabled/disabled
@@ -447,25 +459,55 @@ export default function Setup() {
   // Probe status (from pinState - 'P' indicates probe contact)
   const [probeContact, setProbeContact] = useState<boolean>(false)
   
-  // Wizard state
+  // Wizard state (old single-method flow for Probe panel)
   const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
   const [showMethodSelectDialog, setShowMethodSelectDialog] = useState(false)
   const [pendingJobStart, setPendingJobStart] = useState(false) // Track if we need to start job after wizard completes
 
+  // Job setup wizard (Phase 5: plan + blocks; entry from panel or Run)
+  const [jobSetupWizardOpen, setJobSetupWizardOpen] = useState(false)
+  const [jobSetupPendingJobStart, setJobSetupPendingJobStart] = useState(false)
+
   // G-code command hook - must be declared before use in callbacks
   const { sendCommand } = useGcodeCommand(connectedPort)
 
-  // Handler for starting wizard from job start (called by JobStatusBar)
+  // Open Job Setup Wizard (from left-column panel or from Run). When pendingJobStart, onSetupComplete will close and start job.
+  const handleOpenJobSetupWizard = useCallback((options: { pendingJobStart: boolean }) => {
+    setJobSetupWizardOpen(true)
+    setJobSetupPendingJobStart(options.pendingJobStart)
+  }, [])
+
+  const handleJobSetupWizardClose = useCallback(() => {
+    setJobSetupWizardOpen(false)
+    setJobSetupPendingJobStart(false)
+  }, [])
+
+  const handleJobSetupComplete = useCallback(() => {
+    if (jobSetupPendingJobStart) {
+      setJobSetupWizardOpen(false)
+      setJobSetupPendingJobStart(false)
+      const shouldSwitch = settings?.machine?.autoSwitchToMonitor ?? true
+      if (shouldSwitch) {
+        navigate('/monitor')
+        setTimeout(() => {
+          if (connectedPort) sendCommand('gcode:start')
+        }, 100)
+      } else {
+        setTimeout(() => {
+          if (connectedPort) sendCommand('gcode:start')
+        }, 100)
+      }
+    }
+  }, [jobSetupPendingJobStart, settings?.machine?.autoSwitchToMonitor, navigate, connectedPort, sendCommand])
+
+  // Handler for starting single-method wizard from Probe panel (called by ProbePanel Run buttons)
   const handleStartWizard = useCallback((method: ZeroingMethod | 'ask' | null) => {
     if (method === 'ask') {
-      // Show method selection dialog
       setShowMethodSelectDialog(true)
-      setPendingJobStart(true) // Mark that we need to start job after wizard
+      setPendingJobStart(true)
     } else if (method) {
-      // Open wizard with specific method
       setWizardMethod(method)
-      setPendingJobStart(true) // Mark that we need to start job after wizard
-      // Wizard tab switch is handled automatically by VisualizerPanel when wizardMethod is set
+      setPendingJobStart(true)
     }
   }, [])
 
@@ -1033,6 +1075,7 @@ export default function Setup() {
         disabled={!isConnected || machineStatus === 'alarm'}
         hasFile={!!jobState?.name}
         onStartWizard={handleStartWizard}
+        onOpenJobSetupWizard={handleOpenJobSetupWizard}
       />
       
       {/* Dashboard - Two column flex layout */}
@@ -1083,6 +1126,10 @@ export default function Setup() {
                         senderState: jobState, // Pass job state for toolpath animation
                       }}
                       onStartWizard={(method) => setWizardMethod(method)}
+                      onOpenJobSetupPanel={() => {
+                        setJobSetupWizardOpen(true)
+                        setJobSetupPendingJobStart(false)
+                      }}
                     />
                   ))}
               </div>
@@ -1147,7 +1194,13 @@ export default function Setup() {
           releaseUrl={releaseUrl || undefined}
         />
       )}
-      {/* Method selection dialog for "ask" strategy */}
+      {/* Job setup wizard (Phase 5: plan + blocks; entry from panel or Run) */}
+      <JobSetupWizard
+        open={jobSetupWizardOpen}
+        onClose={handleJobSetupWizardClose}
+        onSetupComplete={handleJobSetupComplete}
+      />
+      {/* Method selection dialog for "ask" strategy (Probe panel single-method flow) */}
       <ZeroingMethodSelectDialog
         open={showMethodSelectDialog}
         onOpenChange={setShowMethodSelectDialog}

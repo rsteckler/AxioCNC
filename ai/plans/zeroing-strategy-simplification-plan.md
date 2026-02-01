@@ -13,7 +13,7 @@ isProject: false
 | 2 Touch plate per-axis + BitZero composable | ✅ Done | See Phase 2 implementation notes below. |
 | 3 Settings UI — Default setup behavior | ✅ Done | See Phase 3 implementation notes below. |
 | 4 Plan derivation + Set up job wizard | ✅ Done | See Phase 4 implementation notes below. |
-| 5 Setup page entry point | Not started | **Phase 4 left the wizard unwired.** Phase 5 must add entry point and optionally wire Run; see Phase 4 notes. |
+| 5 Setup page entry point | ✅ Done | New "Job setup" panel above Probe; "Set up job" opens JobSetupWizard. Run (Play) opens wizard with pending job start; on completion, job starts. ProbePanel has Quick actions line. |
 | 6 Mid-job tool change policy | Not started | |
 | 7 Docs and i18n | Not started | |
 
@@ -182,6 +182,16 @@ isProject: false
   All code uses `workXYZero`/`workZZero`/`toolChangePolicy` (composite arrays where defined) and the new plan derivation. No references to old keys.
 
 **Deliverable**: New left-column "Job setup" panel with "Set up job" button; ProbePanel remains for direct per-method probing.
+
+### Phase 5 implementation notes (for Phases 6–7)
+
+- **Job setup panel**: [apps/web/src/routes/Setup/panels/JobSetupPanel.tsx](apps/web/src/routes/Setup/panels/JobSetupPanel.tsx) — Single CTA "Set up job" that calls `onSetUpJob` (opens JobSetupWizard with no pending job start). Panel id is `jobSetup`; added to `createPanelConfig` in [Setup/index.tsx](apps/web/src/routes/Setup/index.tsx) with title "Job setup" and ClipboardList icon. Default panel order places `jobSetup` **just above** `probe`: `['dro', 'rapid', 'jog', 'file', 'jobSetup', 'probe', 'macros', 'spindle', 'camera']`. Valid panels list includes `jobSetup`. **Migration**: When loading saved panel order from localStorage, if the order does not include `jobSetup`, it is inserted just before `probe` so existing users see the new panel without losing their order.
+- **SortablePanel**: When `id === 'jobSetup'` and `onOpenJobSetupPanel` is provided, [Setup/index.tsx](apps/web/src/routes/Setup/index.tsx) renders `JobSetupPanel` with `onSetUpJob={onOpenJobSetupPanel}`. The callback passed from Setup opens the wizard with `setJobSetupWizardOpen(true)` and `setJobSetupPendingJobStart(false)` (panel entry = no pending job start).
+- **Run (Play) flow**: [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) no longer reads `initialSetup`. When Play is clicked (after homing confirmation when needed), if `onOpenJobSetupWizard` is provided it is called with `{ pendingJobStart: true }`; otherwise `startJobWithNavigation()` runs. [PageStatusBar](apps/web/src/components/PageStatusBar.tsx) accepts optional `onOpenJobSetupWizard?: (options: { pendingJobStart: boolean }) => void` and passes it to JobStatusBar. **Setup** passes `handleOpenJobSetupWizard` so Play on Setup always opens JobSetupWizard with pending job start. **Monitor** does not pass `onOpenJobSetupWizard`, so Play on Monitor starts the job directly.
+- **JobSetupWizard completion**: [JobSetupWizard](apps/web/src/components/JobSetupWizard/JobSetupWizard.tsx) has optional `onSetupComplete?: () => void`. It is invoked when the user **completes the last block** (ExecutionScreen calls `onComplete()` in `handleBlockComplete` when the final slot’s last block finishes), not when the user clicks Close on "Ready to run". Setup passes `handleJobSetupComplete`: when `jobSetupPendingJobStart` is true, it closes the wizard, then navigates to Monitor (if `autoSwitchToMonitor`) and sends `gcode:start`, or sends `gcode:start` in place. Phase 6 (mid-job) does not use `onSetupComplete`; it reuses the same block components for tool-change flow.
+- **State in Setup**: `jobSetupWizardOpen`, `jobSetupPendingJobStart`; `handleOpenJobSetupWizard({ pendingJobStart })`, `handleJobSetupWizardClose`, `handleJobSetupComplete`. JobSetupWizard is rendered once with `open={jobSetupWizardOpen}`, `onClose={handleJobSetupWizardClose}`, `onSetupComplete={handleJobSetupComplete}`.
+- **ProbePanel**: Single line added above the method list: "Quick actions: run individual zeroing methods." ([ProbePanel.tsx](apps/web/src/routes/Setup/panels/ProbePanel.tsx)). Probe panel still uses the **single-method** flow: each "Run" button calls `onStartWizard(method)`, which opens [ZeroingWizardTab](apps/web/src/components/ZeroingWizardTab.tsx) in the Visualizer (old wizard). The **Job setup** panel and **Run** use JobSetupWizard only; no composition of the old wizards.
+- **Old keys**: All references to `settings?.zeroingStrategies?.initialSetup`, `strategy === 'skip'`, `strategy === 'ask'`, and method-by-ID lookup for pre-job flow have been removed from JobStatusBar. Run now uses only `onOpenJobSetupWizard` when provided.
 
 ---
 

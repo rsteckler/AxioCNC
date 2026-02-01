@@ -1,5 +1,6 @@
 export { DROPanel } from './DROPanel'
 export { JogPanel } from './JogPanel'
+export { JobSetupPanel } from './JobSetupPanel'
 export { ProbePanel } from './ProbePanel'
 export { MacrosPanel } from './MacrosPanel'
 export { SpindlePanel } from './SpindlePanel'

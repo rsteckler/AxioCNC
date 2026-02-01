@@ -63,6 +63,9 @@ export function ProbePanel({
   
   return (
     <div className="p-3 space-y-2">
+      <p className="text-xs text-muted-foreground">
+        {t('Quick actions: run individual zeroing methods.')}
+      </p>
       {methods.map((method) => (
         <div 
           key={method.id}
