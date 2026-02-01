@@ -12,8 +12,8 @@ isProject: false
 | 1 Schema and defaults | ✅ Done | See Phase 1 implementation notes below. |
 | 2 Touch plate per-axis + BitZero composable | ✅ Done | See Phase 2 implementation notes below. |
 | 3 Settings UI — Default setup behavior | ✅ Done | See Phase 3 implementation notes below. |
-| 4 Plan derivation + Set up job wizard | Not started | |
-| 5 Setup page entry point | Not started | |
+| 4 Plan derivation + Set up job wizard | ✅ Done | See Phase 4 implementation notes below. |
+| 5 Setup page entry point | Not started | **Phase 4 left the wizard unwired.** Phase 5 must add entry point and optionally wire Run; see Phase 4 notes. |
 | 6 Mid-job tool change policy | Not started | |
 | 7 Docs and i18n | Not started | |
 
@@ -125,7 +125,7 @@ isProject: false
 
 ### Phase 3 implementation notes (for Phases 4–7)
 
-- **Scope**: Phase 3 updated **Settings page only**. [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) and [useToolChangeDetection](apps/web/src/hooks/useToolChangeDetection.ts) still read `settings?.zeroingStrategies?.initialSetup` and `settings?.zeroingStrategies?.toolChange`. The API returns only `workXYZero`, `workZZero`, `toolChangePolicy`, so those consumers get `undefined` and Run / mid-job tool change are effectively broken until Phase 4 (pre-job) and Phase 6 (mid-job) update them to read the new keys and use the orchestrator/blocks.
+- **Scope**: Phase 3 updated **Settings page only**. [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) and [useToolChangeDetection](apps/web/src/hooks/useToolChangeDetection.ts) still read `settings?.zeroingStrategies?.initialSetup` and `settings?.zeroingStrategies?.toolChange`. The API returns only `workXYZero`, `workZZero`, `toolChangePolicy`, so those consumers get `undefined`. Run is effectively broken until **Phase 5** wires JobStatusBar to the new keys and opens JobSetupWizard; mid-job tool change is broken until **Phase 6** updates useToolChangeDetection/ToolChangeTab to use the new keys and the same blocks.
 - **Options derivation**: [apps/web/src/utils/zeroingStrategyOptions.ts](apps/web/src/utils/zeroingStrategyOptions.ts) — `getWorkXYZeroOptions(methods, t)`, `getWorkZZeroOptions(methods, t)`, `getToolChangePolicyOptions(methods, t)` return options with `value` (array for XY/Z, string for tool change) and `label`. `serializeWorkZeroValue(value)` / `parseWorkZeroValue(serialized)` convert `string[]` to/from a string for use as Select `value`. `isBitSetterMethodId(methods, methodId)` is used to show the BitSetter "Required" rule. **Phase 4** should reuse these helpers when building the setup plan and wizard options so Settings and wizard stay in sync.
 - **Work XY options**: Ask each time → `['ask']`; BitZero (XY) → method with `type === 'bitzero'` and `axes === 'xy'` → `[id]`; "Touchplate X then Y" → only when both enabled touchplate with `axes === 'x'` and touchplate with `axes === 'y'` exist → `[idX, idY]` (X then Y order); Manual → first enabled `type === 'manual'` → `[id]`.
 - **Work Z options**: Ask; BitZero (Z) → `axes === 'z'`; Touchplate (Z) → touchplate `axes === 'z'`; Manual.
@@ -157,6 +157,14 @@ isProject: false
   For any decision that is `ask` (work XY, work Z, or **tool change**), at that step (or at tool-change time) prompt with only the installed/available options; then run the selected block(s). Tool change can be ask too: at mid-job M6, if policy is `ask`, show method picker then run the chosen block.
 
 **Deliverable**: "Set up job" opens the orchestrator; user sees the plan then runs discrete blocks in order (no composition of existing wizards).
+
+### Phase 4 implementation notes (for Phases 5–7)
+
+- **Scope**: Phase 4 implemented **plan derivation + JobSetupWizard only**. No entry point was added: the wizard is not opened from anywhere yet. **Phase 5** must (1) add the left-column "Job setup" panel on the Setup page with a **"Set up job"** button that opens `JobSetupWizard` (e.g. `<JobSetupWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />`), and (2) optionally wire [JobStatusBar](apps/web/src/components/JobStatusBar.tsx) "Run" to use the new strategy keys (`workXYZero`, `workZZero`, `toolChangePolicy`) and open `JobSetupWizard` instead of the old `initialSetup` / ZeroingMethodSelectDialog flow. Until Phase 5, Run still reads `initialSetup` (undefined) and will not open any wizard.
+- **Plan derivation**: [apps/web/src/utils/setupPlan.ts](apps/web/src/utils/setupPlan.ts) — `deriveSetupPlan(strategies, methods, t)` returns `{ summary, slots }`. Summary has labels and ask flags; slots are ordered: work_xy, work_z, bitsetter (only if toolChangePolicy is a BitSetter method ID). `slotToBlocks(slot, methods)` expands a slot into `SetupBlock[]` (e.g. Touchplate X then Y → two blocks). Reuses [zeroingStrategyOptions.ts](apps/web/src/utils/zeroingStrategyOptions.ts) for labels so Settings and wizard stay in sync.
+- **JobSetupWizard**: [apps/web/src/components/JobSetupWizard/JobSetupWizard.tsx](apps/web/src/components/JobSetupWizard/JobSetupWizard.tsx) — Dialog with two screens. **Screen 1 (PlanSummaryScreen)**: "Plan for this job" with dropdowns for Work XY zero, Work Z zero, Tool changes (this job only; overrides are not saved to settings). BitSetter "Required" / "Why" copy when tool-change policy is BitSetter. Continue → Screen 2. **Screen 2 (ExecutionScreen)**: For each slot in order, if slot is "ask" show picker (Work XY or Work Z options); on select, expand to blocks and run them one by one. Each block is rendered via `RenderSetupBlock(block, props)`. On completion of all slots, show "Ready to run" + Close.
+- **Blocks**: New composable blocks under [apps/web/src/components/JobSetupWizard/blocks/](apps/web/src/components/JobSetupWizard/blocks/) — **ManualXYBlock**, **ManualZBlock** (set zero via G10; Manual Z clears BitSetter reference), **TouchplateBlock** (single axis X/Y/Z: probe + set zero + retract; completion via feeder:status), **BitZeroXYBlock**, **BitZeroZBlock** (macro sequences; completion via feeder:status), **BitSetterBlock** (navigate → probe first-tool macro → capture Z, store reference via `storeBitsetterReference`, retract). Blocks receive `BlockRunContext` (connectedPort, currentWCS, sendGcode, clearBitsetterReference, machinePosition, workPosition, storeBitsetterReference) and onComplete/onError. Existing [ZeroingWizardTab](apps/web/src/components/ZeroingWizardTab.tsx) and method wizards were **not** composed; blocks are new, minimal implementations. Phase 6 (mid-job) should reuse these same block components for tool-change flow.
+- **Manual XY vs Manual Z**: Settings use a **single** Manual method (one id) for both Work XY and Work Z options. The **slot** (work_xy vs work_z) determines which block runs: Manual XY block sets XY zero only; Manual Z block sets Z zero only. Same method config; block kind differs by step.
 
 ---
 

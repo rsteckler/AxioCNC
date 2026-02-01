@@ -1,0 +1,34 @@
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { buildSetZeroCommand } from '@/utils/gcode'
+import type { SetupBlockProps } from './types'
+
+/**
+ * Manual Z block: user positions Z, then sets Z work zero.
+ * Clears BitSetter reference when Z zero is set.
+ */
+export function ManualZBlock({ context, onComplete, onError }: SetupBlockProps) {
+  const { t } = useTranslation()
+  const { currentWCS, sendGcode, clearBitsetterReference } = context
+
+  const handleSetZero = async () => {
+    await clearBitsetterReference(currentWCS)
+    const gcode = buildSetZeroCommand(currentWCS, 'z')
+    if (gcode && sendGcode(gcode)) {
+      onComplete()
+    } else {
+      onError(t('Failed to send set-zero command'))
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        {t('Position the tool at Z work zero (e.g. paper test), then set Z zero.')}
+      </p>
+      <Button onClick={handleSetZero}>
+        {t('Set Z zero')}
+      </Button>
+    </div>
+  )
+}
