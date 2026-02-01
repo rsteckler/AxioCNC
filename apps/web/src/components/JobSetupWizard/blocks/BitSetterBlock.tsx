@@ -24,7 +24,7 @@ function processMacro(macro: string): string {
  * BitSetter block (pre-job): navigate to bitsetter, probe first tool, capture Z and store as reference.
  * Single-purpose step for "establish tool reference" after Z zero is set.
  */
-export function BitSetterBlock({ methods, context, onComplete, onError }: SetupBlockProps) {
+export function BitSetterBlock({ methods, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitSetterConfig | undefined
   const {
@@ -151,6 +151,15 @@ export function BitSetterBlock({ methods, context, onComplete, onError }: SetupB
     return () => socketService.off('serialport:read', handleRead)
   }, [phase, t, onError])
 
+  const handleDebugNext = useCallback(() => {
+    if (phase === 'idle') setPhase('navigate')
+    else if (phase === 'navigate') setPhase('probing')
+    else if (phase === 'probing' || phase === 'storing') {
+      setPhase('complete')
+      onComplete()
+    }
+  }, [phase, onComplete])
+
   if (!method || method.type !== 'bitsetter') {
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
@@ -185,6 +194,11 @@ export function BitSetterBlock({ methods, context, onComplete, onError }: SetupB
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMessage ?? t('Error')}</span>
         </div>
+      )}
+      {debugAllowNext && phase !== 'complete' && phase !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={handleDebugNext}>
+          {t('Next (debug)')}
+        </Button>
       )}
     </div>
   )

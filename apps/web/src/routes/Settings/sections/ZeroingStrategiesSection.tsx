@@ -60,7 +60,7 @@ export function ZeroingStrategiesSection({
   return (
     <SettingsSection
       id="zeroing-strategies"
-      title={t('Default setup behavior')}
+      title={t('Zeroing defaults')}
       description={t('Default choices for work XY zero, work Z zero, and tool changes during a job. You can change these when setting up a job.')}
     >
       {/* Work XY zero */}
@@ -196,24 +196,16 @@ export function ZeroingStrategiesSection({
           </Select>
 
           {showBitSetterRule && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-              <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-900 dark:text-blue-100">
                 <strong>{t('Required:')}</strong>{' '}
-                {t('After you set Z work zero, we will probe the current tool on the BitSetter to establish the job\'s tool reference.')}
+                {t('Because you chose BitSetter for tool changes, after you set Z work zero we will probe the current tool on the BitSetter to establish the job\'s tool reference.')}
               </p>
             </div>
           )}
         </div>
       </SettingsField>
-
-      {/* Helper text */}
-      <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-        <p>
-          <strong>{t('Tip:')}</strong>{' '}
-          {t('For most setups, use a full XYZ or XY+Z probe (e.g. BitZero) for work zero, and BitSetter or touch plate for tool changes.')}
-        </p>
-      </div>
     </SettingsSection>
   )
 }

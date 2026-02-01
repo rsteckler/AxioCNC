@@ -192,12 +192,12 @@ export function ZeroingWizardTab({
     }
     
     // Clear bitsetter reference only when setting Z zero via touchplate (Z reference becomes invalid)
-    if (method.axes === 'z') {
+    if (method.axes === 'z' || method.axes === 'xyz') {
       await clearBitsetterReference(currentWCS)
     }
     
-    // Per-axis touchplate: probe only the selected axis (x, y, or z)
-    const axis = method.axes.toUpperCase() as 'X' | 'Y' | 'Z'
+    // Per-axis touchplate: probe the selected axis (x, y, or z); when axes is xyz (one hardware), default to Z for this wizard
+    const axis = (method.axes === 'xyz' ? 'z' : method.axes).toUpperCase() as 'X' | 'Y' | 'Z'
     const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axis, method.plateThickness)
     // Probe toward negative axis direction; retract positive
     const probeCmd = `G38.2 ${axis}-${method.probeDistance} F${method.probeFeedrate}`
@@ -1037,7 +1037,7 @@ export function ZeroingWizardTab({
   
   const handleComplete = async () => {
     // Clear bitsetter reference when Z zero is being set (touchplate Z, bitzero Z/XYZ, manual/custom with Z)
-    const touchplateSetsZ = method.type === 'touchplate' && method.axes === 'z'
+    const touchplateSetsZ = method.type === 'touchplate' && (method.axes === 'z' || method.axes === 'xyz')
     const bitzeroSetsZ = method.type === 'bitzero' && (method.axes === 'z' || method.axes === 'xyz')
     const manualSetsZ = method.type === 'manual' && method.axes.includes('z')
     const customSetsZ = method.type === 'custom' && method.axes.includes('z')

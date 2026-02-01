@@ -5,12 +5,12 @@ title: Zeroing and Tool Changes
 
 # Zeroing and Tool Changes
 
-This section covers **zeroing hardware** (the methods you can use to set work zero) and **default setup behavior** (how AxioCNC chooses what to do before a job and at tool changes). You configure both under **Settings**: first add and enable zeroing methods, then set your default choices for work XY zero, work Z zero, and tool changes during a job.
+This section covers **zeroing hardware** (the methods you can use to set work zero) and **Zeroing defaults** (how AxioCNC chooses what to do before a job and at tool changes). You configure both under **Settings**: first add and enable zeroing methods, then set your default choices for work XY zero, work Z zero, and tool changes during a job.
 
 ## Overview
 
 - **Zeroing methods** — The hardware and procedures available on your machine: Manual, Touch plate (X, Y, or Z), BitZero (XYZ, XY, or Z), BitSetter, and Custom G-code. You add and configure these in **Settings → Zeroing Methods** (shown in the sidebar as **Zeroing Methods**).
-- **Default setup behavior** — Your default choices for three decisions: **Work XY zero**, **Work Z zero**, and **Tool changes during job**. These are configured in **Settings → Default setup behavior** (the section that follows Zeroing Methods). Options in the dropdowns are derived from the zeroing methods you have enabled.
+- **Zeroing defaults** — Your default choices for three decisions: **Work XY zero**, **Work Z zero**, and **Tool changes during job**. These are configured in **Settings → Zeroing defaults** (the section that follows Zeroing Methods). Options in the dropdowns are derived from the zeroing methods you have enabled.
 
 When you start a job from the Setup screen, you can either use these defaults or change them for that job only in the **Set up job** wizard.
 
@@ -43,13 +43,13 @@ For each method you can set:
 ### Editing and deleting
 
 - **Edit** — Open the method card to change name, enabled, axes, and type-specific options.
-- **Delete** — Remove the method. Manual cannot be deleted. If **Default setup behavior** uses this method, you'll need to pick another there.
+- **Delete** — Remove the method. Manual cannot be deleted. If **Zeroing defaults** uses this method, you'll need to pick another there.
 
 ---
 
-## Default setup behavior
+## Zeroing defaults
 
-**Settings → Default setup behavior** (the section after Zeroing Methods) has three dropdowns. Options are derived from your **enabled** zeroing methods.
+**Settings → Zeroing defaults** (the section after Zeroing Methods) has three dropdowns. Options are derived from your **enabled** zeroing methods.
 
 ### Work XY zero
 

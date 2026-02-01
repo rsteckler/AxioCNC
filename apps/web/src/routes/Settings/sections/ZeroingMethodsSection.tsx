@@ -87,10 +87,10 @@ export interface BitZeroConfig extends BaseMethodConfig {
   requireCheck: boolean
 }
 
-// Touch Plate - per-axis (X, Y, or Z)
+// Touch Plate - one hardware can measure X, Y, or Z (axes xyz); legacy single-axis (x/y/z) supported
 export interface TouchPlateConfig extends BaseMethodConfig {
   type: 'touchplate'
-  axes: 'x' | 'y' | 'z'
+  axes: 'x' | 'y' | 'z' | 'xyz'
   plateThickness: number
   probeFeedrate: number
   probeDistance: number
@@ -143,7 +143,7 @@ const createMethodTypes = (t: (key: string) => string): Record<ZeroingMethodType
   'bitzero': {
     icon: <Crosshair className="w-5 h-5" />,
     title: t('BitZero'),
-    description: t('Corner, edge, or center probe — adds BitZero (XYZ), BitZero (XY), and BitZero (Z)'),
+    description: t('Corner, edge, or center probe for XYZ zeroing'),
     defaultAxes: 'xyz',
     canChangeAxes: false,
   },
@@ -151,8 +151,8 @@ const createMethodTypes = (t: (key: string) => string): Record<ZeroingMethodType
     icon: <SquareDashedBottom className="w-5 h-5" />,
     title: t('Touch Plate'),
     description: t('Touch plate for X, Y, or Z-axis zeroing'),
-    defaultAxes: 'z',
-    canChangeAxes: true,
+    defaultAxes: 'xyz',
+    canChangeAxes: false,
   },
   'manual': {
     icon: <Hand className="w-5 h-5" />,
@@ -169,23 +169,6 @@ const createMethodTypes = (t: (key: string) => string): Record<ZeroingMethodType
     canChangeAxes: true,
   },
 })
-
-// Create the three BitZero composable methods (XYZ, XY, Z) — one "Add BitZero" yields three cards
-function createDefaultBitZeroMethods(_existingMethods: ZeroingMethod[], t: (key: string) => string): ZeroingMethod[] {
-  const ts = Date.now()
-  const base = {
-    enabled: true,
-    probeThickness: 13,
-    probeFeedrate: 100,
-    probeDistance: 25,
-    requireCheck: true,
-  }
-  return [
-    { id: `bitzero-xyz-${ts}`, type: 'bitzero', name: t('BitZero (XYZ)'), axes: 'xyz', ...base },
-    { id: `bitzero-xy-${ts}`, type: 'bitzero', name: t('BitZero (XY)'), axes: 'xy', ...base },
-    { id: `bitzero-z-${ts}`, type: 'bitzero', name: t('BitZero (Z)'), axes: 'z', ...base },
-  ]
-}
 
 // Default configurations for each method type
 function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMethod[], t: (key: string) => string): ZeroingMethod {
@@ -217,7 +200,6 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         requireCheck: true,
       }
     case 'bitzero':
-      // Should not be used for single add; use createDefaultBitZeroMethods for adding BitZero
       return {
         ...base,
         type: 'bitzero',
@@ -231,7 +213,7 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
       return {
         ...base,
         type: 'touchplate',
-        axes: 'z',
+        axes: 'xyz',
         plateThickness: 3.175, // 1/8" is common
         probeFeedrate: 100,
         probeDistance: 50,
@@ -386,14 +368,8 @@ export function ZeroingMethodsSection({
   const methods = config.methods
   const hasManual = methods.some(m => m.type === 'manual')
   
-  // Handle selecting a method type to add (doesn't save yet; BitZero adds three cards at once)
+  // Handle selecting a method type to add (one card per hardware)
   const handleSelectMethodType = (type: ZeroingMethodType) => {
-    if (type === 'bitzero') {
-      const newMethods = createDefaultBitZeroMethods(methods, t)
-      onConfigChange({ methods: [...methods, ...newMethods] })
-      setAddDialogOpen(false)
-      return
-    }
     const newMethod = createDefaultMethod(type, methods, t)
     setAddDialogOpen(false)
     setIsNewMethod(true)
@@ -613,25 +589,8 @@ function MethodEditDialog({
             />
           </SettingsField>
 
-          {/* Axes selection: Touchplate = single axis (X, Y, or Z); Manual/Custom = multi-axis */}
-          {editedMethod.type === 'touchplate' && (
-            <SettingsField label={t('Axis')} description={t('Which axis this touch plate zeros')}>
-              <Select
-                value={editedMethod.axes}
-                onValueChange={(value: 'x' | 'y' | 'z') => setEditedMethod({ ...editedMethod, axes: value } as ZeroingMethod)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="x">{t('X')}</SelectItem>
-                  <SelectItem value="y">{t('Y')}</SelectItem>
-                  <SelectItem value="z">{t('Z')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingsField>
-          )}
-          {typeInfo.canChangeAxes && editedMethod.type !== 'manual' && editedMethod.type !== 'touchplate' && (
+          {/* Axes selection: Manual/Custom only; BitZero and Touch Plate are fixed (XYZ) */}
+          {typeInfo.canChangeAxes && editedMethod.type !== 'manual' && (
             <SettingsField label={t('Axes')} description={t('Which axes this method zeros')}>
               <Select
                 value={editedMethod.axes}

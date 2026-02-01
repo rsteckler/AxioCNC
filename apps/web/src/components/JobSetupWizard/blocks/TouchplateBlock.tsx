@@ -7,13 +7,25 @@ import { socketService } from '@/services/socket'
 import type { SetupBlockProps } from './types'
 import type { TouchPlateConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
+/** Axis for this block when method.axes is xyz: derived from block kind. */
+function getTouchplateAxis(method: TouchPlateConfig, blockKind?: string): 'x' | 'y' | 'z' {
+  if (method.axes === 'xyz' && blockKind) {
+    if (blockKind === 'touchplate_x') return 'x'
+    if (blockKind === 'touchplate_y') return 'y'
+    if (blockKind === 'touchplate_z') return 'z'
+  }
+  return method.axes as 'x' | 'y' | 'z'
+}
+
 /**
  * Touchplate block: single-axis probe (X, Y, or Z). Sends probe + set zero + retract; completes on feeder idle.
+ * When method.axes is xyz, blockKind (touchplate_x/y/z) determines which axis to run.
  */
-export function TouchplateBlock({ methods, context, onComplete, onError }: SetupBlockProps) {
+export function TouchplateBlock({ methods, blockKind, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as TouchPlateConfig | undefined
   const { currentWCS, sendGcode, clearBitsetterReference, connectedPort } = context
+  const axis = method ? getTouchplateAxis(method, blockKind) : 'z'
 
   const [status, setStatus] = useState<'idle' | 'probing' | 'complete' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -22,14 +34,14 @@ export function TouchplateBlock({ methods, context, onComplete, onError }: Setup
   const runProbe = useCallback(async () => {
     if (!method || method.type !== 'touchplate' || !connectedPort) return
 
-    if (method.axes === 'z') {
+    if (axis === 'z') {
       await clearBitsetterReference(currentWCS)
     }
 
-    const axis = method.axes.toUpperCase() as 'X' | 'Y' | 'Z'
-    const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axis, method.plateThickness)
-    const probeCmd = `G38.2 ${axis}-${method.probeDistance} F${method.probeFeedrate}`
-    const retractCmd = `G0 ${axis}10`
+    const axisUpper = axis.toUpperCase() as 'X' | 'Y' | 'Z'
+    const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axisUpper, method.plateThickness)
+    const probeCmd = `G38.2 ${axisUpper}-${method.probeDistance} F${method.probeFeedrate}`
+    const retractCmd = `G0 ${axisUpper}10`
     const commands = [
       'G21',
       'M5',
@@ -50,7 +62,7 @@ export function TouchplateBlock({ methods, context, onComplete, onError }: Setup
     commands.forEach((cmd, index) => {
       setTimeout(() => sendGcode(cmd), index * 100)
     })
-  }, [method, connectedPort, currentWCS, clearBitsetterReference, sendGcode])
+  }, [method, axis, connectedPort, currentWCS, clearBitsetterReference, sendGcode])
 
   useEffect(() => {
     const handleFeederStatus = (...args: unknown[]) => {
@@ -85,7 +97,7 @@ export function TouchplateBlock({ methods, context, onComplete, onError }: Setup
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
 
-  const axisLabel = method.axes.toUpperCase()
+  const axisLabel = axis.toUpperCase()
 
   return (
     <div className="space-y-4">
@@ -108,6 +120,11 @@ export function TouchplateBlock({ methods, context, onComplete, onError }: Setup
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMessage ?? t('Probe error')}</span>
         </div>
+      )}
+      {debugAllowNext && status !== 'complete' && status !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={onComplete}>
+          {t('Next (debug)')}
+        </Button>
       )}
     </div>
   )

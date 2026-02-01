@@ -20,6 +20,8 @@ export interface JobSetupWizardProps {
   onClose: () => void
   /** Called when user completes all setup steps (last block done). Use e.g. to close and start job when opened from Run. */
   onSetupComplete?: () => void
+  /** When true, render as tab content (no Dialog). When false, render inside a Dialog. */
+  embedded?: boolean
 }
 
 const DEFAULT_STRATEGIES = {
@@ -32,7 +34,7 @@ const DEFAULT_STRATEGIES = {
  * Job Setup Wizard (Phase 4): Plan summary + execution with composable blocks.
  * Entry point is not wired here — Phase 5 adds the "Set up job" button and optional Run flow.
  */
-export function JobSetupWizard({ open, onClose, onSetupComplete }: JobSetupWizardProps) {
+export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = false }: JobSetupWizardProps) {
   const { t } = useTranslation()
   const [screen, setScreen] = useState<1 | 2>(1)
   const { data: settings } = useGetSettingsQuery(undefined, { skip: !open })
@@ -133,30 +135,49 @@ export function JobSetupWizard({ open, onClose, onSetupComplete }: JobSetupWizar
     [onClose, strategiesFromSettings]
   )
 
-  return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-lg">
+  const content = (
+    <>
+      {!embedded && (
         <DialogHeader>
           <DialogTitle>{t('Set up job')}</DialogTitle>
         </DialogHeader>
-        {screen === 1 ? (
-          <PlanSummaryScreen
-            summary={plan.summary}
-            overrides={overrides}
-            methods={methods}
-            onOverrideChange={handleOverrideChange}
-            onContinue={handleContinue}
-            onClose={onClose}
-          />
-        ) : (
-          <ExecutionScreen
-            plan={plan}
-            methods={methods}
-            context={context}
-            onComplete={() => onSetupComplete?.()}
-            onClose={onClose}
-          />
-        )}
+      )}
+      {screen === 1 ? (
+        <PlanSummaryScreen
+          summary={plan.summary}
+          overrides={overrides}
+          methods={methods}
+          onOverrideChange={handleOverrideChange}
+          onContinue={handleContinue}
+          onClose={onClose}
+        />
+      ) : (
+        <ExecutionScreen
+          plan={plan}
+          methods={methods}
+          context={context}
+          onComplete={() => onSetupComplete?.()}
+          onClose={onClose}
+        />
+      )}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-auto">
+        <div className="p-4 max-w-lg mx-auto w-full">
+          <h2 className="text-lg font-semibold mb-4">{t('Set up job')}</h2>
+          {content}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="max-w-lg">
+        {content}
       </DialogContent>
     </Dialog>
   )

@@ -5,7 +5,7 @@
  * - Work Z zero (array of method IDs or ['ask'])
  * - Tool change policy (single method ID or 'ask')
  *
- * Used by Settings "Default setup behavior" and later by the Setup Wizard (Phase 4)
+ * Used by Settings "Zeroing defaults" and later by the Setup Wizard (Phase 4)
  * so plan and defaults stay consistent.
  */
 import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
@@ -48,18 +48,29 @@ export function getWorkXYZeroOptions(
     label: t('Ask Each Time'),
   })
 
-  const bitzeroXY = enabled.find((m) => m.type === 'bitzero' && m.axes === 'xy')
+  // One BitZero hardware (axes xyz) provides "BitZero (XY)" option; legacy axes 'xy' also supported
+  const bitzeroXY = enabled.find(
+    (m) => m.type === 'bitzero' && (m.axes === 'xy' || m.axes === 'xyz')
+  )
   if (bitzeroXY) {
     options.push({
       value: [bitzeroXY.id],
       labelKey: 'BitZero (XY)',
-      label: bitzeroXY.name || t('BitZero (XY)'),
+      label: bitzeroXY.axes === 'xyz' ? t('BitZero (XY)') : (bitzeroXY.name || t('BitZero (XY)')),
     })
   }
 
+  // One touchplate (axes xyz) provides "Touchplate X then Y"; legacy two touchplates (x + y) also supported
+  const touchplateXYZ = enabled.find((m) => m.type === 'touchplate' && m.axes === 'xyz')
   const touchplateX = enabled.find((m) => m.type === 'touchplate' && m.axes === 'x')
   const touchplateY = enabled.find((m) => m.type === 'touchplate' && m.axes === 'y')
-  if (touchplateX && touchplateY) {
+  if (touchplateXYZ) {
+    options.push({
+      value: [touchplateXYZ.id],
+      labelKey: 'Touchplate X then Y',
+      label: t('Touchplate X then Y'),
+    })
+  } else if (touchplateX && touchplateY) {
     options.push({
       value: [touchplateX.id, touchplateY.id],
       labelKey: 'Touchplate X then Y',
@@ -96,21 +107,27 @@ export function getWorkZZeroOptions(
     label: t('Ask Each Time'),
   })
 
-  const bitzeroZ = enabled.find((m) => m.type === 'bitzero' && m.axes === 'z')
+  // One BitZero hardware (axes xyz) provides "BitZero (Z)" option; legacy axes 'z' also supported
+  const bitzeroZ = enabled.find(
+    (m) => m.type === 'bitzero' && (m.axes === 'z' || m.axes === 'xyz')
+  )
   if (bitzeroZ) {
     options.push({
       value: [bitzeroZ.id],
       labelKey: 'BitZero (Z)',
-      label: bitzeroZ.name || t('BitZero (Z)'),
+      label: bitzeroZ.axes === 'xyz' ? t('BitZero (Z)') : (bitzeroZ.name || t('BitZero (Z)')),
     })
   }
 
-  const touchplateZ = enabled.find((m) => m.type === 'touchplate' && m.axes === 'z')
+  // One touchplate (axes xyz) provides "Touchplate (Z)"; legacy axes 'z' also supported
+  const touchplateZ = enabled.find(
+    (m) => m.type === 'touchplate' && (m.axes === 'z' || m.axes === 'xyz')
+  )
   if (touchplateZ) {
     options.push({
       value: [touchplateZ.id],
       labelKey: 'Touchplate (Z)',
-      label: touchplateZ.name || t('Touchplate (Z)'),
+      label: touchplateZ.axes === 'xyz' ? t('Touchplate (Z)') : (touchplateZ.name || t('Touchplate (Z)')),
     })
   }
 
@@ -152,12 +169,14 @@ export function getToolChangePolicyOptions(
     })
   }
 
-  const touchplateZ = enabled.find((m) => m.type === 'touchplate' && m.axes === 'z')
+  const touchplateZ = enabled.find(
+    (m) => m.type === 'touchplate' && (m.axes === 'z' || m.axes === 'xyz')
+  )
   if (touchplateZ) {
     options.push({
       value: touchplateZ.id,
       labelKey: 'Touchplate (Z)',
-      label: touchplateZ.name || t('Touchplate (Z)'),
+      label: touchplateZ.axes === 'xyz' ? t('Touchplate (Z)') : (touchplateZ.name || t('Touchplate (Z)')),
     })
   }
 

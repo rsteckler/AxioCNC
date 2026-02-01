@@ -17,7 +17,7 @@ export function useSettingsSections(): SettingsSection[] {
     { id: 'connection', label: t('Connection'), icon: <Plug className="w-4 h-4" /> },
     { id: 'machine', label: t('Machine'), icon: <Box className="w-4 h-4" /> },
     { id: 'zeroing-methods', label: t('Zeroing Methods'), icon: <Target className="w-4 h-4" /> },
-    { id: 'zeroing-strategies', label: t('Default setup behavior'), icon: <Route className="w-4 h-4" /> },
+    { id: 'zeroing-strategies', label: t('Zeroing defaults'), icon: <Route className="w-4 h-4" /> },
     { id: 'camera', label: t('Camera'), icon: <Camera className="w-4 h-4" /> },
     { id: 'joystick', label: t('Joystick'), icon: <Gamepad2 className="w-4 h-4" /> },
     { id: 'tool-library', label: t('Tool Library'), icon: <Wrench className="w-4 h-4" /> },

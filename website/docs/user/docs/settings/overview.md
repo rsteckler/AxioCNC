@@ -22,7 +22,7 @@ Settings are grouped in the order they appear in the sidebar:
 | **Connection** | Serial port, baud rate, controller type, DTR/RTS |
 | **Machine** | Name, limits, homing corner, auto-switch, tool spinup |
 | **Zeroing Methods** | Touch plate, BitZero, BitSetter, etc. |
-| **Default setup behavior** | Work XY zero, work Z zero, tool changes during job |
+| **Zeroing defaults** | Work XY zero, work Z zero, tool changes during job |
 | **Camera** | IP camera URL, auth, display options |
 | **Joystick** | Gamepad enable, mappings, analog settings |
 | **Tool Library** | Tools and tool definitions |

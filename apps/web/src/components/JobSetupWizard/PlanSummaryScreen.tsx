@@ -163,14 +163,14 @@ export function PlanSummaryScreen({
       </div>
 
       {summary.showBitSetterStep && (
-        <div className="flex flex-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-muted-foreground space-y-1">
+        <div className="flex flex-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
             <p>
               <strong>{t('After Z zero, we\'ll probe the current tool on the BitSetter to set the reference.')}</strong>
             </p>
             <p>
-              {t('Why: You enabled tool changes with the BitSetter. We need a reference measurement for the tool currently in the spindle.')}
+              {t('Why: Because you chose BitSetter for tool changes, we need a reference measurement for the tool currently in the spindle.')}
             </p>
           </div>
         </div>

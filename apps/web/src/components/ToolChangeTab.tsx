@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import { ToolChangeMethodSelectDialog } from './ToolChangeMethodSelectDialog'
 import { useToolChange } from '@/contexts/ToolChangeContext'
 import { useGetSettingsQuery, useSetExtensionsMutation } from '@/services/api'
@@ -32,6 +32,14 @@ export function ToolChangeTab({
   const { t } = useTranslation()
   const { toolChangeMethod, completeToolChange, triggerToolChange } = useToolChange()
   const { data: settings } = useGetSettingsQuery()
+
+  // Debug: allow advancing tool change flow without completing the step (from DebugPanel toggle)
+  const [debugAllowNext, setDebugAllowNext] = useState(() => localStorage.getItem('debug.allowNextToolchangeScreen') === 'true')
+  useEffect(() => {
+    const handle = () => setDebugAllowNext(localStorage.getItem('debug.allowNextToolchangeScreen') === 'true')
+    window.addEventListener('debug.allowNextToolchangeScreen.changed', handle)
+    return () => window.removeEventListener('debug.allowNextToolchangeScreen.changed', handle)
+  }, [])
   const { sendGcode } = useGcodeCommand(connectedPort)
   const { clearBitsetterReference } = useBitsetterReference()
   const [setExtensions] = useSetExtensionsMutation()
@@ -129,6 +137,7 @@ export function ToolChangeTab({
         context,
         onComplete: completeToolChange,
         onError: (msg) => console.error(msg),
+        debugAllowNext,
       })}
     </div>
   )

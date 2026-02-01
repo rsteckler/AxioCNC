@@ -21,7 +21,7 @@ export function RenderSetupBlock(
   block: SetupBlockType,
   props: RenderBlockProps
 ): ReactNode {
-  const blockProps: SetupBlockProps = { ...props, methods: block.methods }
+  const blockProps: SetupBlockProps = { ...props, methods: block.methods, blockKind: block.kind }
   switch (block.kind) {
     case 'manual_xy':
       return <ManualXYBlock {...blockProps} />

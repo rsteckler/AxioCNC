@@ -931,6 +931,7 @@
   "Zeroing methods and strategies": "Métodos y estrategias de puesta a cero",
   "Zeroing Strategies": "Estrategias de puesta a cero",
   "Default setup behavior": "Default setup behavior",
+  "Zeroing defaults": "Zeroing defaults",
   "Default choices for work XY zero, work Z zero, and tool changes during a job. You can change these when setting up a job.": "Default choices for work XY zero, work Z zero, and tool changes during a job. You can change these when setting up a job.",
   "Work XY zero": "Work XY zero",
   "How to set X and Y work zero before running a job": "How to set X and Y work zero before running a job",

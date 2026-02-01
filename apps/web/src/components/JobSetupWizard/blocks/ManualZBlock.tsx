@@ -7,7 +7,7 @@ import type { SetupBlockProps } from './types'
  * Manual Z block: user positions Z, then sets Z work zero.
  * Clears BitSetter reference when Z zero is set.
  */
-export function ManualZBlock({ context, onComplete, onError }: SetupBlockProps) {
+export function ManualZBlock({ context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const { currentWCS, sendGcode, clearBitsetterReference } = context
 
@@ -29,6 +29,11 @@ export function ManualZBlock({ context, onComplete, onError }: SetupBlockProps) 
       <Button onClick={handleSetZero}>
         {t('Set Z zero')}
       </Button>
+      {debugAllowNext && (
+        <Button variant="secondary" size="sm" onClick={onComplete}>
+          {t('Next (debug)')}
+        </Button>
+      )}
     </div>
   )
 }

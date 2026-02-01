@@ -128,10 +128,10 @@ export const BitZeroMethodSchema = BaseMethodSchema.extend({
   requireCheck: z.boolean().default(true),
 });
 
-// Touch Plate - per-axis touch plate (X, Y, or Z)
+// Touch Plate - one hardware can measure X, Y, or Z (axes xyz); legacy single-axis (x/y/z) supported
 export const TouchPlateMethodSchema = BaseMethodSchema.extend({
   type: z.literal('touchplate'),
-  axes: z.enum(['x', 'y', 'z']),
+  axes: z.enum(['x', 'y', 'z', 'xyz']),
   plateThickness: z.number().default(19.05),
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(25),

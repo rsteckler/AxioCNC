@@ -160,22 +160,25 @@ export function slotToBlocks(
 
   if (kind === 'work_xy') {
     for (const m of resolved) {
-      if (m.type === 'bitzero' && m.axes === 'xy') {
+      if (m.type === 'bitzero' && (m.axes === 'xy' || m.axes === 'xyz')) {
         blocks.push({ kind: 'bitzero_xy', methods: [m] })
       } else if (m.type === 'touchplate' && (m.axes === 'x' || m.axes === 'y')) {
         blocks.push({
           kind: m.axes === 'x' ? 'touchplate_x' : 'touchplate_y',
           methods: [m],
         })
+      } else if (m.type === 'touchplate' && m.axes === 'xyz') {
+        blocks.push({ kind: 'touchplate_x', methods: [m] })
+        blocks.push({ kind: 'touchplate_y', methods: [m] })
       } else if (m.type === 'manual') {
         blocks.push({ kind: 'manual_xy', methods: [m] })
       }
     }
   } else if (kind === 'work_z') {
     for (const m of resolved) {
-      if (m.type === 'bitzero' && m.axes === 'z') {
+      if (m.type === 'bitzero' && (m.axes === 'z' || m.axes === 'xyz')) {
         blocks.push({ kind: 'bitzero_z', methods: [m] })
-      } else if (m.type === 'touchplate' && m.axes === 'z') {
+      } else if (m.type === 'touchplate' && (m.axes === 'z' || m.axes === 'xyz')) {
         blocks.push({ kind: 'touchplate_z', methods: [m] })
       } else if (m.type === 'manual') {
         blocks.push({ kind: 'manual_z', methods: [m] })
@@ -204,7 +207,7 @@ export function methodToToolChangeBlock(
   if (method.type === 'bitsetter') {
     return { kind: 'bitsetter', methods: [method] }
   }
-  if (method.type === 'touchplate' && method.axes === 'z') {
+  if (method.type === 'touchplate' && (method.axes === 'z' || method.axes === 'xyz')) {
     return { kind: 'touchplate_z', methods: [method] }
   }
   if (method.type === 'manual') {

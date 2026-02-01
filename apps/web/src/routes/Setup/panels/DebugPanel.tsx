@@ -65,6 +65,17 @@ export function DebugPanel({
     window.dispatchEvent(new CustomEvent('debug.showOutline.changed', { detail: showOutline }))
   }, [showOutline])
 
+  // Debug flag: allow advancing tool change flow without completing the step
+  const [allowNextToolchangeScreen, setAllowNextToolchangeScreen] = useState(() => {
+    const stored = localStorage.getItem('debug.allowNextToolchangeScreen')
+    return stored === 'true'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('debug.allowNextToolchangeScreen', String(allowNextToolchangeScreen))
+    window.dispatchEvent(new CustomEvent('debug.allowNextToolchangeScreen.changed', { detail: allowNextToolchangeScreen }))
+  }, [allowNextToolchangeScreen])
+
   // Get tool reference for G54
   const toolReferenceKey = 'bitsetter.toolReference.G54'
   const { data: toolReferenceData } = useGetExtensionsQuery({ key: toolReferenceKey })
@@ -311,6 +322,24 @@ export function DebugPanel({
           </div>
           <p className="text-xs text-muted-foreground">
             {t('When enabled, bitsetter tool changes will always use the subsequent wizard (skips "Install First Tool" step), regardless of tool reference status.')}
+          </p>
+        </div>
+
+        {/* Debug: Allow next toolchange screen */}
+        <div className="space-y-2 pt-2 border-t">
+          <h4 className="text-xs font-semibold">{t('Tool Change Flow Debug')}</h4>
+          <div className="flex items-center justify-between px-2 py-1 rounded bg-muted/50">
+            <Label htmlFor="allow-next-toolchange" className="text-xs cursor-pointer">
+              {t('Allow next toolchange screen')}
+            </Label>
+            <Switch
+              id="allow-next-toolchange"
+              checked={allowNextToolchangeScreen}
+              onCheckedChange={setAllowNextToolchangeScreen}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t('When enabled, a "Next (debug)" button appears in the tool change flow so you can click through all screens without completing each step.')}
           </p>
         </div>
 

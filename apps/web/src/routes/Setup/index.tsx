@@ -65,7 +65,6 @@ import { JobSetupPanel } from './panels/JobSetupPanel'
 import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
-import { JobSetupWizard } from '@/components/JobSetupWizard'
 import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { UpdateNotificationDialog } from '@/components/UpdateNotificationDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
@@ -1170,6 +1169,9 @@ export default function Setup() {
               lastAlarmMessageRef={lastAlarmMessageRef}
               currentWCS={currentWCS}
               senderState={jobState}
+              jobSetupWizardOpen={jobSetupWizardOpen}
+              onJobSetupClose={handleJobSetupWizardClose}
+              onJobSetupComplete={handleJobSetupComplete}
             />
           </div>
           {/* Tools - 25% height */}
@@ -1194,12 +1196,6 @@ export default function Setup() {
           releaseUrl={releaseUrl || undefined}
         />
       )}
-      {/* Job setup wizard (Phase 5: plan + blocks; entry from panel or Run) */}
-      <JobSetupWizard
-        open={jobSetupWizardOpen}
-        onClose={handleJobSetupWizardClose}
-        onSetupComplete={handleJobSetupComplete}
-      />
       {/* Method selection dialog for "ask" strategy (Probe panel single-method flow) */}
       <ZeroingMethodSelectDialog
         open={showMethodSelectDialog}

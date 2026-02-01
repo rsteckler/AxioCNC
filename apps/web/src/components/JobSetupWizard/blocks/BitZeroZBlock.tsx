@@ -24,7 +24,7 @@ function processMacro(macro: string): string {
 /**
  * BitZero Z block: probe Z and set Z work zero. Clears BitSetter reference.
  */
-export function BitZeroZBlock({ methods, context, onComplete, onError }: SetupBlockProps) {
+export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitZeroConfig | undefined
   const { currentWCS, sendGcode, clearBitsetterReference, connectedPort } = context
@@ -34,7 +34,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError }: SetupBl
   const probingRef = useRef(false)
 
   const runProbe = useCallback(async () => {
-    if (!method || method.type !== 'bitzero' || method.axes !== 'z' || !connectedPort) return
+    if (!method || method.type !== 'bitzero' || (method.axes !== 'z' && method.axes !== 'xyz') || !connectedPort) return
 
     await clearBitsetterReference(currentWCS)
 
@@ -94,7 +94,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError }: SetupBl
     return () => socketService.off('serialport:read', handleRead)
   }, [status, t, onError])
 
-  if (!method || method.type !== 'bitzero' || method.axes !== 'z') {
+  if (!method || method.type !== 'bitzero' || (method.axes !== 'z' && method.axes !== 'xyz')) {
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
 
@@ -119,6 +119,9 @@ export function BitZeroZBlock({ methods, context, onComplete, onError }: SetupBl
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMessage ?? t('Probe error')}</span>
         </div>
+      )}
+      {debugAllowNext && status !== 'complete' && status !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
@@ -45,6 +45,14 @@ export function ExecutionScreen({
   const [blockIndex, setBlockIndex] = useState(0)
   /** When current slot is "ask", we resolve to blocks after user picks. This holds the chosen value until we expand. */
   const [resolvedAskValue, setResolvedAskValue] = useState<string[] | null>(null)
+
+  // Debug: allow advancing setup job flow without completing the step (from DebugPanel toggle)
+  const [debugAllowNext, setDebugAllowNext] = useState(() => localStorage.getItem('debug.allowNextToolchangeScreen') === 'true')
+  useEffect(() => {
+    const handle = () => setDebugAllowNext(localStorage.getItem('debug.allowNextToolchangeScreen') === 'true')
+    window.addEventListener('debug.allowNextToolchangeScreen.changed', handle)
+    return () => window.removeEventListener('debug.allowNextToolchangeScreen.changed', handle)
+  }, [])
 
   const slots = plan.slots
   const currentSlot = slots[slotIndex]
@@ -163,6 +171,7 @@ export function ExecutionScreen({
           context,
           onComplete: handleBlockComplete,
           onError: (msg) => console.error(msg),
+          debugAllowNext,
         })}
       </div>
       <div className="flex justify-end">
