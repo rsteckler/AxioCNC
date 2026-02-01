@@ -118,19 +118,20 @@ export const BitSetterMethodSchema = BaseMethodSchema.extend({
   requireCheck: z.boolean().default(true),
 });
 
-// BitZero - corner/edge/center probe (XYZ)
+// BitZero - corner/edge/center probe (XYZ, XY only, or Z only — one hardware yields three composable methods)
 export const BitZeroMethodSchema = BaseMethodSchema.extend({
   type: z.literal('bitzero'),
+  axes: z.enum(['xyz', 'xy', 'z']),
   probeThickness: z.number().default(12.7),
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(25),
   requireCheck: z.boolean().default(true),
 });
 
-// Touch Plate - simple Z touch plate
+// Touch Plate - per-axis touch plate (X, Y, or Z)
 export const TouchPlateMethodSchema = BaseMethodSchema.extend({
   type: z.literal('touchplate'),
-  axes: z.literal('z'),
+  axes: z.enum(['x', 'y', 'z']),
   plateThickness: z.number().default(19.05),
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(25),

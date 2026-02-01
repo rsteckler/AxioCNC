@@ -29,6 +29,7 @@ export function TouchPlateZeroingWizard({
   onProbe,
 }: TouchPlateZeroingWizardProps) {
   const { t } = useTranslation()
+  const axisLabel = method.axes.toUpperCase()
   // Map step numbers based on requireCheck setting
   // If requireCheck is false, skip step 1 (verification), so step 1->position, step 2->probe
   const skipVerification = method.requireCheck === false
@@ -84,10 +85,10 @@ export function TouchPlateZeroingWizard({
             <h3 className="text-base font-semibold">{t('Step {{step}}: Position Touch Plate', { step: skipVerification ? 1 : 2 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                {t('Place the touch plate on the workpiece at the location where you want to set Z zero.')}
+                {t('Place the touch plate on the workpiece at the location where you want to set {{axis}} zero.', { axis: axisLabel })}
               </p>
               <p>
-                {t('Use the jog controls to position the tool above the touch plate location. The tool should be positioned so it can probe down onto the plate.')}
+                {t('Use the jog controls to position the tool so it can probe along the {{axis}} axis onto the plate.', { axis: axisLabel })}
               </p>
             </div>
           </div>
@@ -124,7 +125,7 @@ export function TouchPlateZeroingWizard({
             <h3 className="text-base font-semibold">{t('Step {{step}}: Run Probe', { step: skipVerification ? 2 : 3 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                {t('Press the probe button below to start the automatic Z-probe sequence. The tool will probe down until it contacts the touch plate, then set Z zero accounting for the plate thickness ({{thickness}}mm).', { thickness: method.plateThickness })}
+                {t('Press the probe button below to start the {{axis}}-axis probe. The tool will probe until it contacts the touch plate, then set {{axis}} zero accounting for the plate thickness ({{thickness}}mm).', { axis: axisLabel, thickness: method.plateThickness })}
               </p>
             </div>
           </div>
@@ -143,7 +144,7 @@ export function TouchPlateZeroingWizard({
               disabled={!isConnected || !connectedPort}
             >
               <Target className="w-5 h-5" />
-              {t('Start Z-Probe')}
+              {t('Start {{axis}}-Probe', { axis: axisLabel })}
             </Button>
           </div>
         </div>
@@ -156,7 +157,7 @@ export function TouchPlateZeroingWizard({
             <h3 className="text-base font-semibold">{t('Step {{step}}: Remove Touch Plate', { step: skipVerification ? 3 : 4 })}</h3>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                {t('Remove the touch plate from the workpiece. The probe sequence has completed and Z zero has been set accounting for the plate thickness ({{thickness}}mm).', { thickness: method.plateThickness })}
+                {t('Remove the touch plate from the workpiece. The probe sequence has completed and {{axis}} zero has been set accounting for the plate thickness ({{thickness}}mm).', { axis: axisLabel, thickness: method.plateThickness })}
               </p>
             </div>
           </div>
@@ -165,7 +166,7 @@ export function TouchPlateZeroingWizard({
             <div className="text-sm text-green-900 dark:text-green-100 space-y-1">
               <p className="font-medium">{t('Zeroing Complete')}</p>
               <p>
-                {t('Z zero has been set at the touch plate location accounting for the plate thickness. You can now remove the touch plate and proceed with your job.')}
+                {t('{{axis}} zero has been set at the touch plate location accounting for the plate thickness. You can now remove the touch plate and proceed with your job.', { axis: axisLabel })}
               </p>
             </div>
           </div>

@@ -191,26 +191,27 @@ export function ZeroingWizardTab({
       return
     }
     
-    // Clear bitsetter reference when setting Z zero via touchplate (bitsetter reference becomes invalid)
-    await clearBitsetterReference(currentWCS)
+    // Clear bitsetter reference only when setting Z zero via touchplate (Z reference becomes invalid)
+    if (method.axes === 'z') {
+      await clearBitsetterReference(currentWCS)
+    }
     
-    // Build probe sequence:
-    // 1. Switch to relative mode
-    // 2. Probe down (G38.2 for Grbl)
-    // 3. Switch to absolute mode
-    // 4. Set zero with plate thickness offset (G10 L20 Px Z[plateThickness])
-    // 5. Retract
-    const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', method.plateThickness)
+    // Per-axis touchplate: probe only the selected axis (x, y, or z)
+    const axis = method.axes.toUpperCase() as 'X' | 'Y' | 'Z'
+    const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axis, method.plateThickness)
+    // Probe toward negative axis direction; retract positive
+    const probeCmd = `G38.2 ${axis}-${method.probeDistance} F${method.probeFeedrate}`
+    const retractCmd = `G0 ${axis}10`
     const commands = [
       'G21', // Metric units
       'M5', // Stop spindle
       'G90', // Absolute mode
       'G91', // Relative mode (for probe)
-      `G38.2 Z-${method.probeDistance} F${method.probeFeedrate}`, // Probe down
+      probeCmd,
       'G90', // Absolute mode
-      setZeroCommand, // Set zero with plate thickness
+      setZeroCommand, // Set zero with plate thickness offset
       'G91', // Relative mode
-      'G0 Z10', // Retract 10mm
+      retractCmd, // Retract 10mm along probed axis
       'G90', // Absolute mode
     ]
     
@@ -578,15 +579,18 @@ export function ZeroingWizardTab({
       return
     }
     
-    // Clear bitsetter reference when setting Z zero via bitzero (bitsetter reference becomes invalid)
-    await clearBitsetterReference(currentWCS)
+    const bitzeroMethod = method as Extract<ZeroingMethod, { type: 'bitzero' }>
+    const axes = bitzeroMethod.axes ?? 'xyz'
+    
+    // Clear bitsetter reference only when this BitZero run sets Z (axes 'z' or 'xyz')
+    if (axes === 'z' || axes === 'xyz') {
+      await clearBitsetterReference(currentWCS)
+    }
     
     setProbeStatus('probing')
     setProbeError(null)
     probeStartedRef.current = true
-    
-    const bitzeroMethod = method as Extract<ZeroingMethod, { type: 'bitzero' }>
-    
+
     // Use settings or defaults from macro
     const zProbeThickness = bitzeroMethod.probeThickness || 12.7 // Default 12.7mm (0.5")
     const probeDistance = bitzeroMethod.probeDistance || 25 // Default 25mm
@@ -596,87 +600,106 @@ export function ZeroingWizardTab({
     const zProbe = 15 // Lift out of hole and max Z probe
     const zProbeKeepout = 10 // Distance (X&Y) from edge of hole for Z probe
     const zFinal = 15 // Final height above probe
-    
+
     // Build G10 commands using utilities
     const setXZeroCommand = buildSetZeroCommand(currentWCS, 'x')
     const setYZeroCommand = buildSetZeroCommand(currentWCS, 'y')
     const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', zProbeThickness)
-    
-    // Build macro string that calculates center on the controller
-    // Macro uses variables: %X_RIGHT, %X_LEFT, %Y_TOP, %Y_BTM
-    // Position variables: posx, posy, posz
-    // Calculations: %X_CHORD=(X_RIGHT-X_LEFT), %X_OFFSET=X_CHORD/2, etc.
-    const macroLines = [
-      'G91', // Relative positioning
-      'G21', // Metric units
-      '',
-      '; X-Axis Probing',
-      `G38.2 X${probeDistance} F${probeFeedrateA}`, // Fast probe X right
-      'G0 X-2', // Retract 2mm
-      `G38.2 X5 F${probeFeedrateB}`, // Fine probe X right edge
-      'G90', // Absolute mode to read position
-      '%X_RIGHT=posx', // Capture X right position
-      'G91', // Back to relative
-      `G0 X-${probeMajorRetract}`, // Retract before left probe
-      '',
-      `G38.2 X-${probeDistance} F${probeFeedrateA}`, // Fast probe X left
-      'G0 X2', // Retract 2mm
-      `G38.2 X-5 F${probeFeedrateB}`, // Fine probe X left edge
-      'G90', // Absolute mode to read position
-      '%X_LEFT=posx', // Capture X left position
-      '',
-      '; Calculate X center and move there',
-      '%X_CHORD=X_RIGHT-X_LEFT', // Calculate actual hole width
-      '%X_OFFSET=X_CHORD/2', // Distance from X_LEFT to center
-      'G91', // Relative mode
-      'G0 X[X_OFFSET]', // Move to actual X center
-      'G4 P1', // Dwell 1 second
-      setXZeroCommand, // Set X0 at calculated center
-      '',
-      '; Y-Axis Probing',
-      'G91', // Relative mode
-      `G38.2 Y${probeDistance} F${probeFeedrateA}`, // Fast probe Y top
-      'G0 Y-2', // Retract 2mm
-      `G38.2 Y5 F${probeFeedrateB}`, // Fine probe Y top edge
-      'G90', // Absolute mode to read position
-      '%Y_TOP=posy', // Capture Y top position
-      'G91', // Back to relative
-      `G0 Y-${probeMajorRetract}`, // Retract before bottom probe
-      '',
-      `G38.2 Y-${probeDistance} F${probeFeedrateA}`, // Fast probe Y bottom
-      'G0 Y2', // Retract 2mm
-      `G38.2 Y-5 F${probeFeedrateB}`, // Fine probe Y bottom edge
-      'G90', // Absolute mode to read position
-      '%Y_BTM=posy', // Capture Y bottom position
-      '',
-      '; Calculate Y center and move there',
-      '%Y_CHORD=Y_TOP-Y_BTM', // Calculate actual hole height
-      '%Y_OFFSET=Y_CHORD/2', // Distance from Y_BTM to center
-      'G91', // Relative mode
-      'G0 Y[Y_OFFSET]', // Move to actual Y center
-      'G4 P1', // Dwell 1 second
-      setYZeroCommand, // Set Y0 at calculated center
-      '',
-      '; Calculate Z probe location using actual hole radius',
-      '%HOLE_RADIUS=Y_CHORD/2', // Use Y chord for radius (hole is circular)
-      `%Z_PROBE_X=HOLE_RADIUS+${zProbeKeepout}`, // X offset for Z probe (keepout)
-      `%Z_PROBE_Y=HOLE_RADIUS+${zProbeKeepout}`, // Y offset for Z probe (keepout)
-      '',
-      '; Z-Axis Probing',
-      `G0 Z${zProbe}`, // Lift out of hole
-      'G0 X[Z_PROBE_X] Y[Z_PROBE_Y]', // Move above plate using actual hole radius
-      `G38.2 Z-${zProbe} F${probeFeedrateA}`, // Fast probe Z down
-      'G0 Z2', // Retract 2mm
-      `G38.2 Z-5 F${probeFeedrateB}`, // Fine probe Z down
-      setZZeroCommand, // Set Z0 with plate thickness offset
-      `G0 Z${zFinal}`, // Raise to final height
-      '',
-      '; Final: Move to origin',
-      'G90', // Absolute positioning
-      'G0 X0 Y0', // Move to work origin
-      'G4 P1', // Dwell 1 second
-    ]
-    
+
+    // Build macro based on axes: xyz (full), xy (X+Y only), z (Z only)
+    const macroLines: string[] = ['G91', 'G21', '']
+
+    if (axes === 'z') {
+      // BitZero Z only: probe Z and set Z zero (tool already at XY position)
+      macroLines.push(
+        '; Z-Axis Probing',
+        `G38.2 Z-${probeDistance} F${probeFeedrateA}`,
+        'G0 Z2',
+        `G38.2 Z-5 F${probeFeedrateB}`,
+        setZZeroCommand,
+        `G0 Z${zFinal}`,
+        '',
+        'G90'
+      )
+    } else {
+      // X and/or Y probing (xy or xyz)
+      if (axes === 'xy' || axes === 'xyz') {
+        macroLines.push(
+          '; X-Axis Probing',
+          `G38.2 X${probeDistance} F${probeFeedrateA}`,
+          'G0 X-2',
+          `G38.2 X5 F${probeFeedrateB}`,
+          'G90',
+          '%X_RIGHT=posx',
+          'G91',
+          `G0 X-${probeMajorRetract}`,
+          '',
+          `G38.2 X-${probeDistance} F${probeFeedrateA}`,
+          'G0 X2',
+          `G38.2 X-5 F${probeFeedrateB}`,
+          'G90',
+          '%X_LEFT=posx',
+          '',
+          '; Calculate X center and move there',
+          '%X_CHORD=X_RIGHT-X_LEFT',
+          '%X_OFFSET=X_CHORD/2',
+          'G91',
+          'G0 X[X_OFFSET]',
+          'G4 P1',
+          setXZeroCommand,
+          '',
+          '; Y-Axis Probing',
+          'G91',
+          `G38.2 Y${probeDistance} F${probeFeedrateA}`,
+          'G0 Y-2',
+          `G38.2 Y5 F${probeFeedrateB}`,
+          'G90',
+          '%Y_TOP=posy',
+          'G91',
+          `G0 Y-${probeMajorRetract}`,
+          '',
+          `G38.2 Y-${probeDistance} F${probeFeedrateA}`,
+          'G0 Y2',
+          `G38.2 Y-5 F${probeFeedrateB}`,
+          'G90',
+          '%Y_BTM=posy',
+          '',
+          '; Calculate Y center and move there',
+          '%Y_CHORD=Y_TOP-Y_BTM',
+          '%Y_OFFSET=Y_CHORD/2',
+          'G91',
+          'G0 Y[Y_OFFSET]',
+          'G4 P1',
+          setYZeroCommand,
+          ''
+        )
+      }
+      if (axes === 'xyz') {
+        macroLines.push(
+          '; Calculate Z probe location using actual hole radius',
+          '%HOLE_RADIUS=Y_CHORD/2',
+          `%Z_PROBE_X=HOLE_RADIUS+${zProbeKeepout}`,
+          `%Z_PROBE_Y=HOLE_RADIUS+${zProbeKeepout}`,
+          '',
+          '; Z-Axis Probing',
+          `G0 Z${zProbe}`,
+          'G0 X[Z_PROBE_X] Y[Z_PROBE_Y]',
+          `G38.2 Z-${zProbe} F${probeFeedrateA}`,
+          'G0 Z2',
+          `G38.2 Z-5 F${probeFeedrateB}`,
+          setZZeroCommand,
+          `G0 Z${zFinal}`,
+          ''
+        )
+      }
+      macroLines.push(
+        '; Final: Move to origin',
+        'G90',
+        'G0 X0 Y0',
+        'G4 P1'
+      )
+    }
+
     const macroString = macroLines.join('\n')
     
     let isCleanedUp = false
@@ -1013,11 +1036,12 @@ export function ZeroingWizardTab({
   }, [probeStatus, currentWCS, setExtensions, method, connectedPort, sendGcode, isFirstToolChange, workPosition, jobId])
   
   const handleComplete = async () => {
-    // For touchplate, manual, bitzero, and custom (if Z axis), clear bitsetter reference if Z zero is being set
-    if (method.type === 'touchplate' || 
-        method.type === 'bitzero' || 
-        (method.type === 'manual' && method.axes.includes('z')) ||
-        (method.type === 'custom' && method.axes.includes('z'))) {
+    // Clear bitsetter reference when Z zero is being set (touchplate Z, bitzero Z/XYZ, manual/custom with Z)
+    const touchplateSetsZ = method.type === 'touchplate' && method.axes === 'z'
+    const bitzeroSetsZ = method.type === 'bitzero' && (method.axes === 'z' || method.axes === 'xyz')
+    const manualSetsZ = method.type === 'manual' && method.axes.includes('z')
+    const customSetsZ = method.type === 'custom' && method.axes.includes('z')
+    if (touchplateSetsZ || bitzeroSetsZ || manualSetsZ || customSetsZ) {
       await clearBitsetterReference(currentWCS)
     }
     
