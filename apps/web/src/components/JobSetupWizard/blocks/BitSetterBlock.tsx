@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { socketService } from '@/services/socket'
+import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import type { SetupBlockProps } from './types'
 import type { BitSetterConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -49,11 +49,13 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
       `G53 G0 X${method.position.x} Y${method.position.y}`,
       `G53 G0 Z${method.position.z}`,
     ]
-    commands.forEach((cmd, index) => {
-      setTimeout(() => sendGcode(cmd), index * 300)
-    })
-    setTimeout(() => setPhase('idle'), commands.length * 300 + 500)
-  }, [method, connectedPort, sendGcode])
+    runGcodeBatch({ gcode: commands.join('\n'), port: connectedPort })
+      .then(() => setPhase('idle'))
+      .catch((err) => {
+        setPhase('error')
+        setErrorMessage(err?.message ?? t('Navigation error'))
+      })
+  }, [method, connectedPort, t])
 
   const runProbe = useCallback(() => {
     if (!method || method.type !== 'bitsetter' || !connectedPort) return
@@ -94,14 +96,8 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
     setPhase('probing')
     setErrorMessage(null)
     probingRef.current = true
-    sendGcode(macroString)
-  }, [method, connectedPort, sendGcode])
-
-  useEffect(() => {
-    const handleFeederStatus = (...args: unknown[]) => {
-      if (!probingRef.current || phase !== 'probing') return
-      const data = args[0] as { queue?: number; pending?: boolean; hold?: boolean }
-      if (data.queue === 0 && !data.pending && !data.hold) {
+    runGcodeBatch({ gcode: macroString, port: connectedPort })
+      .then(() => {
         probingRef.current = false
         setPhase('storing')
         const zRef = workPosition.z
@@ -130,26 +126,15 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
           setPhase('complete')
           onComplete()
         }
-      }
-    }
-    socketService.on('feeder:status', handleFeederStatus)
-    return () => socketService.off('feeder:status', handleFeederStatus)
-  }, [phase, currentWCS, workPosition.z, storeBitsetterReference, sendGcode, onComplete, onError, t])
-
-  useEffect(() => {
-    if (phase !== 'probing') return
-    const handleRead = (...args: unknown[]) => {
-      const msg = String(args[0] ?? '')
-      if (msg.includes('error') || msg.includes('alarm') || msg.includes('Error')) {
+      })
+      .catch((err) => {
         probingRef.current = false
         setPhase('error')
-        setErrorMessage(msg.trim() || t('Probe error'))
-        onError(msg.trim() || t('Probe error'))
-      }
-    }
-    socketService.on('serialport:read', handleRead)
-    return () => socketService.off('serialport:read', handleRead)
-  }, [phase, t, onError])
+        const msg = err?.message ?? t('Probe error')
+        setErrorMessage(msg)
+        onError(msg)
+      })
+  }, [method, connectedPort, currentWCS, workPosition.z, storeBitsetterReference, sendGcode, onComplete, onError, t])
 
   const handleDebugNext = useCallback(() => {
     if (phase === 'idle') setPhase('navigate')

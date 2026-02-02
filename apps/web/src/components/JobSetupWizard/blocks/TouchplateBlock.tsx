@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
 import { buildSetZeroWithOffsetCommand } from '@/utils/gcode'
-import { socketService } from '@/services/socket'
+import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import type { SetupBlockProps } from './types'
 import type { TouchPlateConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -24,7 +24,7 @@ function getTouchplateAxis(method: TouchPlateConfig, blockKind?: string): 'x' | 
 export function TouchplateBlock({ methods, blockKind, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as TouchPlateConfig | undefined
-  const { currentWCS, sendGcode, clearBitsetterReference, connectedPort } = context
+  const { currentWCS, clearBitsetterReference, connectedPort } = context
   const axis = method ? getTouchplateAxis(method, blockKind) : 'z'
 
   const [status, setStatus] = useState<'idle' | 'probing' | 'complete' | 'error'>('idle')
@@ -59,39 +59,20 @@ export function TouchplateBlock({ methods, blockKind, context, onComplete, onErr
     setErrorMessage(null)
     probingRef.current = true
 
-    commands.forEach((cmd, index) => {
-      setTimeout(() => sendGcode(cmd), index * 100)
-    })
-  }, [method, axis, connectedPort, currentWCS, clearBitsetterReference, sendGcode])
-
-  useEffect(() => {
-    const handleFeederStatus = (...args: unknown[]) => {
-      if (!probingRef.current) return
-      const data = args[0] as { queue?: number; pending?: boolean; hold?: boolean }
-      if (data.queue === 0 && !data.pending && !data.hold) {
+    runGcodeBatch({ gcode: commands.join('\n'), port: connectedPort })
+      .then(() => {
         probingRef.current = false
         setStatus('complete')
         onComplete()
-      }
-    }
-    socketService.on('feeder:status', handleFeederStatus)
-    return () => socketService.off('feeder:status', handleFeederStatus)
-  }, [onComplete])
-
-  useEffect(() => {
-    if (status !== 'probing') return
-    const handleRead = (...args: unknown[]) => {
-      const msg = String(args[0] ?? '')
-      if (msg.includes('error') || msg.includes('alarm') || msg.includes('Error')) {
+      })
+      .catch((err) => {
         probingRef.current = false
         setStatus('error')
-        setErrorMessage(msg.trim() || t('Probe error'))
-        onError(msg.trim() || t('Probe error'))
-      }
-    }
-    socketService.on('serialport:read', handleRead)
-    return () => socketService.off('serialport:read', handleRead)
-  }, [status, t, onError])
+        const msg = err?.message ?? t('Probe error')
+        setErrorMessage(msg)
+        onError(msg)
+      })
+  }, [method, axis, connectedPort, currentWCS, clearBitsetterReference, onComplete, onError, t])
 
   if (!method || method.type !== 'touchplate') {
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>

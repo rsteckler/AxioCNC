@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { socketService } from '@/services/socket'
 import { useSetExtensionsMutation, useGetExtensionsQuery } from '@/services/api'
 import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
-import { parseConsoleMessage } from '@/routes/Setup/utils/consoleParser'
+import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import { ZeroingWizard } from './ZeroingWizard'
 import { getTotalSteps } from './wizards/utils'
 import { ManualZeroingWizard } from './wizards/ManualZeroingWizard'
@@ -64,7 +63,6 @@ export function ZeroingWizardTab({
   // Refs for reliable state detection (avoid stale closures)
   const isProbingRef = useRef(false)
   const probeStartedRef = useRef(false)
-  const probeCleanupRef = useRef<(() => void) | null>(null)
   
   // Extensions API for bitsetter toolReference storage
   const [setExtensions] = useSetExtensionsMutation()
@@ -103,50 +101,6 @@ export function ZeroingWizardTab({
   useEffect(() => {
     isProbingRef.current = probeStatus === 'probing'
   }, [probeStatus])
-  
-  // Listen to feeder:status events (always active) - PRIMARY method for detecting probe completion
-  useEffect(() => {
-    const handleFeederStatus = (...args: unknown[]) => {
-      // Only process if we're actively probing (use ref to avoid stale closure)
-      if (!isProbingRef.current || !probeStartedRef.current) {
-        return
-      }
-
-      const feederData = args[0] as {
-        queue?: number
-        pending?: boolean
-        hold?: boolean
-      }
-
-      // Probe complete when queue is empty and not pending and not on hold
-      // This matches the reliable state detection pattern
-      if (feederData.queue === 0 && !feederData.pending && !feederData.hold) {
-        if (probeStartedRef.current && isProbingRef.current) {
-          // Clear any fallback timeouts
-          if (probeCleanupRef.current) {
-            probeCleanupRef.current()
-          }
-          
-          // Mark probe as complete (or capturing for bitsetter first tool)
-          // The specific probe handler will set the appropriate status
-          // For bitsetter first tool, set to 'capturing' to trigger position capture
-          // For others, set to 'complete'
-          if (method.type === 'bitsetter' && isFirstToolChange) {
-            setProbeStatus('capturing')
-          } else {
-            setProbeStatus('complete')
-          }
-          probeStartedRef.current = false
-        }
-      }
-    }
-
-    socketService.on('feeder:status', handleFeederStatus)
-
-    return () => {
-      socketService.off('feeder:status', handleFeederStatus)
-    }
-  }, [probeStatus, method.type, isFirstToolChange])
   
   const totalSteps = getTotalSteps(method, isToolChange, isFirstToolChange, isJobPaused)
   const isLastStep = currentStep === totalSteps
@@ -215,13 +169,20 @@ export function ZeroingWizardTab({
       'G90', // Absolute mode
     ]
     
-    // Send commands sequentially
-    commands.forEach((cmd, index) => {
-      setTimeout(() => {
-        sendGcode(cmd)
-      }, index * 100) // Small delay between commands
-    })
-  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode])
+    setProbeStatus('probing')
+    setProbeError(null)
+    probeStartedRef.current = true
+    runGcodeBatch({ gcode: commands.join('\n'), port: connectedPort })
+      .then(() => {
+        probeStartedRef.current = false
+        setProbeStatus('complete')
+      })
+      .catch((err) => {
+        probeStartedRef.current = false
+        setProbeError(err?.message ?? t('Probe error'))
+        setProbeStatus('error')
+      })
+  }, [connectedPort, method, currentWCS, clearBitsetterReference, t])
   
   const handleBitsetterNavigate = useCallback(() => {
     if (!connectedPort || method.type !== 'bitsetter') {
@@ -246,13 +207,11 @@ export function ZeroingWizardTab({
       `G53 G0 Z${method.position.z}`, // Lower to bitsetter Z position (machine coordinates, tool should be above sensor)
     ]
     
-    // Send commands sequentially with delays to allow each command to complete
-    commands.forEach((cmd, index) => {
-      setTimeout(() => {
-        sendGcode(cmd)
-      }, index * 300) // Longer delay for navigation commands to allow movement to complete
+    runGcodeBatch({ gcode: commands.join('\n'), port: connectedPort }).catch((err) => {
+      setProbeError(err?.message ?? t('Navigation error'))
+      setProbeStatus('error')
     })
-  }, [connectedPort, method, sendGcode, isFirstToolChange, machinePosition])
+  }, [connectedPort, method, isFirstToolChange, machinePosition, t])
   
   const handleBitsetterProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'bitsetter') {
@@ -305,108 +264,28 @@ export function ZeroingWizardTab({
       ]
       
       const macroString = macroLines.join('\n')
-      
-      let isCleanedUp = false
-      let timeoutId: NodeJS.Timeout | null = null
-      
-      // Track errors via serialport:read events (only for error detection)
-      const recentMessages: string[] = []
-      const handleSerialRead = (...args: unknown[]) => {
-        if (isCleanedUp) return
-        
-        const message = args[0] as string
-        if (!message || typeof message !== 'string') return
-        
-        // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
-        recentMessages.push(message.trim())
-        if (recentMessages.length > 5) {
-          recentMessages.shift()
-        }
-        
-        const line = parseConsoleMessage(message, 'read')
-        
-        if (line.type === 'error' || line.type === 'alarm') {
-          // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
-          const failingLine = recentMessages.find(msg => msg.startsWith('> '))
-          
-          // Include the failing line in the error message if found
-          const errorMsg = failingLine
-            ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
-            : line.message
-          
-          setProbeError(errorMsg)
-          setProbeStatus('error')
-          probeStartedRef.current = false
-          cleanup()
-          return
-        }
-      }
-      
-      // Handle disconnections
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const handleDisconnect = (..._args: unknown[]) => {
-        if (isCleanedUp) return
-        setProbeError(t('Socket disconnected during probe sequence'))
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-      }
-      
-      const cleanup = () => {
-        if (isCleanedUp) return
-        isCleanedUp = true
-        
-        socketService.off('serialport:read', handleSerialRead)
-        socketService.off('disconnect', handleDisconnect)
-        
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          timeoutId = null
-        }
-      }
-      
-      // Store cleanup function in ref so feeder:status handler can call it
-      probeCleanupRef.current = cleanup
-      
-      // Set up listeners (only for error detection - completion detected via feeder:status)
-      socketService.on('serialport:read', handleSerialRead)
-      socketService.once('disconnect', handleDisconnect)
-      
-      try {
-        // Process macro string to strip comments from assignment lines (same as BitZero)
-        const processedMacro = macroString
-          .split(/\r?\n/)
-          .map((line: string) => {
-            const trimmed = line.trim()
-            // For assignment expression lines (starting with % but not %msg or %wait),
-            // strip comments using the same regex pattern as builtinCommand.match
-            if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
-              return trimmed.replace(/;.*$/, '').trim()
-            }
-            return trimmed
-          })
-          .filter((line: string) => line.length > 0) // Remove empty lines
-          .join('\n')
-        
-        // Send the macro via the 'gcode' command (same as BitZero)
-        sendGcode(processedMacro)
-        
-        // Set timeout as safety net (5 minutes max)
-        timeoutId = setTimeout(() => {
-          if (probeStatus === 'probing' && !isCleanedUp) {
-            setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
-            setProbeStatus('error')
-            probeStartedRef.current = false
-            cleanup()
+      const processedMacro = macroString
+        .split(/\r?\n/)
+        .map((line: string) => {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+            return trimmed.replace(/;.*$/, '').trim()
           }
-        }, 5 * 60 * 1000) // 5 minutes
-      } catch (error) {
-        console.error('BitSetter probe error:', error)
-        setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-      }
+          return trimmed
+        })
+        .filter((line: string) => line.length > 0)
+        .join('\n')
+      
+      runGcodeBatch({ gcode: processedMacro, port: connectedPort })
+        .then(() => {
+          probeStartedRef.current = false
+          setProbeStatus('capturing')
+        })
+        .catch((err) => {
+          probeStartedRef.current = false
+          setProbeError(err?.message ?? t('An error occurred during the probe sequence'))
+          setProbeStatus('error')
+        })
     } else {
       // Subsequent tool change: use macro approach
       if (!initialToolReference) {
@@ -421,7 +300,6 @@ export function ZeroingWizardTab({
       
       // Use stored machine coordinates (captured before navigating to bitsetter)
       if (!storedMachineCoordsRef.current) {
-        // Fallback: store current position if not already stored (shouldn't happen)
         storedMachineCoordsRef.current = { x: machinePosition.x, y: machinePosition.y }
       }
       
@@ -429,7 +307,6 @@ export function ZeroingWizardTab({
       const probeDistance = bitsetterMethod.probeDistance || 50
       const probeRapidFeedrate = bitsetterMethod.probeFeedrate || 200
       
-      // Build macro string with values inserted
       const macroLines = [
         '; Wait until the planner queue is empty',
         '%wait',
@@ -469,110 +346,30 @@ export function ZeroingWizardTab({
       ]
       
       const macroString = macroLines.join('\n')
-      
-      let isCleanedUp = false
-      let timeoutId: NodeJS.Timeout | null = null
-      
-      // Track errors via serialport:read events (only for error detection)
-      const recentMessages: string[] = []
-      const handleSerialRead = (...args: unknown[]) => {
-        if (isCleanedUp) return
-        
-        const message = args[0] as string
-        if (!message || typeof message !== 'string') return
-        
-        // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
-        recentMessages.push(message.trim())
-        if (recentMessages.length > 5) {
-          recentMessages.shift()
-        }
-        
-        const line = parseConsoleMessage(message, 'read')
-        
-        if (line.type === 'error' || line.type === 'alarm') {
-          // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
-          const failingLine = recentMessages.find(msg => msg.startsWith('> '))
-          
-          // Include the failing line in the error message if found
-          const errorMsg = failingLine
-            ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
-            : line.message
-          
-          setProbeError(errorMsg)
-          setProbeStatus('error')
-          probeStartedRef.current = false
-          cleanup()
-          return
-        }
-      }
-      
-      // Handle disconnections
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const handleDisconnect = (..._args: unknown[]) => {
-        if (isCleanedUp) return
-        setProbeError(t('Socket disconnected during probe sequence'))
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-      }
-      
-      const cleanup = () => {
-        if (isCleanedUp) return
-        isCleanedUp = true
-        
-        socketService.off('serialport:read', handleSerialRead)
-        socketService.off('disconnect', handleDisconnect)
-        
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          timeoutId = null
-        }
-      }
-      
-      // Store cleanup function in ref so feeder:status handler can call it
-      probeCleanupRef.current = cleanup
-      
-      // Set up listeners (only for error detection - completion detected via feeder:status)
-      socketService.on('serialport:read', handleSerialRead)
-      socketService.once('disconnect', handleDisconnect)
-      
-      try {
-        // Process macro string to strip comments from assignment lines (same as BitZero)
-        const processedMacro = macroString
-          .split(/\r?\n/)
-          .map((line: string) => {
-            const trimmed = line.trim()
-            // For assignment expression lines (starting with % but not %msg or %wait),
-            // strip comments using the same regex pattern as builtinCommand.match
-            if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
-              return trimmed.replace(/;.*$/, '').trim()
-            }
-            return trimmed
-          })
-          .filter((line: string) => line.length > 0) // Remove empty lines
-          .join('\n')
-        
-        // Send the macro via the 'gcode' command (same as BitZero)
-        sendGcode(processedMacro)
-        
-        // Set timeout as safety net (5 minutes max)
-        timeoutId = setTimeout(() => {
-          if (probeStatus === 'probing' && !isCleanedUp) {
-            setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
-            setProbeStatus('error')
-            probeStartedRef.current = false
-            cleanup()
+      const processedMacro = macroString
+        .split(/\r?\n/)
+        .map((line: string) => {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+            return trimmed.replace(/;.*$/, '').trim()
           }
-        }, 5 * 60 * 1000) // 5 minutes
-      } catch (error) {
-        console.error('BitSetter probe error:', error)
-        setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-      }
+          return trimmed
+        })
+        .filter((line: string) => line.length > 0)
+        .join('\n')
+      
+      runGcodeBatch({ gcode: processedMacro, port: connectedPort })
+        .then(() => {
+          probeStartedRef.current = false
+          setProbeStatus('complete')
+        })
+        .catch((err) => {
+          probeStartedRef.current = false
+          setProbeError(err?.message ?? t('An error occurred during the probe sequence'))
+          setProbeStatus('error')
+        })
     }
-  }, [connectedPort, method, machinePosition, isFirstToolChange, sendGcode, initialToolReference])
+  }, [connectedPort, method, machinePosition, isFirstToolChange, initialToolReference, t])
   
   const handleBitZeroProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'bitzero') {
@@ -701,109 +498,29 @@ export function ZeroingWizardTab({
     }
 
     const macroString = macroLines.join('\n')
-    
-    let isCleanedUp = false
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    // Track errors via serialport:read events (only for error detection)
-    const recentMessages: string[] = []
-    const handleSerialRead = (...args: unknown[]) => {
-      if (isCleanedUp) return
-      
-      const message = args[0] as string
-      if (!message || typeof message !== 'string') return
-      
-      // Keep a buffer of the last 5 messages to catch the failing line if it arrives before the error
-      recentMessages.push(message.trim())
-      if (recentMessages.length > 5) {
-        recentMessages.shift()
-      }
-      
-      const line = parseConsoleMessage(message, 'read')
-      
-      if (line.type === 'error' || line.type === 'alarm') {
-        // Look for the failing line in recent messages (format: "> G0 X0 (ln=15)")
-        const failingLine = recentMessages.find(msg => msg.startsWith('> '))
-        
-        // Include the failing line in the error message if found
-        const errorMsg = failingLine
-          ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
-          : line.message
-        
-        setProbeError(errorMsg)
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-        return
-      }
-    }
-    
-    // Handle disconnections
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleDisconnect = (..._args: unknown[]) => {
-      if (isCleanedUp) return
-      setProbeError(t('Socket disconnected during probe sequence'))
-      setProbeStatus('error')
-      probeStartedRef.current = false
-      cleanup()
-    }
-    
-    const cleanup = () => {
-      if (isCleanedUp) return
-      isCleanedUp = true
-      
-      socketService.off('serialport:read', handleSerialRead)
-      socketService.off('disconnect', handleDisconnect)
-      
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-    }
-    
-    // Store cleanup function in ref so feeder:status handler can call it
-    probeCleanupRef.current = cleanup
-    
-    // Set up listeners (only for error detection - completion detected via feeder:status)
-    socketService.on('serialport:read', handleSerialRead)
-    socketService.once('disconnect', handleDisconnect)
-    
-    try {
-      // Process macro string to strip comments from assignment lines (same as custom G-code)
-      const processedMacro = macroString
-        .split(/\r?\n/)
-        .map((line: string) => {
-          const trimmed = line.trim()
-          // For assignment expression lines (starting with % but not %msg or %wait),
-          // strip comments using the same regex pattern as builtinCommand.match
-          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
-            return trimmed.replace(/;.*$/, '').trim()
-          }
-          return trimmed
-        })
-        .filter((line: string) => line.length > 0) // Remove empty lines
-        .join('\n')
-      
-      // Send the macro via the 'gcode' command (same as custom G-code)
-      sendGcode(processedMacro)
-      
-      // Set timeout as safety net (5 minutes max)
-      timeoutId = setTimeout(() => {
-        if (probeStatus === 'probing' && !isCleanedUp) {
-          setProbeError(t('Probe sequence timed out. Please check the machine and try again.'))
-          setProbeStatus('error')
-          probeStartedRef.current = false
-          cleanup()
+    const processedMacro = macroString
+      .split(/\r?\n/)
+      .map((line: string) => {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+          return trimmed.replace(/;.*$/, '').trim()
         }
-      }, 5 * 60 * 1000) // 5 minutes
-    } catch (error) {
-      console.error('BitZero probe error:', error)
-      setProbeError(error instanceof Error ? error.message : t('An error occurred during the probe sequence'))
-      setProbeStatus('error')
-      probeStartedRef.current = false
-      cleanup()
-    }
-  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode, probeStatus])
+        return trimmed
+      })
+      .filter((line: string) => line.length > 0)
+      .join('\n')
+    
+    runGcodeBatch({ gcode: processedMacro, port: connectedPort })
+      .then(() => {
+        probeStartedRef.current = false
+        setProbeStatus('complete')
+      })
+      .catch((err) => {
+        probeStartedRef.current = false
+        setProbeError(err?.message ?? t('An error occurred during the probe sequence'))
+        setProbeStatus('error')
+      })
+  }, [connectedPort, method, currentWCS, clearBitsetterReference, t])
   
   const handleCustomProbe = useCallback(async () => {
     if (!connectedPort || method.type !== 'custom') {
@@ -814,112 +531,41 @@ export function ZeroingWizardTab({
       await clearBitsetterReference(currentWCS)
     }
     
-    setProbeStatus('probing')
-    setProbeError(null)
-    probeStartedRef.current = true
-    
     const customMethod = method as Extract<ZeroingMethod, { type: 'custom' }>
     const gcodeString = customMethod.gcode.trim()
     
     if (!gcodeString) {
       setProbeError(t('No G-code found. Please configure the custom G-code in settings.'))
       setProbeStatus('error')
-      probeStartedRef.current = false
       return
     }
     
-    let isCleanedUp = false
-    let timeoutId: NodeJS.Timeout | null = null
+    setProbeStatus('probing')
+    setProbeError(null)
+    probeStartedRef.current = true
     
-    // Track errors via serialport:read events (only for error detection)
-    const recentMessages: string[] = []
-    const handleSerialRead = (...args: unknown[]) => {
-      if (isCleanedUp) return
-      
-      const message = args[0] as string
-      if (!message || typeof message !== 'string') return
-      
-      recentMessages.push(message.trim())
-      if (recentMessages.length > 5) {
-        recentMessages.shift()
-      }
-      
-      const line = parseConsoleMessage(message, 'read')
-      
-      if (line.type === 'error' || line.type === 'alarm') {
-        const failingLine = recentMessages.find(msg => msg.startsWith('> '))
-        
-        const errorMsg = failingLine
-          ? `${line.message}\n\n${t('Failing line: {{line}}', { line: failingLine })}`
-          : line.message
-        
-        setProbeError(errorMsg)
-        setProbeStatus('error')
-        probeStartedRef.current = false
-        cleanup()
-        return
-      }
-    }
-    
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleDisconnect = (..._args: unknown[]) => {
-      if (isCleanedUp) return
-      setProbeError(t('Socket disconnected during G-code execution'))
-      setProbeStatus('error')
-      probeStartedRef.current = false
-      cleanup()
-    }
-    
-    const cleanup = () => {
-      if (isCleanedUp) return
-      isCleanedUp = true
-      
-      socketService.off('serialport:read', handleSerialRead)
-      socketService.off('disconnect', handleDisconnect)
-      
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-    }
-    
-    // Store cleanup function in ref so feeder:status handler can call it
-    probeCleanupRef.current = cleanup
-    
-    // Set up listeners (only for error detection - completion detected via feeder:status)
-    socketService.on('serialport:read', handleSerialRead)
-    socketService.once('disconnect', handleDisconnect)
-    
-    try {
-      const processedGcode = gcodeString
-        .split(/\r?\n/)
-        .map((line: string) => {
-          const trimmed = line.trim()
-          if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
-            return trimmed.replace(/;.*$/, '').trim()
-          }
-          return line
-        })
-        .join('\n')
-      
-      sendGcode(processedGcode)
-      
-      timeoutId = setTimeout(() => {
-        if (probeStatus === 'probing' && !isCleanedUp) {
-          setProbeError(t('G-code execution timed out. Please check the machine and verify completion manually.'))
-          setProbeStatus('error')
-          probeStartedRef.current = false
-          cleanup()
+    const processedGcode = gcodeString
+      .split(/\r?\n/)
+      .map((line: string) => {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('%') && !trimmed.match(/^%msg\b/i) && !trimmed.match(/^%wait\b/i)) {
+          return trimmed.replace(/;.*$/, '').trim()
         }
-      }, 5 * 60 * 1000) // 5 minutes (consistent with other probes)
-      
-    } catch (error) {
-      cleanup()
-      setProbeError(t('Error sending G-code: {{message}}', { message: error instanceof Error ? error.message : t('Unknown error') }))
-      setProbeStatus('error')
-      probeStartedRef.current = false
-    }
-  }, [connectedPort, method, currentWCS, clearBitsetterReference, sendGcode])
+        return line
+      })
+      .join('\n')
+    
+    runGcodeBatch({ gcode: processedGcode, port: connectedPort })
+      .then(() => {
+        probeStartedRef.current = false
+        setProbeStatus('complete')
+      })
+      .catch((err) => {
+        probeStartedRef.current = false
+        setProbeError(err?.message ?? t('Error sending G-code'))
+        setProbeStatus('error')
+      })
+  }, [connectedPort, method, currentWCS, clearBitsetterReference, t])
   
   // Monitor workPosition after probe to capture TOOL_REFERENCE
   const capturingPositionRef = useRef(false)

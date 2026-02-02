@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroCommand } from '@/utils/gcode'
-import { socketService } from '@/services/socket'
+import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import type { SetupBlockProps } from './types'
 import type { BitZeroConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -29,7 +29,7 @@ const TOTAL_STEPS = 3
 export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitZeroConfig | undefined
-  const { currentWCS, sendGcode, connectedPort } = context
+  const { currentWCS, connectedPort } = context
 
   /** Internal step 1–3; composer sees one block, we advance with Next/Back until step 3 completes. */
   const [step, setStep] = useState(1)
@@ -105,37 +105,20 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
     setStatus('probing')
     setErrorMessage(null)
     probingRef.current = true
-    sendGcode(macroString)
-  }, [method, connectedPort, currentWCS, sendGcode])
-
-  useEffect(() => {
-    const handleFeederStatus = (...args: unknown[]) => {
-      if (!probingRef.current) return
-      const data = args[0] as { queue?: number; pending?: boolean; hold?: boolean }
-      if (data.queue === 0 && !data.pending && !data.hold) {
+    runGcodeBatch({ gcode: macroString, port: connectedPort })
+      .then(() => {
         probingRef.current = false
         setStatus('complete')
         onComplete()
-      }
-    }
-    socketService.on('feeder:status', handleFeederStatus)
-    return () => socketService.off('feeder:status', handleFeederStatus)
-  }, [onComplete])
-
-  useEffect(() => {
-    if (status !== 'probing') return
-    const handleRead = (...args: unknown[]) => {
-      const msg = String(args[0] ?? '')
-      if (msg.includes('error') || msg.includes('alarm') || msg.includes('Error')) {
+      })
+      .catch((err) => {
         probingRef.current = false
         setStatus('error')
-        setErrorMessage(msg.trim() || t('Probe error'))
-        onError(msg.trim() || t('Probe error'))
-      }
-    }
-    socketService.on('serialport:read', handleRead)
-    return () => socketService.off('serialport:read', handleRead)
-  }, [status, t, onError])
+        const msg = err?.message ?? t('Probe error')
+        setErrorMessage(msg)
+        onError(msg)
+      })
+  }, [method, connectedPort, currentWCS, onComplete, onError, t])
 
   if (!method || method.type !== 'bitzero' || (method.axes !== 'xy' && method.axes !== 'xyz')) {
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>

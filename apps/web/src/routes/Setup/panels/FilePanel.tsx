@@ -6,13 +6,13 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
 import { useGetWorkfilesQuery, useUploadWorkfileMutation, useLazyGetWorkfileContentQuery, useGetControllersQuery, useGetGcodeQuery } from '@/services/api'
 import { socketService } from '@/services/socket'
-import { useGcodeCommand } from '@/hooks'
+import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import { calculateOutline } from '@/lib/gcodeOutline'
 import { useNotifications } from '@/hooks/useNotifications'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { PanelProps } from '../types'
 
-export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition, machineStatus }: PanelProps) {
+export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition }: PanelProps) {
   const { t } = useTranslation()
   // Get connected port from controllers (may be null if not connected)
   const { data: controllers } = useGetControllersQuery()
@@ -24,12 +24,8 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
   const [isOutlining, setIsOutlining] = useState(false)
   const [outlineError, setOutlineError] = useState<string | null>(null)
   const [showOutlineConfirm, setShowOutlineConfirm] = useState(false)
-  const outliningStartedRef = useRef(false) // Track if we've started outlining
-  const isOutliningRef = useRef(false) // Track outlining state in ref for event handlers
-  const previousMachineStatusRef = useRef<string | undefined>(undefined) // Track previous machine status
-  const outlineFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Fallback timeout for completion
+  const outliningStartedRef = useRef(false)
   const [getWorkfileContent] = useLazyGetWorkfileContentQuery()
-  const { sendGcode } = useGcodeCommand(connectedPort)
   const { showErrorNotification, showInfoNotification } = useNotifications()
 
   const { data: workfilesData, isLoading: isLoadingFiles } = useGetWorkfilesQuery()
@@ -260,65 +256,24 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
         bounds: outlineResult.bounds,
       })
 
-      // Mark that we started outlining
       outliningStartedRef.current = true
-      previousMachineStatusRef.current = machineStatus
-      const totalCommands = outlineResult.commands.length
-      const wasIdleAtStart = machineStatus !== 'running' && machineStatus !== 'hold'
-      
-      console.log('[FilePanel] Starting outline:', {
-        totalCommands,
-        wasIdleAtStart,
-        machineStatus,
-        hullPoints: outlineResult.hullPoints.length,
-      })
-      
-      // Send all commands as a single multi-line G-code string
-      // The feeder will queue them and send them one at a time, waiting for "ok" responses
-      // This keeps the planner buffer full and eliminates jittery behavior
       const outlineGcode = outlineResult.commands.join('\n')
-      sendGcode(outlineGcode)
 
-      // Show start notification immediately
       showInfoNotification(t('Outline Started'), t('Tracing outline with {{count}} points', { count: outlineResult.hullPoints.length }))
-      
-      // Set a long fallback timeout as last resort safety net only
-      // This should NOT fire if detection methods are working properly
-      // Set to a very long time so we can see if detection is actually working
-      let totalDistance = 0
-      for (let i = 0; i < outlineResult.hullPoints.length; i++) {
-        const p1 = outlineResult.hullPoints[i]
-        const p2 = outlineResult.hullPoints[(i + 1) % outlineResult.hullPoints.length]
-        const dx = p2.x - p1.x
-        const dy = p2.y - p1.y
-        totalDistance += Math.sqrt(dx * dx + dy * dy)
-      }
-      // Estimate: rapid speed ~2000-5000 mm/min, use conservative 2000 mm/min = 33.3 mm/s
-      const executionTime = (totalDistance / 2000) * 60 * 1000 // Convert to ms
-      const fallbackTimeout = executionTime + 10000 // 10 second buffer - should not fire if detection works
-      
-      console.log('[FilePanel] Setting fallback timeout (should not fire if detection works):', {
-        executionTime,
-        totalDistance: totalDistance.toFixed(2),
-        fallbackTimeout,
-        wasIdleAtStart,
-      })
-      
-      const fallbackTimeoutId = setTimeout(() => {
-        console.warn('[FilePanel] WARNING: Fallback timeout fired - detection methods failed!', {
-          machineStatus,
-          wasIdleAtStart,
-        })
-        if (outliningStartedRef.current) {
+
+      runGcodeBatch({ gcode: outlineGcode, port: connectedPort, waitForIdle: true })
+        .then(() => {
           setIsOutlining(false)
           outliningStartedRef.current = false
-          showInfoNotification(t('Outline Complete'), t('Outline tracing finished (timeout)'))
-        }
-        outlineFallbackTimeoutRef.current = null
-      }, fallbackTimeout)
-      
-      outlineFallbackTimeoutRef.current = fallbackTimeoutId
-
+          showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
+        })
+        .catch((err) => {
+          setIsOutlining(false)
+          outliningStartedRef.current = false
+          const errorMessage = err?.message ?? t('Outline tracing failed')
+          setOutlineError(errorMessage)
+          showErrorNotification(t('Outline Error'), errorMessage)
+        })
     } catch (error) {
       console.error('[FilePanel] Outline error:', error)
       const errorMessage = error instanceof Error ? error.message : t('Failed to generate outline')
@@ -326,13 +281,8 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       showErrorNotification(t('Outline Error'), errorMessage)
       setIsOutlining(false)
       outliningStartedRef.current = false
-      // Clear fallback timeout on error
-      if (outlineFallbackTimeoutRef.current) {
-        clearTimeout(outlineFallbackTimeoutRef.current)
-        outlineFallbackTimeoutRef.current = null
-      }
     }
-  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, machineStatus, getWorkfileContent, sendGcode, onFlashStatus, showErrorNotification, showInfoNotification])
+  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, getWorkfileContent, onFlashStatus, showErrorNotification, showInfoNotification, t])
 
   // Handle outline button click - show confirmation dialog
   const handleOutline = useCallback(() => {
@@ -351,131 +301,6 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
 
     setShowOutlineConfirm(true)
   }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, onFlashStatus, showErrorNotification])
-
-  // Monitor machine status to detect when outline is complete
-  // Primary: Detect running -> idle transition OR idle -> running -> idle
-  React.useEffect(() => {
-    if (!isOutlining || !outliningStartedRef.current) {
-      // Update previous status even when not outlining
-      previousMachineStatusRef.current = machineStatus
-      return
-    }
-
-    const previousStatus = previousMachineStatusRef.current
-    const currentStatus = machineStatus
-    
-    console.log('[FilePanel] Machine status check:', {
-      previousStatus,
-      currentStatus,
-      isOutlining,
-      outliningStarted: outliningStartedRef.current,
-    })
-    
-    // Check if machine transitioned from 'running' to a non-running state
-    // This indicates the outline commands have finished executing
-    const wasRunning = previousStatus === 'running'
-    const isNotRunning = currentStatus !== 'running' && currentStatus !== 'hold'
-    const isConnectedPostHome = currentStatus === 'connected_post_home' // This is the "idle" state
-    
-    // Detection case 1: Machine was running and now is not running (idle/connected_post_home/etc)
-    if (wasRunning && isNotRunning) {
-      console.log('[FilePanel] Machine status indicates outline complete (running -> not running):', {
-        previousStatus,
-        currentStatus,
-      })
-      
-      // Clear fallback timeout since we detected completion via status
-      if (outlineFallbackTimeoutRef.current) {
-        clearTimeout(outlineFallbackTimeoutRef.current)
-        outlineFallbackTimeoutRef.current = null
-      }
-      
-      // Complete immediately - machine has finished executing
-      if (outliningStartedRef.current) {
-        setIsOutlining(false)
-        outliningStartedRef.current = false
-        showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
-      }
-      
-      previousMachineStatusRef.current = currentStatus
-      return
-    }
-    
-    // Detection case 2: Machine was connected_post_home (idle), went to running, and is now connected_post_home again
-    // This handles the case where machine starts idle (rapid moves might not trigger running state)
-    if (isConnectedPostHome && previousStatus === 'running') {
-      console.log('[FilePanel] Machine status indicates outline complete (connected_post_home -> running -> connected_post_home):', {
-        previousStatus,
-        currentStatus,
-      })
-      
-      // Clear fallback timeout since we detected completion via status
-      if (outlineFallbackTimeoutRef.current) {
-        clearTimeout(outlineFallbackTimeoutRef.current)
-        outlineFallbackTimeoutRef.current = null
-      }
-      
-      // Complete immediately - machine has finished executing
-      if (outliningStartedRef.current) {
-        setIsOutlining(false)
-        outliningStartedRef.current = false
-        showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
-      }
-      
-      previousMachineStatusRef.current = currentStatus
-      return
-    }
-    
-    // Update previous status
-    previousMachineStatusRef.current = currentStatus
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineStatus, isOutlining, showInfoNotification])
-
-  // Sync isOutlining ref with state so event handlers can access current value
-  React.useEffect(() => {
-    isOutliningRef.current = isOutlining
-  }, [isOutlining])
-
-  // Monitor feeder status as secondary detection method
-  // Listen to feeder:status socket events (now that backend emits them properly)
-  // Keep listener always active to avoid missing events
-  React.useEffect(() => {
-    const handleFeederStatus = (...args: unknown[]) => {
-      // Only process if we're actively outlining (use ref to avoid stale closure)
-      if (!isOutliningRef.current || !outliningStartedRef.current) {
-        return
-      }
-
-      const feederData = args[0] as {
-        queue?: number
-        pending?: boolean
-        hold?: boolean
-      }
-
-      // Outline complete when queue is empty and not pending and not on hold
-      // This means all commands have been sent and acknowledged
-      if (feederData.queue === 0 && !feederData.pending && !feederData.hold) {
-        // Only complete if machine status hasn't already done so
-        if (outliningStartedRef.current) {
-          // Clear fallback timeout since we detected completion via feeder status
-          if (outlineFallbackTimeoutRef.current) {
-            clearTimeout(outlineFallbackTimeoutRef.current)
-            outlineFallbackTimeoutRef.current = null
-          }
-          
-          setIsOutlining(false)
-          outliningStartedRef.current = false
-          showInfoNotification(t('Outline Complete'), t('Outline tracing finished'))
-        }
-      }
-    }
-
-    socketService.on('feeder:status', handleFeederStatus)
-
-    return () => {
-      socketService.off('feeder:status', handleFeederStatus)
-    }
-  }, [showInfoNotification])
 
   // Listen for gcode:load and gcode:unload events to track loaded file
   React.useEffect(() => {

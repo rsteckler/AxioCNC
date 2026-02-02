@@ -6,6 +6,8 @@ import { LoadingState } from '@/components/LoadingState'
 import { EmptyState } from '@/components/EmptyState'
 import { useGetMacrosQuery, type Macro } from '@/services/api'
 import { useGcodeCommand } from '@/hooks'
+import { useNotifications } from '@/hooks/useNotifications'
+import { waitForFeederEmpty } from '@/utils/runGcodeBatch'
 import { trackFeatureUsed } from '@/services/analytics'
 import { 
   parseMacroParameters, 
@@ -43,6 +45,7 @@ export function MacrosPanel({
   const { t } = useTranslation()
   const { data: macrosData, isLoading } = useGetMacrosQuery()
   const { sendCommand } = useGcodeCommand(connectedPort)
+  const { showInfoNotification, showErrorNotification } = useNotifications()
   const [confirmMacro, setConfirmMacro] = useState<Macro | null>(null)
   const [parameterValues, setParameterValues] = useState<Record<string, ParameterInputState>>({})
   
@@ -137,7 +140,15 @@ export function MacrosPanel({
     // and execute it via the 'gcode' command handler with the context for variable substitution
     sendCommand('macro:run', confirmMacro.id, context)
     setConfirmMacro(null)
-  }, [confirmMacro, connectedPort, macroParameters, parameterValues, sendCommand])
+
+    waitForFeederEmpty({ port: connectedPort })
+      .then(() => {
+        showInfoNotification(t('Macro complete'), t('Done'))
+      })
+      .catch((err) => {
+        showErrorNotification(t('Macro error'), err?.message ?? t('Macro execution failed or was interrupted'))
+      })
+  }, [confirmMacro, connectedPort, macroParameters, parameterValues, sendCommand, showInfoNotification, showErrorNotification, t])
   
   if (isLoading) {
     return <LoadingState message={t('Loading macros...')} className="py-8" />
