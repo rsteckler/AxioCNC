@@ -12,7 +12,7 @@ import {
   isBitSetterMethodId,
 } from './zeroingStrategyOptions'
 
-export type SetupSlotKind = 'work_xy' | 'work_z' | 'bitsetter'
+export type SetupSlotKind = 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter'
 
 /** One execution slot: either "ask at runtime" or resolved method IDs. */
 export interface SetupSlot {
@@ -74,20 +74,38 @@ export function deriveSetupPlan(
   const showBitSetterStep = isBitSetterMethodId(methods, strategies.toolChangePolicy)
 
   const slots: SetupSlot[] = []
+  const workXYIds = strategies.workXYZero
+  const workZIds = strategies.workZZero
 
-  // Slot 1: Work XY zero
-  slots.push({
-    kind: 'work_xy',
-    ask: askXY,
-    methodIds: askXY ? [] : [...strategies.workXYZero],
-  })
-
-  // Slot 2: Work Z zero
-  slots.push({
-    kind: 'work_z',
-    ask: askZ,
-    methodIds: askZ ? [] : [...strategies.workZZero],
-  })
+  // When both XY and Z are single BitZero methods, use one combined work_xyz slot
+  if (
+    !askXY &&
+    !askZ &&
+    workXYIds.length === 1 &&
+    workZIds.length === 1
+  ) {
+    const xyMethod = methods.find((m) => m.enabled && m.id === workXYIds[0])
+    const zMethod = methods.find((m) => m.enabled && m.id === workZIds[0])
+    const xyIsBitZero = xyMethod?.type === 'bitzero' && (xyMethod.axes === 'xy' || xyMethod.axes === 'xyz')
+    const zIsBitZero = zMethod?.type === 'bitzero' && (zMethod.axes === 'z' || zMethod.axes === 'xyz')
+    if (xyIsBitZero && zIsBitZero) {
+      slots.push({ kind: 'work_xyz', ask: false, methodIds: [workXYIds[0], workZIds[0]] })
+    } else {
+      slots.push({ kind: 'work_xy', ask: askXY, methodIds: [...workXYIds] })
+      slots.push({ kind: 'work_z', ask: askZ, methodIds: [...workZIds] })
+    }
+  } else {
+    slots.push({
+      kind: 'work_xy',
+      ask: askXY,
+      methodIds: askXY ? [] : [...workXYIds],
+    })
+    slots.push({
+      kind: 'work_z',
+      ask: askZ,
+      methodIds: askZ ? [] : [...workZIds],
+    })
+  }
 
   // Slot 3: BitSetter (establish tool reference) — only when tool-change policy is BitSetter
   if (showBitSetterStep) {
@@ -131,6 +149,7 @@ export function resolveMethods(
 export type SetupBlockKind =
   | 'bitzero_xy'
   | 'bitzero_z'
+  | 'bitzero_xyz'
   | 'touchplate_x'
   | 'touchplate_y'
   | 'touchplate_z'
@@ -158,7 +177,14 @@ export function slotToBlocks(
   const blocks: SetupBlock[] = []
   const kind = slot.kind
 
-  if (kind === 'work_xy') {
+  if (kind === 'work_xyz') {
+    // Combined BitZero XYZ: two methods (XY + Z) or one method (axes xyz)
+    if (resolved.length >= 1) {
+      const xyMethod = resolved.find((m) => m.type === 'bitzero' && (m.axes === 'xy' || m.axes === 'xyz')) ?? resolved[0]
+      const zMethod = resolved.find((m) => m.type === 'bitzero' && (m.axes === 'z' || m.axes === 'xyz')) ?? resolved[0]
+      blocks.push({ kind: 'bitzero_xyz', methods: [xyMethod, zMethod] })
+    }
+  } else if (kind === 'work_xy') {
     for (const m of resolved) {
       if (m.type === 'bitzero' && (m.axes === 'xy' || m.axes === 'xyz')) {
         blocks.push({ kind: 'bitzero_xy', methods: [m] })

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
 import { buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
+import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 import type { TouchPlateConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -21,7 +22,7 @@ function getTouchplateAxis(method: TouchPlateConfig, blockKind?: string): 'x' | 
  * Touchplate block: single-axis probe (X, Y, or Z). Sends probe + set zero + retract; completes on feeder idle.
  * When method.axes is xyz, blockKind (touchplate_x/y/z) determines which axis to run.
  */
-export function TouchplateBlock({ methods, blockKind, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
+export function TouchplateBlock({ methods, blockKind, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as TouchPlateConfig | undefined
   const { currentWCS, clearBitsetterReference, connectedPort } = context
@@ -80,33 +81,37 @@ export function TouchplateBlock({ methods, blockKind, context, onComplete, onErr
 
   const axisLabel = axis.toUpperCase()
 
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        {t('Touch plate ({{axis}}): place the plate and run the probe.', { axis: axisLabel })}
-      </p>
+  const footerRight = (
+    <>
+      {footerRightExtra}
       {status === 'idle' && (
-        <Button onClick={runProbe}>
-          {t('Run {{axis}} probe', { axis: axisLabel })}
-        </Button>
-      )}
-      {status === 'probing' && (
-        <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
-      )}
-      {status === 'complete' && (
-        <p className="text-sm text-green-600 dark:text-green-400">{t('Done.')}</p>
-      )}
-      {status === 'error' && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{errorMessage ?? t('Probe error')}</span>
-        </div>
+        <Button onClick={runProbe}>{t('Run {{axis}} probe', { axis: axisLabel })}</Button>
       )}
       {debugAllowNext && status !== 'complete' && status !== 'error' && (
-        <Button variant="secondary" size="sm" onClick={onComplete}>
-          {t('Next (debug)')}
-        </Button>
+        <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
       )}
-    </div>
+    </>
+  )
+
+  return (
+    <SetupBlockLayout footerLeft={footerLeftExtra} footerRight={footerRight}>
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {t('Touch plate ({{axis}}): place the plate and run the probe.', { axis: axisLabel })}
+        </p>
+        {status === 'probing' && (
+          <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
+        )}
+        {status === 'complete' && (
+          <p className="text-sm text-green-600 dark:text-green-400">{t('Done.')}</p>
+        )}
+        {status === 'error' && (
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{errorMessage ?? t('Probe error')}</span>
+          </div>
+        )}
+      </div>
+    </SetupBlockLayout>
   )
 }

@@ -28,6 +28,7 @@ export function ToolChangeTab({
   machinePosition,
   workPosition,
   currentWCS = 'G54',
+  probeContact = false,
 }: ToolChangeTabProps) {
   const { t } = useTranslation()
   const { toolChangeMethod, completeToolChange, triggerToolChange } = useToolChange()
@@ -66,6 +67,7 @@ export function ToolChangeTab({
       machinePosition: machinePosition ?? { x: 0, y: 0, z: 0 },
       workPosition: workPosition ?? { x: 0, y: 0, z: 0 },
       storeBitsetterReference,
+      probeContact,
     }),
     [
       connectedPort,
@@ -75,6 +77,7 @@ export function ToolChangeTab({
       machinePosition,
       workPosition,
       storeBitsetterReference,
+      probeContact,
     ]
   )
 

@@ -4,6 +4,7 @@ import { AlertCircle, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
+import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 import type { BitZeroConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -21,17 +22,22 @@ function processMacro(macro: string): string {
     .join('\n')
 }
 
-const TOTAL_STEPS = 3
-
 /**
- * BitZero XY block: multi-step (Place probe → Position tool → Run probe). Calls onComplete only after probe step finishes.
+ * BitZero XY block: multi-step (optional verify probe → Place probe → Position tool → Run probe). Calls onComplete only after probe step finishes.
+ * Step 1 (verify probe) only shows when method.requireCheck is true (same as old wizard).
  */
-export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAllowNext }: SetupBlockProps) {
+export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitZeroConfig | undefined
   const { currentWCS, connectedPort } = context
 
-  /** Internal step 1–3; composer sees one block, we advance with Next/Back until step 3 completes. */
+  /** When false, skip step 1 (verify); 3 steps total (Place, Position, Run). When true, 4 steps (Verify, Place, Position, Run). */
+  const showVerifyStep = method?.requireCheck !== false
+  const totalSteps = showVerifyStep ? 4 : 3
+  /** Step index for Run probe (last step). */
+  const runStep = showVerifyStep ? 4 : 3
+
+  /** Internal step 1–totalSteps; we advance with Next/Back until run step completes. */
   const [step, setStep] = useState(1)
   const [status, setStatus] = useState<'idle' | 'probing' | 'complete' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -109,7 +115,6 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
       .then(() => {
         probingRef.current = false
         setStatus('complete')
-        onComplete()
       })
       .catch((err) => {
         probingRef.current = false
@@ -124,20 +129,92 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
 
-  const { machinePosition } = context
+  const { machinePosition, probeContact } = context
   const canGoBack = step > 1
 
-  return (
-    <div className="space-y-4">
-      {/* Step indicator */}
-      <p className="text-xs text-muted-foreground">
-        {t('Step {{current}} of {{total}}', { current: step, total: TOTAL_STEPS })}
-      </p>
+  const stepTitles: Record<number, string> = {
+    1: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
+    2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
+    3: showVerifyStep ? t('Position Tool in Hole') : t('Run XY Probe'),
+    4: t('Run XY Probe'),
+  }
+  const title = stepTitles[step]
 
-      {/* Step 1: Place BitZero on corner */}
-      {step === 1 && (
+  const onBack = (step >= 2 && (step < runStep || (step === runStep && canGoBack && status !== 'probing')))
+    ? () => setStep(step - 1)
+    : undefined
+  const footerLeft = step === 1 ? footerLeftExtra : undefined
+
+  const nextButton = step < runStep
+    ? { onClick: () => setStep(step + 1) }
+    : step === runStep
+      ? { onClick: onComplete, disabled: status !== 'complete' }
+      : undefined
+
+  const footerRightExtraContent = (
+    <>
+      {footerRightExtra}
+      {debugAllowNext && step < runStep && (
+        <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
+      )}
+      {debugAllowNext && step === runStep && status !== 'complete' && status !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
+      )}
+    </>
+  )
+
+  return (
+    <SetupBlockLayout
+      title={title}
+      currentStep={step}
+      totalSteps={totalSteps}
+      onBack={onBack}
+      footerLeft={footerLeft}
+      nextButton={nextButton}
+      footerRight={footerRightExtraContent}
+    >
+      {/* Step 1 (only when requireCheck): Verify BitZero circuit — connect lead, touch probe to tool */}
+      {showVerifyStep && step === 1 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">{t('Place BitZero on Corner')}</h3>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              {t('Verify that the magnetic conductor is positively attached to the tool and that the circuit is functioning correctly.')}
+            </p>
+            <p>
+              {t('This ensures the probe circuit is working before starting the zeroing process.')}
+            </p>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              {t('Attach the magnetic conductor to the tool, then lift the BitZero probe until it touches the tool. If the probe triggers correctly, the magnetic conductor is properly attached and the circuit is functioning.')}
+            </p>
+          </div>
+          <div className={`p-3 rounded-lg border ${
+            probeContact
+              ? 'bg-green-500/10 border-green-500/30'
+              : 'bg-muted/50 border-border'
+          }`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${
+                probeContact ? 'bg-green-500' : 'bg-muted'
+              }`} />
+              <span className="text-sm font-medium">
+                {t('Probe Status')}: {probeContact ? t('Contact Detected') : t('No Contact')}
+              </span>
+            </div>
+            {probeContact && (
+              <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                {t('The probe circuit is working correctly. You can proceed to the next step.')}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 2 (or step 1 when verify skipped): Place BitZero on corner */}
+      {((showVerifyStep && step === 2) || (!showVerifyStep && step === 1)) && (
+        <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
               {t('Place the BitZero probe on the corner of your workpiece, making sure it\'s secure and flat.')}
@@ -152,19 +229,12 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
               <strong>{t('Important')}:</strong> {t('Ensure the BitZero is securely mounted and flat against the workpiece. The probe must not move during the zeroing sequence.')}
             </p>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setStep(2)}>{t('Next')}</Button>
-            {debugAllowNext && (
-              <Button variant="secondary" size="sm" onClick={() => setStep(2)}>{t('Next (debug)')}</Button>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Step 2: Position tool in hole */}
-      {step === 2 && (
+      {/* Step 3 (or step 2 when verify skipped): Position tool in hole */}
+      {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">{t('Position Tool in Hole')}</h3>
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
               {t('Use the jog controls to carefully position the tool into the conductive hole in the bottom left corner of the BitZero probe.')}
@@ -185,7 +255,7 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
               </ul>
             </div>
           </div>
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+          <div className="bg-muted/50 rounded-lg p-3 space-y-2 mb-4">
             <div className="text-xs font-medium text-muted-foreground">{t('Current Machine Position')}:</div>
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
@@ -202,67 +272,51 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setStep(1)}>{t('Back')}</Button>
-            <Button onClick={() => setStep(3)}>{t('Next')}</Button>
-            {debugAllowNext && (
-              <Button variant="secondary" size="sm" onClick={() => setStep(3)}>{t('Next (debug)')}</Button>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Step 3: Run XY probe */}
-      {step === 3 && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold">{t('Run XY Probe')}</h3>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p>
-              {t('Press the probe button below to start the XY probe sequence. The tool will:')}
-            </p>
-            <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>{t('Probe right until contact, then probe left to find X edges and calculate X center')}</li>
-              <li>{t('Probe top and bottom to find Y edges and calculate Y center')}</li>
-            </ol>
-            <p>
-              {t('After probing, XY zero will be set at the corner of your workpiece.')}
-            </p>
-          </div>
-          {status === 'idle' && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.')}
+      {/* Step 4 (or step 3 when verify skipped): Run XY probe */}
+      {step === runStep && (
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                {t('Press the probe button below to start the XY probe sequence. The tool will:')}
+              </p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>{t('Probe right until contact, then probe left to find X edges and calculate X center')}</li>
+                <li>{t('Probe top and bottom to find Y edges and calculate Y center')}</li>
+              </ol>
+              <p>
+                {t('After probing, XY zero will be set at the corner of your workpiece.')}
               </p>
             </div>
-          )}
-          {status === 'idle' && (
-            <Button onClick={runProbe}>
-              {t('Run XY probe')}
-            </Button>
-          )}
-          {status === 'probing' && (
-            <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
-          )}
-          {status === 'complete' && (
-            <p className="text-sm text-green-600 dark:text-green-400">{t('Done. XY zero set at the corner.')}</p>
-          )}
-          {status === 'error' && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{errorMessage ?? t('Probe error')}</span>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            {canGoBack && status !== 'probing' && (
-              <Button variant="outline" onClick={() => setStep(2)}>{t('Back')}</Button>
+            {status === 'idle' && (
+              <>
+                <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                    <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.')}
+                  </p>
+                </div>
+                <Button onClick={runProbe} size="lg" className="w-full sm:w-auto">
+                  {t('Run XY probe')}
+                </Button>
+              </>
             )}
-            {debugAllowNext && status !== 'complete' && status !== 'error' && (
-              <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
+            {status === 'probing' && (
+              <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
+            )}
+            {status === 'complete' && (
+              <p className="text-sm text-green-600 dark:text-green-400">{t('Done. XY zero set at the corner.')}</p>
+            )}
+            {status === 'error' && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{errorMessage ?? t('Probe error')}</span>
+              </div>
             )}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+    </SetupBlockLayout>
   )
 }

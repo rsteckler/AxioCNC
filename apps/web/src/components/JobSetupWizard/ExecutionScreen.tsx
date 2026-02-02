@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
 import type { SetupBlock, SetupPlan } from '@/utils/setupPlan'
 import { slotToBlocks } from '@/utils/setupPlan'
-import { RenderSetupBlock } from './blocks'
+import { RenderSetupBlock, SetupBlockBackButton } from './blocks'
 import type { BlockRunContext } from './blocks'
 import {
   getWorkXYZeroOptions,
@@ -21,6 +21,13 @@ import {
 } from '@/components/ui/select'
 import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
+export interface ExecutionStepInfo {
+  slotIndex: number
+  slotKind: 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter' | undefined
+  isAskSlot: boolean
+  allDone: boolean
+}
+
 export interface ExecutionScreenProps {
   /** Plan with slots (already using overrides from Screen 1). */
   plan: SetupPlan
@@ -28,6 +35,16 @@ export interface ExecutionScreenProps {
   context: BlockRunContext
   onComplete: () => void
   onClose: () => void
+  /** Go back to plan summary (dialog only). */
+  onBack?: () => void
+  /** Notify parent of current step for header title/progress. */
+  onStepChange?: (info: ExecutionStepInfo) => void
+  /** Current step index (1-based) for block progress bar. */
+  stepIndex?: number
+  /** Total steps for block progress bar. */
+  totalSteps?: number
+  /** When true, rendered inside tab (no dialog footer layout). */
+  embedded?: boolean
 }
 
 /**
@@ -39,6 +56,11 @@ export function ExecutionScreen({
   context,
   onComplete,
   onClose,
+  onBack,
+  onStepChange,
+  stepIndex = 1,
+  totalSteps = 1,
+  embedded = false,
 }: ExecutionScreenProps) {
   const { t } = useTranslation()
   const [slotIndex, setSlotIndex] = useState(0)
@@ -56,6 +78,17 @@ export function ExecutionScreen({
 
   const slots = plan.slots
   const currentSlot = slots[slotIndex]
+  const isAskSlot = currentSlot?.ask && resolvedAskValue === null
+  const allDone = slotIndex >= slots.length
+
+  useEffect(() => {
+    onStepChange?.({
+      slotIndex,
+      slotKind: currentSlot?.kind,
+      isAskSlot,
+      allDone,
+    })
+  }, [slotIndex, currentSlot?.kind, isAskSlot, allDone, onStepChange])
 
   const blocksForCurrentSlot = useMemo((): SetupBlock[] => {
     if (!currentSlot) return []
@@ -66,9 +99,7 @@ export function ExecutionScreen({
   }, [currentSlot, resolvedAskValue, methods])
 
   const currentBlock = blocksForCurrentSlot[blockIndex]
-  const isAskSlot = currentSlot?.ask && resolvedAskValue === null
   const hasBlocks = blocksForCurrentSlot.length > 0
-  const allDone = slotIndex >= slots.length
 
   const handleBlockComplete = useCallback(() => {
     if (blockIndex < blocksForCurrentSlot.length - 1) {
@@ -86,8 +117,35 @@ export function ExecutionScreen({
   const workXYOptions = getWorkXYZeroOptions(methods, t)
   const workZOptions = getWorkZZeroOptions(methods, t)
 
-  if (allDone) {
+  /** Dialog: scrollable content + anchored footer with Back (left) and actions (right). */
+  const withDialogLayout = (content: React.ReactNode, footerContent: React.ReactNode) => {
+    if (embedded) {
+      return (
+        <>
+          {content}
+          <div className="flex justify-end gap-2 pt-4">{footerContent}</div>
+        </>
+      )
+    }
     return (
+      <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 overflow-auto py-2 px-2">
+          {content}
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-2 pt-4 border-t">
+          <div>
+            {onBack ? (
+              <SetupBlockBackButton onClick={onBack} />
+            ) : null}
+          </div>
+          <div className="flex gap-2">{footerContent}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (allDone) {
+    const content = (
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
           <Check className="w-5 h-5" />
@@ -96,11 +154,9 @@ export function ExecutionScreen({
         <p className="text-sm text-muted-foreground">
           {t('Setup is complete. You can close this and start the job.')}
         </p>
-        <div className="flex justify-end">
-          <Button onClick={onClose}>{t('Close')}</Button>
-        </div>
       </div>
     )
+    return withDialogLayout(content, <Button onClick={onClose}>{t('Close')}</Button>)
   }
 
   if (isAskSlot) {
@@ -112,7 +168,7 @@ export function ExecutionScreen({
     }
     const serialized = resolvedAskValue ? serializeWorkZeroValue(resolvedAskValue) : ''
 
-    return (
+    const content = (
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">
           {isWorkXY ? t('Choose how to set XY zero') : t('Choose how to set Z zero')}
@@ -137,6 +193,7 @@ export function ExecutionScreen({
         </p>
       </div>
     )
+    return withDialogLayout(content, null)
   }
 
   if (!hasBlocks || !currentBlock) {
@@ -146,37 +203,101 @@ export function ExecutionScreen({
       setSlotIndex((i) => i + 1)
       if (slotIndex >= slots.length - 1) onComplete()
     }
-    return (
+    const content = (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t('No steps for this slot.')}</p>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSkipSlot}>
-            {t('Continue')}
-          </Button>
-          <Button variant="outline" onClick={onClose}>{t('Cancel')}</Button>
-        </div>
       </div>
     )
+    const footer = (
+      <>
+        <Button variant="outline" onClick={handleSkipSlot}>
+          {t('Continue')}
+        </Button>
+      </>
+    )
+    return withDialogLayout(content, footer)
   }
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold">
-        {currentSlot?.kind === 'work_xy' && t('Set XY zero')}
-        {currentSlot?.kind === 'work_z' && t('Set Z zero')}
-        {currentSlot?.kind === 'bitsetter' && t('Establish tool reference')}
-      </h2>
-      <div>
+  const blockProgress = (
+    <div className="flex w-full items-center gap-0 py-2 px-2 mb-2" role="progressbar" aria-valuenow={stepIndex} aria-valuemin={1} aria-valuemax={totalSteps}>
+      {Array.from({ length: totalSteps * 2 + 1 }, (_, i) => {
+        if (i % 2 === 0) {
+          const lineIndex = i / 2
+          const segmentComplete = stepIndex > lineIndex
+          const isFirstLine = i === 0
+          const isLastLine = i === totalSteps * 2
+          const lineFlex = isFirstLine || isLastLine ? 'flex-none w-0' : 'min-w-0 flex-1'
+          return (
+            <div
+              key={`line-${i}`}
+              className={`h-0.5 ${lineFlex} ${segmentComplete ? 'bg-primary/60' : 'bg-muted-foreground/30'}`}
+              aria-hidden
+            />
+          )
+        }
+        const stepNum = (i + 1) / 2
+        const isActive = stepNum === stepIndex
+        const isComplete = stepNum < stepIndex
+        return (
+          <div key={stepNum} className="flex shrink-0 items-center">
+            <div
+              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${
+                isActive
+                  ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background'
+                  : isComplete
+                    ? 'bg-primary/80 text-primary-foreground'
+                    : 'border-2 border-muted-foreground/40 bg-background text-muted-foreground'
+              }`}
+            >
+              {isComplete ? (
+                <span className="text-xs" aria-hidden>✓</span>
+              ) : (
+                stepNum
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  const blockFooterLeft = onBack ? (
+    <SetupBlockBackButton onClick={onBack} />
+  ) : null
+
+  const isBlockWithMergedFooter = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter'
+  /** Blocks that render their own step progress (BitZero XY/Z/XYZ, BitSetter); hide slot progress to avoid two bars. */
+  const blockHasInternalProgress = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter'
+
+  const content = (
+    <div className="flex w-full min-h-0 flex-1 flex-col gap-6">
+      {!blockHasInternalProgress && blockProgress}
+      <div className="flex min-h-0 flex-1 flex-col">
         {RenderSetupBlock(currentBlock, {
           context,
           onComplete: handleBlockComplete,
           onError: (msg) => console.error(msg),
           debugAllowNext,
+          ...(isBlockWithMergedFooter && {
+            footerLeftExtra: blockFooterLeft,
+          }),
         })}
-      </div>
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={onClose}>{t('Cancel')}</Button>
       </div>
     </div>
   )
+
+  if (isBlockWithMergedFooter) {
+    if (embedded) {
+      return <>{content}</>
+    }
+    return (
+      <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 overflow-auto py-2 px-2">
+          {content}
+        </div>
+      </div>
+    )
+  }
+
+  return withDialogLayout(content, null)
 }

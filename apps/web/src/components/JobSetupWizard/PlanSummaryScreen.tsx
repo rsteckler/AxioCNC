@@ -18,6 +18,8 @@ import {
 } from '@/utils/zeroingStrategyOptions'
 import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
+const DROPDOWN_WIDTH = 'min-w-[14rem] w-full max-w-[18rem]'
+
 export interface PlanSummaryScreenProps {
   summary: SetupPlanSummary
   /** Overrides for this job only (from "Change" pickers). */
@@ -30,6 +32,8 @@ export interface PlanSummaryScreenProps {
   onOverrideChange: (overrides: Partial<PlanSummaryScreenProps['overrides']>) => void
   onContinue: () => void
   onClose: () => void
+  /** When true, rendered inside tab (no dialog header/footer layout). */
+  embedded?: boolean
 }
 
 /**
@@ -42,6 +46,7 @@ export function PlanSummaryScreen({
   onOverrideChange,
   onContinue,
   onClose,
+  embedded = false,
 }: PlanSummaryScreenProps) {
   const { t } = useTranslation()
   const workXYOptions = getWorkXYZeroOptions(methods, t)
@@ -51,18 +56,22 @@ export function PlanSummaryScreen({
   const workXYValue = serializeWorkZeroValue(overrides.workXYZero)
   const workZValue = serializeWorkZeroValue(overrides.workZZero)
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold">{t('Plan for this job')}</h2>
+  const body = (
+    <>
+      <section className="space-y-4 mb-6">
+        <p className="text-sm text-muted-foreground">
+          {t('Review and adjust how you will set XY zero, Z zero, and what to do for tool changes. Then click Continue to run the steps.')}
+        </p>
 
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('Set XY zero:')}</span>
+        <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
+          <label htmlFor="work-xy-zero" className="text-sm text-muted-foreground sm:min-w-[6rem]">
+            {t('Set XY zero:')}
+          </label>
           <Select
             value={workXYValue}
             onValueChange={(v) => onOverrideChange({ workXYZero: parseWorkZeroValue(v) })}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger id="work-xy-zero" className={DROPDOWN_WIDTH}>
               <SelectValue>
                 {overrides.workXYZero[0] === 'ask' ? (
                   <span className="flex items-center gap-2">
@@ -89,15 +98,15 @@ export function PlanSummaryScreen({
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('Set Z zero:')}</span>
+          <label htmlFor="work-z-zero" className="text-sm text-muted-foreground sm:min-w-[6rem]">
+            {t('Set Z zero:')}
+          </label>
           <Select
             value={workZValue}
             onValueChange={(v) => onOverrideChange({ workZZero: parseWorkZeroValue(v) })}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger id="work-z-zero" className={DROPDOWN_WIDTH}>
               <SelectValue>
                 {overrides.workZZero[0] === 'ask' ? (
                   <span className="flex items-center gap-2">
@@ -124,15 +133,15 @@ export function PlanSummaryScreen({
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t('Tool changes:')}</span>
+          <label htmlFor="tool-changes" className="text-sm text-muted-foreground sm:min-w-[6rem]">
+            {t('Tool changes:')}
+          </label>
           <Select
             value={overrides.toolChangePolicy}
             onValueChange={(v) => onOverrideChange({ toolChangePolicy: v })}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger id="tool-changes" className={DROPDOWN_WIDTH}>
               <SelectValue>
                 {overrides.toolChangePolicy === 'ask' ? (
                   <span className="flex items-center gap-2">
@@ -160,10 +169,10 @@ export function PlanSummaryScreen({
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </section>
 
       {summary.showBitSetterStep && (
-        <div className="flex flex-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+        <div className="flex flex-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 mt-2">
           <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
             <p>
@@ -175,15 +184,34 @@ export function PlanSummaryScreen({
           </div>
         </div>
       )}
+    </>
+  )
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={onClose}>
-          {t('Cancel')}
-        </Button>
-        <Button onClick={onContinue}>
-          {t('Continue')}
-        </Button>
+  const footer = (
+    <div className="flex w-full justify-end gap-2 pt-4 border-t shrink-0">
+      <Button onClick={onContinue}>
+        {t('Continue')}
+      </Button>
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 overflow-auto py-2 -mx-1 px-1">
+          {body}
+        </div>
+        {footer}
       </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 overflow-auto py-2 -mx-1 px-1">
+        {body}
+      </div>
+      {footer}
     </div>
   )
 }

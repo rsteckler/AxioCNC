@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroCommand } from '@/utils/gcode'
+import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 
 /**
  * Manual XY block: user jogs to position, then sets XY work zero.
  * Single-purpose step for the setup wizard.
  */
-export function ManualXYBlock({ context, onComplete, onError }: SetupBlockProps) {
+export function ManualXYBlock({ context, onComplete, onError, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const { currentWCS, sendGcode } = context
 
@@ -21,13 +22,18 @@ export function ManualXYBlock({ context, onComplete, onError }: SetupBlockProps)
   }
 
   return (
-    <div className="space-y-4">
+    <SetupBlockLayout
+      footerLeft={footerLeftExtra}
+      footerRight={
+        <>
+          {footerRightExtra}
+          <Button onClick={handleSetZero}>{t('Set XY zero')}</Button>
+        </>
+      }
+    >
       <p className="text-sm text-muted-foreground">
         {t('Jog the tool to the XY position you want as work zero, then set XY zero.')}
       </p>
-      <Button onClick={handleSetZero}>
-        {t('Set XY zero')}
-      </Button>
-    </div>
+    </SetupBlockLayout>
   )
 }

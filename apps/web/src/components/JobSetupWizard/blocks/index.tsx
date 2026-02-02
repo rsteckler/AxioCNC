@@ -1,6 +1,10 @@
 /**
  * Setup blocks: single-purpose steps for the Job Setup Wizard.
  * Each block runs one zeroing action (Manual XY, Touchplate Z, BitZero XY, etc.).
+ *
+ * Use SetupBlockLayout for consistent layout: optional step progress bar,
+ * scrollable content, and anchored footer (Back left, actions right).
+ * See SetupBlockLayout.tsx JSDoc and ai/docs/setup-block-layout.md for usage.
  */
 import type { ReactNode } from 'react'
 import type { SetupBlock as SetupBlockType } from '@/utils/setupPlan'
@@ -10,10 +14,13 @@ import { ManualZBlock } from './ManualZBlock'
 import { TouchplateBlock } from './TouchplateBlock'
 import { BitZeroXYBlock } from './BitZeroXYBlock'
 import { BitZeroZBlock } from './BitZeroZBlock'
+import { BitZeroXYZBlock } from './BitZeroXYZBlock'
 import { BitSetterBlock } from './BitSetterBlock'
 
 export type { SetupBlockProps, BlockRunContext } from './types'
-export { ManualXYBlock, ManualZBlock, TouchplateBlock, BitZeroXYBlock, BitZeroZBlock, BitSetterBlock }
+export { SetupBlockLayout, SetupBlockBackButton } from './SetupBlockLayout'
+export type { SetupBlockLayoutProps, SetupBlockNextButtonConfig } from './SetupBlockLayout'
+export { ManualXYBlock, ManualZBlock, TouchplateBlock, BitZeroXYBlock, BitZeroZBlock, BitZeroXYZBlock, BitSetterBlock }
 
 type RenderBlockProps = Omit<SetupBlockProps, 'methods'>
 
@@ -35,6 +42,8 @@ export function RenderSetupBlock(
       return <BitZeroXYBlock {...blockProps} />
     case 'bitzero_z':
       return <BitZeroZBlock {...blockProps} />
+    case 'bitzero_xyz':
+      return <BitZeroXYZBlock {...blockProps} />
     case 'bitsetter':
       return <BitSetterBlock {...blockProps} />
     default:

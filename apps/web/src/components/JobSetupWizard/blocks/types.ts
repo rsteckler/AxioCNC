@@ -13,6 +13,8 @@ export interface BlockRunContext {
   workPosition: { x: number; y: number; z: number }
   /** Store first-tool reference (Z at bitsetter contact). Used by BitSetter block. */
   storeBitsetterReference?: (wcs: string, value: number) => Promise<void>
+  /** Probe contact from controller pinState ('P'). Used on verify step to show Contact Detected / No Contact. */
+  probeContact?: boolean
 }
 
 export interface SetupBlockProps {
@@ -25,4 +27,8 @@ export interface SetupBlockProps {
   onError: (message: string) => void
   /** Debug: when true, block shows "Next (debug)" to advance without completing the step. Used in tool change tab. */
   debugAllowNext?: boolean
+  /** Optional slot for parent to inject e.g. Back (to plan) on the left of the block footer. */
+  footerLeftExtra?: React.ReactNode
+  /** Optional slot for parent to inject e.g. Cancel on the right of the block footer. */
+  footerRightExtra?: React.ReactNode
 }

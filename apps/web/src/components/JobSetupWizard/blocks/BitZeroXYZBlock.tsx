@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, HelpCircle } from 'lucide-react'
+import { AlertCircle, HelpCircle, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { buildSetZeroWithOffsetCommand } from '@/utils/gcode'
+import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
@@ -23,16 +23,16 @@ function processMacro(macro: string): string {
 }
 
 /**
- * BitZero Z block: optional verify, then Place on workpiece, Position above flat part, Run Z probe. Clears BitSetter reference.
- * Step flow matches Set XY zero: verify (optional) → place BitZero → position tool → run probe.
+ * Combined BitZero XYZ block: verify (optional) → place on workpiece → place tool in hole → run XYZ probe.
+ * Used when both work_xy and work_z plans are BitZero. methods[0] = XY config, methods[1] = Z config (or same method with axes xyz).
  */
-export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
+export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
-  const method = methods[0] as BitZeroConfig | undefined
-  const { currentWCS, clearBitsetterReference, connectedPort, probeContact, machinePosition } = context
+  const xyMethod = methods[0] as BitZeroConfig | undefined
+  const zMethod = (methods[1] ?? methods[0]) as BitZeroConfig | undefined
+  const { currentWCS, connectedPort, clearBitsetterReference, probeContact } = context
 
-  /** When true, show step 1 (verify); 4 steps total. When false, 3 steps (place, position, run). */
-  const showVerifyStep = method?.requireCheck !== false
+  const showVerifyStep = xyMethod?.requireCheck !== false
   const totalSteps = showVerifyStep ? 4 : 3
   const runStep = showVerifyStep ? 4 : 3
 
@@ -42,22 +42,83 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
   const probingRef = useRef(false)
 
   const runProbe = useCallback(async () => {
-    if (!method || method.type !== 'bitzero' || (method.axes !== 'z' && method.axes !== 'xyz') || !connectedPort) return
+    if (!xyMethod || xyMethod.type !== 'bitzero' || !zMethod || zMethod.type !== 'bitzero' || !connectedPort) return
 
     await clearBitsetterReference(currentWCS)
 
-    const probeDistance = method.probeDistance ?? 25
-    const probeFeedrateA = method.probeFeedrate ?? 150
+    const xyProbeDistance = xyMethod.probeDistance ?? 25
+    const xyProbeFeedrateA = xyMethod.probeFeedrate ?? 150
     const probeFeedrateB = 50
-    const zFinal = 15
-    const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', method.probeThickness ?? 12.7)
+    const probeMajorRetract = 2
+    const setXZeroCommand = buildSetZeroCommand(currentWCS, 'x')
+    const setYZeroCommand = buildSetZeroCommand(currentWCS, 'y')
 
-    const macroLines = [
+    const xyMacroLines = [
+      'G91',
+      'G21',
+      '',
+      '; X-Axis Probing',
+      `G38.2 X${xyProbeDistance} F${xyProbeFeedrateA}`,
+      'G0 X-2',
+      `G38.2 X5 F${probeFeedrateB}`,
+      'G90',
+      '%X_RIGHT=posx',
+      'G91',
+      `G0 X-${probeMajorRetract}`,
+      '',
+      `G38.2 X-${xyProbeDistance} F${xyProbeFeedrateA}`,
+      'G0 X2',
+      `G38.2 X-5 F${probeFeedrateB}`,
+      'G90',
+      '%X_LEFT=posx',
+      '',
+      '%X_CHORD=X_RIGHT-X_LEFT',
+      '%X_OFFSET=X_CHORD/2',
+      'G91',
+      'G0 X[X_OFFSET]',
+      'G4 P1',
+      setXZeroCommand,
+      '',
+      '; Y-Axis Probing',
+      'G91',
+      `G38.2 Y${xyProbeDistance} F${xyProbeFeedrateA}`,
+      'G0 Y-2',
+      `G38.2 Y5 F${probeFeedrateB}`,
+      'G90',
+      '%Y_TOP=posy',
+      'G91',
+      `G0 Y-${probeMajorRetract}`,
+      '',
+      `G38.2 Y-${xyProbeDistance} F${xyProbeFeedrateA}`,
+      'G0 Y2',
+      `G38.2 Y-5 F${probeFeedrateB}`,
+      'G90',
+      '%Y_BTM=posy',
+      '',
+      '%Y_CHORD=Y_TOP-Y_BTM',
+      '%Y_OFFSET=Y_CHORD/2',
+      'G91',
+      'G0 Y[Y_OFFSET]',
+      'G4 P1',
+      setYZeroCommand,
+      '',
+      'G90',
+      'G0 X0 Y0',
+      'G4 P1',
+    ]
+    const xyMacroString = processMacro(xyMacroLines.join('\n'))
+
+    const zProbeDistance = zMethod.probeDistance ?? 25
+    const zProbeFeedrateA = zMethod.probeFeedrate ?? 150
+    const zFinal = 15
+    const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', zMethod.probeThickness ?? 12.7)
+
+    const zMacroLines = [
       'G91',
       'G21',
       '',
       '; Z-Axis Probing',
-      `G38.2 Z-${probeDistance} F${probeFeedrateA}`,
+      `G38.2 Z-${zProbeDistance} F${zProbeFeedrateA}`,
       'G0 Z2',
       `G38.2 Z-5 F${probeFeedrateB}`,
       setZZeroCommand,
@@ -65,12 +126,14 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
       '',
       'G90',
     ]
-    const macroString = processMacro(macroLines.join('\n'))
+    const zMacroString = processMacro(zMacroLines.join('\n'))
 
     setStatus('probing')
     setErrorMessage(null)
     probingRef.current = true
-    runGcodeBatch({ gcode: macroString, port: connectedPort })
+
+    runGcodeBatch({ gcode: xyMacroString, port: connectedPort })
+      .then(() => runGcodeBatch({ gcode: zMacroString, port: connectedPort }))
       .then(() => {
         probingRef.current = false
         setStatus('complete')
@@ -82,18 +145,18 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
         setErrorMessage(msg)
         onError(msg)
       })
-  }, [method, connectedPort, currentWCS, clearBitsetterReference, onComplete, onError, t])
+  }, [xyMethod, zMethod, connectedPort, currentWCS, clearBitsetterReference, onError, t])
 
-  if (!method || method.type !== 'bitzero' || (method.axes !== 'z' && method.axes !== 'xyz')) {
+  if (!xyMethod || xyMethod.type !== 'bitzero' || !zMethod || zMethod.type !== 'bitzero') {
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
 
   const canGoBack = step > 1
   const stepTitles: Record<number, string> = {
     1: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
-    2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool Above BitZero'),
-    3: showVerifyStep ? t('Position Tool Above BitZero') : t('Run Z probe'),
-    4: t('Run Z probe'),
+    2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
+    3: showVerifyStep ? t('Position Tool in Hole') : t('Run XYZ Probe'),
+    4: t('Run XYZ Probe'),
   }
   const title = stepTitles[step]
 
@@ -108,13 +171,13 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
       ? { onClick: onComplete, disabled: status !== 'complete' }
       : undefined
 
-  const footerRightContent = (
+  const footerRightExtraContent = (
     <>
       {footerRightExtra}
-      {step < runStep && debugAllowNext && (
+      {debugAllowNext && step < runStep && (
         <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
       )}
-      {step === runStep && debugAllowNext && status !== 'complete' && status !== 'error' && (
+      {debugAllowNext && step === runStep && status !== 'complete' && status !== 'error' && (
         <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
       )}
     </>
@@ -128,9 +191,9 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
       onBack={onBack}
       footerLeft={footerLeft}
       nextButton={nextButton}
-      footerRight={footerRightContent}
+      footerRight={footerRightExtraContent}
     >
-      {/* Step 1 (only when requireCheck): Verify BitZero circuit — same as XY block */}
+      {/* Step 1 (optional): Verify BitZero circuit */}
       {showVerifyStep && step === 1 && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-2">
@@ -148,14 +211,10 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
             </p>
           </div>
           <div className={`p-3 rounded-lg border ${
-            probeContact
-              ? 'bg-green-500/10 border-green-500/30'
-              : 'bg-muted/50 border-border'
+            probeContact ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'
           }`}>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${
-                probeContact ? 'bg-green-500' : 'bg-muted'
-              }`} />
+              <div className={`w-3 h-3 rounded-full ${probeContact ? 'bg-green-500' : 'bg-muted'}`} />
               <span className="text-sm font-medium">
                 {t('Probe Status')}: {probeContact ? t('Contact Detected') : t('No Contact')}
               </span>
@@ -169,7 +228,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
         </div>
       )}
 
-      {/* Step 2 (or step 1 when verify skipped): Place BitZero on workpiece — same as XY step 2 */}
+      {/* Step 2 (or step 1 when verify skipped): Place BitZero on corner */}
       {((showVerifyStep && step === 2) || (!showVerifyStep && step === 1)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
@@ -189,15 +248,15 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
         </div>
       )}
 
-      {/* Step 3 (or step 2 when verify skipped): Position tool above flat part of BitZero */}
+      {/* Step 3 (or step 2 when verify skipped): Position tool in hole */}
       {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
-              {t('Use the jog controls to position the tool above the flat part of the BitZero probe. The tool will probe straight down, so it should be above the flat surface where the probe will make contact.')}
+              {t('Use the jog controls to carefully position the tool into the conductive hole in the bottom left corner of the BitZero probe.')}
             </p>
             <p>
-              <strong>{t('Important')}:</strong> {t('Leave enough clearance below the tool for the probe distance. Use small movements when approaching the probe height.')}
+              <strong>{t('Important')}:</strong> {t('The tool should be positioned below the Z surface of the probe (inside the hole). Use small movements when you get close to avoid damaging the tool or probe.')}
             </p>
           </div>
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -205,41 +264,30 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
             <div className="text-sm text-blue-900 dark:text-blue-100 space-y-1">
               <p className="font-medium">{t('Jogging Tips')}:</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>{t('Position XY over the flat area of the BitZero (e.g. center or corner)')}</li>
-                <li>{t('Lower Z in small steps (0.1mm or less) when approaching probe height')}</li>
-                <li>{t('Leave clearance for the probe distance before starting the probe')}</li>
+                <li>{t('Use large movements to get close to the hole')}</li>
+                <li>{t('Switch to small movements (0.1mm or less) when approaching the hole')}</li>
+                <li>{t('Ensure the tool is positioned below the Z surface of the probe')}</li>
+                <li>{t('The tool should be centered in the hole as much as possible')}</li>
               </ul>
-            </div>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">{t('Current Machine Position')}:</div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">X: </span>
-                <span className="font-mono">{(machinePosition?.x ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Y: </span>
-                <span className="font-mono">{(machinePosition?.y ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Z: </span>
-                <span className="font-mono">{(machinePosition?.z ?? 0).toFixed(3)}</span>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Step 4 (or step 3 when verify skipped): Run Z probe — same pattern as XY step 4 */}
+      {/* Step 4 (or step 3 when verify skipped): Run XYZ probe */}
       {step === runStep && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
-              {t('Press the probe button below to start the Z probe sequence. The tool will probe down until it contacts the BitZero, then set Z zero.')}
+              {t('Press the probe button below to start the XYZ probe sequence. The tool will:')}
             </p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>{t('Probe right until contact, then probe left to find X edges and calculate X center')}</li>
+              <li>{t('Probe top and bottom to find Y edges and calculate Y center')}</li>
+              <li>{t('Probe down to contact the BitZero and set Z zero')}</li>
+            </ol>
             <p>
-              {t('After probing, Z zero will be set at the probe surface.')}
+              {t('After probing, XYZ zero will be set at the corner of your workpiece.')}
             </p>
           </div>
           {status === 'idle' && (
@@ -247,19 +295,22 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
               <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                  <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned above the flat part of the BitZero with enough clearance before starting. The tool should already be in position from the previous step.')}
+                  <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.')}
                 </p>
               </div>
-              <Button onClick={runProbe} size="lg" className="w-full sm:w-auto">
-                {t('Run Z probe')}
-              </Button>
+              <div className="flex justify-center py-2">
+                <Button onClick={runProbe} size="lg" className="gap-2">
+                  <Target className="w-5 h-5" />
+                  {t('Run XYZ probe')}
+                </Button>
+              </div>
             </>
           )}
           {status === 'probing' && (
             <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
           )}
           {status === 'complete' && (
-            <p className="text-sm text-green-600 dark:text-green-400">{t('Done. Z zero set at the probe surface.')}</p>
+            <p className="text-sm text-green-600 dark:text-green-400">{t('Done. XYZ zero set at the corner.')}</p>
           )}
           {status === 'error' && (
             <div className="flex items-center gap-2 text-sm text-destructive">

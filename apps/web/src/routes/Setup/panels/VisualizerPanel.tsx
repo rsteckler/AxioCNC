@@ -720,6 +720,7 @@ export function VisualizerPanel({
             setTab('3d')
           }}
           onSetupComplete={onJobSetupComplete}
+          probeContact={probeContact}
         />
       </div>
       
