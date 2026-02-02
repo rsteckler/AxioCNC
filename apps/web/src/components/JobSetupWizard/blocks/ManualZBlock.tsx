@@ -11,7 +11,7 @@ const ZERO_TOLERANCE = 0.001
  * Manual Z block: one step. User positions Z at work zero (e.g. paper test), then presses Z zero in the DRO panel.
  * Clears BitSetter reference when step is completed. Z indicator lights up green when work position Z is zero.
  */
-export function ManualZBlock({ context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
+export function ManualZBlock({ context, onComplete, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const { currentWCS, workPosition, clearBitsetterReference } = context
 

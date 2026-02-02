@@ -60,11 +60,13 @@ export function TouchplateBlock({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const probingRef = useRef(false)
 
-  // XY: probe in positive or negative axis direction; fast then slow, set zero, retract back
+  // XY: probe in positive or negative axis direction; fast then slow, set zero, retract back.
+  // For touchplate_xy, pass axisOverride ('x' | 'y'); otherwise uses block axis prop.
   const runProbeXY = useCallback(
-    async (direction: 'positive' | 'negative') => {
+    async (direction: 'positive' | 'negative', axisOverride?: 'x' | 'y') => {
       if (!method || method.type !== 'touchplate' || !connectedPort || isZ) return
-      const axisUpper = axis.toUpperCase() as 'X' | 'Y'
+      const effectiveAxis = axisOverride ?? axis
+      const axisUpper = effectiveAxis.toUpperCase() as 'X' | 'Y'
       const probeDistance = method.probeDistance ?? 25
       const probeFeedrateA = method.probeFeedrate ?? 150
       const probeFeedrateB = 50
