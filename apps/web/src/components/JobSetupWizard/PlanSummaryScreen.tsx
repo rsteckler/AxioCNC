@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Info, HelpCircle } from 'lucide-react'
+import { Info } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -45,7 +45,6 @@ export function PlanSummaryScreen({
   methods,
   onOverrideChange,
   onContinue,
-  onClose,
   embedded = false,
 }: PlanSummaryScreenProps) {
   const { t } = useTranslation()
@@ -73,27 +72,13 @@ export function PlanSummaryScreen({
           >
             <SelectTrigger id="work-xy-zero" className={DROPDOWN_WIDTH}>
               <SelectValue>
-                {overrides.workXYZero[0] === 'ask' ? (
-                  <span className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                    {t('Ask Each Time')}
-                  </span>
-                ) : (
-                  workXYOptions.find((o) => serializeWorkZeroValue(o.value) === workXYValue)?.label ?? t('Select…')
-                )}
+                {workXYOptions.find((o) => serializeWorkZeroValue(o.value) === workXYValue)?.label ?? t('Select…')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {workXYOptions.map((opt) => (
                 <SelectItem key={serializeWorkZeroValue(opt.value)} value={serializeWorkZeroValue(opt.value)}>
-                  {opt.value[0] === 'ask' ? (
-                    <span className="flex items-center gap-2">
-                      <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                      {opt.label}
-                    </span>
-                  ) : (
-                    opt.label
-                  )}
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -108,27 +93,13 @@ export function PlanSummaryScreen({
           >
             <SelectTrigger id="work-z-zero" className={DROPDOWN_WIDTH}>
               <SelectValue>
-                {overrides.workZZero[0] === 'ask' ? (
-                  <span className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                    {t('Ask Each Time')}
-                  </span>
-                ) : (
-                  workZOptions.find((o) => serializeWorkZeroValue(o.value) === workZValue)?.label ?? t('Select…')
-                )}
+                {workZOptions.find((o) => serializeWorkZeroValue(o.value) === workZValue)?.label ?? t('Select…')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {workZOptions.map((opt) => (
                 <SelectItem key={serializeWorkZeroValue(opt.value)} value={serializeWorkZeroValue(opt.value)}>
-                  {opt.value[0] === 'ask' ? (
-                    <span className="flex items-center gap-2">
-                      <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                      {opt.label}
-                    </span>
-                  ) : (
-                    opt.label
-                  )}
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -143,27 +114,13 @@ export function PlanSummaryScreen({
           >
             <SelectTrigger id="tool-changes" className={DROPDOWN_WIDTH}>
               <SelectValue>
-                {overrides.toolChangePolicy === 'ask' ? (
-                  <span className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                    {t('Ask Each Time')}
-                  </span>
-                ) : (
-                  toolChangeOptions.find((o) => o.value === overrides.toolChangePolicy)?.label ?? t('Select…')
-                )}
+                {toolChangeOptions.find((o) => o.value === overrides.toolChangePolicy)?.label ?? t('Select…')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {toolChangeOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.value === 'ask' ? (
-                    <span className="flex items-center gap-2">
-                      <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                      {opt.label}
-                    </span>
-                  ) : (
-                    opt.label
-                  )}
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>

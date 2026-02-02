@@ -36,6 +36,7 @@ export function RenderSetupBlock(
       return <ManualZBlock {...blockProps} />
     case 'touchplate_x':
     case 'touchplate_y':
+    case 'touchplate_xy':
     case 'touchplate_z':
       return <TouchplateBlock {...blockProps} />
     case 'bitzero_xy':

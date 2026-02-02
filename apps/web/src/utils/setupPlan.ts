@@ -62,14 +62,14 @@ export function deriveSetupPlan(
   const workXYLabel =
     workXYOptions.find(
       (o) => JSON.stringify(o.value) === JSON.stringify(strategies.workXYZero)
-    )?.label ?? t('Ask Each Time')
+    )?.label ?? t('Select…')
   const workZLabel =
     workZOptions.find(
       (o) => JSON.stringify(o.value) === JSON.stringify(strategies.workZZero)
-    )?.label ?? t('Ask Each Time')
+    )?.label ?? t('Select…')
   const toolChangeLabel =
     toolChangeOptions.find((o) => o.value === strategies.toolChangePolicy)
-      ?.label ?? t('Ask Each Time')
+      ?.label ?? t('Select…')
 
   const showBitSetterStep = isBitSetterMethodId(methods, strategies.toolChangePolicy)
 
@@ -152,6 +152,7 @@ export type SetupBlockKind =
   | 'bitzero_xyz'
   | 'touchplate_x'
   | 'touchplate_y'
+  | 'touchplate_xy'
   | 'touchplate_z'
   | 'manual_xy'
   | 'manual_z'
@@ -194,8 +195,7 @@ export function slotToBlocks(
           methods: [m],
         })
       } else if (m.type === 'touchplate' && m.axes === 'xyz') {
-        blocks.push({ kind: 'touchplate_x', methods: [m] })
-        blocks.push({ kind: 'touchplate_y', methods: [m] })
+        blocks.push({ kind: 'touchplate_xy', methods: [m] })
       } else if (m.type === 'manual') {
         blocks.push({ kind: 'manual_xy', methods: [m] })
       }

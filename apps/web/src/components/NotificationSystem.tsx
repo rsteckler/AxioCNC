@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bell, AlertCircle, X } from 'lucide-react'
+import { Bell, AlertCircle, X, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,10 +22,24 @@ export function NotificationSystem() {
     notifications,
     notificationsOpen,
     setNotificationsOpen,
+    showProgressNotification,
     markNotificationRead,
     markAllNotificationsRead,
     clearNotifications,
   } = useNotifications()
+
+  // Listen for progress notifications (e.g. XY probe running -> success) so they appear in the toolbox
+  useEffect(() => {
+    const handle = (e: Event) => {
+      const ev = e as CustomEvent<{ key: string; type: 'progress' | 'success'; title: string; message: string }>
+      const d = ev.detail
+      if (d?.key && d?.type && d?.title != null && d?.message != null) {
+        showProgressNotification(d.key, d.type, d.title, d.message)
+      }
+    }
+    window.addEventListener('axiocnc:progressNotification', handle)
+    return () => window.removeEventListener('axiocnc:progressNotification', handle)
+  }, [showProgressNotification])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
@@ -69,6 +84,10 @@ export function NotificationSystem() {
                       ? 'border-red-500/50 bg-red-500/10'
                       : notification.type === 'warning'
                       ? 'border-yellow-500/50 bg-yellow-500/10'
+                      : notification.type === 'progress'
+                      ? 'border-blue-500/50 bg-blue-500/10'
+                      : notification.type === 'success'
+                      ? 'border-green-500/50 bg-green-500/10'
                       : 'border-border bg-muted/30'
                   } ${!notification.read ? 'opacity-100' : 'opacity-60'}`}
                 >
@@ -76,6 +95,10 @@ export function NotificationSystem() {
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {notification.type === 'error' ? (
                         <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      ) : notification.type === 'success' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      ) : notification.type === 'progress' ? (
+                        <Bell className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                       ) : (
                         <Bell className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                       )}

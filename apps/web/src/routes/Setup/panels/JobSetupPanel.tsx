@@ -30,7 +30,7 @@ export function JobSetupPanel({
   return (
     <div className="p-3 space-y-2">
       <p className="text-xs text-muted-foreground">
-        {t('Run XY and Z zeroing, then establish tool reference if needed.')}
+        {t('Run XY zeroing, then establish tool reference if needed.')}
       </p>
       <TooltipProvider>
         <Tooltip>

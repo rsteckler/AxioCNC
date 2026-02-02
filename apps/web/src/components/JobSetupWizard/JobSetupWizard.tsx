@@ -12,6 +12,11 @@ import { useGetSettingsQuery } from '@/services/api'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { useMachinePosition, useWorkPosition } from '@/store/hooks'
 import { deriveSetupPlan } from '@/utils/setupPlan'
+import {
+  getWorkXYZeroOptions,
+  getWorkZZeroOptions,
+  getToolChangePolicyOptions,
+} from '@/utils/zeroingStrategyOptions'
 import { useSetExtensionsMutation } from '@/services/api'
 import { PlanSummaryScreen } from './PlanSummaryScreen'
 import { ExecutionScreen } from './ExecutionScreen'
@@ -53,24 +58,30 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
   const [executionStepInfo, setExecutionStepInfo] = useState<{
     slotIndex: number
     slotKind: 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter' | undefined
+    blockKind?: string
     isAskSlot: boolean
     allDone: boolean
   } | null>(null)
 
   useEffect(() => {
-    if (open) {
-      setScreen(1)
-      setExecutionStepInfo(null)
-      if (settings?.zeroingStrategies) {
-        const s = settings.zeroingStrategies
-        setOverrides({
-          workXYZero: s.workXYZero ?? DEFAULT_STRATEGIES.workXYZero,
-          workZZero: s.workZZero ?? DEFAULT_STRATEGIES.workZZero,
-          toolChangePolicy: s.toolChangePolicy ?? DEFAULT_STRATEGIES.toolChangePolicy,
-        })
-      }
+    if (!open) return
+    setScreen(1)
+    setExecutionStepInfo(null)
+    const s = settings?.zeroingStrategies
+    let next = {
+      workXYZero: s?.workXYZero ?? DEFAULT_STRATEGIES.workXYZero,
+      workZZero: s?.workZZero ?? DEFAULT_STRATEGIES.workZZero,
+      toolChangePolicy: s?.toolChangePolicy ?? DEFAULT_STRATEGIES.toolChangePolicy,
     }
-  }, [open, settings?.zeroingStrategies])
+    // Coerce 'ask' to first available option (ask is not offered in setup job block)
+    const workXYOpts = getWorkXYZeroOptions(methods, t)
+    const workZOpts = getWorkZZeroOptions(methods, t)
+    const toolOpts = getToolChangePolicyOptions(methods, t)
+    if (next.workXYZero[0] === 'ask' && workXYOpts[0]) next = { ...next, workXYZero: workXYOpts[0].value }
+    if (next.workZZero[0] === 'ask' && workZOpts[0]) next = { ...next, workZZero: workZOpts[0].value }
+    if (next.toolChangePolicy === 'ask' && toolOpts[0]) next = { ...next, toolChangePolicy: toolOpts[0].value }
+    setOverrides(next)
+  }, [open, settings?.zeroingStrategies, methods, t])
 
   const strategies = useMemo(
     () => ({
@@ -137,7 +148,7 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
   const totalSteps = 1 + plan.slots.length
 
   const handleExecutionStepChange = useCallback(
-    (info: { slotIndex: number; slotKind: 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter' | undefined; isAskSlot: boolean; allDone: boolean }) => {
+    (info: { slotIndex: number; slotKind: 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter' | undefined; blockKind?: string; isAskSlot: boolean; allDone: boolean }) => {
       setExecutionStepInfo(info)
     },
     []
@@ -158,7 +169,7 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
         stepSubtitle: t('Set the work XY zero using the method you chose.'),
       }
     }
-    const { slotIndex, slotKind, isAskSlot, allDone } = executionStepInfo
+    const { slotIndex, slotKind, blockKind, isAskSlot, allDone } = executionStepInfo
     const stepIndex = allDone ? totalSteps : slotIndex + 2
     if (allDone) {
       return {
@@ -177,9 +188,29 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
     }
     switch (slotKind) {
       case 'work_xy':
-        return { stepIndex, stepTitle: t('Set XY Zero'), stepSubtitle: t('Set the work XY zero using the method you chose.') }
+        return {
+          stepIndex,
+          stepTitle: t('Set XY Zero'),
+          stepSubtitle: blockKind === 'bitzero_xy'
+            ? t('Set the work X and Y zeroes with the BitZero.')
+            : blockKind === 'manual_xy'
+              ? t('Use jog controls and the DRO to set XY work zero.')
+              : blockKind === 'touchplate_x' || blockKind === 'touchplate_y' || blockKind === 'touchplate_xy'
+                ? t('Set XY zero using the touch plate.')
+                : t('Set the work XY zero using the method you chose.'),
+        }
       case 'work_z':
-        return { stepIndex, stepTitle: t('Set Z Zero'), stepSubtitle: t('Set the work Z zero using the method you chose.') }
+        return {
+          stepIndex,
+          stepTitle: t('Set Z Zero'),
+          stepSubtitle: blockKind === 'bitzero_z'
+            ? t('Set the work Z zero using the BitZero as a touch plate.')
+            : blockKind === 'manual_z'
+              ? t('Use jog controls and the DRO to set Z work zero.')
+              : blockKind === 'touchplate_z'
+                ? t('Set Z zero using the touch plate.')
+                : t('Set the work Z zero using the method you chose.'),
+        }
       case 'work_xyz':
         return { stepIndex, stepTitle: t('Set XY and Z Zero'), stepSubtitle: t('Set XY and Z zero at the corner using BitZero (combined probe).') }
       case 'bitsetter':

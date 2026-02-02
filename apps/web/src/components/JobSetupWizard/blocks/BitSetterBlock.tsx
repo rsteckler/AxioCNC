@@ -218,7 +218,7 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
           <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              {t('Press the BitSetter sensor down manually with your finger or a tool. If the probe triggers correctly, you\'re ready to proceed. If not, check your wiring and probe settings.')}
+              {t('Press the BitSetter sensor down. If the probe triggers correctly, you\'re ready to proceed. If not, check your wiring and probe settings.')}
             </p>
           </div>
           <div className={`p-3 rounded-lg border ${

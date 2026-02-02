@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, HelpCircle } from 'lucide-react'
+import { AlertCircle, Check, HelpCircle, Loader2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
@@ -29,7 +29,7 @@ function processMacro(macro: string): string {
 export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitZeroConfig | undefined
-  const { currentWCS, clearBitsetterReference, connectedPort, probeContact, machinePosition } = context
+  const { currentWCS, clearBitsetterReference, connectedPort, probeContact } = context
 
   /** When true, show step 1 (verify); 4 steps total. When false, 3 steps (place, position, run). */
   const showVerifyStep = method?.requireCheck !== false
@@ -177,7 +177,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
               {t('Place the BitZero probe on the corner of your workpiece, making sure it\'s secure and flat.')}
             </p>
             <p>
-              {t('The BitZero should be positioned so the conductive hole in the bottom left (-X-Y) corner is accessible for probing. Make sure the probe is firmly attached and won\'t move during probing.')}
+              {t('Make sure the probe is firmly attached and won\'t move during probing.')}
             </p>
           </div>
           <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
@@ -211,23 +211,6 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
               </ul>
             </div>
           </div>
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">{t('Current Machine Position')}:</div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">X: </span>
-                <span className="font-mono">{(machinePosition?.x ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Y: </span>
-                <span className="font-mono">{(machinePosition?.y ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Z: </span>
-                <span className="font-mono">{(machinePosition?.z ?? 0).toFixed(3)}</span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -239,7 +222,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
               {t('Press the probe button below to start the Z probe sequence. The tool will probe down until it contacts the BitZero, then set Z zero.')}
             </p>
             <p>
-              {t('After probing, Z zero will be set at the probe surface.')}
+              {t('After probing, Z zero will be set at the work surface.')}
             </p>
           </div>
           {status === 'idle' && (
@@ -250,16 +233,35 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
                   <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned above the flat part of the BitZero with enough clearance before starting. The tool should already be in position from the previous step.')}
                 </p>
               </div>
-              <Button onClick={runProbe} size="lg" className="w-full sm:w-auto">
-                {t('Run Z probe')}
-              </Button>
+                <div className="flex justify-center py-2">
+                  <Button onClick={runProbe} size="lg" className="gap-2">
+                    <Target className="w-5 h-5" />
+                    {t('Run Z probe')}
+                  </Button>
+                </div>
             </>
           )}
           {status === 'probing' && (
-            <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
+            <div className="p-4 rounded-lg border bg-blue-500/10 border-blue-500/30">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{t('Probing')}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">{t('Please wait while the probe runs.')}</p>
+                </div>
+              </div>
+            </div>
           )}
           {status === 'complete' && (
-            <p className="text-sm text-green-600 dark:text-green-400">{t('Done. Z zero set at the probe surface.')}</p>
+            <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/30">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">{t('Probe complete.')}</p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">{t('Done. Z zero set at the work surface.')}</p>
+                </div>
+              </div>
+            </div>
           )}
           {status === 'error' && (
             <div className="flex items-center gap-2 text-sm text-destructive">

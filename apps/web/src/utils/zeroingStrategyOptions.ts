@@ -33,7 +33,7 @@ export function parseWorkZeroValue(serialized: string): string[] {
 
 /**
  * Work XY zero options derived from enabled methods.
- * Order: Ask each time, BitZero (XY), Touchplate X then Y (if both exist), Manual.
+ * Order: BitZero (XY), Touchplate X then Y (if both exist), Manual.
  */
 export function getWorkXYZeroOptions(
   methods: ZeroingMethod[],
@@ -41,12 +41,6 @@ export function getWorkXYZeroOptions(
 ): WorkXYZeroOption[] {
   const enabled = methods.filter((m) => m.enabled)
   const options: WorkXYZeroOption[] = []
-
-  options.push({
-    value: ['ask'],
-    labelKey: 'Ask Each Time',
-    label: t('Ask Each Time'),
-  })
 
   // One BitZero hardware (axes xyz) provides "BitZero (XY)" option; legacy axes 'xy' also supported
   const bitzeroXY = enabled.find(
@@ -92,7 +86,7 @@ export function getWorkXYZeroOptions(
 
 /**
  * Work Z zero options derived from enabled methods.
- * Order: Ask each time, BitZero (Z), Touchplate (Z), Manual.
+ * Order: BitZero (Z), Touchplate (Z), Manual.
  */
 export function getWorkZZeroOptions(
   methods: ZeroingMethod[],
@@ -100,12 +94,6 @@ export function getWorkZZeroOptions(
 ): WorkZZeroOption[] {
   const enabled = methods.filter((m) => m.enabled)
   const options: WorkZZeroOption[] = []
-
-  options.push({
-    value: ['ask'],
-    labelKey: 'Ask Each Time',
-    label: t('Ask Each Time'),
-  })
 
   // One BitZero hardware (axes xyz) provides "BitZero (Z)" option; legacy axes 'z' also supported
   const bitzeroZ = enabled.find(
@@ -145,7 +133,7 @@ export function getWorkZZeroOptions(
 
 /**
  * Tool change policy options derived from enabled methods.
- * Order: Ask each time, BitSetter (if enabled), Touchplate (Z), Manual re-zero Z.
+ * Order: BitSetter (if enabled), Touchplate (Z), Manual re-zero Z.
  */
 export function getToolChangePolicyOptions(
   methods: ZeroingMethod[],
@@ -153,12 +141,6 @@ export function getToolChangePolicyOptions(
 ): ToolChangePolicyOption[] {
   const enabled = methods.filter((m) => m.enabled)
   const options: ToolChangePolicyOption[] = []
-
-  options.push({
-    value: 'ask',
-    labelKey: 'Ask Each Time',
-    label: t('Ask Each Time'),
-  })
 
   const bitsetter = enabled.find((m) => m.type === 'bitsetter')
   if (bitsetter) {

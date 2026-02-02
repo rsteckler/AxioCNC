@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
-import type { SetupBlock, SetupPlan } from '@/utils/setupPlan'
+import type { SetupBlock, SetupPlan, SetupBlockKind } from '@/utils/setupPlan'
 import { slotToBlocks } from '@/utils/setupPlan'
 import { RenderSetupBlock, SetupBlockBackButton } from './blocks'
 import type { BlockRunContext } from './blocks'
@@ -24,6 +24,8 @@ import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSec
 export interface ExecutionStepInfo {
   slotIndex: number
   slotKind: 'work_xy' | 'work_z' | 'work_xyz' | 'bitsetter' | undefined
+  /** Current block kind when executing a slot (e.g. bitzero_z, touchplate_z). */
+  blockKind?: SetupBlockKind
   isAskSlot: boolean
   allDone: boolean
 }
@@ -81,15 +83,6 @@ export function ExecutionScreen({
   const isAskSlot = currentSlot?.ask && resolvedAskValue === null
   const allDone = slotIndex >= slots.length
 
-  useEffect(() => {
-    onStepChange?.({
-      slotIndex,
-      slotKind: currentSlot?.kind,
-      isAskSlot,
-      allDone,
-    })
-  }, [slotIndex, currentSlot?.kind, isAskSlot, allDone, onStepChange])
-
   const blocksForCurrentSlot = useMemo((): SetupBlock[] => {
     if (!currentSlot) return []
     if (currentSlot.ask && resolvedAskValue === null) return []
@@ -100,6 +93,16 @@ export function ExecutionScreen({
 
   const currentBlock = blocksForCurrentSlot[blockIndex]
   const hasBlocks = blocksForCurrentSlot.length > 0
+
+  useEffect(() => {
+    onStepChange?.({
+      slotIndex,
+      slotKind: currentSlot?.kind,
+      blockKind: currentBlock?.kind,
+      isAskSlot,
+      allDone,
+    })
+  }, [slotIndex, currentSlot?.kind, currentBlock?.kind, isAskSlot, allDone, onStepChange])
 
   const handleBlockComplete = useCallback(() => {
     if (blockIndex < blocksForCurrentSlot.length - 1) {
@@ -265,9 +268,9 @@ export function ExecutionScreen({
     <SetupBlockBackButton onClick={onBack} />
   ) : null
 
-  const isBlockWithMergedFooter = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter'
-  /** Blocks that render their own step progress (BitZero XY/Z/XYZ, BitSetter); hide slot progress to avoid two bars. */
-  const blockHasInternalProgress = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter'
+  const isBlockWithMergedFooter = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter' || currentBlock.kind === 'touchplate_x' || currentBlock.kind === 'touchplate_y' || currentBlock.kind === 'touchplate_xy' || currentBlock.kind === 'touchplate_z'
+  /** Blocks that render their own step progress or are single-step (manual); hide slot progress. */
+  const blockHasInternalProgress = currentBlock.kind === 'bitzero_xy' || currentBlock.kind === 'bitzero_z' || currentBlock.kind === 'bitzero_xyz' || currentBlock.kind === 'bitsetter' || currentBlock.kind === 'manual_xy' || currentBlock.kind === 'manual_z' || currentBlock.kind === 'touchplate_x' || currentBlock.kind === 'touchplate_y' || currentBlock.kind === 'touchplate_xy' || currentBlock.kind === 'touchplate_z'
 
   const content = (
     <div className="flex w-full min-h-0 flex-1 flex-col gap-6">

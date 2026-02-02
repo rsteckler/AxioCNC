@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, HelpCircle, Target } from 'lucide-react'
+import { AlertCircle, Check, HelpCircle, Loader2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroCommand, buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
@@ -33,8 +33,8 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
   const { currentWCS, connectedPort, clearBitsetterReference, probeContact } = context
 
   const showVerifyStep = xyMethod?.requireCheck !== false
-  const totalSteps = showVerifyStep ? 4 : 3
-  const runStep = showVerifyStep ? 4 : 3
+  const totalSteps = showVerifyStep ? 5 : 4
+  const runStep = showVerifyStep ? 5 : 4
 
   const [step, setStep] = useState(1)
   const [status, setStatus] = useState<'idle' | 'probing' | 'complete' | 'error'>('idle')
@@ -50,10 +50,18 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
     const xyProbeFeedrateA = xyMethod.probeFeedrate ?? 150
     const probeFeedrateB = 50
     const probeMajorRetract = 2
+    const zProbeRetract = 15 // Retract Z out of hole before moving to plate
+    const zProbeKeepout = 10 // X/Y offset from hole center to position above plate
+    const zFinal = 15
     const setXZeroCommand = buildSetZeroCommand(currentWCS, 'x')
     const setYZeroCommand = buildSetZeroCommand(currentWCS, 'y')
 
-    const xyMacroLines = [
+    const zProbeDistance = zMethod.probeDistance ?? 25
+    const zProbeFeedrateA = zMethod.probeFeedrate ?? 150
+    const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', zMethod.probeThickness ?? 12.7)
+
+    // Single combined macro so Y_CHORD is available for Z probe position (retract out of hole, move +X+Y above plate, then probe Z)
+    const xyzMacroLines = [
       'G91',
       'G21',
       '',
@@ -102,20 +110,13 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
       'G4 P1',
       setYZeroCommand,
       '',
-      'G90',
-      'G0 X0 Y0',
-      'G4 P1',
-    ]
-    const xyMacroString = processMacro(xyMacroLines.join('\n'))
-
-    const zProbeDistance = zMethod.probeDistance ?? 25
-    const zProbeFeedrateA = zMethod.probeFeedrate ?? 150
-    const zFinal = 15
-    const setZZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, 'Z', zMethod.probeThickness ?? 12.7)
-
-    const zMacroLines = [
-      'G91',
-      'G21',
+      '; Retract out of hole and move above plate for Z probe',
+      '%HOLE_RADIUS=Y_CHORD/2',
+      `%Z_PROBE_X=HOLE_RADIUS+${zProbeKeepout}`,
+      `%Z_PROBE_Y=HOLE_RADIUS+${zProbeKeepout}`,
+      '',
+      `G0 Z${zProbeRetract}`,
+      'G0 X[Z_PROBE_X] Y[Z_PROBE_Y]',
       '',
       '; Z-Axis Probing',
       `G38.2 Z-${zProbeDistance} F${zProbeFeedrateA}`,
@@ -124,16 +125,18 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
       setZZeroCommand,
       `G0 Z${zFinal}`,
       '',
+      '; Final: move to origin',
       'G90',
+      'G0 X0 Y0',
+      'G4 P1',
     ]
-    const zMacroString = processMacro(zMacroLines.join('\n'))
+    const xyzMacroString = processMacro(xyzMacroLines.join('\n'))
 
     setStatus('probing')
     setErrorMessage(null)
     probingRef.current = true
 
-    runGcodeBatch({ gcode: xyMacroString, port: connectedPort })
-      .then(() => runGcodeBatch({ gcode: zMacroString, port: connectedPort }))
+    runGcodeBatch({ gcode: xyzMacroString, port: connectedPort })
       .then(() => {
         probingRef.current = false
         setStatus('complete')
@@ -153,10 +156,11 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
 
   const canGoBack = step > 1
   const stepTitles: Record<number, string> = {
-    1: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
-    2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
-    3: showVerifyStep ? t('Position Tool in Hole') : t('Run XYZ Probe'),
-    4: t('Run XYZ Probe'),
+    1: t('Install Probing Pin'),
+    2: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
+    3: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
+    4: showVerifyStep ? t('Position Tool in Hole') : t('Run XYZ Probe'),
+    5: t('Run XYZ Probe'),
   }
   const title = stepTitles[step]
 
@@ -193,8 +197,25 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
       nextButton={nextButton}
       footerRight={footerRightExtraContent}
     >
-      {/* Step 1 (optional): Verify BitZero circuit */}
-      {showVerifyStep && step === 1 && (
+      {/* Step 1: Install probing pin */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              {t('Using a cutting tool for BitZero probing can be inaccurate. For best results, install the probing pin or dowel in the spindle before probing. The pin has a consistent diameter, which gives more repeatable XY zero.')}
+            </p>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              {t('Install the probing pin or dowel that came with your BitZero in the spindle collet. Once installed, press Next to continue.')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2 (only when requireCheck): Verify BitZero circuit */}
+      {showVerifyStep && step === 2 && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
@@ -228,8 +249,8 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
         </div>
       )}
 
-      {/* Step 2 (or step 1 when verify skipped): Place BitZero on corner */}
-      {((showVerifyStep && step === 2) || (!showVerifyStep && step === 1)) && (
+      {/* Step 2 (when verify skipped) or Step 3: Place BitZero on corner */}
+      {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
@@ -248,8 +269,8 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
         </div>
       )}
 
-      {/* Step 3 (or step 2 when verify skipped): Position tool in hole */}
-      {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
+      {/* Step 3 (when verify skipped) or Step 4: Position tool in hole */}
+      {((showVerifyStep && step === 4) || (!showVerifyStep && step === 3)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
@@ -274,7 +295,7 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
         </div>
       )}
 
-      {/* Step 4 (or step 3 when verify skipped): Run XYZ probe */}
+      {/* Step 4 (when verify skipped) or Step 5: Run XYZ probe */}
       {step === runStep && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
@@ -307,10 +328,26 @@ export function BitZeroXYZBlock({ methods, context, onComplete, onError, debugAl
             </>
           )}
           {status === 'probing' && (
-            <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
+            <div className="p-4 rounded-lg border bg-blue-500/10 border-blue-500/30">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{t('Probing')}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">{t('Please wait while the probe runs.')}</p>
+                </div>
+              </div>
+            </div>
           )}
           {status === 'complete' && (
-            <p className="text-sm text-green-600 dark:text-green-400">{t('Done. XYZ zero set at the corner.')}</p>
+            <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/30">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">{t('Probe complete.')}</p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">{t('Done. XYZ zero set at the corner.')}</p>
+                </div>
+              </div>
+            </div>
           )}
           {status === 'error' && (
             <div className="flex items-center gap-2 text-sm text-destructive">

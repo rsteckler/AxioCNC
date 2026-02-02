@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, HelpCircle } from 'lucide-react'
+import { AlertCircle, Check, HelpCircle, Loader2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
@@ -31,11 +31,11 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
   const method = methods[0] as BitZeroConfig | undefined
   const { currentWCS, connectedPort } = context
 
-  /** When false, skip step 1 (verify); 3 steps total (Place, Position, Run). When true, 4 steps (Verify, Place, Position, Run). */
+  /** When false, skip verify step: 4 steps (Install pin, Place, Position, Run). When true, 5 steps (Install pin, Verify, Place, Position, Run). */
   const showVerifyStep = method?.requireCheck !== false
-  const totalSteps = showVerifyStep ? 4 : 3
+  const totalSteps = showVerifyStep ? 5 : 4
   /** Step index for Run probe (last step). */
-  const runStep = showVerifyStep ? 4 : 3
+  const runStep = showVerifyStep ? 5 : 4
 
   /** Internal step 1–totalSteps; we advance with Next/Back until run step completes. */
   const [step, setStep] = useState(1)
@@ -129,14 +129,15 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
     return <p className="text-sm text-muted-foreground">{t('Invalid method')}</p>
   }
 
-  const { machinePosition, probeContact } = context
+  const { probeContact } = context
   const canGoBack = step > 1
 
   const stepTitles: Record<number, string> = {
-    1: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
-    2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
-    3: showVerifyStep ? t('Position Tool in Hole') : t('Run XY Probe'),
-    4: t('Run XY Probe'),
+    1: t('Install Probing Pin'),
+    2: showVerifyStep ? t('Verify BitZero Circuit') : t('Place BitZero on Corner'),
+    3: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool in Hole'),
+    4: showVerifyStep ? t('Position Tool in Hole') : t('Run XY Probe'),
+    5: t('Run XY Probe'),
   }
   const title = stepTitles[step]
 
@@ -173,8 +174,25 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
       nextButton={nextButton}
       footerRight={footerRightExtraContent}
     >
-      {/* Step 1 (only when requireCheck): Verify BitZero circuit — connect lead, touch probe to tool */}
-      {showVerifyStep && step === 1 && (
+      {/* Step 1: Install probing pin */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              {t('Using a cutting tool for BitZero probing can be inaccurate. For best results, install the probing pin or dowel in the spindle before probing. The pin has a consistent diameter, which gives more repeatable XY zero.')}
+            </p>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              {t('Install the probing pin or dowel that came with your BitZero in the spindle collet. Once installed, press Next to continue.')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2 (only when requireCheck): Verify BitZero circuit — connect lead, touch probe to tool */}
+      {showVerifyStep && step === 2 && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
@@ -212,8 +230,8 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
         </div>
       )}
 
-      {/* Step 2 (or step 1 when verify skipped): Place BitZero on corner */}
-      {((showVerifyStep && step === 2) || (!showVerifyStep && step === 1)) && (
+      {/* Step 2 (when verify skipped) or Step 3: Place BitZero on corner */}
+      {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
@@ -232,8 +250,8 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
         </div>
       )}
 
-      {/* Step 3 (or step 2 when verify skipped): Position tool in hole */}
-      {((showVerifyStep && step === 3) || (!showVerifyStep && step === 2)) && (
+      {/* Step 3 (when verify skipped) or Step 4: Position tool in hole */}
+      {((showVerifyStep && step === 4) || (!showVerifyStep && step === 3)) && (
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-1">
             <p>
@@ -255,27 +273,10 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
               </ul>
             </div>
           </div>
-          <div className="bg-muted/50 rounded-lg p-3 space-y-2 mb-4">
-            <div className="text-xs font-medium text-muted-foreground">{t('Current Machine Position')}:</div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">X: </span>
-                <span className="font-mono">{(machinePosition?.x ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Y: </span>
-                <span className="font-mono">{(machinePosition?.y ?? 0).toFixed(3)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Z: </span>
-                <span className="font-mono">{(machinePosition?.z ?? 0).toFixed(3)}</span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Step 4 (or step 3 when verify skipped): Run XY probe */}
+      {/* Step 4 (when verify skipped) or Step 5: Run XY probe */}
       {step === runStep && (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground space-y-1">
@@ -298,16 +299,35 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
                     <strong>{t('Warning')}:</strong> {t('Make sure the tool is positioned in the hole below the Z surface before starting. The tool should already be in the hole from the previous step.')}
                   </p>
                 </div>
-                <Button onClick={runProbe} size="lg" className="w-full sm:w-auto">
-                  {t('Run XY probe')}
-                </Button>
+                <div className="flex justify-center py-2">
+                  <Button onClick={runProbe} size="lg" className="gap-2">
+                    <Target className="w-5 h-5" />
+                    {t('Run XY probe')}
+                  </Button>
+                </div>
               </>
             )}
             {status === 'probing' && (
-              <p className="text-sm text-muted-foreground">{t('Probing…')}</p>
+              <div className="p-4 rounded-lg border bg-blue-500/10 border-blue-500/30">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{t('Probing')}</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">{t('Please wait while the probe runs.')}</p>
+                  </div>
+                </div>
+              </div>
             )}
             {status === 'complete' && (
-              <p className="text-sm text-green-600 dark:text-green-400">{t('Done. XY zero set at the corner.')}</p>
+              <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/30">
+                <div className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100">{t('Probe complete.')}</p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">{t('Done. XY zero set at the corner.')}</p>
+                  </div>
+                </div>
+              </div>
             )}
             {status === 'error' && (
               <div className="flex items-center gap-2 text-sm text-destructive">
