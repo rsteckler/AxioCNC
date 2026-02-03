@@ -631,18 +631,22 @@ export function VisualizerPanel({
           <Camera className="w-4 h-4 inline mr-1.5" />
           {t('Camera')}
         </button>
-        <div className="w-px h-4 bg-border" />
-        <button
-          onClick={() => setTab('setup')}
-          className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            tab === 'setup' 
-              ? 'border-primary text-foreground' 
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <ClipboardList className="w-4 h-4 inline mr-1.5" />
-          {t('Set up job')}
-        </button>
+        {jobSetupWizardOpen && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <button
+              onClick={() => setTab('setup')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === 'setup'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4 inline mr-1.5" />
+              {t('Set up job')}
+            </button>
+          </>
+        )}
         {isToolChangePending && (
           <>
             <div className="w-px h-4 bg-border" />
@@ -713,13 +717,14 @@ export function VisualizerPanel({
       {/* Set up job tab - multi-step plan + execution (same flow as old dialog) */}
       <div className={`flex-1 flex flex-col min-h-0 ${tab === 'setup' ? 'block' : 'hidden'}`}>
         <JobSetupWizard
-          open={tab === 'setup'}
+          open={jobSetupWizardOpen}
           embedded
           onClose={() => {
             onJobSetupClose?.()
             setTab('3d')
           }}
           onSetupComplete={onJobSetupComplete}
+          onPlaceModel={handlePlaceModel}
           probeContact={probeContact}
         />
       </div>

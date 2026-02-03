@@ -265,14 +265,14 @@ export function DebugPanel({
           )}
         </div>
 
-        {/* Tool Offset (G54) */}
+        {/* Tool reference (BitSetter) */}
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-xs font-semibold">{t('Tool Offset (G54)')}</h4>
+          <h4 className="text-xs font-semibold">{t('Tool reference')}</h4>
           {toolOffset !== null ? (
             <div className="px-2 py-1 rounded bg-muted/50 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t('Offset:')}</span>
-                <span className="font-mono font-medium">{toolOffset.toFixed(3)}{t('mm')}</span>
+                <span className="text-muted-foreground">{t('Tool reference (Z):')}</span>
+                <span className="font-mono font-medium">{toolOffset.toFixed(3)} mm</span>
               </div>
             </div>
           ) : (

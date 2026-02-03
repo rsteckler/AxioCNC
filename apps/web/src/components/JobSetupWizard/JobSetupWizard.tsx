@@ -31,6 +31,8 @@ export interface JobSetupWizardProps {
   embedded?: boolean
   /** Probe contact from controller pinState ('P'). Shown on verify step (BitZero/Touchplate/BitSetter) to confirm circuit. */
   probeContact?: boolean
+  /** Called when user completes a block that sets work zero (X, Y, or Z). Use e.g. to place the model in the visualizer. */
+  onPlaceModel?: () => void
 }
 
 const DEFAULT_STRATEGIES = {
@@ -43,7 +45,7 @@ const DEFAULT_STRATEGIES = {
  * Job Setup Wizard (Phase 4): Plan summary + execution with composable blocks.
  * Entry point is not wired here — Phase 5 adds the "Set up job" button and optional Run flow.
  */
-export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = false, probeContact = false }: JobSetupWizardProps) {
+export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = false, probeContact = false, onPlaceModel }: JobSetupWizardProps) {
   const { t } = useTranslation()
   const [screen, setScreen] = useState<1 | 2>(1)
   const { data: settings } = useGetSettingsQuery(undefined, { skip: !open })
@@ -294,6 +296,7 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
             onClose={onClose}
             onBack={() => setScreen(1)}
             onStepChange={handleExecutionStepChange}
+            onPlaceModel={onPlaceModel}
             stepIndex={stepIndex}
             totalSteps={totalSteps}
             embedded={embedded}

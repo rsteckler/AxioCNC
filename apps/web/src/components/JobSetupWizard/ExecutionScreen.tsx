@@ -41,6 +41,8 @@ export interface ExecutionScreenProps {
   onBack?: () => void
   /** Notify parent of current step for header title/progress. */
   onStepChange?: (info: ExecutionStepInfo) => void
+  /** Called when a block that sets work zero (X, Y, or Z) completes. Use e.g. to place the model in the visualizer. */
+  onPlaceModel?: () => void
   /** Current step index (1-based) for block progress bar. */
   stepIndex?: number
   /** Total steps for block progress bar. */
@@ -60,6 +62,7 @@ export function ExecutionScreen({
   onClose,
   onBack,
   onStepChange,
+  onPlaceModel,
   stepIndex = 1,
   totalSteps = 1,
   embedded = false,
@@ -105,6 +108,10 @@ export function ExecutionScreen({
   }, [slotIndex, currentSlot?.kind, currentBlock?.kind, isAskSlot, allDone, onStepChange])
 
   const handleBlockComplete = useCallback(() => {
+    // Place model whenever user completes a zeroing block (X, Y, or Z). Short delay so work position can update.
+    if (onPlaceModel) {
+      setTimeout(onPlaceModel, 150)
+    }
     if (blockIndex < blocksForCurrentSlot.length - 1) {
       setBlockIndex((i) => i + 1)
     } else {
@@ -115,7 +122,7 @@ export function ExecutionScreen({
         onComplete()
       }
     }
-  }, [blockIndex, blocksForCurrentSlot.length, slotIndex, slots.length, onComplete])
+  }, [blockIndex, blocksForCurrentSlot.length, slotIndex, slots.length, onComplete, onPlaceModel])
 
   const workXYOptions = getWorkXYZeroOptions(methods, t)
   const workZOptions = getWorkZZeroOptions(methods, t)

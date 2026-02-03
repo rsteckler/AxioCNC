@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, FileCode, Circle, Loader2, X } from 'lucide-react'
+import { Upload, FileCode, Circle, Loader2, X, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import 'overlayscrollbars/overlayscrollbars.css'
@@ -11,8 +11,14 @@ import { calculateOutline } from '@/lib/gcodeOutline'
 import { useNotifications } from '@/hooks/useNotifications'
 import { ConfirmationDialog } from '@/components/ConfirmationDialog'
 import type { PanelProps } from '../types'
+import { MachineActionButton } from '@/components/MachineActionButton'
+import { ActionRequirements } from '@/utils/machineState'
 
-export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition }: PanelProps) {
+export interface FilePanelProps extends PanelProps {
+  onSetUpJob?: () => void
+}
+
+export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFlashStatus, machinePosition, machineStatus, onSetUpJob }: FilePanelProps) {
   const { t } = useTranslation()
   // Get connected port from controllers (may be null if not connected)
   const { data: controllers } = useGetControllersQuery()
@@ -408,10 +414,26 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
             </div>
             {/* Actions - only show when connected */}
             {connectedPort && (
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                {onSetUpJob && (
+                  <MachineActionButton
+                    isConnected={isConnected}
+                    connectedPort={connectedPort}
+                    machineStatus={machineStatus ?? 'not_connected'}
+                    onFlashStatus={onFlashStatus}
+                    onAction={onSetUpJob}
+                    requirements={ActionRequirements.standard}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    {t('Set up job')}
+                  </MachineActionButton>
+                )}
                 <Button 
                   variant="outline" 
-                  className="flex-1" 
+                  className="w-full" 
                   size="sm" 
                   disabled={isOutlining || !loadedFileName || !machinePosition}
                   onClick={handleOutline}

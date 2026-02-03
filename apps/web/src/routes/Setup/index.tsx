@@ -49,7 +49,7 @@ import {
   ChevronDown,
   Square, 
   Crosshair, RotateCcw, RotateCw, GripVertical,
-  Zap, Target, FileCode, ClipboardList,
+  Zap, Target, FileCode,
   Move, Navigation,
   Camera, Gamepad2, Bug,
 } from 'lucide-react'
@@ -61,7 +61,6 @@ import { ActionRequirements } from '@/utils/machineState'
 // Import extracted panels - explicit imports for Vite compatibility
 import { DROPanel } from './panels/DROPanel'
 import { JogPanel } from './panels/JogPanel'
-import { JobSetupPanel } from './panels/JobSetupPanel'
 import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
@@ -92,7 +91,6 @@ const createPanelConfig = (t: (key: string) => string): Record<string, {
   dro: { title: t('Position'), icon: Crosshair, component: DROPanel },
   jog: { title: t('Jog Control'), icon: Move, component: JogPanel },
   rapid: { title: t('Rapid'), icon: Navigation, component: RapidPanel },
-  jobSetup: { title: t('Job setup'), icon: ClipboardList, component: JobSetupPanel },
   probe: { title: t('Probe'), icon: Target, component: ProbePanel },
   macros: { title: t('Macros'), icon: Zap, component: MacrosPanel },
   file: { title: t('File'), icon: FileCode, component: FilePanel },
@@ -171,8 +169,8 @@ function SortablePanel({
         </div>
         {/* Panel content */}
         {!isCollapsed && (
-          id === 'jobSetup' && onOpenJobSetupPanel ? (
-            <JobSetupPanel {...panelProps} onSetUpJob={onOpenJobSetupPanel} />
+          id === 'file' && onOpenJobSetupPanel ? (
+            <FilePanel {...panelProps} onSetUpJob={onOpenJobSetupPanel} />
           ) : id === 'probe' && onStartWizard ? (
             <ProbePanel {...panelProps} onStartWizard={onStartWizard} />
           ) : (
@@ -330,29 +328,27 @@ export default function Setup() {
 
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem('axiocnc-setup-panel-order')
-    const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick', 'debug', 'jobSetup']
+    const validPanels = ['dro', 'jog', 'spindle', 'rapid', 'probe', 'file', 'macros', 'camera', 'joystick', 'debug']
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed) && parsed.every((id: string) => validPanels.includes(id))) {
-          // Store joystick position if it exists in the saved order
-          const joystickIndex = parsed.indexOf('joystick')
-          if (joystickIndex !== -1) {
-            joystickPositionRef.current = joystickIndex
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((id: string) => validPanels.includes(id))
+          if (filtered.length === parsed.length) {
+            // Store joystick position if it exists in the saved order
+            const joystickIndex = filtered.indexOf('joystick')
+            if (joystickIndex !== -1) {
+              joystickPositionRef.current = joystickIndex
+            }
+            return filtered
           }
-          // Ensure jobSetup is present: insert just before probe if missing (Phase 5 migration)
-          if (!parsed.includes('jobSetup')) {
-            const probeIndex = parsed.indexOf('probe')
-            const insertAt = probeIndex >= 0 ? probeIndex : parsed.length
-            return [...parsed.slice(0, insertAt), 'jobSetup', ...parsed.slice(insertAt)]
-          }
-          return parsed
         }
       } catch {
         // Invalid JSON, use default
       }
     }
-    return ['dro', 'rapid', 'jog', 'file', 'jobSetup', 'probe', 'macros', 'spindle', 'camera']
+    // Default order: DRO, jog, joystick, file, rapid, spindle, probe, macros, camera, debug
+    return ['dro', 'jog', 'joystick', 'file', 'rapid', 'spindle', 'probe', 'macros', 'camera', 'debug']
   })
   
   // Add/remove joystick panel to order when joystick is enabled/disabled
