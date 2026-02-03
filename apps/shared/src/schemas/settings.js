@@ -136,6 +136,10 @@ export const TouchPlateMethodSchema = BaseMethodSchema.extend({
   probeFeedrate: z.number().default(100),
   probeDistance: z.number().default(25),
   requireCheck: z.boolean().default(true),
+  // XY probing: use pin diameter so zero accounts for pin radius
+  useForXYProbing: z.boolean().optional(),
+  probingPinDiameter: z.number().min(0).optional(),
+  probingPinDiameterUnit: z.enum(['mm', 'in']).optional(),
 });
 
 // Manual - user manually zeros (always available)

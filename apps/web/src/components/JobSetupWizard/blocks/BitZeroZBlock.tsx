@@ -31,10 +31,11 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
   const method = methods[0] as BitZeroConfig | undefined
   const { currentWCS, clearBitsetterReference, connectedPort, probeContact } = context
 
-  /** When true, show step 1 (verify); 4 steps total. When false, 3 steps (place, position, run). */
+  /** When true, show step 1 (verify); 5 steps total. When false, 4 steps (place, position, run, remove leads). */
   const showVerifyStep = method?.requireCheck !== false
-  const totalSteps = showVerifyStep ? 4 : 3
+  const totalSteps = showVerifyStep ? 5 : 4
   const runStep = showVerifyStep ? 4 : 3
+  const cleanupStep = runStep + 1
 
   const [step, setStep] = useState(1)
   const [status, setStatus] = useState<'idle' | 'probing' | 'complete' | 'error'>('idle')
@@ -94,19 +95,25 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
     2: showVerifyStep ? t('Place BitZero on Corner') : t('Position Tool Above BitZero'),
     3: showVerifyStep ? t('Position Tool Above BitZero') : t('Run Z probe'),
     4: t('Run Z probe'),
+    [cleanupStep]: t('Remove leads and probe'),
   }
   const title = stepTitles[step]
 
-  const onBack = (step >= 2 && (step < runStep || (step === runStep && canGoBack && status !== 'probing')))
+  const onBack = (step >= 2 && (step < cleanupStep && (step < runStep || (step === runStep && canGoBack && status !== 'probing'))))
     ? () => setStep(step - 1)
-    : undefined
+    : step === cleanupStep
+      ? () => setStep(step - 1)
+      : undefined
   const footerLeft = step === 1 ? footerLeftExtra : undefined
 
-  const nextButton = step < runStep
-    ? { onClick: () => setStep(step + 1) }
-    : step === runStep
-      ? { onClick: onComplete, disabled: status !== 'complete' }
-      : undefined
+  const nextButton =
+    step < runStep
+      ? { onClick: () => setStep(step + 1) }
+      : step === runStep
+        ? { onClick: () => setStep(cleanupStep), disabled: status !== 'complete' }
+        : step === cleanupStep
+          ? { onClick: onComplete }
+          : undefined
 
   const footerRightContent = (
     <>
@@ -115,6 +122,9 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
         <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
       )}
       {step === runStep && debugAllowNext && status !== 'complete' && status !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={() => setStep(cleanupStep)}>{t('Next (debug)')}</Button>
+      )}
+      {step === cleanupStep && debugAllowNext && (
         <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
       )}
     </>
@@ -269,6 +279,15 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
               <span>{errorMessage ?? t('Probe error')}</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Cleanup step: remove leads and probe */}
+      {step === cleanupStep && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('Remove the leads from the tool and the BitZero probe from the workpiece.')}
+          </p>
         </div>
       )}
     </SetupBlockLayout>

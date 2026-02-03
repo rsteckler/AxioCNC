@@ -272,40 +272,30 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
               <span>{errorMessage}</span>
             </div>
           )}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">{t('BitSetter Location')}:</div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">X: </span>
-                  <span className="font-mono">{method.position.x.toFixed(3)}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Y: </span>
-                  <span className="font-mono">{method.position.y.toFixed(3)}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Z: </span>
-                  <span className="font-mono">{method.position.z.toFixed(3)}</span>
-                </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <div
+              className={`rounded-lg border p-2.5 text-sm min-w-0 ${
+                isAtBitsetter ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'
+              }`}
+            >
+              <div className="text-xs font-medium text-muted-foreground mb-1">{t('BitSetter')}</div>
+              <div className="font-mono text-xs space-x-3">
+                <span>X {method.position.x.toFixed(3)}</span>
+                <span>Y {method.position.y.toFixed(3)}</span>
+                <span>Z {method.position.z.toFixed(3)}</span>
               </div>
             </div>
             {machinePosition && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">{t('Machine Position')}:</div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">X: </span>
-                    <span className="font-mono">{machinePosition.x.toFixed(3)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Y: </span>
-                    <span className="font-mono">{machinePosition.y.toFixed(3)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Z: </span>
-                    <span className="font-mono">{machinePosition.z.toFixed(3)}</span>
-                  </div>
+              <div
+                className={`rounded-lg border p-2.5 text-sm min-w-0 ${
+                  isAtBitsetter ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'
+                }`}
+              >
+                <div className="text-xs font-medium text-muted-foreground mb-1">{t('Machine')}</div>
+                <div className="font-mono text-xs space-x-3">
+                  <span>X {machinePosition.x.toFixed(3)}</span>
+                  <span>Y {machinePosition.y.toFixed(3)}</span>
+                  <span>Z {machinePosition.z.toFixed(3)}</span>
                 </div>
               </div>
             )}
@@ -369,14 +359,14 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
                       {t('Probe complete! Tool reference stored.')}
                     </p>
                     <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      {t('The tool reference for {{wcs}} has been saved. When you change tools during a job, you can use this reference to automatically adjust the Z offset.', { wcs: currentWCS })}
+                      {t('The reference is the Z work position when the tool touched the BitSetter. During the job, when you change tools and probe again on the BitSetter, the controller will use this value to adjust Z so the new tool matches the first tool\'s length.')}
                     </p>
                   </div>
                 </div>
               </div>
               {capturedZRef != null && (
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-                  <div className="text-sm font-medium">{t('Reference Z ({{wcs}}):', { wcs: currentWCS })}</div>
+                  <div className="text-sm font-medium">{t('Tool reference (Z):')}</div>
                   <div className="font-mono text-sm">{capturedZRef.toFixed(3)} mm</div>
                 </div>
               )}

@@ -95,6 +95,9 @@ export interface TouchPlateConfig extends BaseMethodConfig {
   probeFeedrate: number
   probeDistance: number
   requireCheck: boolean
+  useForXYProbing?: boolean
+  probingPinDiameter?: number
+  probingPinDiameterUnit?: 'mm' | 'in'
 }
 
 // Manual - user manually zeros (always available)
@@ -218,6 +221,9 @@ function createDefaultMethod(type: ZeroingMethodType, existingMethods: ZeroingMe
         probeFeedrate: 100,
         probeDistance: 50,
         requireCheck: true,
+        useForXYProbing: false,
+        probingPinDiameter: undefined,
+        probingPinDiameterUnit: 'mm',
       }
     case 'manual':
       return {
@@ -953,6 +959,56 @@ function TouchPlateSettings({
             <span className="text-xs text-muted-foreground">{t('mm/min')}</span>
           </div>
         </SettingsField>
+      </div>
+
+      {/* Also use for X/Y probing + pin diameter */}
+      <div className="pt-2 border-t space-y-4">
+        <div className="flex items-start gap-3">
+          <Switch
+            checked={config.useForXYProbing ?? false}
+            onCheckedChange={(checked) => onChange({ useForXYProbing: checked })}
+            className="mt-0.5"
+          />
+          <div className="space-y-1">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              {t('Also use for X/Y probing?')}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t('When enabled, you can set XY zero with this touch plate. Enter the probing pin or tool diameter so the zero accounts for the radius.')}
+            </p>
+          </div>
+        </div>
+        {(config.useForXYProbing ?? false) && (
+          <SettingsField
+            label={t('Probing pin diameter')}
+            description={t('Diameter of the pin or tool used for XY probing')}
+            tooltip={t('Half of this (the radius) is used to offset the zero so the edge of the pin aligns with the datum.')}
+          >
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={config.probingPinDiameter ?? ''}
+                onChange={(e) => onChange({ probingPinDiameter: e.target.value === '' ? undefined : parseFloat(e.target.value) || 0 })}
+                className="w-24"
+                placeholder="0"
+              />
+              <Select
+                value={config.probingPinDiameterUnit ?? 'mm'}
+                onValueChange={(v: 'mm' | 'in') => onChange({ probingPinDiameterUnit: v })}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mm">{t('mm')}</SelectItem>
+                  <SelectItem value="in">{t('in')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </SettingsField>
+        )}
       </div>
 
       {/* Require Check Before Running */}

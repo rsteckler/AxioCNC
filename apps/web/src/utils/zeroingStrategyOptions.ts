@@ -8,7 +8,7 @@
  * Used by Settings "Zeroing defaults" and later by the Setup Wizard (Phase 4)
  * so plan and defaults stay consistent.
  */
-import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
+import type { ZeroingMethod, TouchPlateConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
 export type WorkXYZeroOption = { value: string[]; labelKey: string; label: string }
 export type WorkZZeroOption = { value: string[]; labelKey: string; label: string }
@@ -54,10 +54,16 @@ export function getWorkXYZeroOptions(
     })
   }
 
-  // One touchplate (axes xyz) provides "Touchplate X then Y"; legacy two touchplates (x + y) also supported
-  const touchplateXYZ = enabled.find((m) => m.type === 'touchplate' && m.axes === 'xyz')
-  const touchplateX = enabled.find((m) => m.type === 'touchplate' && m.axes === 'x')
-  const touchplateY = enabled.find((m) => m.type === 'touchplate' && m.axes === 'y')
+  // One touchplate (axes xyz) provides "Touchplate X then Y" only when "Also use for X/Y probing?" is enabled
+  const touchplateXYZ = enabled.find(
+    (m) => m.type === 'touchplate' && m.axes === 'xyz' && (m as TouchPlateConfig).useForXYProbing === true
+  )
+  const touchplateX = enabled.find(
+    (m) => m.type === 'touchplate' && m.axes === 'x' && (m as TouchPlateConfig).useForXYProbing === true
+  )
+  const touchplateY = enabled.find(
+    (m) => m.type === 'touchplate' && m.axes === 'y' && (m as TouchPlateConfig).useForXYProbing === true
+  )
   if (touchplateXYZ) {
     options.push({
       value: [touchplateXYZ.id],

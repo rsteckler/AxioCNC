@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
 import { SettingsField } from '../SettingsField'
@@ -56,6 +57,24 @@ export function ZeroingStrategiesSection({
     : (toolChangeOptions[0]?.value ?? 'ask')
 
   const showBitSetterRule = isBitSetterMethodId(availableMethods, config.toolChangePolicy)
+
+  // When displayed value is a fallback (current config not in options), persist it so adding a
+  // new method triggers a save of the default.
+  useEffect(() => {
+    const updates: Partial<ZeroingStrategiesConfig> = {}
+    if (workXYValue !== workXYSerialized) {
+      updates.workXYZero = parseWorkZeroValue(workXYValue)
+    }
+    if (workZZeroValue !== workZZeroSerialized) {
+      updates.workZZero = parseWorkZeroValue(workZZeroValue)
+    }
+    if (toolChangeValue !== config.toolChangePolicy) {
+      updates.toolChangePolicy = toolChangeValue
+    }
+    if (Object.keys(updates).length > 0) {
+      onConfigChange(updates)
+    }
+  }, [workXYValue, workXYSerialized, workZZeroValue, workZZeroSerialized, toolChangeValue, config.toolChangePolicy, onConfigChange])
 
   return (
     <SettingsSection

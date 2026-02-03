@@ -30,6 +30,8 @@ function getTouchplateAxis(method: TouchPlateConfig, blockKind?: string): 'x' | 
     if (blockKind === 'touchplate_xy') return 'x' // 5-step flow overrides per step
     if (blockKind === 'touchplate_z') return 'z'
   }
+  // Default to 'z' for touchplate_z so Z flow is used even if blockKind was not passed
+  if (blockKind === 'touchplate_z') return 'z'
   return method.axes as 'x' | 'y' | 'z'
 }
 
@@ -71,8 +73,34 @@ export function TouchplateBlock({
       const probeFeedrateA = method.probeFeedrate ?? 150
       const probeFeedrateB = 50
       const retractBack = probeDistance + 10
+      // sign: used in G38.2 (e.g. X-25 = probe toward negative X). 'negative' → '-' = probe left (X) or front (Y).
       const sign = direction === 'positive' ? '+' : '-'
-      const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axisUpper, method.plateThickness)
+      // G10 L20 sets current position to this work value; zero is then at (current - value).
+      // User convention: probe left/front/back → +thickness; probe right only → -thickness.
+      let offset =
+        (direction === 'negative')
+          ? method.plateThickness
+          : -method.plateThickness
+      // Account for probing pin radius when configured (zero at edge of pin).
+      // Same rule as offset: direction negative → add radius; direction positive → subtract radius.
+      const diameter =
+        method.useForXYProbing && method.probingPinDiameter != null && method.probingPinDiameter > 0
+          ? method.probingPinDiameter
+          : 0
+      const diameterMm = diameter > 0 && method.probingPinDiameterUnit === 'in' ? diameter * 25.4 : diameter
+      const radiusMm = diameterMm / 2
+      if (radiusMm > 0) {
+        offset = offset + (direction === 'negative' ? radiusMm : -radiusMm)
+      }
+      const setZeroCommand = buildSetZeroWithOffsetCommand(currentWCS, axisUpper, offset)
+      console.log('[Touchplate XY]', {
+        axis: effectiveAxis,
+        direction,
+        sign,
+        offset,
+        radiusMm,
+        setZeroCommand,
+      })  
       const macroLines = [
         'G91',
         'G21',
@@ -157,28 +185,34 @@ export function TouchplateBlock({
   const axisLabel = axis.toUpperCase()
 
   if (isZ) {
-    // ——— Z flow: verify (optional) → place touchplate → position tool → run Z probe ———
-    const totalSteps = showVerifyStep ? 4 : 3
+    // ——— Z flow: verify (optional) → place touchplate → position tool → run Z probe → remove leads and plate ———
+    const totalSteps = showVerifyStep ? 5 : 4
     const runStep = showVerifyStep ? 4 : 3
+    const cleanupStep = runStep + 1
     const stepTitles: Record<number, string> = {
       1: showVerifyStep ? t('Verify Touch Plate') : t('Place Touch Plate'),
       2: showVerifyStep ? t('Place Touch Plate') : t('Position Tool Above Touch Plate'),
       3: showVerifyStep ? t('Position Tool Above Touch Plate') : t('Run Z probe'),
       4: t('Run Z probe'),
+      [cleanupStep]: t('Remove leads and touch plate'),
     }
     const title = stepTitles[step]
     const canGoBack = step > 1
     const onBack =
-      step >= 2 && (step < runStep || (step === runStep && canGoBack && status !== 'probing'))
+      step >= 2 && (step < cleanupStep && (step < runStep || (step === runStep && canGoBack && status !== 'probing')))
         ? () => setStep(step - 1)
-        : undefined
+        : step === cleanupStep
+          ? () => setStep(step - 1)
+          : undefined
     const footerLeft = step === 1 ? footerLeftExtra : undefined
     const nextButton =
       step < runStep
         ? { onClick: () => setStep(step + 1) }
         : step === runStep
-          ? { onClick: onComplete, disabled: status !== 'complete' }
-          : undefined
+          ? { onClick: () => setStep(cleanupStep), disabled: status !== 'complete' }
+          : step === cleanupStep
+            ? { onClick: onComplete }
+            : undefined
     const footerRightContent = (
       <>
         {footerRightExtra}
@@ -186,6 +220,9 @@ export function TouchplateBlock({
           <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
         )}
         {step === runStep && debugAllowNext && status !== 'complete' && status !== 'error' && (
+          <Button variant="secondary" size="sm" onClick={() => setStep(cleanupStep)}>{t('Next (debug)')}</Button>
+        )}
+        {step === cleanupStep && debugAllowNext && (
           <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
         )}
       </>
@@ -202,45 +239,67 @@ export function TouchplateBlock({
         nextButton={nextButton}
         footerRight={footerRightContent}
       >
-        {showVerifyStep && step === 1 && (
+        {step === 1 && (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>
-                {t('Verify that the touch plate is working by manually touching it to the tool. The touch plate should trigger when contact is made.')}
-              </p>
-              <p>
-                {t('This ensures the probe circuit is functioning correctly before starting the zeroing process.')}
-              </p>
-            </div>
-            <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                {t('Touch the plate to the tool manually. If the probe triggers correctly, you\'re ready to proceed. If not, check your wiring and probe settings.')}
-              </p>
-            </div>
-            <div
-              className={`p-3 rounded-lg border ${
-                probeContact ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'
-              }`}
-            >
-              <div className="flex items-center gap-2">
+            {showVerifyStep ? (
+              <>
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p>
+                    {t('Verify that the touch plate is working by manually touching it to the tool. The touch plate should trigger when contact is made.')}
+                  </p>
+                  <p>
+                    {t('This ensures the probe circuit is functioning correctly before starting the zeroing process.')}
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    {t('Touch the plate to the tool manually. If the probe triggers correctly, you\'re ready to proceed. If not, check your wiring and probe settings.')}
+                  </p>
+                </div>
                 <div
-                  className={`w-3 h-3 rounded-full ${probeContact ? 'bg-green-500' : 'bg-muted'}`}
-                />
-                <span className="text-sm font-medium">
-                  {t('Probe Status')}: {probeContact ? t('Contact Detected') : t('No Contact')}
-                </span>
-              </div>
-              {probeContact && (
-                <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
-                  {t('The probe circuit is working correctly. You can proceed to the next step.')}
-                </p>
-              )}
-            </div>
+                  className={`p-3 rounded-lg border ${
+                    probeContact ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${probeContact ? 'bg-green-500' : 'bg-muted'}`}
+                    />
+                    <span className="text-sm font-medium">
+                      {t('Probe Status')}: {probeContact ? t('Contact Detected') : t('No Contact')}
+                    </span>
+                  </div>
+                  {probeContact && (
+                    <p className="text-xs text-green-900 dark:text-green-100 mt-1 ml-5">
+                      {t('The probe circuit is working correctly. You can proceed to the next step.')}
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>
+                    {t('Place the touch plate on the workpiece at the location where you want to set Z zero.')}
+                  </p>
+                  <p>
+                    {t('Make sure the touch plate is flat on the workpiece surface and the tool can reach it when probing down.')}
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                    <strong>{t('Important')}:</strong>{' '}
+                    {t('Ensure the touch plate is secure and will not move during probing.')}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {((showVerifyStep && step === 2) || (!showVerifyStep && step === 1)) && (
+        {(showVerifyStep && step === 2) && (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground space-y-1">
               <p>
@@ -344,39 +403,54 @@ export function TouchplateBlock({
             )}
           </div>
         )}
+
+        {step === cleanupStep && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('Remove the leads from the tool and the touch plate from the work surface.')}
+            </p>
+          </div>
+        )}
       </SetupBlockLayout>
     )
   }
 
-  // ——— touchplate_xy: 5 steps — verify → place left/right → probe left/right → place front/back → probe front/back ———
+  // ——— touchplate_xy: 6 steps (or 5) — verify → place left/right → probe left/right → place front/back → probe front/back → remove leads ———
   if (isTouchplateXY) {
-    const totalSteps = showVerifyStep ? 5 : 4
+    const totalSteps = showVerifyStep ? 6 : 5
     const probeXStep = showVerifyStep ? 3 : 2
     const probeYStep = showVerifyStep ? 5 : 4
+    const cleanupStep = probeYStep + 1
     const stepTitles: Record<number, string> = {
       1: showVerifyStep ? t('Verify Touch Plate') : t('Place touch plate left or right'),
       2: showVerifyStep ? t('Place touch plate left or right') : t('Probe left or right'),
       3: showVerifyStep ? t('Probe left or right') : t('Place touch plate front or back'),
       4: showVerifyStep ? t('Place touch plate front or back') : t('Probe front or back'),
       5: t('Probe front or back'),
+      [cleanupStep]: t('Remove leads and touch plate'),
     }
     const title = stepTitles[step]
     const canGoBack = step > 1
     const onBack =
-      step >= 2 && (step < probeYStep || (step === probeYStep && canGoBack && status !== 'probing'))
+      step >= 2 && (step < cleanupStep && (step < probeYStep || (step === probeYStep && canGoBack && status !== 'probing')))
         ? () => setStep(step - 1)
-        : undefined
+        : step === cleanupStep
+          ? () => setStep(step - 1)
+          : undefined
     const footerLeft = step === 1 ? footerLeftExtra : undefined
     const getNextButton = () => {
       if (step === probeXStep) {
         return { onClick: () => { setStatus('idle'); setStep(step + 1) }, disabled: status !== 'complete' }
       }
       if (step === probeYStep) {
-        return { onClick: onComplete, disabled: status !== 'complete' }
+        return { onClick: () => setStep(cleanupStep), disabled: status !== 'complete' }
+      }
+      if (step === cleanupStep) {
+        return { onClick: onComplete }
       }
       return { onClick: () => setStep(step + 1) }
     }
-    const nextButton = step < totalSteps ? getNextButton() : undefined
+    const nextButton = getNextButton()
     const footerRightContent = (
       <>
         {footerRightExtra}
@@ -384,7 +458,10 @@ export function TouchplateBlock({
           <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
         )}
         {(step === probeXStep || step === probeYStep) && debugAllowNext && status !== 'complete' && status !== 'error' && (
-          <Button variant="secondary" size="sm" onClick={step === probeYStep ? onComplete : () => { setStatus('idle'); setStep(step + 1) }}>{t('Next (debug)')}</Button>
+          <Button variant="secondary" size="sm" onClick={step === probeYStep ? () => setStep(cleanupStep) : () => { setStatus('idle'); setStep(step + 1) }}>{t('Next (debug)')}</Button>
+        )}
+        {step === cleanupStep && debugAllowNext && (
+          <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
         )}
       </>
     )
@@ -584,31 +661,45 @@ export function TouchplateBlock({
             )}
           </div>
         )}
+
+        {step === cleanupStep && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('Remove the leads from the tool and the touch plate from the work surface.')}
+            </p>
+          </div>
+        )}
       </SetupBlockLayout>
     )
   }
 
-  // ——— XY flow (touchplate_x or touchplate_y): verify (optional) → place → probe ———
-  const totalSteps = showVerifyStep ? 3 : 2
+  // ——— XY flow (touchplate_x or touchplate_y): verify (optional) → place → probe → remove leads ———
+  const totalSteps = showVerifyStep ? 4 : 3
   const runStep = showVerifyStep ? 3 : 2
+  const cleanupStep = runStep + 1
   const stepTitles: Record<number, string> = {
     1: showVerifyStep ? t('Verify Touch Plate') : t('Place Touch Plate'),
     2: showVerifyStep ? t('Place Touch Plate') : t('Probe {{axis}}', { axis: axisLabel }),
     3: t('Probe {{axis}}', { axis: axisLabel }),
+    [cleanupStep]: t('Remove leads and touch plate'),
   }
   const title = stepTitles[step]
   const canGoBack = step > 1
   const onBack =
-    step >= 2 && (step < runStep || (step === runStep && canGoBack && status !== 'probing'))
+    step >= 2 && (step < cleanupStep && (step < runStep || (step === runStep && canGoBack && status !== 'probing')))
       ? () => setStep(step - 1)
-      : undefined
+      : step === cleanupStep
+        ? () => setStep(step - 1)
+        : undefined
   const footerLeft = step === 1 ? footerLeftExtra : undefined
   const nextButton =
     step < runStep
       ? { onClick: () => setStep(step + 1) }
       : step === runStep
-        ? { onClick: onComplete, disabled: status !== 'complete' }
-        : undefined
+        ? { onClick: () => setStep(cleanupStep), disabled: status !== 'complete' }
+        : step === cleanupStep
+          ? { onClick: onComplete }
+          : undefined
   const footerRightContent = (
     <>
       {footerRightExtra}
@@ -616,6 +707,9 @@ export function TouchplateBlock({
         <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>{t('Next (debug)')}</Button>
       )}
       {step === runStep && debugAllowNext && status !== 'complete' && status !== 'error' && (
+        <Button variant="secondary" size="sm" onClick={() => setStep(cleanupStep)}>{t('Next (debug)')}</Button>
+      )}
+      {step === cleanupStep && debugAllowNext && (
         <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
       )}
     </>
@@ -783,6 +877,14 @@ export function TouchplateBlock({
               <span>{errorMessage ?? t('Probe error')}</span>
             </div>
           )}
+        </div>
+      )}
+
+      {step === cleanupStep && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('Remove the leads from the tool and the touch plate from the work surface.')}
+          </p>
         </div>
       )}
     </SetupBlockLayout>

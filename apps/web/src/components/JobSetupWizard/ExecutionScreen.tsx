@@ -275,7 +275,10 @@ export function ExecutionScreen({
   const content = (
     <div className="flex w-full min-h-0 flex-1 flex-col gap-6">
       {!blockHasInternalProgress && blockProgress}
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        key={`block-${slotIndex}-${blockIndex}-${currentBlock?.kind ?? ''}`}
+      >
         {RenderSetupBlock(currentBlock, {
           context,
           onComplete: handleBlockComplete,
