@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
+import { useStore } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, HelpCircle, Check, Navigation, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
 import { SetupBlockLayout } from '@/components/JobSetupWizard/blocks/SetupBlockLayout'
 import { useGetToolsQuery, useGetExtensionsQuery } from '@/services/api'
-import { useJobState } from '@/store/hooks'
+import { useJobState, selectWorkPosition } from '@/store/hooks'
+import type { RootState } from '@/store'
 import { mmToInches } from '@/utils/units'
 import type { SetupBlockProps } from '@/components/JobSetupWizard/blocks/types'
 import type { BitSetterConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
@@ -41,12 +43,12 @@ export function BitSetterToolChangeBlock({
   footerRightExtra,
 }: SetupBlockProps) {
   const { t } = useTranslation()
+  const store = useStore<RootState>()
   const method = methods[0] as BitSetterConfig | undefined
   const {
     connectedPort,
     currentWCS,
     sendGcode,
-    workPosition,
     machinePosition,
     probeContact,
   } = context
@@ -188,11 +190,11 @@ export function BitSetterToolChangeBlock({
     setProbePhase('probing')
     setErrorMessage(null)
     probingRef.current = true
-    runGcodeBatch({ gcode: macroString, port: connectedPort })
+    runGcodeBatch({ gcode: macroString, port: connectedPort, waitForIdle: true })
       .then(() => {
         probingRef.current = false
         setProbePhase('storing')
-        const zRef = workPosition.z
+        const zRef = selectWorkPosition(store.getState()).z
         setCapturedZRef(zRef)
         setProbePhase('returning')
         sendGcode('G90')
@@ -212,12 +214,11 @@ export function BitSetterToolChangeBlock({
         setErrorMessage(msg)
         onError(msg)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentWCS used for G10, omit to avoid unnecessary callback churn
   }, [
     method,
     connectedPort,
     currentWCS,
-    workPosition.z,
+    store,
     initialToolReference,
     sendGcode,
     onError,

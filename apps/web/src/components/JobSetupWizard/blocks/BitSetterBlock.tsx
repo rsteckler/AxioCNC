@@ -1,8 +1,11 @@
 import { useCallback, useRef, useState } from 'react'
+import { useStore } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, HelpCircle, Check, Navigation, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
+import { selectWorkPosition } from '@/store/hooks'
+import type { RootState } from '@/store'
 import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 import type { BitSetterConfig } from '@/routes/Settings/sections/ZeroingMethodsSection'
@@ -30,11 +33,11 @@ const POSITION_TOLERANCE = 1.0
 export function BitSetterBlock({ methods, context, onComplete, onError, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const method = methods[0] as BitSetterConfig | undefined
+  const store = useStore<RootState>()
   const {
     connectedPort,
     currentWCS,
     sendGcode,
-    workPosition,
     machinePosition,
     storeBitsetterReference,
     probeContact,
@@ -117,11 +120,11 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
     setProbePhase('probing')
     setErrorMessage(null)
     probingRef.current = true
-    runGcodeBatch({ gcode: macroString, port: connectedPort })
+    runGcodeBatch({ gcode: macroString, port: connectedPort, waitForIdle: true })
       .then(() => {
         probingRef.current = false
         setProbePhase('storing')
-        const zRef = workPosition.z
+        const zRef = selectWorkPosition(store.getState()).z
         setCapturedZRef(zRef)
         if (storeBitsetterReference) {
           storeBitsetterReference(currentWCS, zRef)
@@ -155,7 +158,7 @@ export function BitSetterBlock({ methods, context, onComplete, onError, debugAll
         setErrorMessage(msg)
         onError(msg)
       })
-  }, [method, connectedPort, currentWCS, workPosition.z, storeBitsetterReference, sendGcode, onError, t])
+  }, [method, connectedPort, currentWCS, store, storeBitsetterReference, sendGcode, onError, t])
 
   const canGoBack = step > 1
   const stepTitles: Record<number, string> = {
