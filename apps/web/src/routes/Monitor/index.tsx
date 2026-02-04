@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList } from 'lucide-react'
+import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList, Move } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -64,6 +64,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { CurrentStatsPanel } from './panels/CurrentStatsPanel'
 import { ToolsUsedPanel } from './panels/ToolsUsedPanel'
+import { JogPanel } from '../Setup/panels/JogPanel'
 import { formatTime } from '@/utils/formatTime'
 
 // ============================================================================
@@ -874,6 +875,7 @@ function createPanelConfig(t: (key: string) => string): PanelConfigRecord {
   return {
     currentStats: { title: t('Current Stats'), icon: BarChart3, component: CurrentStatsPanel },
     toolsUsed: { title: t('Tools Used'), icon: Wrench, component: ToolsUsedPanel },
+    jog: { title: t('Jog Control'), icon: Move, component: JogPanel },
   }
 }
 
@@ -1008,7 +1010,7 @@ export default function Monitor() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        const validPanels = ['currentStats', 'toolsUsed']
+        const validPanels = ['currentStats', 'toolsUsed', 'jog']
         if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
           return parsed
         }
@@ -1016,7 +1018,7 @@ export default function Monitor() {
         // Invalid JSON, use default
       }
     }
-    return ['currentStats', 'toolsUsed']
+    return ['currentStats', 'toolsUsed', 'jog']
   })
   
   // Track which panels are collapsed
