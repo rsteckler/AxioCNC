@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Check, HelpCircle, Loader2, Target } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, HelpCircle, Loader2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildSetZeroWithOffsetCommand } from '@/utils/gcode'
 import { runGcodeBatch } from '@/utils/runGcodeBatch'
@@ -544,12 +544,12 @@ export function TouchplateBlock({
                 </div>
                 <div className="flex flex-wrap justify-center gap-3 py-2">
                   <Button onClick={() => runProbeXY('negative', 'x')} size="lg" className="gap-2">
-                    <Target className="w-5 h-5" />
-                    {t('Probe left')}
+                    <ArrowLeft className="w-5 h-5" />
+                    {t('Probe to Left')}
                   </Button>
                   <Button onClick={() => runProbeXY('positive', 'x')} size="lg" className="gap-2">
-                    <Target className="w-5 h-5" />
-                    {t('Probe right')}
+                    <ArrowRight className="w-5 h-5" />
+                    {t('Probe to Right')}
                   </Button>
                 </div>
               </>
@@ -621,12 +621,12 @@ export function TouchplateBlock({
                 </div>
                 <div className="flex flex-wrap justify-center gap-3 py-2">
                   <Button onClick={() => runProbeXY('negative', 'y')} size="lg" className="gap-2">
-                    <Target className="w-5 h-5" />
-                    {t('Probe front')}
+                    <ArrowDown className="w-5 h-5" />
+                    {t('Probe Towards Front')}
                   </Button>
                   <Button onClick={() => runProbeXY('positive', 'y')} size="lg" className="gap-2">
-                    <Target className="w-5 h-5" />
-                    {t('Probe back')}
+                    <ArrowUp className="w-5 h-5" />
+                    {t('Probe Towards Back')}
                   </Button>
                 </div>
               </>
@@ -824,23 +824,23 @@ export function TouchplateBlock({
                 {axis === 'x' ? (
                   <>
                     <Button onClick={() => runProbeXY('negative')} size="lg" className="gap-2">
-                      <Target className="w-5 h-5" />
-                      {t('Probe left')}
+                      <ArrowLeft className="w-5 h-5" />
+                      {t('Probe to Left')}
                     </Button>
                     <Button onClick={() => runProbeXY('positive')} size="lg" className="gap-2">
-                      <Target className="w-5 h-5" />
-                      {t('Probe right')}
+                      <ArrowRight className="w-5 h-5" />
+                      {t('Probe to Right')}
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button onClick={() => runProbeXY('negative')} size="lg" className="gap-2">
-                      <Target className="w-5 h-5" />
-                      {t('Probe front')}
+                      <ArrowDown className="w-5 h-5" />
+                      {t('Probe Towards Front')}
                     </Button>
                     <Button onClick={() => runProbeXY('positive')} size="lg" className="gap-2">
-                      <Target className="w-5 h-5" />
-                      {t('Probe back')}
+                      <ArrowUp className="w-5 h-5" />
+                      {t('Probe Towards Back')}
                     </Button>
                   </>
                 )}
