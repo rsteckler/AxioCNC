@@ -548,8 +548,8 @@ export function TouchplateBlock({
                     {t('Probe to Left')}
                   </Button>
                   <Button onClick={() => runProbeXY('positive', 'x')} size="lg" className="gap-2">
-                    <ArrowRight className="w-5 h-5" />
                     {t('Probe to Right')}
+                    <ArrowRight className="w-5 h-5" />
                   </Button>
                 </div>
               </>
@@ -625,8 +625,8 @@ export function TouchplateBlock({
                     {t('Probe Towards Front')}
                   </Button>
                   <Button onClick={() => runProbeXY('positive', 'y')} size="lg" className="gap-2">
-                    <ArrowUp className="w-5 h-5" />
                     {t('Probe Towards Back')}
+                    <ArrowUp className="w-5 h-5" />
                   </Button>
                 </div>
               </>
@@ -828,8 +828,8 @@ export function TouchplateBlock({
                       {t('Probe to Left')}
                     </Button>
                     <Button onClick={() => runProbeXY('positive')} size="lg" className="gap-2">
-                      <ArrowRight className="w-5 h-5" />
                       {t('Probe to Right')}
+                      <ArrowRight className="w-5 h-5" />
                     </Button>
                   </>
                 ) : (
@@ -839,8 +839,8 @@ export function TouchplateBlock({
                       {t('Probe Towards Front')}
                     </Button>
                     <Button onClick={() => runProbeXY('positive')} size="lg" className="gap-2">
-                      <ArrowUp className="w-5 h-5" />
                       {t('Probe Towards Back')}
+                      <ArrowUp className="w-5 h-5" />
                     </Button>
                   </>
                 )}
