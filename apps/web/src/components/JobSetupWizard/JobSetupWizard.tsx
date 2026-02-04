@@ -18,6 +18,7 @@ import {
   getToolChangePolicyOptions,
 } from '@/utils/zeroingStrategyOptions'
 import { useSetExtensionsMutation } from '@/services/api'
+import { JOB_TOOL_CHANGE_POLICY_KEY } from '@/contexts/ToolChangeContext'
 import { PlanSummaryScreen } from './PlanSummaryScreen'
 import { ExecutionScreen } from './ExecutionScreen'
 import type { BlockRunContext } from './blocks'
@@ -226,10 +227,30 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
     }
   }, [screen, executionStepInfo, totalSteps, t])
 
-  const handleContinue = useCallback(() => {
+  const handleContinue = useCallback(async () => {
+    try {
+      await setExtensions({
+        key: JOB_TOOL_CHANGE_POLICY_KEY,
+        data: { methodId: overrides.toolChangePolicy },
+      }).unwrap()
+    } catch (err) {
+      console.error('[JobSetupWizard] Failed to persist job tool change policy:', err)
+    }
     setScreen(2)
     setExecutionStepInfo(null)
-  }, [])
+  }, [overrides.toolChangePolicy, setExtensions])
+
+  const handleSkip = useCallback(async () => {
+    try {
+      await setExtensions({
+        key: JOB_TOOL_CHANGE_POLICY_KEY,
+        data: { methodId: overrides.toolChangePolicy },
+      }).unwrap()
+    } catch (err) {
+      console.error('[JobSetupWizard] Failed to persist job tool change policy on skip:', err)
+    }
+    onSetupComplete?.()
+  }, [overrides.toolChangePolicy, setExtensions, onSetupComplete])
 
   const handleDialogOpenChange = useCallback(
     (next: boolean) => {
@@ -285,6 +306,7 @@ export function JobSetupWizard({ open, onClose, onSetupComplete, embedded = fals
             onOverrideChange={handleOverrideChange}
             onContinue={handleContinue}
             onClose={onClose}
+            onSkip={onSetupComplete ? handleSkip : undefined}
             embedded={embedded}
           />
         ) : (

@@ -1,5 +1,10 @@
-import { createContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import type { ZeroingMethod } from '../../../shared/src/schemas/settings'
+import { useDeleteExtensionsMutation } from '@/services/api'
+import { socketService } from '@/services/socket'
+
+/** Extension key for current job's tool change policy (set by job setup, cleared on unload). */
+export const JOB_TOOL_CHANGE_POLICY_KEY = 'job.toolChangePolicy'
 
 interface ToolChangeContextValue {
   isToolChangePending: boolean
@@ -19,6 +24,18 @@ export function ToolChangeProvider({ children }: { children: ReactNode }) {
   const [toolChangeMethod, setToolChangeMethod] = useState<ZeroingMethod | 'ask' | null>(null)
   const [isFirstToolChange, setIsFirstToolChange] = useState(true)
   const [forceSubsequentToolChange, setForceSubsequentToolChange] = useState(false) // Debug flag
+  const [deleteExtensions] = useDeleteExtensionsMutation()
+
+  // Clear job tool change policy when workfile is unloaded so the next job uses defaults
+  useEffect(() => {
+    const handleUnload = () => {
+      deleteExtensions({ key: JOB_TOOL_CHANGE_POLICY_KEY }).catch((err) => {
+        console.warn('[ToolChangeProvider] Failed to clear job tool change policy on unload:', err)
+      })
+    }
+    socketService.on('gcode:unload', handleUnload)
+    return () => socketService.off('gcode:unload', handleUnload)
+  }, [deleteExtensions])
 
   const triggerToolChange = useCallback((method: ZeroingMethod | 'ask', isFirst = true) => {
     setToolChangeMethod(method)
