@@ -6,10 +6,10 @@ import { SetupBlockLayout } from '@/components/JobSetupWizard/blocks/SetupBlockL
 import { buildSetZeroCommand } from '@/utils/gcode'
 import type { SetupBlockProps } from '@/components/JobSetupWizard/blocks/types'
 
-const ZERO_TOLERANCE = 0.001
+const ZERO_TOLERANCE = 0.01
 
 /**
- * Manual Z tool-change block: user sets Z work zero in DRO, then completes.
+ * Manual Z tool-change block: user jogs to Z work zero, then presses Zero Z on screen.
  * Used only in the Tool Change tab. Can be modified without affecting job setup.
  */
 export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
@@ -32,7 +32,7 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
 
   return (
     <SetupBlockLayout
-      subtitle={t('Use jog controls to position the tool, then press Zero Z to set work zero.')}
+      subtitle={t('Use the jog controls to move to the correct Z location, then press the Zero Z button on this screen.')}
       footerLeft={footerLeftExtra}
       nextButton={{
         onClick: handleNext,
@@ -50,13 +50,13 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground space-y-2">
           <p>
-            {t('Position the tool at Z work zero (e.g. top of material or paper test). Then press Zero Z below to set the current position as work zero.')}
+            {t('Use the jog controls in the left panel to move the tool to Z work zero (e.g. top of material or paper test). Then press the Zero Z button below to set the current position as work zero.')}
           </p>
         </div>
         <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
           <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-900 dark:text-blue-100">
-            {t('Zero Z sends a command to the controller to set the current position as Z work zero. Then press Next to continue.')}
+            {t('The Zero Z button on this screen sends a command to the controller to set the current position as Z work zero. Then press Next to continue.')}
           </p>
         </div>
         <div className="flex flex-col gap-3">
@@ -87,7 +87,7 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
             </div>
             {!canComplete && (
               <p className="text-xs text-muted-foreground">
-                {t('Press Zero Z above to set the current position as Z work zero, then Next will be enabled.')}
+                {t('Use jog to reach Z work zero, then press the Zero Z button above. Next will be enabled.')}
               </p>
             )}
           </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 
-const ZERO_TOLERANCE = 0.001
+const ZERO_TOLERANCE = 0.01
 
 /**
  * Manual Z block: one step. User positions Z at work zero (e.g. paper test), then presses Z zero in the DRO panel.
