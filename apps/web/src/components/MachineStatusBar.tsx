@@ -152,7 +152,7 @@ export function MachineStatusBar({ onError }: MachineStatusBarProps) {
         attemptConnection()
       }
     }
-  }, [settings, isConnected, isConnecting, connectedPort, showError, dispatch])
+  }, [settings, isConnected, isConnecting, connectedPort, showError, dispatch, t])
   
   // Handle Home button
   const handleHome = useCallback(() => {

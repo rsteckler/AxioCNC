@@ -94,7 +94,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       console.error('Failed to process file:', error)
       setIsUploading(false)
     }
-  }, [uploadWorkfile])
+  }, [uploadWorkfile, t])
 
   // Handle file picker click
   const handleFilePickerClick = useCallback(() => {
@@ -188,7 +188,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
       console.error('[FilePanel] Failed to load file:', error)
       // TODO: Show error toast
     }
-  }, [isConnected, connectedPort, getWorkfileContent, onFlashStatus])
+  }, [isConnected, connectedPort, getWorkfileContent, onFlashStatus, t])
 
   // Unload file from controller
   const handleUnload = useCallback(() => {
@@ -306,7 +306,7 @@ export function FilePanel({ isConnected, connectedPort: connectedPortProp, onFla
     }
 
     setShowOutlineConfirm(true)
-  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, onFlashStatus, showErrorNotification])
+  }, [isConnected, connectedPort, loadedFileName, machinePosition, isOutlining, onFlashStatus, showErrorNotification, t])
 
   // Listen for gcode:load and gcode:unload events to track loaded file
   React.useEffect(() => {

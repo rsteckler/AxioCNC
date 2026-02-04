@@ -125,6 +125,7 @@ export function BitZeroXYBlock({ methods, context, onComplete, onError, debugAll
         setErrorMessage(msg)
         onError(msg)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/onError are stable parent callbacks
   }, [method, connectedPort, currentWCS, onComplete, onError, t])
 
   if (!method || method.type !== 'bitzero' || (method.axes !== 'xy' && method.axes !== 'xyz')) {

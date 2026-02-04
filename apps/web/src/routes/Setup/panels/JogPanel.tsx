@@ -39,10 +39,8 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
   
   // Handle jog command
   const handleJog = useCallback((x: number, y: number, z: number) => {
-    // Get current distance directly from the distances array using current distanceIndex
-    // This ensures we always use the latest value, not a stale closure
-    const distance = distances[distanceIndex]
-    
+    const distance = currentDistance
+
     // Build the movement command
     const parts: string[] = []
     if (x !== 0) parts.push(`X${x * distance}`)
@@ -61,7 +59,7 @@ export function JogPanel({ isConnected, connectedPort, machineStatus, onFlashSta
     sendGcode('G91') // relative mode
     sendGcode(`G0 ${command}`) // rapid move
     sendGcode('G90') // absolute mode
-  }, [distanceIndex, sendGcode])
+  }, [currentDistance, sendGcode])
   
   // Handle go to zero for XY axes
   const handleGoToZeroXY = useCallback(() => {

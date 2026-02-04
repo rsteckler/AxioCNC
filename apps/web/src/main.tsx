@@ -13,6 +13,7 @@ const loadingFallback = (
   <div className="flex items-center justify-center min-h-screen">Loading...</div>
 )
 
+// eslint-disable-next-line react-refresh/only-export-components -- Root is entry point, not a reusable component
 function Root() {
   const [ready, setReady] = useState(false)
   useEffect(() => {

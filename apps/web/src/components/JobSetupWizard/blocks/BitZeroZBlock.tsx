@@ -83,6 +83,7 @@ export function BitZeroZBlock({ methods, context, onComplete, onError, debugAllo
         setErrorMessage(msg)
         onError(msg)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/onError are stable parent callbacks
   }, [method, connectedPort, currentWCS, clearBitsetterReference, onComplete, onError, t])
 
   if (!method || method.type !== 'bitzero' || (method.axes !== 'z' && method.axes !== 'xyz')) {

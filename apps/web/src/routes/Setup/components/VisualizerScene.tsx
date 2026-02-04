@@ -265,9 +265,7 @@ function GCodeToolpath({ gcode, offset, processedLines = 0 }: { gcode?: string |
   }, [
     gcode,
     // Compare offset values instead of reference to prevent unnecessary recreation
-    offset?.x,
-    offset?.y,
-    offset?.z,
+    offset,
   ])
 
   // Update colors based on processed lines
