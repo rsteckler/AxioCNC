@@ -32,6 +32,8 @@ export interface PlanSummaryScreenProps {
   onOverrideChange: (overrides: Partial<PlanSummaryScreenProps['overrides']>) => void
   onContinue: () => void
   onClose: () => void
+  /** Called when user clicks Skip (already set up via File panel). Same effect as completing setup. */
+  onSkip?: () => void
   /** When true, rendered inside tab (no dialog header/footer layout). */
   embedded?: boolean
 }
@@ -45,6 +47,7 @@ export function PlanSummaryScreen({
   methods,
   onOverrideChange,
   onContinue,
+  onSkip,
   embedded = false,
 }: PlanSummaryScreenProps) {
   const { t } = useTranslation()
@@ -145,10 +148,20 @@ export function PlanSummaryScreen({
   )
 
   const footer = (
-    <div className="flex w-full justify-end gap-2 pt-4 border-t shrink-0">
-      <Button onClick={onContinue}>
-        {t('Continue')}
-      </Button>
+    <div className="flex flex-col gap-3 w-full shrink-0 pt-4 border-t">
+      <p className="text-xs text-muted-foreground">
+        {t('You can skip the job setup here if you already set up the job using the Set up job button in the file panel and zeroes are already correct.')}
+      </p>
+      <div className="flex w-full justify-end gap-2">
+        {onSkip && (
+          <Button variant="outline" onClick={onSkip}>
+            {t('Skip')}
+          </Button>
+        )}
+        <Button onClick={onContinue}>
+          {t('Continue')}
+        </Button>
+      </div>
     </div>
   )
 

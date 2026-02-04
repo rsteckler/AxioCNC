@@ -16,11 +16,12 @@ import { BitZeroXYBlock } from './BitZeroXYBlock'
 import { BitZeroZBlock } from './BitZeroZBlock'
 import { BitZeroXYZBlock } from './BitZeroXYZBlock'
 import { BitSetterBlock } from './BitSetterBlock'
+import { CustomZBlock } from './CustomZBlock'
 
 export type { SetupBlockProps, BlockRunContext } from './types'
 export { SetupBlockLayout, SetupBlockBackButton } from './SetupBlockLayout'
 export type { SetupBlockLayoutProps, SetupBlockNextButtonConfig } from './SetupBlockLayout'
-export { ManualXYBlock, ManualZBlock, TouchplateBlock, BitZeroXYBlock, BitZeroZBlock, BitZeroXYZBlock, BitSetterBlock }
+export { ManualXYBlock, ManualZBlock, TouchplateBlock, BitZeroXYBlock, BitZeroZBlock, BitZeroXYZBlock, BitSetterBlock, CustomZBlock }
 
 type RenderBlockProps = Omit<SetupBlockProps, 'methods'>
 
@@ -47,6 +48,8 @@ export function RenderSetupBlock(
       return <BitZeroXYZBlock {...blockProps} />
     case 'bitsetter':
       return <BitSetterBlock {...blockProps} />
+    case 'custom_z':
+      return <CustomZBlock {...blockProps} />
     default:
       return null
   }

@@ -64,7 +64,6 @@ import { JogPanel } from './panels/JogPanel'
 import { ProbePanel } from './panels/ProbePanel'
 import { MacrosPanel } from './panels/MacrosPanel'
 import { SpindlePanel } from './panels/SpindlePanel'
-import { ZeroingMethodSelectDialog } from '@/components/ZeroingMethodSelectDialog'
 import { UpdateNotificationDialog } from '@/components/UpdateNotificationDialog'
 import { NotificationSystem } from '@/components/NotificationSystem'
 import { SetupTutorialDialog } from '@/components/SetupTutorialDialog'
@@ -454,10 +453,8 @@ export default function Setup() {
   // Probe status (from pinState - 'P' indicates probe contact)
   const [probeContact, setProbeContact] = useState<boolean>(false)
   
-  // Wizard state (old single-method flow for Probe panel)
+  // One-off probe from Probe panel (block-based SingleMethodProbeFlow)
   const [wizardMethod, setWizardMethod] = useState<ZeroingMethod | null>(null)
-  const [showMethodSelectDialog, setShowMethodSelectDialog] = useState(false)
-  const [pendingJobStart, setPendingJobStart] = useState(false) // Track if we need to start job after wizard completes
 
   // Job setup wizard (Phase 5: plan + blocks; entry from panel or Run)
   const [jobSetupWizardOpen, setJobSetupWizardOpen] = useState(false)
@@ -495,57 +492,14 @@ export default function Setup() {
     }
   }, [jobSetupPendingJobStart, settings?.machine?.autoSwitchToMonitor, navigate, connectedPort, sendCommand])
 
-  // Handler for starting single-method wizard from Probe panel (called by ProbePanel Run buttons)
-  const handleStartWizard = useCallback((method: ZeroingMethod | 'ask' | null) => {
-    if (method === 'ask') {
-      setShowMethodSelectDialog(true)
-      setPendingJobStart(true)
-    } else if (method) {
-      setWizardMethod(method)
-      setPendingJobStart(true)
-    }
+  // Handler for one-off probe from Probe panel (opens SingleMethodProbeFlow in wizard tab)
+  const handleStartWizard = useCallback((method: ZeroingMethod | null) => {
+    if (method) setWizardMethod(method)
   }, [])
 
-  // Handle method selection from dialog
-  const handleMethodSelect = useCallback((method: ZeroingMethod | 'skip') => {
-    if (method === 'skip') {
-      // Skip not applicable for initial setup - just close dialog
-      setShowMethodSelectDialog(false)
-      return
-    }
-    setShowMethodSelectDialog(false)
-    setWizardMethod(method)
-    // Switch to wizard tab is handled by VisualizerPanel when wizardMethod is set
-  }, [])
-
-  // Handle wizard close - start job if pending
   const handleWizardClose = useCallback(() => {
     setWizardMethod(null)
-    // If we were starting a job, start it now that wizard is complete
-    if (pendingJobStart) {
-      setPendingJobStart(false)
-      // Check if we should navigate to Monitor before starting
-      const shouldSwitch = settings?.machine?.autoSwitchToMonitor ?? true // Default to true
-      
-      if (shouldSwitch) {
-        // Navigate to Monitor first, then start job after navigation completes
-        navigate('/monitor')
-        // Small delay to ensure navigation completes before starting job
-        setTimeout(() => {
-          if (connectedPort) {
-            sendCommand('gcode:start')
-          }
-        }, 100)
-      } else {
-        // Start job directly without navigation
-        setTimeout(() => {
-          if (connectedPort) {
-            sendCommand('gcode:start')
-          }
-        }, 100)
-      }
-    }
-  }, [pendingJobStart, connectedPort, sendCommand, settings, navigate])
+  }, [])
   
   // Refs to track state in event handlers to avoid stale closures
   const machineStatusRef = useRef<MachineReadinessStatus>(machineStatus)
@@ -858,7 +812,7 @@ export default function Setup() {
       socketService.off('marlin:homing', handleHomingComplete)
       socketService.off('joystick:flashStatus', flashStatus)
     }
-  }, [dispatch, flashStatus, showErrorNotification]) // dispatch and flashStatus are stable, showErrorNotification from hook
+  }, [connectedPort, dispatch, flashStatus, showErrorNotification, settings?.connection?.baudRate, settings?.controller?.type, t])
   
   // Restore state from API on mount (only when needed - not on every navigation)
   // Only restore if:
@@ -1192,15 +1146,6 @@ export default function Setup() {
           releaseUrl={releaseUrl || undefined}
         />
       )}
-      {/* Method selection dialog for "ask" strategy (Probe panel single-method flow) */}
-      <ZeroingMethodSelectDialog
-        open={showMethodSelectDialog}
-        onOpenChange={setShowMethodSelectDialog}
-        methods={settings?.zeroingMethods?.methods ?? []}
-        title={t('Select Zeroing Method')}
-        description={t('Choose a zeroing method to use before starting the job:')}
-        onSelect={handleMethodSelect}
-      />
     </div>
   )
 }

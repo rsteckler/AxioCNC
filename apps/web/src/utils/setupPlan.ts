@@ -157,6 +157,7 @@ export type SetupBlockKind =
   | 'manual_xy'
   | 'manual_z'
   | 'bitsetter'
+  | 'custom_z'
 
 /** One executable block: kind + method(s). Manual uses same method for XY and Z; step context decides axes. */
 export interface SetupBlock {
@@ -222,6 +223,55 @@ export function slotToBlocks(
 }
 
 /**
+ * Map a single method to ordered SetupBlocks for one-off probe (Probe panel Run).
+ * Used by SingleMethodProbeFlow so Probe panel uses the same block-based execution as Job Setup.
+ */
+export function singleMethodToBlocks(method: ZeroingMethod): SetupBlock[] {
+  if (!method.enabled) return []
+  const m = method
+
+  if (m.type === 'bitsetter') {
+    return [{ kind: 'bitsetter', methods: [m] }]
+  }
+  if (m.type === 'bitzero') {
+    if (m.axes === 'xyz') return [{ kind: 'bitzero_xyz', methods: [m] }]
+    if (m.axes === 'xy') return [{ kind: 'bitzero_xy', methods: [m] }]
+    if (m.axes === 'z') return [{ kind: 'bitzero_z', methods: [m] }]
+    return []
+  }
+  if (m.type === 'touchplate') {
+    const axes = (m as { axes?: string }).axes ?? 'z'
+    if (axes === 'xyz') {
+      return [
+        { kind: 'touchplate_xy', methods: [m] },
+        { kind: 'touchplate_z', methods: [m] },
+      ]
+    }
+    if (axes === 'xy') return [{ kind: 'touchplate_xy', methods: [m] }]
+    if (axes === 'z') return [{ kind: 'touchplate_z', methods: [m] }]
+    if (axes === 'x') return [{ kind: 'touchplate_x', methods: [m] }]
+    if (axes === 'y') return [{ kind: 'touchplate_y', methods: [m] }]
+    return []
+  }
+  if (m.type === 'manual') {
+    const axes = (m as { axes?: string }).axes ?? 'z'
+    if (axes === 'xyz') {
+      return [
+        { kind: 'manual_xy', methods: [m] },
+        { kind: 'manual_z', methods: [m] },
+      ]
+    }
+    if (axes === 'xy') return [{ kind: 'manual_xy', methods: [m] }]
+    if (axes === 'z') return [{ kind: 'manual_z', methods: [m] }]
+    return [{ kind: 'manual_z', methods: [m] }]
+  }
+  if (m.type === 'custom') {
+    return [{ kind: 'custom_z', methods: [m] }]
+  }
+  return []
+}
+
+/**
  * Map a single method to one SetupBlock for mid-job tool change.
  * Only valid for: BitSetter, Touchplate (Z), Manual (re-zero Z).
  * Used by ToolChangeTab to render the same blocks as the pre-job wizard.
@@ -238,6 +288,9 @@ export function methodToToolChangeBlock(
   }
   if (method.type === 'manual') {
     return { kind: 'manual_z', methods: [method] }
+  }
+  if (method.type === 'custom' && (method as { axes?: string }).axes?.includes?.('z')) {
+    return { kind: 'custom_z', methods: [method] }
   }
   return null
 }

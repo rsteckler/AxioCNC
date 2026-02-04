@@ -5,7 +5,7 @@ import { useToolChange } from '@/contexts/ToolChangeContext'
 import { useGetSettingsQuery, useSetExtensionsMutation } from '@/services/api'
 import { useGcodeCommand, useBitsetterReference } from '@/hooks'
 import { methodToToolChangeBlock } from '@/utils/setupPlan'
-import { RenderSetupBlock } from './JobSetupWizard/blocks'
+import { RenderToolChangeBlock } from './ToolChangeBlocks'
 import type { BlockRunContext } from './JobSetupWizard/blocks'
 import type { ZeroingMethod } from '@/routes/Settings/sections/ZeroingMethodsSection'
 
@@ -19,9 +19,8 @@ interface ToolChangeTabProps {
 }
 
 /**
- * Tool Change tab: uses toolChangePolicy (BitSetter, Touchplate Z, Manual, or ask).
- * When policy is a method, shows the corresponding block; when "ask", shows a dialog
- * with method cards, then runs the chosen block. Reuses JobSetupWizard blocks.
+ * Tool Change tab: uses toolChangePolicy (BitSetter, Touchplate Z, Manual, Custom Z, or ask).
+ * When policy is a method, shows the corresponding tool-change block (separate from job setup blocks).
  */
 export function ToolChangeTab({
   connectedPort,
@@ -133,10 +132,10 @@ export function ToolChangeTab({
     <div className="flex-1 flex flex-col min-h-0 p-4">
       <h2 className="text-lg font-semibold mb-4">
         {toolChangeMethod.type === 'bitsetter'
-          ? t('Establish tool reference')
+          ? t('Tool change — set reference for new tool')
           : t('Re-zero Z for tool change')}
       </h2>
-      {RenderSetupBlock(block, {
+      {RenderToolChangeBlock(block, {
         context,
         onComplete: completeToolChange,
         onError: (msg) => console.error(msg),

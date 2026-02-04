@@ -15,9 +15,11 @@ interface PageStatusBarProps {
   onFlashStatus?: () => void
   disabled?: boolean
   hasFile?: boolean
-  onStartWizard?: (method: ZeroingMethod | 'ask' | null) => void
+  onStartWizard?: (method: ZeroingMethod | null) => void
   /** Open Job Setup Wizard (e.g. when Run is clicked). When user completes setup, caller starts job. */
   onOpenJobSetupWizard?: (options: { pendingJobStart: boolean }) => void
+  /** When false, hide the Play button (e.g. on Monitor). Default true. */
+  showPlayButton?: boolean
 }
 
 export function PageStatusBar({
@@ -32,6 +34,7 @@ export function PageStatusBar({
   hasFile,
   onStartWizard,
   onOpenJobSetupWizard,
+  showPlayButton,
 }: PageStatusBarProps) {
   return (
     <div className="h-12 border-b border-border bg-muted/30 flex items-center px-4 gap-2">
@@ -48,6 +51,7 @@ export function PageStatusBar({
         hasFile={hasFile}
         onStartWizard={onStartWizard}
         onOpenJobSetupWizard={onOpenJobSetupWizard}
+        showPlayButton={showPlayButton}
       />
     </div>
   )

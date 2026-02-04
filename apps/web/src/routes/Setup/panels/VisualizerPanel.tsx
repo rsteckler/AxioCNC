@@ -7,7 +7,7 @@ import { useGetSettingsQuery, useGetCamerasQuery, useGetStreamMetadataQuery, use
 import type { ZeroingMethod } from '@axiocnc/shared/src/schemas/settings'
 import { VisualizerScene } from '../components/VisualizerScene'
 import { Console } from '@/components/Console'
-import { ZeroingWizardTab } from '@/components/ZeroingWizardTab'
+import { SingleMethodProbeFlow } from '@/components/SingleMethodProbeFlow'
 import { ToolChangeTab } from '@/components/ToolChangeTab'
 import { JobSetupWizard } from '@/components/JobSetupWizard'
 import { useToolChange } from '@/contexts/ToolChangeContext'
@@ -296,7 +296,7 @@ export function VisualizerPanel({
   // Memoize Vector3 to prevent unnecessary geometry recreation
   const modelOffsetVector3 = useMemo(() => {
     return modelOffset ? new Vector3(modelOffset.x, modelOffset.y, modelOffset.z) : undefined
-  }, [modelOffset?.x, modelOffset?.y, modelOffset?.z])
+  }, [modelOffset])
   const placedGcodeRef = useRef<string | null>(null) // Track which G-code we've already auto-placed
   const loadedGcodeRef = useRef<{ name: string; gcode: string } | null>(null) // Ref for accessing current loadedGcode in event handlers
   const machinePositionRef = useRef<{ x: number; y: number; z: number }>(machinePosition) // Ref for accessing current machinePosition in event handlers
@@ -473,7 +473,7 @@ export function VisualizerPanel({
     } else {
       setOutlinePoints(null)
     }
-  }, [loadedGcode?.gcode])
+  }, [loadedGcode?.gcode, machinePosition])
 
   // Automatically place model at WCS origin when G-code is loaded
   useEffect(() => {
@@ -698,10 +698,10 @@ export function VisualizerPanel({
         </div>
       )}
       
-      {/* Wizard Tab */}
+      {/* Wizard Tab – one-off probe from Probe panel (block-based, same as Job Setup) */}
       {wizardMethod && (
         <div className={`flex-1 flex flex-col min-h-0 ${tab === 'wizard' ? 'block' : 'hidden'}`}>
-          <ZeroingWizardTab
+          <SingleMethodProbeFlow
             method={wizardMethod}
             onClose={onWizardClose || (() => {})}
             isConnected={isConnected}
