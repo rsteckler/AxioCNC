@@ -17,7 +17,7 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
   const { currentWCS, workPosition, clearBitsetterReference, sendGcode, connectedPort } = context
 
   const isZZero = Math.abs(workPosition.z) < ZERO_TOLERANCE
-  const canComplete = isZZero
+  const skipNote = t('You can skip this tool change if the correct tool is already installed and calibrated to the correct Z zero.')
 
   const handleZeroZ = useCallback(() => {
     if (!connectedPort) return
@@ -32,16 +32,22 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
 
   return (
     <SetupBlockLayout
+      title={t('Manual Z tool change')}
       subtitle={t('Use the jog controls to move to the correct Z location, then press the Zero Z button on this screen.')}
-      footerLeft={footerLeftExtra}
-      nextButton={{
-        onClick: handleNext,
-        disabled: !canComplete,
-      }}
+      footerLeft={(
+        <div className="flex flex-col gap-1 max-w-md">
+          {footerLeftExtra}
+          <p className="text-xs text-muted-foreground">{skipNote}</p>
+        </div>
+      )}
+      nextButton={{ onClick: handleNext }}
       footerRight={
         <>
+          <Button variant="outline" onClick={onComplete}>
+            {t('Skip')}
+          </Button>
           {footerRightExtra}
-          {debugAllowNext && !canComplete && (
+          {debugAllowNext && (
             <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
           )}
         </>
@@ -85,9 +91,9 @@ export function ManualZToolChangeBlock({ context, onComplete, debugAllowNext, fo
                 Z {isZZero ? t('Zero set') : `(${workPosition.z.toFixed(3)})`}
               </div>
             </div>
-            {!canComplete && (
+            {!isZZero && (
               <p className="text-xs text-muted-foreground">
-                {t('Use jog to reach Z work zero, then press the Zero Z button above. Next will be enabled.')}
+                {t('Use jog to reach Z work zero and press the Zero Z button above, or press Next to continue.')}
               </p>
             )}
           </div>

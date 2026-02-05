@@ -52,6 +52,7 @@ export function TouchplateZToolChangeBlock({
   const { t } = useTranslation()
   const method = methods[0] as TouchPlateConfig | undefined
   const { currentWCS, clearBitsetterReference, connectedPort, probeContact, machinePosition, sendGcode } = context
+  const skipNote = t('You can skip this tool change if the correct tool is already installed and calibrated to the correct Z zero.')
 
   const { data: settings } = useGetSettingsQuery()
   const { data: toolsData } = useGetToolsQuery()
@@ -196,7 +197,12 @@ export function TouchplateZToolChangeBlock({
     step > 1 &&
     (step < probeStep || (step === probeStep && status !== 'probing'))
   const onBack = canGoBack ? () => setStep(step - 1) : undefined
-  const footerLeft = step === 1 ? footerLeftExtra : undefined
+  const footerLeft = step === 1 ? (
+    <div className="flex flex-col gap-1 max-w-md">
+      {footerLeftExtra}
+      <p className="text-xs text-muted-foreground">{skipNote}</p>
+    </div>
+  ) : undefined
 
   const getNextButton = (): { onClick: () => void; disabled?: boolean; label?: string } | undefined => {
     if (step < probeStep) return { onClick: () => setStep(step + 1) }
@@ -211,6 +217,11 @@ export function TouchplateZToolChangeBlock({
 
   const footerRightContent = (
     <>
+      {step === 1 && (
+        <Button variant="outline" onClick={onComplete}>
+          {t('Skip')}
+        </Button>
+      )}
       {footerRightExtra}
       {debugAllowNext && step < probeStep && (
         <Button variant="secondary" size="sm" onClick={() => setStep(step + 1)}>
@@ -360,7 +371,7 @@ export function TouchplateZToolChangeBlock({
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
-              {t('The machine has moved to XY zero (work home). Place the touchplate under the tool and press Probe Z below. The tool will probe down until it contacts the touchplate and set Z zero (accounting for plate thickness {{thickness}}mm).', {
+              {t('The machine has moved to XY zero (work home). Use the jog controls to position the tool above the touchplate, place the touchplate under the tool, then press Probe Z below. The tool will probe down until it contacts the touchplate and set Z zero (accounting for plate thickness {{thickness}}mm).', {
                 thickness: method.plateThickness,
               })}
             </p>

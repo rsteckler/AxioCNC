@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, HelpCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { SetupBlockLayout } from './SetupBlockLayout'
 import type { SetupBlockProps } from './types'
 
@@ -11,12 +10,11 @@ const ZERO_TOLERANCE = 0.01
  * Manual Z block: one step. User positions Z at work zero (e.g. paper test), then presses Z zero in the DRO panel.
  * Clears BitSetter reference when step is completed. Z indicator lights up green when work position Z is zero.
  */
-export function ManualZBlock({ context, onComplete, debugAllowNext, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
+export function ManualZBlock({ context, onComplete, footerLeftExtra, footerRightExtra }: SetupBlockProps) {
   const { t } = useTranslation()
   const { currentWCS, workPosition, clearBitsetterReference } = context
 
   const isZZero = Math.abs(workPosition.z) < ZERO_TOLERANCE
-  const canComplete = isZZero
 
   const handleNext = useCallback(async () => {
     await clearBitsetterReference(currentWCS)
@@ -27,18 +25,8 @@ export function ManualZBlock({ context, onComplete, debugAllowNext, footerLeftEx
     <SetupBlockLayout
       subtitle={t('Use jog controls and the DRO to set Z work zero.')}
       footerLeft={footerLeftExtra}
-      nextButton={{
-        onClick: handleNext,
-        disabled: !canComplete,
-      }}
-      footerRight={
-        <>
-          {footerRightExtra}
-          {debugAllowNext && !canComplete && (
-            <Button variant="secondary" size="sm" onClick={onComplete}>{t('Next (debug)')}</Button>
-          )}
-        </>
-      }
+      nextButton={{ onClick: handleNext }}
+      footerRight={footerRightExtra}
     >
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground space-y-2">
@@ -66,9 +54,9 @@ export function ManualZBlock({ context, onComplete, debugAllowNext, footerLeftEx
               Z {isZZero ? t('Zero set') : `(${workPosition.z.toFixed(3)})`}
             </div>
           </div>
-          {!canComplete && (
+          {!isZZero && (
             <p className="text-xs text-muted-foreground">
-              {t('Set Z to zero in the DRO, then Next will be enabled.')}
+              {t('Set Z to zero in the DRO for work zero, or press Next to continue.')}
             </p>
           )}
         </div>

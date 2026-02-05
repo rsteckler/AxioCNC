@@ -128,19 +128,31 @@ export function ToolChangeTab({
     )
   }
 
+  const headerTitle =
+    toolChangeMethod.type === 'bitsetter'
+      ? t('Tool change — set reference for new tool')
+      : t('Tool change — re-zero Z for new tool')
+  const headerSubtitle =
+    toolChangeMethod.type === 'bitsetter'
+      ? t('Measure the new tool on the BitSetter, then resume the job.')
+      : t('Set Z zero for the new tool, then resume the job.')
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 p-4">
-      <h2 className="text-lg font-semibold mb-4">
-        {toolChangeMethod.type === 'bitsetter'
-          ? t('Tool change — set reference for new tool')
-          : t('Re-zero Z for tool change')}
-      </h2>
-      {RenderToolChangeBlock(block, {
-        context,
-        onComplete: completeToolChange,
-        onError: (msg) => console.error(msg),
-        debugAllowNext,
-      })}
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <header className="flex items-start justify-between gap-4 bg-gradient-to-r from-primary/15 via-primary/10 to-primary/5 px-4 py-4 text-foreground shrink-0">
+        <div className="min-w-0 space-y-1.5">
+          <h2 className="text-xl font-semibold tracking-tight">{headerTitle}</h2>
+          <p className="text-sm text-muted-foreground">{headerSubtitle}</p>
+        </div>
+      </header>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
+        {RenderToolChangeBlock(block, {
+          context,
+          onComplete: completeToolChange,
+          onError: (msg) => console.error(msg),
+          debugAllowNext,
+        })}
+      </div>
     </div>
   )
 }

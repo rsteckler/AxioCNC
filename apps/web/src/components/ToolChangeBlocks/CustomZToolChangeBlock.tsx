@@ -81,6 +81,7 @@ export function CustomZToolChangeBlock({
 
   return (
     <SetupBlockLayout
+      title={t('Custom Z tool change')}
       subtitle={t('Run your custom G-code to set Z (or axes) for the new tool.')}
       nextButton={{
         onClick: onComplete,

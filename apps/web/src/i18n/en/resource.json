@@ -939,6 +939,7 @@
   "You can find these three phases at the top of the screen. For now, go to": "You can find these three phases at the top of the screen. For now, go to",
   "You can use the Z controls to lower the bit near the surface for better accuracy when positioning XY. We'll set the Z zero in the next step.": "You can use the Z controls to lower the bit near the surface for better accuracy when positioning XY. We'll set the Z zero in the next step.",
   "You can skip this step if you've already verified the probe.": "You can skip this step if you've already verified the probe.",
+  "You can skip this tool change if the correct tool is already installed and calibrated to the correct Z zero.": "You can skip this tool change if the correct tool is already installed and calibrated to the correct Z zero.",
   "Your machine is connected and ready.": "Your machine is connected and ready.",
   "Your machine is connected, but AxioCNC can't verify that the displayed position matches the physical machine. Home your machine to establish truth of position.": "Your machine is connected, but AxioCNC can't verify that the displayed position matches the physical machine. Home your machine to establish truth of position.",
   "Your machine is paused and motion is disabled for safety. This can happen during a tool change, or because a job was paused. Click Resume to enable machine motion.": "Your machine is paused and motion is disabled for safety. This can happen during a tool change, or because a job was paused. Click Resume to enable machine motion.",

@@ -217,7 +217,6 @@ export function BitSetterToolChangeBlock({
   }, [
     method,
     connectedPort,
-    currentWCS,
     store,
     initialToolReference,
     sendGcode,

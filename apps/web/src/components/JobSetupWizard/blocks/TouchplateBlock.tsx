@@ -231,7 +231,6 @@ export function TouchplateBlock({
     return (
       <SetupBlockLayout
         title={title}
-        subtitle={t('Set Z zero using the touch plate.')}
         currentStep={step}
         totalSteps={totalSteps}
         onBack={onBack}
