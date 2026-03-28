@@ -303,7 +303,8 @@ class MachineStatusManager extends events.EventEmitter {
                 mpos: state.status?.mpos || null,
                 wpos: state.status?.wpos || null,
                 pinState: state.status?.pinState || null, // Grbl v1.1: input pin state ('XYZPDHRS' indicates triggered pins)
-                accessoryState: state.status?.accessoryState || null // Grbl v1.1: accessory state ('SCFM' indicates spindle/coolant state)
+                accessoryState: state.status?.accessoryState || null, // Grbl v1.1: accessory state ('SCFM' indicates spindle/coolant state)
+                ov: state.status?.ov || null // Grbl v1.1: override values [feed%, rapid%, spindle%]
             },
             // Include full parserstate (spindle, tool, feedrate, modal groups, WCS, etc.)
             parserstate: state.parserstate || null,

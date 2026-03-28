@@ -86,6 +86,20 @@ export const selectFeedrate = createSelector(
   }
 )
 
+// Computed override values (feed%, rapid%, spindle%)
+export const selectOverrideValues = createSelector(
+  [selectBackendStatus],
+  (backendStatus) => {
+    const ov = backendStatus?.controllerState?.ov
+    if (!ov || ov.length < 3) return { feed: 100, rapid: 100, spindle: 100 }
+    return {
+      feed: ov[0],
+      rapid: ov[1],
+      spindle: ov[2],
+    }
+  }
+)
+
 // Computed buffer state
 export const selectRxBufferSize = createSelector(
   [selectBackendStatus],
@@ -147,3 +161,4 @@ export const useWorkflowState = () => useAppSelector(selectWorkflowState)
 export const useIsJobRunning = () => useAppSelector(selectIsJobRunning)
 export const useIsHomed = () => useAppSelector(selectIsHomed)
 export const useCurrentWCS = () => useAppSelector(selectCurrentWCS)
+export const useOverrideValues = () => useAppSelector(selectOverrideValues)

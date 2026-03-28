@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList, Move } from 'lucide-react'
+import { Camera, Terminal, Maximize2, Clock, FileText, Gauge, Columns3, PictureInPicture, ArrowLeftRight, RotateCcw, RotateCw, Square, ChevronDown, GripVertical, BarChart3, Wrench, ActivitySquare, ClipboardList, Move, SlidersHorizontal } from 'lucide-react'
 import Hls from 'hls.js'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -64,6 +64,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { CurrentStatsPanel } from './panels/CurrentStatsPanel'
 import { ToolsUsedPanel } from './panels/ToolsUsedPanel'
+import { OverridePanel } from './panels/OverridePanel'
 import { JogPanel } from '../Setup/panels/JogPanel'
 import { formatTime } from '@/utils/formatTime'
 
@@ -873,6 +874,7 @@ type PanelConfigRecord = Record<string, {
 
 function createPanelConfig(t: (key: string) => string): PanelConfigRecord {
   return {
+    overrides: { title: t('Overrides'), icon: SlidersHorizontal, component: OverridePanel },
     currentStats: { title: t('Current Stats'), icon: BarChart3, component: CurrentStatsPanel },
     toolsUsed: { title: t('Tools Used'), icon: Wrench, component: ToolsUsedPanel },
     jog: { title: t('Jog Control'), icon: Move, component: JogPanel },
@@ -1010,15 +1012,17 @@ export default function Monitor() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        const validPanels = ['currentStats', 'toolsUsed', 'jog']
+        const validPanels = ['overrides', 'currentStats', 'toolsUsed', 'jog']
         if (Array.isArray(parsed) && parsed.every(id => validPanels.includes(id))) {
-          return parsed
+          // Add any new panels that aren't in the stored order
+          const missingPanels = validPanels.filter(id => !parsed.includes(id))
+          return [...parsed, ...missingPanels]
         }
       } catch {
         // Invalid JSON, use default
       }
     }
-    return ['currentStats', 'toolsUsed', 'jog']
+    return ['overrides', 'currentStats', 'toolsUsed', 'jog']
   })
   
   // Track which panels are collapsed
