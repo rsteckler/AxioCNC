@@ -42,6 +42,7 @@ export interface MachineStatus {
     wpos: { x: string; y: string; z: string } | null
     pinState?: string | null // Grbl v1.1: input pin state ('XYZPDHRS' indicates triggered pins)
     accessoryState?: string | null // Grbl v1.1: accessory state ('SCFM' indicates spindle/coolant state)
+    ov?: number[] | null // Grbl v1.1: override values [feed%, rapid%, spindle%]
   } | null
   parserstate?: {
     modal?: {
