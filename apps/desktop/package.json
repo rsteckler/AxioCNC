@@ -14,7 +14,7 @@
   "dependencies": {
     "@axiocnc/server": "workspace:*",
     "chalk": "~4.1.1",
-    "debug": "^4.3.4",
+    "debug": "^4.3.1",
     "electron-store": "~8.1.0",
     "find-up": "3.0.0",
     "lodash": "~4.17.11",
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
-    "electron": "40.0.0",
+    "electron": "40.7.0",
     "electron-builder": "^26.4.0"
   },
   "build": {
